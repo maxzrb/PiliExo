@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-28 23:07 (+08:00)
+- 更新时间：2026-08-28 23:14 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
 - 发布提交：`1669ff368df0c12a72e92fe409c3b84737c925d5`
@@ -159,3 +159,4 @@
 - Android 单测与 Gradle 9.5 R8 release 分 ABI 构建通过。新测试产物位于 `build/app/outputs/flutter-apk/`：arm64 `26,919,958` bytes，v7a `26,791,586` bytes；aapt 已核验包名 `com.maxzrb.piliexo`、versionName `26.8.28`、versionCode `2` 和单一对应 ABI，APK 内含 `libffmpegJNI.so`。
 - 说明文案已统一为“支持HDR的PiliPlus修改版”；发布流程补充了 SNAPSHOT/本地版本覆盖排错、测试版本冻结和 FFmpeg AAR 验收要求。
 - 本轮未创建或推送新标签、GitHub Release、ModelScope 资产；状态栏跟随视频模糊/变色与播放洞察按用户计划留待后续。
+- 本轮源码与文档已提交为 `035314a79`（`fix: restore test version metadata and add Dolby fallback`），本地 `pili_release.json` 已刷新到该提交。
