@@ -3,6 +3,7 @@ package com.maxzrb.piliexo
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -11,6 +12,7 @@ import android.os.Looper
 import android.util.Base64
 import android.util.TypedValue
 import android.view.LayoutInflater
+import android.view.PixelCopy
 import android.view.SurfaceView
 import android.view.View
 import androidx.media3.common.AudioAttributes
@@ -43,6 +45,7 @@ import io.flutter.plugin.common.StandardMessageCodec
 import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 import io.flutter.embedding.engine.FlutterEngine
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CopyOnWriteArrayList
@@ -138,6 +141,16 @@ class HdrMedia3Plugin(
                 "hideSurface" -> {
                     manager.getSession(call).hideSurface()
                     result.success(null)
+                }
+
+                "captureAmbientFrame" -> {
+                    val width = (call.argument<Number>("width")?.toInt() ?: 96)
+                        .coerceIn(16, 256)
+                    val height = (call.argument<Number>("height")?.toInt() ?: 54)
+                        .coerceIn(16, 256)
+                    manager.getSession(call).captureAmbientFrame(width, height) {
+                        result.success(it)
+                    }
                 }
 
                 "setSubtitle" -> {
@@ -356,6 +369,7 @@ private class HdrMedia3Session(
     private var subtitleBackgroundOpacity = 0.67f
     private var resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
     private var hdrWindowModeEnabled = false
+    private var ambientCaptureInFlight = false
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -402,6 +416,63 @@ private class HdrMedia3Session(
         playerView?.let(::hideSurface)
     }
 
+    /**
+     * 从 HDR SurfaceView 复制一张很小的当前帧，供 Flutter 顶部系统状态栏做环境背景。
+     *
+     * 这里使用 PixelCopy 只读取 SurfaceView 的画面，HDR 播放链路仍然直接输出到
+     * SurfaceView，不会经过 TextureView、Flutter Texture 或软件视频合成。
+     */
+    fun captureAmbientFrame(width: Int, height: Int, callback: (ByteArray?) -> Unit) {
+        if (released || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            callback(null)
+            return
+        }
+        val surfaceView = playerView?.videoSurfaceView as? SurfaceView
+        if (surfaceView == null || !surfaceView.isAttachedToWindow ||
+            surfaceView.width <= 0 || surfaceView.height <= 0 ||
+            ambientCaptureInFlight
+        ) {
+            callback(null)
+            return
+        }
+
+        val bitmap = try {
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        } catch (_: Throwable) {
+            callback(null)
+            return
+        }
+        ambientCaptureInFlight = true
+        try {
+            PixelCopy.request(
+                surfaceView,
+                bitmap,
+                { copyResult ->
+                    ambientCaptureInFlight = false
+                    if (copyResult != PixelCopy.SUCCESS || released) {
+                        bitmap.recycle()
+                        callback(null)
+                        return@request
+                    }
+                    val output = ByteArrayOutputStream()
+                    val compressed = try {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 90, output)
+                    } catch (_: Throwable) {
+                        false
+                    } finally {
+                        bitmap.recycle()
+                    }
+                    callback(if (compressed) output.toByteArray() else null)
+                },
+                handler,
+            )
+        } catch (_: Throwable) {
+            ambientCaptureInFlight = false
+            bitmap.recycle()
+            callback(null)
+        }
+    }
+
     private fun hideSurface(view: PlayerView) {
         // SurfaceView 使用独立合成层，路由切换前必须移除其合成层，不能只清空播放器引用。
         view.visibility = View.GONE
@@ -437,6 +508,11 @@ private class HdrMedia3Session(
                 "qualityCode" to newSource.qualityCode,
                 "durationMs" to newSource.durationMs,
                 "hdrSupported" to true,
+                "videoMimeType" to newSource.video.mimeType,
+                "videoCodecs" to newSource.video.codecs,
+                "videoFrameRate" to newSource.video.frameRate,
+                "audioMimeType" to newSource.audio?.mimeType,
+                "audioCodecs" to newSource.audio?.codecs,
             ),
         )
         startTicker()
@@ -722,6 +798,8 @@ private class HdrMedia3Session(
                 "codecs" to format.codecs,
                 "width" to format.width,
                 "height" to format.height,
+                "bitrate" to format.bitrate,
+                "frameRate" to format.frameRate,
                 "colorSpace" to colorInfo?.colorSpace,
                 "colorTransfer" to colorInfo?.colorTransfer,
                 "hdr" to hdrFormatValid,

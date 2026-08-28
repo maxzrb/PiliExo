@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-28 23:14 (+08:00)
+- 更新时间：2026-08-29 00:09 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
 - 发布提交：`1669ff368df0c12a72e92fe409c3b84737c925d5`
@@ -35,6 +35,9 @@
 - 已从 PiliPlus 上游同步 3 个提交：`37ae9cf2d`、`4da811080`、`9058ac144`，分别修复下拉框下划线、补充移动端缓存 URI 复制入口和修正字体加载提示。
 - 修正版本元数据：本机 `android/local.properties` 的旧 `flutter.versionCode=3` 与 Dart `SNAPSHOT` 默认值曾造成错误显示，现已恢复为 `26.8.28+2`；测试构建不再递增版本号，远端正式 N 仍为 2。
 - 新增精简 FFmpeg 音频扩展 AAR，为 AC-3、E-AC-3/E-AC-3-JOC 和 Dolby TrueHD 提供硬件优先、软件回退路径；仅随 Android arm64/v7a 包发布。
+- 已按官方 BiliPai 的实际实现核对环境背景方案：视频当前帧使用 96×54 小图采样，播放中约每 66ms 更新，状态栏顶部单独显示并做模糊与暗色遮罩；没有把模糊施加到播放器画面或做视频转场。
+- 新增状态栏环境帧链路：SDR 从现有视频 RepaintBoundary 采样，HDR 从 Media3 `SurfaceView` 使用 Android `PixelCopy` 采样；HDR 播放仍保持原生 SurfaceView，不经过 SurfaceTexture、TextureView 或 Flutter Texture。
+- 新增播放器洞察：参考 BiliPai 的概览、视频、音频、播放和事件信息，在视频页“更多设置 → 播放器洞察”打开，实时显示 Media3 HDR 或 mpv 已报告的解码器、格式、色彩、缓冲、首帧和掉帧信息。
 
 ## 验证
 
@@ -49,6 +52,8 @@
 - Android `:app:testDebugUnitTest -Pkotlin.incremental=false`：通过（本轮加入 FFmpeg 音频扩展后复验）。
 - Android Gradle 9.5 `:app:assembleRelease -Pkotlin.incremental=false -Psplit-per-abi=true -Ptarget-platform=android-arm,android-arm64`：通过；生成 arm64/v7a 测试包，均为 `versionCode=2`，并核验 `libffmpegJNI.so` 与对应 native ABI。
 - AAR 与 release APK 核验通过：保留 `FfmpegAudioRenderer`，APK 不含 x86/x86_64；E-AC-3-JOC 软件路径以 PCM 出声为目标，不保证 Atmos 对象直通。
+- 本轮测试 Release（未发布，版本保持 `26.8.28+2`）已生成：`build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` 26,930,502 bytes，SHA-256 `D5A1FCEBBEA942A7A014BAAB5D7A2BB6377645800AF86B28EC935DBB5A16B42A`；`app-armeabi-v7a-release.apk` 26,808,350 bytes，SHA-256 `C4593E3357539BFE0CA454B1681C48DBE9747276B0F55DC4F54FBFC50D409183`。
+- 本轮使用 `aapt2` 核验两包均为 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2`，且各自只含目标 ABI；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error，仅保留项目既有 42 条 info。
 - Release APK：`dist/PiliExo_android_v26.8.28.1.apk`，68,793,128 bytes；SHA-256 为 `9D64CAD5C991485E4DCB323C2DAA8FA2DC5F8B300C97EA7DD8C71190B2D5664F`；包名保持 `com.example.piliplus`，显示名为 `PiliExo`。
 - v26.8.28.2 arm64 Release APK：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`，26,601,707 bytes；SHA-256 为 `94EA78F3AA2458B9C56F264ED8A99BAF8971AD0390B010FABFD7C558C6B371A6`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
 - v26.8.28.2 v7a Release APK：`dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`，26,480,705 bytes；SHA-256 为 `E9234886FC779CBC424A8B6965AB256353753549FFE973EDEBAA8C18EE4B196C`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
@@ -72,7 +77,7 @@
 
 - 用户自行按设备 ABI 安装 `v26.8.28.2` APK 后，验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
 - 复测 SDR↔HDR 切换红屏和返回播放列表残帧；确认无残留后再按 Release 标签继续迭代。
-- 后续再规划手机顶部状态栏跟随视频模糊/变色和播放洞察；本轮不实现、不打新 Release。
+- 待用户自行安装测试包后，重点验收状态栏跟随视频模糊的边界、HDR PixelCopy 兼容性、暂停/播放更新节奏，以及播放器洞察实际解码器和色彩信息；本轮不打新 Release。
 
 ### 2026-08-28 20:06 (+08:00)
 
@@ -160,3 +165,10 @@
 - 说明文案已统一为“支持HDR的PiliPlus修改版”；发布流程补充了 SNAPSHOT/本地版本覆盖排错、测试版本冻结和 FFmpeg AAR 验收要求。
 - 本轮未创建或推送新标签、GitHub Release、ModelScope 资产；状态栏跟随视频模糊/变色与播放洞察按用户计划留待后续。
 - 功能源码与 AAR 已提交为 `035314a79`（`fix: restore test version metadata and add Dolby fallback`）；本次最终交接记录补充提交为 `dbfbb1ecf`，本地 `pili_release.json` 已刷新到功能提交。
+
+### 2026-08-29 00:09 (+08:00)
+
+- 根据用户澄清，确认需求是“手机顶部系统状态栏跟随视频的模糊背景”，不是播放器画面或视频转场模糊；已参考 BiliPai 的 `PixelCopy`/低分辨率环境帧/约 66ms 采样实现落地。
+- Android HDR 使用 Media3 `SurfaceView` 的 `PixelCopy` 读取 96×54 当前帧；SDR 使用现有 Flutter 视频区域的低分辨率 RepaintBoundary 采样；两条链路都只绘制到状态栏 inset，播放画面不变。
+- 新增“播放器洞察”面板，按 BiliPai 的信息组织方式展示概览、视频、音频、播放和事件，并接入 Media3 HDR 与 mpv 已报告数据。
+- 验证通过：`flutter test --no-pub` 8/8、`flutter analyze --no-pub` 无 error（42 条 info）、Android Kotlin 编译/单测、Gradle 9.5 R8 分 ABI Release 构建和 `aapt2` 包名/版本/ABI 核验；本轮未安装或启动 ADB，未创建新标签或 Release，版本保持 `26.8.28+2`。

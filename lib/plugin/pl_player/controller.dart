@@ -29,6 +29,7 @@ import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
+import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/services/service_locator.dart';
@@ -52,7 +53,8 @@ import 'package:PiliPlus/utils/utils.dart';
 import 'package:archive/archive.dart' show getCrc32;
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:easy_debounce/easy_throttle.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart'
+    show ValueNotifier, VoidCallback, kDebugMode;
 import 'package:flutter/services.dart' show HapticFeedback, DeviceOrientation;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
@@ -75,6 +77,28 @@ class PlPlayerController with BlockConfigMixin {
   HdrMedia3Controller? _hdrMedia3Controller;
   StreamSubscription<HdrMedia3Event>? _hdrSubscription;
   final RxBool media3HdrActive = false.obs;
+
+  /// 播放页顶部系统状态栏使用的低分辨率视频环境帧。
+  final ValueNotifier<ui.Image?> statusBarAmbientFrame = ValueNotifier(null);
+
+  /// 播放器洞察面板使用的实时数据。
+  final ValueNotifier<PlaybackInsightSnapshot> playbackInsight = ValueNotifier(
+    const PlaybackInsightSnapshot(),
+  );
+  String _hdrVideoMimeType = '';
+  String _hdrVideoCodecs = '';
+  String _hdrVideoColor = '';
+  String _hdrFrameRate = '';
+  String _hdrVideoDecoder = '';
+  String _hdrVideoBitrate = '';
+  String _hdrAudioMimeType = '';
+  String _hdrAudioCodecs = '';
+  String _hdrAudioDecoder = '';
+  String _hdrAudioBitrate = '';
+  int _hdrDroppedFrames = 0;
+  bool _hdrFirstFrame = false;
+  String _hdrLastError = '';
+  String _hdrLastEvent = '';
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
   VoidCallback? _onInitCallback;
@@ -123,6 +147,152 @@ class PlPlayerController with BlockConfigMixin {
   bool get isMedia3Hdr => _hdrMedia3Controller != null;
 
   HdrMedia3Controller? get hdrMedia3Controller => _hdrMedia3Controller;
+
+  void setStatusBarAmbientFrame(ui.Image? image) {
+    final old = statusBarAmbientFrame.value;
+    if (identical(old, image)) return;
+    statusBarAmbientFrame.value = image;
+    old?.dispose();
+  }
+
+  void clearStatusBarAmbientFrame() {
+    final old = statusBarAmbientFrame.value;
+    if (old == null) return;
+    statusBarAmbientFrame.value = null;
+    old.dispose();
+  }
+
+  void _resetPlaybackInsight() {
+    _hdrVideoMimeType = '';
+    _hdrVideoCodecs = '';
+    _hdrVideoColor = '';
+    _hdrFrameRate = '';
+    _hdrVideoDecoder = '';
+    _hdrVideoBitrate = '';
+    _hdrAudioMimeType = '';
+    _hdrAudioCodecs = '';
+    _hdrAudioDecoder = '';
+    _hdrAudioBitrate = '';
+    _hdrDroppedFrames = 0;
+    _hdrFirstFrame = false;
+    _hdrLastError = '';
+    _hdrLastEvent = '';
+    _notifyPlaybackInsight();
+  }
+
+  PlaybackInsightSnapshot get playbackInsightSnapshot {
+    final hdr = _hdrMedia3Controller;
+    if (hdr != null) {
+      final bufferedMs = (hdr.bufferedPosition - hdr.position).inMilliseconds
+          .clamp(0, 1 << 62);
+      return PlaybackInsightSnapshot(
+        engine: 'Media3 原生 HDR',
+        quality: dataSource is HdrNetworkSource
+            ? '${(dataSource as HdrNetworkSource).qualityCode}'
+            : '',
+        resolution: _formatResolution(hdr.width, hdr.height),
+        videoCodec: _hdrVideoCodecs,
+        videoMimeType: _hdrVideoMimeType,
+        videoColor: _hdrVideoColor,
+        frameRate: _hdrFrameRate,
+        videoDecoder: _hdrVideoDecoder,
+        videoBitrate: _hdrVideoBitrate,
+        audioCodec: _hdrAudioCodecs,
+        audioMimeType: _hdrAudioMimeType,
+        audioDecoder: _hdrAudioDecoder,
+        audioBitrate: _hdrAudioBitrate,
+        cdnHost: _mediaHost(dataSource.videoSource),
+        positionMs: hdr.position.inMilliseconds,
+        durationMs: hdr.duration.inMilliseconds,
+        forwardBufferMs: bufferedMs,
+        speed: hdr.speed,
+        isPlaying: hdr.isPlaying,
+        playWhenReady: hdr.playWhenReady,
+        isBuffering: hdr.isBuffering,
+        firstFrame: hdr.firstFrameRendered || _hdrFirstFrame,
+        droppedFrames: _hdrDroppedFrames,
+        lastError: _hdrLastError,
+        lastEvent: _hdrLastEvent,
+      );
+    }
+
+    final player = _videoPlayerController;
+    final state = player?.state;
+    if (state == null) return const PlaybackInsightSnapshot();
+    final videoTrack = state.track.video;
+    final audioTrack = state.track.audio;
+    final videoParams = state.videoParams;
+    final colorParts = [
+      videoParams.primaries,
+      videoParams.gamma,
+      videoParams.pixelformat,
+    ].whereType<String>().where((value) => value.isNotEmpty).toList();
+    return PlaybackInsightSnapshot(
+      engine: 'mpv 兼容播放器',
+      resolution: _formatResolution(state.width, state.height),
+      videoCodec: videoTrack.codec ?? '',
+      videoColor: colorParts.join(' / '),
+      frameRate: videoTrack.fps == null
+          ? ''
+          : '${videoTrack.fps!.toStringAsFixed(2)} fps',
+      videoDecoder: videoTrack.decoder ?? '',
+      videoBitrate: _formatBitrate(videoTrack.bitrate),
+      audioCodec: audioTrack.codec ?? '',
+      audioDecoder: audioTrack.decoder ?? '',
+      audioBitrate: _formatBitrate(audioTrack.bitrate),
+      cdnHost: _mediaHost(dataSource.videoSource),
+      positionMs: state.position.inMilliseconds,
+      durationMs: state.duration.inMilliseconds,
+      forwardBufferMs: state.buffer.inMilliseconds,
+      speed: state.rate,
+      isPlaying: state.playing,
+      playWhenReady: state.playing,
+      isBuffering: state.buffering,
+      firstFrame: state.width > 0 && state.height > 0,
+      droppedFrames: 0,
+      lastError: '',
+      lastEvent: state.playlist.medias.isEmpty ? '' : '媒体已加载',
+    );
+  }
+
+  void _notifyPlaybackInsight() {
+    playbackInsight.value = playbackInsightSnapshot;
+  }
+
+  static String _formatResolution(int width, int height) =>
+      width > 0 && height > 0 ? '$width×$height' : '';
+
+  static String _formatBitrate(num? bitrate) {
+    if (bitrate == null || bitrate <= 0) {
+      return '';
+    }
+    if (bitrate >= 1000000) {
+      return '${(bitrate / 1000000).toStringAsFixed(2)} Mbps';
+    }
+    return '${(bitrate / 1000).toStringAsFixed(0)} kbps';
+  }
+
+  static String _formatFrameRate(num? frameRate, {String fallback = ''}) {
+    if (frameRate == null || frameRate <= 0) return fallback;
+    return '${frameRate.toStringAsFixed(2)} fps';
+  }
+
+  static String _formatHdrColor(num? colorSpace, num? colorTransfer) {
+    final space = switch (colorSpace?.toInt()) {
+      6 => 'BT.2020',
+      final value? => '色彩空间 $value',
+      _ => null,
+    };
+    final transfer = switch (colorTransfer?.toInt()) {
+      6 => 'PQ',
+      7 => 'HLG',
+      final value? => '传输 $value',
+      _ => null,
+    };
+    return [space, transfer].whereType<String>().join(' / ');
+  }
+
+  static String _mediaHost(String source) => Uri.tryParse(source)?.host ?? '';
 
   final RxInt buffered = RxInt(0);
 
@@ -695,6 +865,8 @@ class PlPlayerController with BlockConfigMixin {
       this.width = width;
       this.height = height;
       this.dataSource = dataSource;
+      clearStatusBarAmbientFrame();
+      _resetPlaybackInsight();
       _autoPlay = autoplay;
       // 初始化视频倍速
       // _playbackSpeed.value = speed;
@@ -1014,6 +1186,7 @@ class PlPlayerController with BlockConfigMixin {
       ),
       play: false,
     );
+    _notifyPlaybackInsight();
   }
 
   Future<void>? refreshPlayer() {
@@ -1096,6 +1269,7 @@ class PlPlayerController with BlockConfigMixin {
     if (seconds != 0) {
       makeHeartBeat(seconds, type: .status);
     }
+    _notifyPlaybackInsight();
   }
 
   void _onCompleted() {
@@ -1104,6 +1278,7 @@ class PlPlayerController with BlockConfigMixin {
       element(.completed);
     }
     makeHeartBeat(-1, type: .completed);
+    _notifyPlaybackInsight();
   }
 
   void _onPositionChanged(Duration value) {
@@ -1119,6 +1294,7 @@ class PlPlayerController with BlockConfigMixin {
     for (final element in _positionListeners) {
       element(value);
     }
+    _notifyPlaybackInsight();
   }
 
   void _onBufferingChanged(bool buffering) {
@@ -1128,12 +1304,21 @@ class PlPlayerController with BlockConfigMixin {
       buffering,
       isLive,
     );
+    _notifyPlaybackInsight();
   }
 
   void _onHdrEvent(HdrMedia3Controller controller, HdrMedia3Event event) {
     if (!identical(controller, _hdrMedia3Controller)) return;
     switch (event.type) {
       case 'loading':
+        _hdrVideoMimeType =
+            event.value<String>('videoMimeType') ?? _hdrVideoMimeType;
+        _hdrVideoCodecs = event.value<String>('videoCodecs') ?? _hdrVideoCodecs;
+        _hdrFrameRate = event.value<String>('videoFrameRate') ?? _hdrFrameRate;
+        _hdrAudioMimeType =
+            event.value<String>('audioMimeType') ?? _hdrAudioMimeType;
+        _hdrAudioCodecs = event.value<String>('audioCodecs') ?? _hdrAudioCodecs;
+        _hdrLastEvent = '正在加载媒体';
         _onBufferingChanged(true);
         break;
       case 'ready':
@@ -1141,10 +1326,13 @@ class PlPlayerController with BlockConfigMixin {
         if (durationMs > 0) updateDuration(Duration(milliseconds: durationMs));
         width = event.value<num>('width')?.toInt() ?? width;
         height = event.value<num>('height')?.toInt() ?? height;
+        _hdrLastEvent = '媒体已就绪';
         _onBufferingChanged(false);
         break;
       case 'buffering':
-        _onBufferingChanged(event.value<bool>('value') ?? false);
+        final buffering = event.value<bool>('value') ?? false;
+        _hdrLastEvent = buffering ? '开始缓冲' : '缓冲完成';
+        _onBufferingChanged(buffering);
         break;
       case 'position':
         final positionMs = event.value<num>('positionMs')?.toInt() ?? 0;
@@ -1159,15 +1347,54 @@ class PlPlayerController with BlockConfigMixin {
         _onPositionChanged(Duration(milliseconds: positionMs));
         break;
       case 'playing':
-        _onPlayingChanged(event.value<bool>('value') ?? false);
+        final playing = event.value<bool>('value') ?? false;
+        _hdrLastEvent = playing ? '开始播放' : '已暂停';
+        _onPlayingChanged(playing);
         break;
       case 'completed':
+        _hdrLastEvent = '播放完成';
         _onCompleted();
         break;
+      case 'inputFormat':
+        _hdrVideoMimeType =
+            event.value<String>('mimeType') ?? _hdrVideoMimeType;
+        _hdrVideoCodecs = event.value<String>('codecs') ?? _hdrVideoCodecs;
+        _hdrFrameRate = _formatFrameRate(
+          event.value<num>('frameRate'),
+          fallback: _hdrFrameRate,
+        );
+        _hdrVideoBitrate = _formatBitrate(event.value<num>('bitrate'));
+        _hdrVideoColor = _formatHdrColor(
+          event.value<num>('colorSpace'),
+          event.value<num>('colorTransfer'),
+        );
+        _hdrLastEvent = '已确认视频格式';
+        break;
+      case 'decoder':
+        final decoder = event.value<String>('name') ?? '';
+        if (event.value<String>('track') == 'audio') {
+          _hdrAudioDecoder = decoder;
+          _hdrLastEvent = '音频解码器已初始化';
+        } else {
+          _hdrVideoDecoder = decoder;
+          _hdrLastEvent = '视频解码器已初始化';
+        }
+        break;
+      case 'firstFrame':
+        _hdrFirstFrame = true;
+        _hdrLastEvent = '首帧已渲染';
+        break;
+      case 'droppedFrames':
+        _hdrDroppedFrames += event.value<num>('count')?.toInt() ?? 0;
+        _hdrLastEvent = '记录掉帧';
+        break;
       case 'error':
+        _hdrLastError = event.value<String>('message') ?? 'Media3 播放失败';
+        _hdrLastEvent = '播放错误';
         unawaited(_fallbackHdrToMpv());
         break;
     }
+    _notifyPlaybackInsight();
   }
 
   Future<void> _fallbackHdrToMpv() async {
@@ -1851,6 +2078,7 @@ class PlPlayerController with BlockConfigMixin {
     if (removeSafeArea) {
       showSystemBar();
     }
+    clearStatusBarAmbientFrame();
     danmakuController = null;
     _stopOrientationListener();
     _disableAutoEnterPip();

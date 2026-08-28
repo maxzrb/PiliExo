@@ -10,6 +10,7 @@ class SimpleAppBar extends StatelessWidget {
     this.statusBarBrightness = .dark,
     this.statusBarIconBrightness = .light,
     this.backgroundColor = Colors.black,
+    this.background,
   });
 
   final double height;
@@ -17,6 +18,7 @@ class SimpleAppBar extends StatelessWidget {
   final Brightness statusBarBrightness;
   final Brightness statusBarIconBrightness;
   final Color backgroundColor;
+  final Widget? background;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +33,16 @@ class SimpleAppBar extends StatelessWidget {
       ),
       child: ColoredBox(
         color: backgroundColor,
-        child: SizedBox(height: height, width: .infinity),
+        child: SizedBox(
+          height: height,
+          width: .infinity,
+          child: background == null
+              ? null
+              : Stack(
+                  fit: StackFit.expand,
+                  children: [Positioned.fill(child: background!)],
+                ),
+        ),
       ),
     );
   }

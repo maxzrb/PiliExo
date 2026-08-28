@@ -72,7 +72,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart'
-    show RenderProxyBox, SemanticsConfiguration;
+    show RenderProxyBox, RenderRepaintBoundary, SemanticsConfiguration;
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
@@ -150,6 +150,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   Offset? _initialFocalPoint;
 
   bool _pauseDueToPauseUponEnteringBackgroundMode = false;
+
+  static const _ambientCaptureInterval = Duration(milliseconds: 66);
+  static const _ambientSampleWidth = 96;
+  static const _ambientSampleHeight = 54;
+  bool _ambientCaptureLoopRunning = false;
+  int _ambientCaptureGeneration = 0;
+  bool _ambientHostLifecycleStarted = true;
+  StreamSubscription? _ambientFullscreenListener;
+  StreamSubscription? _ambientScrollListener;
 
   StreamSubscription? _brightnessListener;
   void _onBrightnessChanged(double value) {
@@ -323,10 +332,139 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       ),
       trackpadScrollCausesScale: false,
     );
+
+    if (Platform.isAndroid && widget.videoDetailController != null) {
+      plPlayerController.addStatusLister(_onAmbientPlaybackStatusChanged);
+      _ambientFullscreenListener = plPlayerController.isFullScreen.listen(
+        (_) => _scheduleAmbientCapture(),
+      );
+      _ambientScrollListener = videoDetailController.scrollRatio.listen(
+        (_) => _scheduleAmbientCapture(),
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scheduleAmbientCapture();
+      });
+    }
+  }
+
+  void _onAmbientPlaybackStatusChanged(PlayerStatus status) {
+    if (status.isPlaying || status.isPaused || status.isCompleted) {
+      _scheduleAmbientCapture();
+    }
+  }
+
+  bool get _shouldCaptureAmbientFrame {
+    final detailController = widget.videoDetailController;
+    if (!mounted || !Platform.isAndroid || detailController == null) {
+      return false;
+    }
+    final mediaQuery = MediaQuery.maybeOf(context);
+    if ((mediaQuery?.viewPadding.top ?? 0) <= 0) return false;
+    return _ambientHostLifecycleStarted &&
+        !plPlayerController.isLive &&
+        !plPlayerController.isFullScreen.value &&
+        !plPlayerController.isPipMode &&
+        !detailController.removeSafeArea &&
+        detailController.scrollRatio.value <= 0.001;
+  }
+
+  void _scheduleAmbientCapture() {
+    if (!mounted) return;
+    if (!_shouldCaptureAmbientFrame) {
+      _ambientCaptureGeneration++;
+      _ambientCaptureLoopRunning = false;
+      plPlayerController.clearStatusBarAmbientFrame();
+      return;
+    }
+    if (_ambientCaptureLoopRunning) return;
+    _ambientCaptureLoopRunning = true;
+    final generation = ++_ambientCaptureGeneration;
+    unawaited(_captureAmbientFrames(generation));
+  }
+
+  Future<void> _captureAmbientFrames(int generation) async {
+    try {
+      while (mounted && generation == _ambientCaptureGeneration) {
+        if (!_shouldCaptureAmbientFrame) {
+          plPlayerController.clearStatusBarAmbientFrame();
+          return;
+        }
+
+        final image = await _captureAmbientFrame();
+        if (image != null) {
+          if (mounted &&
+              generation == _ambientCaptureGeneration &&
+              _shouldCaptureAmbientFrame) {
+            plPlayerController.setStatusBarAmbientFrame(image);
+          } else {
+            image.dispose();
+          }
+        }
+
+        // 与 BiliPai 一致：暂停时保留最后一张采样图，不继续产生采样开销；
+        // 下一次播放状态变化会重新启动循环。
+        if (!plPlayerController.isPlaying) return;
+        await Future<void>.delayed(_ambientCaptureInterval);
+      }
+    } finally {
+      if (generation == _ambientCaptureGeneration) {
+        _ambientCaptureLoopRunning = false;
+      }
+    }
+  }
+
+  Future<ui.Image?> _captureAmbientFrame() async {
+    try {
+      if (plPlayerController.media3HdrActive.value) {
+        final bytes = await plPlayerController.hdrMedia3Controller
+            ?.captureAmbientFrame(
+              width: _ambientSampleWidth,
+              height: _ambientSampleHeight,
+            );
+        if (bytes == null || bytes.isEmpty) return null;
+        final codec = await ui.instantiateImageCodec(
+          bytes,
+          targetWidth: _ambientSampleWidth,
+          targetHeight: _ambientSampleHeight,
+        );
+        try {
+          return (await codec.getNextFrame()).image;
+        } finally {
+          codec.dispose();
+        }
+      }
+
+      final renderObject = _videoKey.currentContext?.findRenderObject();
+      if (renderObject is! RenderRepaintBoundary ||
+          !renderObject.hasSize ||
+          renderObject.size.width <= 0 ||
+          renderObject.size.height <= 0) {
+        return null;
+      }
+      final size = renderObject.size;
+      final pixelRatio = math
+          .min(
+            _ambientSampleWidth / size.width,
+            _ambientSampleHeight / size.height,
+          )
+          .clamp(0.05, 1.0);
+      return await renderObject.toImage(pixelRatio: pixelRatio.toDouble());
+    } catch (_) {
+      // 首帧、Hybrid Composition 或 Surface 切换期间可能暂时无法复制，保留上一帧即可。
+      return null;
+    }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _ambientHostLifecycleStarted =
+        state != AppLifecycleState.paused &&
+        state != AppLifecycleState.detached;
+    if (!_ambientHostLifecycleStarted) {
+      plPlayerController.clearStatusBarAmbientFrame();
+    } else {
+      _scheduleAmbientCapture();
+    }
     if (!plPlayerController.continuePlayInBackground.value) {
       if (const <AppLifecycleState>[.paused, .detached].contains(state)) {
         if (plPlayerController.isPlaying) {
@@ -367,6 +505,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   @override
   void dispose() {
+    _ambientCaptureGeneration++;
+    _ambientFullscreenListener?.cancel();
+    _ambientScrollListener?.cancel();
+    plPlayerController.removeStatusLister(_onAmbientPlaybackStatusChanged);
+    plPlayerController.clearStatusBarAmbientFrame();
     if (Platform.isAndroid) {
       final hdrController = plPlayerController.hdrMedia3Controller;
       if (hdrController != null) {

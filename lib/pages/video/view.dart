@@ -17,6 +17,7 @@ import 'package:PiliPlus/common/widgets/scroll_physics.dart'
 import 'package:PiliPlus/common/widgets/simple_app_bar.dart';
 import 'package:PiliPlus/common/widgets/sliver/video_header.dart';
 import 'package:PiliPlus/common/widgets/svg/play_icon.dart';
+import 'package:PiliPlus/common/widgets/video_status_bar_ambient.dart';
 import 'package:PiliPlus/models/common/episode_panel_type.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/models_new/video/video_detail/episode.dart' as ugc;
@@ -113,6 +114,12 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   bool get pipNoDanmaku =>
       videoDetailController.plPlayerController.pipNoDanmaku;
+
+  Widget? get _videoStatusBarAmbient {
+    final controller = plPlayerController;
+    if (!Platform.isAndroid || controller == null) return null;
+    return VideoStatusBarAmbient(frame: controller.statusBarAmbientFrame);
+  }
 
   bool isShowing = true;
 
@@ -518,6 +525,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                       brightness: brightness,
                       statusBarBrightness: statusBarBrightness,
                       statusBarIconBrightness: statusBarIconBrightness,
+                      background: _videoStatusBarAmbient,
                     );
                   },
                 ),
@@ -758,6 +766,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
             : SimpleAppBar(
                 height: padding.top,
                 brightness: colorScheme.brightness,
+                background: _videoStatusBarAmbient,
               ),
         body: Padding(
           padding: isFullScreen
@@ -989,6 +998,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           : SimpleAppBar(
               height: padding.top,
               brightness: colorScheme.brightness,
+              background: _videoStatusBarAmbient,
             ),
       body: Padding(
         padding: isFullScreen

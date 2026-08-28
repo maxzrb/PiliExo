@@ -170,6 +170,27 @@ class HdrMedia3Controller {
     }
   }
 
+  /// 读取原生 HDR SurfaceView 的低分辨率当前帧，供系统状态栏环境背景使用。
+  ///
+  /// 该调用只复制画面用于 UI 氛围渲染，不会改变 HDR 视频的 SurfaceView 输出链路。
+  Future<Uint8List?> captureAmbientFrame({
+    int width = 96,
+    int height = 54,
+  }) async {
+    if (_released || !_created) return null;
+    final value = await _methodChannel.invokeMethod<dynamic>(
+      'captureAmbientFrame',
+      {
+        'sessionId': sessionId,
+        'width': width,
+        'height': height,
+      },
+    );
+    if (value is Uint8List) return value;
+    if (value is List<int>) return Uint8List.fromList(value);
+    return null;
+  }
+
   Future<void> setSubtitle({
     required String vtt,
     String? language,

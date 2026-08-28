@@ -38,6 +38,7 @@ import 'package:PiliPlus/pages/video/widgets/header_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/playback_insight.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
 import 'package:PiliPlus/utils/accounts.dart';
@@ -471,7 +472,8 @@ class HeaderControlState extends State<HeaderControl>
                     title: const Text('超分辨率', style: titleStyle),
                     titleStyle: theme.textTheme.bodyLarge,
                     value: () {
-                      final value = plPlayerController.superResolutionType.value;
+                      final value =
+                          plPlayerController.superResolutionType.value;
                       return (value, value.label);
                     },
                     itemBuilder: (_) => enumItemBuilder(
@@ -772,12 +774,16 @@ class HeaderControlState extends State<HeaderControl>
                     leading: const Icon(Icons.download_outlined, size: 20),
                     title: const Text('保存字幕', style: titleStyle),
                   ),
-                if (plPlayerController.videoPlayerController case final player?)
+                if (plPlayerController.isMedia3Hdr ||
+                    plPlayerController.videoPlayerController != null)
                   ListTile(
                     dense: true,
-                    title: const Text('播放信息', style: titleStyle),
+                    title: const Text('播放器洞察', style: titleStyle),
                     leading: const Icon(Icons.info_outline, size: 20),
-                    onTap: () => showPlayerInfo(context, player: player),
+                    onTap: () => showPlaybackInsight(
+                      context,
+                      plPlayerController,
+                    ),
                   ),
                 ListTile(
                   dense: true,
@@ -800,6 +806,7 @@ class HeaderControlState extends State<HeaderControl>
     );
   }
 
+  /// 兼容音频页和直播页沿用的 mpv 播放信息入口。
   static void showPlayerInfo(
     BuildContext context, {
     required NativePlayer player,
@@ -823,7 +830,7 @@ class HeaderControlState extends State<HeaderControl>
                   children: [
                     ListTile(
                       dense: true,
-                      title: const Text("Resolution"),
+                      title: const Text('Resolution'),
                       subtitle: Text('${state.width}x${state.height}'),
                       onTap: () => Utils.copyText(
                         'Resolution\n${state.width}x${state.height}',
@@ -831,47 +838,47 @@ class HeaderControlState extends State<HeaderControl>
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("VideoParams"),
+                      title: const Text('VideoParams'),
                       subtitle: Text(state.videoParams.toString()),
                       onTap: () =>
                           Utils.copyText('VideoParams\n${state.videoParams}'),
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("AudioParams"),
+                      title: const Text('AudioParams'),
                       subtitle: Text(state.audioParams.toString()),
                       onTap: () =>
                           Utils.copyText('AudioParams\n${state.audioParams}'),
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("Media"),
+                      title: const Text('Media'),
                       subtitle: Text(state.playlist.toString()),
                       onTap: () => Utils.copyText('Media\n${state.playlist}'),
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("AudioTrack"),
+                      title: const Text('AudioTrack'),
                       subtitle: Text(state.track.audio.toString()),
                       onTap: () =>
                           Utils.copyText('AudioTrack\n${state.track.audio}'),
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("VideoTrack"),
+                      title: const Text('VideoTrack'),
                       subtitle: Text(state.track.video.toString()),
                       onTap: () =>
                           Utils.copyText('VideoTrack\n${state.track.video}'),
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("rate"),
+                      title: const Text('rate'),
                       subtitle: Text(state.rate.toString()),
                       onTap: () => Utils.copyText('rate\n${state.rate}'),
                     ),
                     ListTile(
                       dense: true,
-                      title: const Text("Volume"),
+                      title: const Text('Volume'),
                       subtitle: Text(volume),
                       onTap: () => Utils.copyText('Volume\n$volume'),
                     ),
