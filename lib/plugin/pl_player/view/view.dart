@@ -35,6 +35,7 @@ import 'package:PiliPlus/pages/video/introduction/pgc/controller.dart';
 import 'package:PiliPlus/pages/video/post_panel/popup_menu_text.dart';
 import 'package:PiliPlus/pages/video/post_panel/view.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
+import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_control_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
@@ -130,7 +131,6 @@ class PLVideoPlayer extends StatefulWidget {
 class _PLVideoPlayerState extends State<PLVideoPlayer>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late AnimationController _animationController;
-  late VideoController videoController;
   late final CommonIntroController introController = widget.introController!;
   late final VideoDetailController videoDetailController =
       widget.videoDetailController!;
@@ -264,8 +264,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    videoController = plPlayerController.videoController!;
-
     if (PlatformUtils.isMobile) {
       Future.microtask(() {
         try {
@@ -330,16 +328,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!plPlayerController.continuePlayInBackground.value) {
-      late final player = plPlayerController.videoPlayerController;
       if (const <AppLifecycleState>[.paused, .detached].contains(state)) {
-        if (player != null && player.state.playing) {
+        if (plPlayerController.isPlaying) {
           _pauseDueToPauseUponEnteringBackgroundMode = true;
-          player.pause();
+          plPlayerController.pause();
         }
       } else {
         if (_pauseDueToPauseUponEnteringBackgroundMode) {
           _pauseDueToPauseUponEnteringBackgroundMode = false;
-          player?.play();
+          plPlayerController.play();
         }
       }
     }
@@ -370,6 +367,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   @override
   void dispose() {
+    if (Platform.isAndroid) {
+      final hdrController = plPlayerController.hdrMedia3Controller;
+      if (hdrController != null) {
+        // 页面切走时先让独立 Surface 消失，避免 Hybrid Composition 暂留最后一帧。
+        unawaited(hdrController.hideSurface());
+      }
+    }
     removeObserverMobile(this);
     _danmakuListener?.cancel();
     _tapGestureRecognizer.dispose();
@@ -483,6 +487,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       /// 超分辨率
       BottomControlType.superResolution => Obx(
         () {
+          if (plPlayerController.media3HdrActive.value) {
+            return const SizedBox.shrink();
+          }
           final type = plPlayerController.superResolutionType.value;
           return PopupMenuButton<SuperResolutionType>(
             tooltip: '超分辨率',
@@ -930,6 +937,41 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   bool get isFullScreen => plPlayerController.isFullScreen.value;
 
   late final TransformationController _transformationController;
+  String? _hdrResizeMode;
+  bool _wasHdr = false;
+
+  void _scheduleHdrModeSideEffects(bool isHdr) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || plPlayerController.media3HdrActive.value != isHdr) {
+        return;
+      }
+      if (isHdr) {
+        // HDR 使用原生 Surface，切换时必须在当前构建完成后再重置 Flutter 变换。
+        _transformationController.value = Matrix4.identity();
+        if (showRestoreScaleBtn.value) {
+          showRestoreScaleBtn.value = false;
+        }
+      } else {
+        _hdrResizeMode = null;
+      }
+    });
+  }
+
+  void _scheduleHdrResizeMode(
+    HdrMedia3Controller controller,
+    String mode,
+  ) {
+    _hdrResizeMode = mode;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !plPlayerController.media3HdrActive.value ||
+          !identical(plPlayerController.hdrMedia3Controller, controller) ||
+          _hdrResizeMode != mode) {
+        return;
+      }
+      unawaited(controller.setResizeMode(mode));
+    });
+  }
 
   late ColorScheme colorScheme;
   late double maxWidth;
@@ -955,6 +997,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _onScaleUpdate(double scale) {
+    if (plPlayerController.media3HdrActive.value) {
+      showRestoreScaleBtn.value = false;
+      return;
+    }
     showRestoreScaleBtn.value = scale != 1.0;
   }
 
@@ -989,8 +1035,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         ..seekToPos = null;
     } else {
       plPlayerController.position.value =
-          plPlayerController.videoPlayerController?.state.position.inSeconds ??
-          0;
+          plPlayerController.currentPosition.inSeconds;
     }
   }
 
@@ -1359,19 +1404,25 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           Positioned.fill(top: 4, child: danmaku),
 
         if (!isLive)
-          Positioned.fill(
-            child: IgnorePointer(
-              ignoring: !plPlayerController.enableDragSubtitle,
-              child: Obx(
-                () => SubtitleView(
+          Obx(() {
+            // HDR 字幕由原生 SubtitleView 绘制，避免 Flutter 纹理合成。
+            if (plPlayerController.media3HdrActive.value) {
+              return const SizedBox.shrink();
+            }
+            final videoController = plPlayerController.videoController;
+            if (videoController == null) return const SizedBox.shrink();
+            return Positioned.fill(
+              child: IgnorePointer(
+                ignoring: !plPlayerController.enableDragSubtitle,
+                child: SubtitleView(
                   controller: videoController,
                   configuration: plPlayerController.subtitleConfig.value,
                   enableDragSubtitle: plPlayerController.enableDragSubtitle,
                   onUpdatePadding: plPlayerController.onUpdatePadding,
                 ),
               ),
-            ),
-          ),
+            );
+          }),
 
         if (plPlayerController.enableTapDm)
           Obx(
@@ -1643,7 +1694,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         // ),
         Obx(
           () =>
-              showRestoreScaleBtn.value && plPlayerController.showControls.value
+              !plPlayerController.media3HdrActive.value &&
+                  showRestoreScaleBtn.value &&
+                  plPlayerController.showControls.value
               ? Align(
                   alignment: Alignment.bottomCenter,
                   child: Padding(
@@ -1834,41 +1887,48 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             ),
 
           // 截图
-          if (plPlayerController.showFsScreenshotBtn)
-            ViewSafeArea(
-              left: false,
-              right: !plPlayerController.removeSafeArea,
-              child: Obx(
-                () => Align(
-                  alignment: Alignment.centerRight,
-                  child: FractionalTranslation(
-                    translation: const Offset(-1, -0.4),
-                    child: Offstage(
-                      offstage: !plPlayerController.showControls.value,
-                      child: DecoratedBox(
-                        decoration: const BoxDecoration(
-                          color: Color(0x45000000),
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                        ),
-                        child: ComBtn(
-                          tooltip: '截图',
-                          icon: const Icon(
-                            Icons.photo_camera,
-                            size: 20,
-                            color: Colors.white,
+          Obx(
+            () {
+              if (!plPlayerController.showFsScreenshotBtn ||
+                  plPlayerController.media3HdrActive.value) {
+                return const SizedBox.shrink();
+              }
+              return ViewSafeArea(
+                left: false,
+                right: !plPlayerController.removeSafeArea,
+                child: Obx(
+                  () => Align(
+                    alignment: Alignment.centerRight,
+                    child: FractionalTranslation(
+                      translation: const Offset(-1, -0.4),
+                      child: Offstage(
+                        offstage: !plPlayerController.showControls.value,
+                        child: DecoratedBox(
+                          decoration: const BoxDecoration(
+                            color: Color(0x45000000),
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
                           ),
-                          onLongPress:
-                              (Platform.isAndroid || kDebugMode) && !isLive
-                              ? screenshotWebp
-                              : null,
-                          onTap: plPlayerController.takeScreenshot,
+                          child: ComBtn(
+                            tooltip: '截图',
+                            icon: const Icon(
+                              Icons.photo_camera,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                            onLongPress:
+                                (Platform.isAndroid || kDebugMode) && !isLive
+                                ? screenshotWebp
+                                : null,
+                            onTap: plPlayerController.takeScreenshot,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
+          ),
         ],
 
         Obx(() {
@@ -2009,53 +2069,80 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       height: maxHeight,
       color: widget.fill,
       child: Obx(
-        () => MouseInteractiveViewer(
-          scaleEnabled: !plPlayerController.controlsLock.value,
-          pointerSignalFallback: _onPointerSignal,
-          onPointerPanZoomUpdate: _onPointerPanZoomUpdate,
-          onPointerPanZoomEnd: _onPointerPanZoomEnd,
-          onPointerDown: _onPointerDown,
-          onPanStart: _onPanStart,
-          onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
-          onScaleUpdate: _onScaleUpdate,
-          scaleGestureRecognizer: _scaleGestureRecognizer,
-          panEnabled: false,
-          minScale: plPlayerController.enableShrinkVideoSize ? 0.75 : 1,
-          maxScale: 2.0,
-          boundaryMargin: plPlayerController.enableShrinkVideoSize
-              ? const .all(double.infinity)
-              : .zero,
-          panAxis: .aligned,
-          transformationController: _transformationController,
-          childKey: _videoKey,
-          child: RepaintBoundary(
-            key: _videoKey,
-            child: Obx(
-              () {
-                final videoFit = plPlayerController.videoFit.value;
-                return Transform.flip(
-                  flipX: plPlayerController.flipX.value,
-                  flipY: plPlayerController.flipY.value,
-                  child: FittedBox(
-                    fit: videoFit.boxFit,
-                    alignment: widget.alignment,
-                    child: SimpleVideo(
-                      controller: plPlayerController.videoController!,
-                      fill: widget.fill,
-                      aspectRatio: videoFit.aspectRatio,
+        () {
+          final isHdr = plPlayerController.media3HdrActive.value;
+          final hdrController = plPlayerController.hdrMedia3Controller;
+          final videoFit = plPlayerController.videoFit.value;
+          if (isHdr != _wasHdr) {
+            _wasHdr = isHdr;
+            _scheduleHdrModeSideEffects(isHdr);
+          }
+          if (!isHdr) _hdrResizeMode = null;
+          if (isHdr && hdrController != null) {
+            final resizeMode = switch (videoFit) {
+              .fill => 'fill',
+              .cover => 'cover',
+              .fitWidth => 'fitWidth',
+              .fitHeight => 'fitHeight',
+              _ => 'fit',
+            };
+            if (_hdrResizeMode != resizeMode) {
+              _scheduleHdrResizeMode(hdrController, resizeMode);
+            }
+          }
+          return MouseInteractiveViewer(
+            // HDR 只保留原生适配、裁剪、拉伸和等宽/等高模式。
+            scaleEnabled: !isHdr && !plPlayerController.controlsLock.value,
+            pointerSignalFallback: _onPointerSignal,
+            onPointerPanZoomUpdate: _onPointerPanZoomUpdate,
+            onPointerPanZoomEnd: _onPointerPanZoomEnd,
+            onPointerDown: _onPointerDown,
+            onPanStart: _onPanStart,
+            onPanUpdate: _onPanUpdate,
+            onPanEnd: _onPanEnd,
+            onScaleUpdate: _onScaleUpdate,
+            scaleGestureRecognizer: _scaleGestureRecognizer,
+            panEnabled: false,
+            minScale: !isHdr && plPlayerController.enableShrinkVideoSize
+                ? 0.75
+                : 1,
+            maxScale: isHdr ? 1.0 : 2.0,
+            boundaryMargin: !isHdr && plPlayerController.enableShrinkVideoSize
+                ? const .all(double.infinity)
+                : .zero,
+            panAxis: .aligned,
+            transformationController: _transformationController,
+            childKey: _videoKey,
+            child: isHdr
+                ? (hdrController?.buildView(key: _videoKey) ??
+                      const SizedBox.shrink())
+                : RepaintBoundary(
+                    key: _videoKey,
+                    child: Transform.flip(
+                      flipX: plPlayerController.flipX.value,
+                      flipY: plPlayerController.flipY.value,
+                      child: FittedBox(
+                        fit: videoFit.boxFit,
+                        alignment: widget.alignment,
+                        child: SimpleVideo(
+                          controller: plPlayerController.videoController!,
+                          fill: widget.fill,
+                          aspectRatio: videoFit.aspectRatio,
+                        ),
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
   Future<void> screenshotWebp() async {
+    if (plPlayerController.isMedia3Hdr) {
+      SmartDialog.showToast('HDR 原生播放暂不支持截图');
+      return;
+    }
     final videoInfo = videoDetailController.data;
     final ids = videoInfo.dash!.video!.map((i) => i.id!).toSet();
     final video = videoDetailController.findVideoByQa(ids.min);

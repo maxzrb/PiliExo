@@ -54,6 +54,9 @@ mixin BlockMixin on GetxController {
   bool get preInitPlayer;
   int get currPosInMilliseconds;
   bool get isFullScreen => false;
+  Stream<Duration>? get positionStream => player?.stream.position;
+  Stream<bool>? get playingStream => player?.stream.playing;
+  bool get isPlaying => player?.state.playing ?? false;
 
   bool get isUgc;
   late final isBlock = isUgc || !blockConfig.enablePgcSkip;
@@ -80,7 +83,7 @@ mixin BlockMixin on GetxController {
     if (isClosed) return;
     if (_segmentList.isNotEmpty) {
       _blockListener?.cancel();
-      _blockListener = player?.stream.position.listen((position) {
+      _blockListener = positionStream?.listen((position) {
         int currentPos = position.inSeconds;
         if (currentPos != _lastBlockPos) {
           _lastBlockPos = currentPos;
@@ -139,7 +142,7 @@ mixin BlockMixin on GetxController {
                         '${videoLabel!.value.isNotEmpty ? '/' : ''}${segmentModel.segmentType.title}';
                   }
 
-                  if (_blockListener == null && autoPlay && player != null) {
+                  if (_blockListener == null && autoPlay && positionStream != null) {
                     final currPos = currPosInMilliseconds;
 
                     if (segmentModel.segment.contains(currPos)) {
@@ -149,12 +152,12 @@ mixin BlockMixin on GetxController {
                         case SkipType.alwaysSkip:
                         case SkipType.skipOnce:
                           segmentModel.hasSkipped = true;
-                          if (player!.state.playing) {
+                          if (isPlaying) {
                             future = onSkip(
                               segmentModel,
                             );
                           } else {
-                            player!.stream.playing.firstWhere((e) {
+                            playingStream?.firstWhere((e) {
                               if (e) {
                                 future = onSkip(segmentModel);
                                 return true;

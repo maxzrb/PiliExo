@@ -151,6 +151,14 @@ abstract final class Pref {
   static bool get feedBackEnable =>
       _setting.get(SettingBoxKey.feedBackEnable, defaultValue: false);
 
+  static int get feedBackStrength {
+    final value = _setting.get(
+      SettingBoxKey.feedBackStrength,
+      defaultValue: 128,
+    );
+    return value is num ? value.toInt().clamp(1, 255).toInt() : 128;
+  }
+
   static int get picQuality =>
       _setting.get(SettingBoxKey.defaultPicQa, defaultValue: 10);
 
@@ -786,6 +794,9 @@ abstract final class Pref {
 
   static bool get enableHA =>
       _setting.get(SettingBoxKey.enableHA, defaultValue: true);
+
+  static bool get enableMedia3Hdr =>
+      _setting.get(SettingBoxKey.enableMedia3Hdr, defaultValue: true);
 
   static Set<int> get danmakuBlockType => Set<int>.from(
     _setting.get(SettingBoxKey.danmakuBlockType, defaultValue: const <int>{}),

@@ -461,28 +461,29 @@ class HeaderControlState extends State<HeaderControl>
                     title: const Text('重载视频', style: titleStyle),
                   ),
                 ],
-                PopupListTile<SuperResolutionType>(
-                  dense: true,
-                  leading: const Icon(
-                    Icons.stay_current_landscape_outlined,
-                    size: 20,
+                if (!plPlayerController.isMedia3Hdr)
+                  PopupListTile<SuperResolutionType>(
+                    dense: true,
+                    leading: const Icon(
+                      Icons.stay_current_landscape_outlined,
+                      size: 20,
+                    ),
+                    title: const Text('超分辨率', style: titleStyle),
+                    titleStyle: theme.textTheme.bodyLarge,
+                    value: () {
+                      final value = plPlayerController.superResolutionType.value;
+                      return (value, value.label);
+                    },
+                    itemBuilder: (_) => enumItemBuilder(
+                      SuperResolutionType.values,
+                    ),
+                    onSelected: (value, setState) {
+                      plPlayerController.setShader(value);
+                      setState();
+                    },
+                    descPosType: .subtitle,
+                    descStyle: subTitleStyle,
                   ),
-                  title: const Text('超分辨率', style: titleStyle),
-                  titleStyle: theme.textTheme.bodyLarge,
-                  value: () {
-                    final value = plPlayerController.superResolutionType.value;
-                    return (value, value.label);
-                  },
-                  itemBuilder: (_) => enumItemBuilder(
-                    SuperResolutionType.values,
-                  ),
-                  onSelected: (value, setState) {
-                    plPlayerController.setShader(value);
-                    setState();
-                  },
-                  descPosType: .subtitle,
-                  descStyle: subTitleStyle,
-                ),
                 if (PlatformUtils.isMobile)
                   if (plPlayerController.videoPlayerController
                       case final player?)
@@ -532,42 +533,45 @@ class HeaderControlState extends State<HeaderControl>
                   child: Row(
                     spacing: 10,
                     children: [
-                      Obx(
-                        () {
-                          final flipX = plPlayerController.flipX.value;
-                          return ActionRowLineItem(
-                            iconData: Icons.flip,
-                            onTap: () =>
-                                plPlayerController.flipX.value = !flipX,
-                            text: " 左右翻转 ",
-                            selectStatus: flipX,
-                          );
-                        },
-                      ),
-                      Obx(
-                        () {
-                          final flipY = plPlayerController.flipY.value;
-                          return ActionRowLineItem(
-                            icon: Icon(
-                              CustomIcons.flip_rotate_90,
-                              size: 13,
-                              color: flipY
-                                  ? theme.colorScheme.onSecondaryContainer
-                                  : theme.colorScheme.outline,
-                            ),
-                            onTap: () {
-                              plPlayerController.flipY.value = !flipY;
-                            },
-                            text: " 上下翻转 ",
-                            selectStatus: flipY,
-                          );
-                        },
-                      ),
-                      if ((isFileSource &&
-                              !(plPlayerController.dataSource as FileSource)
-                                  .isMp4) ||
-                          (!isFileSource &&
-                              videoDetailCtr.audioUrl?.isNotEmpty == true))
+                      if (!plPlayerController.isMedia3Hdr)
+                        Obx(
+                          () {
+                            final flipX = plPlayerController.flipX.value;
+                            return ActionRowLineItem(
+                              iconData: Icons.flip,
+                              onTap: () =>
+                                  plPlayerController.flipX.value = !flipX,
+                              text: " 左右翻转 ",
+                              selectStatus: flipX,
+                            );
+                          },
+                        ),
+                      if (!plPlayerController.isMedia3Hdr)
+                        Obx(
+                          () {
+                            final flipY = plPlayerController.flipY.value;
+                            return ActionRowLineItem(
+                              icon: Icon(
+                                CustomIcons.flip_rotate_90,
+                                size: 13,
+                                color: flipY
+                                    ? theme.colorScheme.onSecondaryContainer
+                                    : theme.colorScheme.outline,
+                              ),
+                              onTap: () {
+                                plPlayerController.flipY.value = !flipY;
+                              },
+                              text: " 上下翻转 ",
+                              selectStatus: flipY,
+                            );
+                          },
+                        ),
+                      if (!plPlayerController.isMedia3Hdr &&
+                          ((isFileSource &&
+                                  !(plPlayerController.dataSource as FileSource)
+                                      .isMp4) ||
+                              (!isFileSource &&
+                                  videoDetailCtr.audioUrl?.isNotEmpty == true)))
                         Obx(
                           () {
                             final onlyPlayAudio =

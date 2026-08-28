@@ -349,6 +349,10 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
                     final plPlayerController = Get.find<VideoDetailController>(
                       tag: heroTag,
                     );
+                    if (plPlayerController.plPlayerController.isMedia3Hdr) {
+                      SmartDialog.showToast('HDR 原生播放暂不支持截图');
+                      return;
+                    }
                     final res = await plPlayerController
                         .plPlayerController
                         .videoPlayerController

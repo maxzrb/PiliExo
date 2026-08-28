@@ -454,6 +454,43 @@ class _PostPanelState extends State<PostPanel>
             tooltip: '预览',
             icon: const Icon(Icons.preview_outlined),
             onPressed: () async {
+              if (plPlayerController.isMedia3Hdr) {
+                final start = (item.segment.first * 1000).round();
+                final end = (item.segment.second * 1000).round();
+                final seek = max(0, start - 2000);
+                await plPlayerController.seekTo(
+                  Duration(milliseconds: seek),
+                  isSeek: false,
+                );
+                if (!plPlayerController.isPlaying) {
+                  await plPlayerController.play();
+                }
+                if (start > seek) {
+                  late final ValueChanged<Duration> listener;
+                  late final Timer timer;
+                  listener = (position) {
+                    if (position.inMilliseconds >= start) {
+                      plPlayerController.seekTo(
+                        Duration(milliseconds: end),
+                        isSeek: false,
+                      );
+                      plPlayerController.removePositionListener(listener);
+                      timer.cancel();
+                    }
+                  };
+                  plPlayerController.addPositionListener(listener);
+                  timer = Timer(
+                    const Duration(seconds: 10),
+                    () => plPlayerController.removePositionListener(listener),
+                  );
+                } else {
+                  await plPlayerController.seekTo(
+                    Duration(milliseconds: end),
+                    isSeek: false,
+                  );
+                }
+                return;
+              }
               final player = plPlayerController.videoPlayerController;
               if (player != null) {
                 final start = (item.segment.first * 1000).round();

@@ -1,4 +1,4 @@
-import 'dart:async' show StreamSubscription, Timer;
+import 'dart:async';
 import 'dart:convert' show ascii, utf8;
 import 'dart:io' show Platform;
 import 'dart:math' show max, min;
@@ -21,6 +21,7 @@ import 'package:PiliPlus/pages/setting/models/play_settings.dart'
     show kMaxVolume;
 import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
+import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/double_tap_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/duration.dart';
@@ -71,6 +72,12 @@ typedef PlayCallback = Future<void>? Function();
 class PlPlayerController with BlockConfigMixin {
   Player? _videoPlayerController;
   VideoController? _videoController;
+  HdrMedia3Controller? _hdrMedia3Controller;
+  StreamSubscription<HdrMedia3Event>? _hdrSubscription;
+  final RxBool media3HdrActive = false.obs;
+  bool _hdrFallbackInProgress = false;
+  bool _hdrFallbackToastShown = false;
+  VoidCallback? _onInitCallback;
 
   static PlPlayerController? _instance;
 
@@ -83,9 +90,39 @@ class PlPlayerController with BlockConfigMixin {
   final RxBool isSeeking = false.obs;
 
   final RxInt position = RxInt(0);
+  final StreamController<Duration> _positionEventController =
+      StreamController<Duration>.broadcast();
+
+  Stream<Duration> get positionStream => _positionEventController.stream;
 
   int get positionInMilliseconds =>
-      videoPlayerController?.state.position.inMilliseconds ?? 0;
+      _hdrMedia3Controller?.position.inMilliseconds ??
+      videoPlayerController?.state.position.inMilliseconds ??
+      0;
+
+  Duration get currentPosition =>
+      _hdrMedia3Controller?.position ??
+      videoPlayerController?.state.position ??
+      Duration.zero;
+
+  Duration get currentDuration =>
+      _hdrMedia3Controller?.duration ??
+      videoPlayerController?.state.duration ??
+      Duration.zero;
+
+  double get currentRate =>
+      _hdrMedia3Controller?.speed ?? videoPlayerController?.state.rate ?? 1.0;
+
+  bool get isPlaying =>
+      _hdrMedia3Controller?.isPlaying ??
+      videoPlayerController?.state.playing ??
+      false;
+
+  bool get playWhenReady => _hdrMedia3Controller?.playWhenReady ?? isPlaying;
+
+  bool get isMedia3Hdr => _hdrMedia3Controller != null;
+
+  HdrMedia3Controller? get hdrMedia3Controller => _hdrMedia3Controller;
 
   final RxInt buffered = RxInt(0);
 
@@ -278,6 +315,16 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   void enterPip({bool autoEnter = false}) {
+    if (isMedia3Hdr) {
+      PageUtils.enterPip(
+        autoEnter: autoEnter,
+        width: width,
+        height: height,
+        isLive: isLive,
+        isPlaying: playerStatus.isPlaying,
+      );
+      return;
+    }
     if (videoPlayerController != null) {
       final state = videoPlayerController!.state;
       PageUtils.enterPip(
@@ -418,6 +465,41 @@ class PlPlayerController with BlockConfigMixin {
 
   void updateSubtitleStyle() {
     subtitleConfig.value = getSubConfig;
+    if (_hdrMedia3Controller case final hdr?) {
+      unawaited(
+        hdr.setSubtitleStyle(
+          fontScale: isFullScreen.value
+              ? subtitleFontScaleFS
+              : subtitleFontScale,
+          bottomPadding: subtitlePaddingB.toDouble(),
+          horizontalPadding: subtitlePaddingH.toDouble(),
+          backgroundOpacity: subtitleBgOpacity,
+        ),
+      );
+    }
+  }
+
+  Future<void> setSubtitleVtt(
+    String vtt, {
+    String? language,
+    String? label,
+  }) async {
+    final hdr = _hdrMedia3Controller;
+    if (hdr == null) return;
+    await hdr.setSubtitle(vtt: vtt, language: language, label: label);
+  }
+
+  Future<void> clearSubtitle() async {
+    await _hdrMedia3Controller?.clearSubtitle();
+  }
+
+  // 路由退出前先清理 HDR 的独立 Surface，避免下一页显示期间暂留上一帧。
+  void hideHdrSurface() {
+    if (!Platform.isAndroid) return;
+    final controller = _hdrMedia3Controller;
+    if (controller != null) {
+      unawaited(controller.hideSurface());
+    }
   }
 
   void onUpdatePadding(EdgeInsets padding) {
@@ -626,13 +708,19 @@ class PlPlayerController with BlockConfigMixin {
       _epid = epid;
       _seasonId = seasonId;
       _pgcType = pgcType;
+      if (onInit != null) {
+        _onInitCallback = onInit;
+      }
+      if (dataSource is HdrNetworkSource) {
+        _hdrFallbackInProgress = false;
+        _hdrFallbackToastShown = false;
+      }
 
       if (showSeekPreview) {
         _clearPreview();
       }
       cancelLongPressTimer();
-      if (_videoPlayerController != null &&
-          _videoPlayerController!.state.playing) {
+      if (isPlaying) {
         await pause(notify: false);
       }
 
@@ -643,6 +731,7 @@ class PlPlayerController with BlockConfigMixin {
       await _createVideoController(dataSource, seekTo, volume);
 
       if (_playerCount == 0) {
+        await _disposeHdrController();
         _removeListeners();
         _videoPlayerController?.dispose();
         _videoPlayerController = null;
@@ -650,7 +739,7 @@ class PlPlayerController with BlockConfigMixin {
         return;
       }
 
-      updateDuration(duration ?? _videoPlayerController!.state.duration);
+      updateDuration(duration ?? currentDuration);
       position.value = buffered.value = seekTo?.inSeconds ?? 0;
 
       dataStatus.value = .loaded;
@@ -662,6 +751,10 @@ class PlPlayerController with BlockConfigMixin {
       await _initializePlayer();
       onInit?.call();
     } catch (err, stackTrace) {
+      if (dataSource is HdrNetworkSource) {
+        if (!_hdrFallbackInProgress) await _fallbackHdrToMpv();
+        return;
+      }
       dataStatus.value = DataStatus.error;
       if (kDebugMode) {
         debugPrint(stackTrace.toString());
@@ -689,6 +782,8 @@ class PlPlayerController with BlockConfigMixin {
   late final Rx<SuperResolutionType> superResolutionType =
       (isAnim ? Pref.superResolutionType : SuperResolutionType.disable).obs;
   Future<void> setShader([SuperResolutionType? type, NativePlayer? pp]) async {
+    // Media3 的 HDR Surface 不经过 mpv shader 管线，避免破坏原生色彩输出。
+    if (isMedia3Hdr) return;
     if (type == null) {
       type = superResolutionType.value;
     } else {
@@ -769,6 +864,61 @@ class PlPlayerController with BlockConfigMixin {
   late final buffer = Pref.initBuffer(_playbackSpeed.value);
   late final liveBuffer = Pref.initLiveBuffer();
 
+  bool _canUseMedia3Hdr(DataSource source) =>
+      Platform.isAndroid &&
+      !isLive &&
+      Pref.enableMedia3Hdr &&
+      source is HdrNetworkSource;
+
+  Future<void> _disposeHdrController() async {
+    final subscription = _hdrSubscription;
+    _hdrSubscription = null;
+    await subscription?.cancel();
+    final controller = _hdrMedia3Controller;
+    _hdrMedia3Controller = null;
+    if (controller != null) {
+      try {
+        await controller.hideSurface();
+      } catch (_) {
+        // 页面退出或引擎重启时通道可能已经关闭，仍需继续释放播放器状态。
+      }
+    }
+    media3HdrActive.value = false;
+    await controller?.dispose();
+  }
+
+  Future<void> _createHdrVideoController(
+    HdrNetworkSource source,
+    Duration? seekTo,
+  ) async {
+    isBuffering.value = true;
+    _heartDuration = 0;
+    danmakuController?.clear();
+
+    // HDR 与 mpv 切换时，先释放 mpv 的 Surface，避免两个解码器同时占用硬件。
+    if (_videoPlayerController != null) {
+      _removeListeners();
+      await _videoPlayerController?.dispose();
+      _videoPlayerController = null;
+      _videoController = null;
+    }
+
+    final controller = _hdrMedia3Controller ??= HdrMedia3Controller();
+    media3HdrActive.value = true;
+    if (_hdrSubscription == null) {
+      await controller.initialize();
+      _hdrSubscription = controller.events.listen(
+        (event) => _onHdrEvent(controller, event),
+      );
+    }
+    await controller.load(
+      source,
+      startPosition: seekTo ?? Duration.zero,
+      playWhenReady: _autoPlay,
+    );
+    updateSubtitleStyle();
+  }
+
   // 配置播放器
   Future<void> _createVideoController(
     DataSource dataSource,
@@ -778,6 +928,15 @@ class PlPlayerController with BlockConfigMixin {
     isBuffering.value = false;
     _heartDuration = 0;
     danmakuController?.clear();
+
+    if (_canUseMedia3Hdr(dataSource)) {
+      await _createHdrVideoController(dataSource as HdrNetworkSource, seekTo);
+      return;
+    }
+
+    if (_hdrMedia3Controller != null) {
+      await _disposeHdrController();
+    }
 
     var player = _videoPlayerController;
 
@@ -861,6 +1020,9 @@ class PlPlayerController with BlockConfigMixin {
     if (dataSource is FileSource) {
       return null;
     }
+    if (_hdrMedia3Controller case final hdr?) {
+      return hdr.reload();
+    }
     if (_videoPlayerController case final ctr? when (ctr.current.isNotEmpty)) {
       return ctr.open(
         ctr.current.last.copyWith(start: ctr.state.position),
@@ -877,7 +1039,7 @@ class PlPlayerController with BlockConfigMixin {
     if (isLive) {
       await setPlaybackSpeed(1.0);
     } else {
-      if (_videoPlayerController?.state.rate != _playbackSpeed.value) {
+      if (currentRate != _playbackSpeed.value) {
         await setPlaybackSpeed(_playbackSpeed.value);
       }
     }
@@ -902,6 +1064,156 @@ class PlPlayerController with BlockConfigMixin {
   final Set<ValueChanged<Duration>> _positionListeners = {};
   final Set<ValueChanged<PlayerStatus>> _statusListeners = {};
 
+  void _onPlayingChanged(bool playing) {
+    WakelockPlus.toggle(enable: playing);
+    if (playing) {
+      if (_isAutoEnterPip) {
+        if (_isCurrVideoPage) {
+          enterPip(autoEnter: true);
+        } else {
+          _disableAutoEnterPip();
+        }
+      }
+      playerStatus.value = .playing;
+      audioSessionHandler?.setActive(true);
+    } else {
+      _disableAutoEnterPip();
+      playerStatus.value = .paused;
+      audioSessionHandler?.setActive(false);
+    }
+
+    videoPlayerServiceHandler?.onStatusChange(
+      playerStatus.value,
+      isBuffering.value,
+      isLive,
+    );
+
+    for (final element in _statusListeners) {
+      element(playing ? .playing : .paused);
+    }
+
+    final seconds = positionInMilliseconds ~/ 1000;
+    if (seconds != 0) {
+      makeHeartBeat(seconds, type: .status);
+    }
+  }
+
+  void _onCompleted() {
+    playerStatus.value = .completed;
+    for (final element in _statusListeners) {
+      element(.completed);
+    }
+    makeHeartBeat(-1, type: .completed);
+  }
+
+  void _onPositionChanged(Duration value) {
+    if (!_positionEventController.isClosed) {
+      _positionEventController.add(value);
+    }
+    final posInSeconds = value.inSeconds;
+    if (posInSeconds != position.value) {
+      if (!isSeeking.value) position.value = posInSeconds;
+      videoPlayerServiceHandler?.onPositionChange(value);
+      makeHeartBeat(posInSeconds);
+    }
+    for (final element in _positionListeners) {
+      element(value);
+    }
+  }
+
+  void _onBufferingChanged(bool buffering) {
+    isBuffering.value = buffering;
+    videoPlayerServiceHandler?.onStatusChange(
+      playerStatus.value,
+      buffering,
+      isLive,
+    );
+  }
+
+  void _onHdrEvent(HdrMedia3Controller controller, HdrMedia3Event event) {
+    if (!identical(controller, _hdrMedia3Controller)) return;
+    switch (event.type) {
+      case 'loading':
+        _onBufferingChanged(true);
+        break;
+      case 'ready':
+        final durationMs = event.value<num>('durationMs')?.toInt() ?? 0;
+        if (durationMs > 0) updateDuration(Duration(milliseconds: durationMs));
+        width = event.value<num>('width')?.toInt() ?? width;
+        height = event.value<num>('height')?.toInt() ?? height;
+        _onBufferingChanged(false);
+        break;
+      case 'buffering':
+        _onBufferingChanged(event.value<bool>('value') ?? false);
+        break;
+      case 'position':
+        final positionMs = event.value<num>('positionMs')?.toInt() ?? 0;
+        final durationMs = event.value<num>('durationMs')?.toInt() ?? 0;
+        if (durationMs > 0 && durationMs != durationInMilliseconds) {
+          updateDuration(Duration(milliseconds: durationMs));
+        }
+        final bufferedMs = event.value<num>('bufferedPositionMs')?.toInt() ?? 0;
+        if (durationInMilliseconds > 0) {
+          buffered.value = (bufferedMs ~/ 1000).clamp(0, duration.value);
+        }
+        _onPositionChanged(Duration(milliseconds: positionMs));
+        break;
+      case 'playing':
+        _onPlayingChanged(event.value<bool>('value') ?? false);
+        break;
+      case 'completed':
+        _onCompleted();
+        break;
+      case 'error':
+        unawaited(_fallbackHdrToMpv());
+        break;
+    }
+  }
+
+  Future<void> _fallbackHdrToMpv() async {
+    if (_hdrFallbackInProgress || dataSource is! HdrNetworkSource) return;
+    _hdrFallbackInProgress = true;
+    final hdrSource = dataSource as HdrNetworkSource;
+    final hdrController = _hdrMedia3Controller;
+    final seekTo = currentPosition;
+    final autoplay = hdrController?.playWhenReady ?? playerStatus.isPlaying;
+    final speed = playbackSpeed;
+    final sourceDuration = currentDuration;
+    final width = this.width;
+    final height = this.height;
+
+    try {
+      await _disposeHdrController();
+      if (!_hdrFallbackToastShown) {
+        _hdrFallbackToastShown = true;
+        SmartDialog.showToast('Media3 HDR 播放失败，已切换兼容播放器');
+      }
+      await setDataSource(
+        NetworkSource(
+          videoSource: hdrSource.videoSource,
+          audioSource: hdrSource.audioSource,
+        ),
+        seekTo: seekTo,
+        duration: sourceDuration,
+        width: width,
+        height: height,
+        autoplay: autoplay,
+        speed: speed,
+        isVertical: _isVertical,
+        aid: _aid,
+        bvid: _bvid,
+        cid: cid,
+        epid: _epid,
+        seasonId: _seasonId,
+        pgcType: _pgcType,
+        videoType: _videoType,
+        onInit: _onInitCallback,
+      );
+    } finally {
+      _hdrFallbackInProgress = false;
+    }
+  }
+
   /// 播放事件监听
   void _startListeners(NativePlayer player) {
     assert(_subscriptions == null);
@@ -909,79 +1221,24 @@ class PlPlayerController with BlockConfigMixin {
     _subscriptions = [
       /// playing
       stream.playing.listen((bool playing) {
-        WakelockPlus.toggle(enable: playing);
-        if (playing) {
-          if (_isAutoEnterPip) {
-            if (_isCurrVideoPage) {
-              enterPip(autoEnter: true);
-            } else {
-              _disableAutoEnterPip();
-            }
-          }
-          playerStatus.value = .playing;
-        } else {
-          _disableAutoEnterPip();
-          playerStatus.value = .paused;
-        }
-
-        videoPlayerServiceHandler?.onStatusChange(
-          playerStatus.value,
-          isBuffering.value,
-          isLive,
-        );
-
-        for (final element in _statusListeners) {
-          element(playing ? .playing : .paused);
-        }
-
-        final seconds = videoPlayerController!.state.position.inSeconds;
-        if (seconds != 0) {
-          makeHeartBeat(seconds, type: .status);
-        }
+        _onPlayingChanged(playing);
       }),
 
       ///completed
       stream.completed.listen((bool completed) {
-        if (completed) {
-          playerStatus.value = .completed;
-
-          for (final element in _statusListeners) {
-            element(.completed);
-          }
-
-          makeHeartBeat(-1, type: .completed);
-        }
+        if (completed) _onCompleted();
       }),
 
       /// position
       stream.position.listen((Duration position) {
-        final posInSeconds = position.inSeconds;
-
-        if (posInSeconds != this.position.value) {
-          if (!isSeeking.value) {
-            this.position.value = posInSeconds;
-          }
-
-          videoPlayerServiceHandler?.onPositionChange(position);
-
-          makeHeartBeat(posInSeconds);
-        }
-
-        for (final element in _positionListeners) {
-          element(position);
-        }
+        _onPositionChanged(position);
       }),
       stream.duration.listen(updateDuration),
       stream.buffer.listen((Duration buffer) {
         buffered.value = buffer.inSeconds;
       }),
       stream.buffering.listen((bool buffering) {
-        isBuffering.value = buffering;
-        videoPlayerServiceHandler?.onStatusChange(
-          playerStatus.value,
-          buffering,
-          isLive,
-        );
+        _onBufferingChanged(buffering);
       }),
       if (kDebugMode)
         stream.log.listen(((PlayerLog log) {
@@ -1075,6 +1332,16 @@ class PlPlayerController with BlockConfigMixin {
     }
     _heartDuration = position.inSeconds;
 
+    if (_hdrMedia3Controller case final hdr?) {
+      danmakuController?.clear();
+      try {
+        await hdr.seekTo(position);
+      } catch (e) {
+        if (kDebugMode) debugPrint('seek failed: $e');
+      }
+      return;
+    }
+
     Future<void> seek() async {
       if (isSeek) {
         /// 拖动进度条调节时，不等待第一帧，防止抖动
@@ -1104,11 +1371,15 @@ class PlPlayerController with BlockConfigMixin {
   Future<void> setPlaybackSpeed(double speed) async {
     lastPlaybackSpeed = playbackSpeed;
 
-    if (speed == _videoPlayerController?.state.rate) {
+    if (speed == currentRate) {
       return;
     }
 
-    await _videoPlayerController?.setRate(speed);
+    if (_hdrMedia3Controller case final hdr?) {
+      await hdr.setSpeed(speed);
+    } else {
+      await _videoPlayerController?.setRate(speed);
+    }
     _playbackSpeed.value = speed;
     if (danmakuController != null) {
       try {
@@ -1128,7 +1399,11 @@ class PlPlayerController with BlockConfigMixin {
   // 还原默认速度
   double playSpeedDefault = Pref.playSpeedDefault;
   Future<void> setDefaultSpeed() async {
-    await _videoPlayerController?.setRate(playSpeedDefault);
+    if (_hdrMedia3Controller case final hdr?) {
+      await hdr.setSpeed(playSpeedDefault);
+    } else {
+      await _videoPlayerController?.setRate(playSpeedDefault);
+    }
     _playbackSpeed.value = playSpeedDefault;
   }
 
@@ -1143,7 +1418,11 @@ class PlPlayerController with BlockConfigMixin {
       await seekTo(Duration.zero, isSeek: false);
     }
 
-    await _videoPlayerController?.play();
+    if (_hdrMedia3Controller case final hdr?) {
+      await hdr.play();
+    } else {
+      await _videoPlayerController?.play();
+    }
 
     audioSessionHandler?.setActive(true);
 
@@ -1153,7 +1432,11 @@ class PlPlayerController with BlockConfigMixin {
 
   /// 暂停播放
   Future<void> pause({bool notify = true, bool isInterrupt = false}) async {
-    await _videoPlayerController?.pause();
+    if (_hdrMedia3Controller case final hdr?) {
+      await hdr.pause();
+    } else {
+      await _videoPlayerController?.pause();
+    }
     playerStatus.value = PlayerStatus.paused;
 
     // 主动暂停时让出音频焦点
@@ -1285,16 +1568,23 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   bool get isCompleted =>
-      videoPlayerController!.state.completed ||
-      durationInMilliseconds - positionInMilliseconds <= 50;
+      (_hdrMedia3Controller?.isCompleted ??
+          videoPlayerController?.state.completed ??
+          false) ||
+      (durationInMilliseconds > 0 &&
+          durationInMilliseconds - positionInMilliseconds <= 50);
 
   // 双击播放、暂停
   Future<void> onDoubleTapCenter() async {
     if (!isLive && isCompleted) {
-      await videoPlayerController!.seek(Duration.zero);
-      videoPlayerController!.play();
+      await seekTo(Duration.zero, isSeek: false);
+      await play();
     } else {
-      videoPlayerController!.playOrPause();
+      if (isPlaying) {
+        await pause();
+      } else {
+        await play();
+      }
     }
   }
 
@@ -1310,16 +1600,16 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   void onForward(Duration duration) {
-    onForwardBackward(videoPlayerController!.state.position + duration);
+    onForwardBackward(currentPosition + duration);
   }
 
   void onBackward(Duration duration) {
-    onForwardBackward(videoPlayerController!.state.position - duration);
+    onForwardBackward(currentPosition - duration);
   }
 
   void onForwardBackward(Duration duration) {
     seekTo(
-      duration.clamp(Duration.zero, videoPlayerController!.state.duration),
+      duration.clamp(Duration.zero, currentDuration),
       isSeek: false,
     ).whenComplete(play);
   }
@@ -1539,6 +1829,7 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   void onCloseAll() {
+    hideHdrSurface();
     _isCloseAll = true;
     if (PlatformUtils.isDesktop) exitDesktopFullScreen();
     dispose();
@@ -1593,12 +1884,14 @@ class PlPlayerController with BlockConfigMixin {
     _removeListeners();
     _positionListeners.clear();
     _statusListeners.clear();
+    unawaited(_positionEventController.close());
     if (playerStatus.isPlaying) {
       WakelockPlus.disable();
     }
     if (kDebugMode) {
       debugPrint('dispose player');
     }
+    unawaited(_disposeHdrController());
     _videoPlayerController?.dispose();
     _videoPlayerController = null;
     _videoController = null;
@@ -1660,6 +1953,10 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   Future<void> takeScreenshot() async {
+    if (isMedia3Hdr) {
+      SmartDialog.showToast('HDR 原生播放暂不支持截图');
+      return;
+    }
     SmartDialog.showToast('截图中');
     final time = DurationUtils.formatDuration(
       positionInMilliseconds / 1000,
@@ -1714,6 +2011,7 @@ class PlPlayerController with BlockConfigMixin {
 
   void onPopInvokedWithResult(bool didPop, Object? result) {
     if (didPop) {
+      hideHdrSurface();
       if (playerStatus.isPlaying) {
         pause();
       }
@@ -1742,6 +2040,7 @@ class PlPlayerController with BlockConfigMixin {
       triggerFullScreen(status: false);
       return;
     }
+    hideHdrSurface();
     Get.back();
   }
 }

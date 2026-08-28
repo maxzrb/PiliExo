@@ -287,6 +287,7 @@ class MainController extends GetxController
   }
 
   void setIndex(int value) {
+    // 所有底栏和侧栏导航项都从这里进入，统一触发可调强度的震动反馈。
     feedBack();
 
     final currentNav = navigationBars[value];

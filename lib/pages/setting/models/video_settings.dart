@@ -30,6 +30,14 @@ List<SettingsModel> get videoSettings => [
     setKey: SettingBoxKey.enableHA,
     defaultVal: true,
   ),
+  if (Platform.isAndroid)
+    const SwitchModel(
+      title: 'HDR 播放器',
+      subtitle: 'Media3 原生 HDR（关闭后 HDR 使用兼容播放器）',
+      leading: Icon(Icons.hdr_auto_outlined),
+      setKey: SettingBoxKey.enableMedia3Hdr,
+      defaultVal: true,
+    ),
   const SwitchModel(
     title: '免登录1080P',
     subtitle: '免登录查看1080P视频',

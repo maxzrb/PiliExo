@@ -20,6 +20,8 @@ enum VideoQuality {
 
   const VideoQuality(this.code, this.desc, this.shortDesc);
 
+  bool get isHdr => code == 125 || code == 126 || code == 129;
+
   static final _codeMap = {for (final i in values) i.code: i};
 
   static VideoQuality fromCode(int code) => _codeMap[code]!;

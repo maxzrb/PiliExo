@@ -176,11 +176,12 @@ class AudioController extends GetxController
     if (shutdownTimerService.isActive) {
       shutdownTimerService
         ..onPause = onPause
-        ..isPlaying = isPlaying;
+        ..isPlaying = () => isPlaying;
     }
   }
 
-  bool isPlaying() {
+  @override
+  bool get isPlaying {
     return player?.state.playing ?? false;
   }
 

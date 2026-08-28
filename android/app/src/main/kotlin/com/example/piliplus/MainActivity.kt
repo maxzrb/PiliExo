@@ -6,8 +6,28 @@ import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager.LayoutParams
 import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : AudioServiceActivity() {
+    private var hdrMedia3Plugin: HdrMedia3Plugin? = null
+    private var hapticFeedbackPlugin: HapticFeedbackPlugin? = null
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        hdrMedia3Plugin = HdrMedia3Plugin(this, flutterEngine.dartExecutor.binaryMessenger)
+        hdrMedia3Plugin?.register(flutterEngine)
+        hapticFeedbackPlugin = HapticFeedbackPlugin(this, flutterEngine.dartExecutor.binaryMessenger)
+        hapticFeedbackPlugin?.register()
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        hdrMedia3Plugin?.dispose()
+        hdrMedia3Plugin = null
+        hapticFeedbackPlugin?.dispose()
+        hapticFeedbackPlugin = null
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         if (AndroidHelper.isFoldable) {

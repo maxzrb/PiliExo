@@ -467,7 +467,13 @@ List<SettingsModel> get extraSettings => [
     },
     leading: const Icon(Icons.vibration_outlined),
     title: '震动反馈',
-    subtitle: '请确定手机设置中已开启震动反馈',
+    subtitle: '所有底栏/侧栏导航项生效，请确定手机设置中已开启震动反馈',
+  ),
+  NormalModel(
+    title: '震动强度',
+    getSubtitle: () => '当前：${_feedbackStrengthLabel(feedbackStrength)}（$feedbackStrength/255）',
+    leading: const Icon(Icons.tune),
+    onTap: _showFeedbackStrengthDialog,
   ),
   const SwitchModel(
     title: '大家都在搜',
@@ -728,6 +734,41 @@ Future<void> audioNormalization(
       setState();
     }
   }
+}
+
+String _feedbackStrengthLabel(int strength) {
+  if (strength <= 85) {
+    return '轻';
+  }
+  if (strength <= 170) {
+    return '中';
+  }
+  return '强';
+}
+
+Future<void> _showFeedbackStrengthDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final value = await showDialog<double>(
+    context: context,
+    builder: (context) => SliderDialog(
+      title: const Text('震动强度'),
+      value: feedbackStrength.toDouble(),
+      min: 1,
+      max: 255,
+      divisions: 254,
+      precise: 0,
+    ),
+  );
+  if (value == null) {
+    return;
+  }
+
+  feedbackStrength = value.round().clamp(1, 255).toInt();
+  await GStorage.setting.put(SettingBoxKey.feedBackStrength, feedbackStrength);
+  feedBack();
+  setState();
 }
 
 void _showDownPathDialog(BuildContext context, VoidCallback setState) {

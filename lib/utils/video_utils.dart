@@ -90,6 +90,36 @@ abstract final class VideoUtils {
               .toString();
   }
 
+  /// 返回按当前 CDN 设置排序的完整候选 URL 列表。
+  ///
+  /// 普通 mpv 播放仍只取 [getCdnUrl] 的首个结果；Media3 需要保留所有备用
+  /// 地址，以便在 403、5xx 或读取中断时从相同字节位置续传。
+  static List<String> getCdnUrls(
+    Iterable<String> urls, {
+    CDNService? defaultCDNService,
+    bool isAudio = false,
+  }) {
+    final source = urls.where((url) => url.isNotEmpty).toList();
+    if (source.isEmpty) return const [];
+    final result = <String>[
+      getCdnUrl(
+        source,
+        defaultCDNService: defaultCDNService,
+        isAudio: isAudio,
+      ),
+    ];
+    for (final url in source) {
+      final transformed = getCdnUrl(
+        [url],
+        defaultCDNService: defaultCDNService,
+        isAudio: isAudio,
+      );
+      if (!result.contains(transformed)) result.add(transformed);
+      if (!result.contains(url)) result.add(url);
+    }
+    return result;
+  }
+
   static String getLiveCdnUrl(CodecItem e, {int index = 0}) {
     final urlInfo = e.urlInfo.getOrFirst(index);
     return (liveCdnUrl ?? urlInfo.host) + e.baseUrl + urlInfo.extra;

@@ -4,17 +4,14 @@ param(
 
 try {
     $versionName = $null
-
-    $versionCode = [int](git rev-list --count HEAD).Trim()
+    $versionCode = $null
 
     $commitHash = (git rev-parse HEAD).Trim()
 
     $updatedContent = foreach ($line in (Get-Content -Path 'pubspec.yaml' -Encoding UTF8)) {
-        if ($line -match '^\s*version:\s*([\d\.]+)') {
+        if ($line -match '^\s*version:\s*(\d{2}\.\d{1,2}\.\d{1,2})\+(\d+)') {
             $versionName = $matches[1]
-            if ($Arg -eq 'android') {
-                $versionName += '-' + $commitHash.Substring(0, 9)
-            }
+            $versionCode = [int]$matches[2]
             "version: $versionName+$versionCode"
         }
         else {
@@ -22,8 +19,8 @@ try {
         }
     }
 
-    if ($null -eq $versionName) {
-        throw 'version not found'
+    if ($null -eq $versionName -or $null -eq $versionCode) {
+        throw 'version must use YY.M.D+build format, for example 26.8.28+1'
     }
 
     $updatedContent | Set-Content -Path 'pubspec.yaml' -Encoding UTF8
@@ -39,7 +36,9 @@ try {
 
     $data | ConvertTo-Json -Compress | Out-File 'pili_release.json' -Encoding UTF8
 
-    Add-Content -Path $env:GITHUB_ENV -Value "version=$versionName+$versionCode"
+    if ($env:GITHUB_ENV) {
+        Add-Content -Path $env:GITHUB_ENV -Value "version=$versionName+$versionCode"
+    }
 }
 catch {
     Write-Error "Prebuild Error: $($_.Exception.Message)"

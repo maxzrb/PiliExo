@@ -70,7 +70,7 @@ android {
                 resValue(
                     type = "string",
                     name = "app_name",
-                    value = "PiliPlus dev",
+                    value = "PiliExo dev",
                 )
             }
 //            proguardFiles(
@@ -89,6 +89,18 @@ android {
             (output as ApkVariantOutputImpl).versionCodeOverride = flutter.versionCode
         }
     }
+}
+
+dependencies {
+    // Media3 负责 Android HDR 硬解和原生 SurfaceView 输出。
+    val media3Version = "1.11.0"
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
+    implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
+    implementation("com.squareup.okhttp3:okhttp:5.3.0")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.0")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }
 
 kotlin {

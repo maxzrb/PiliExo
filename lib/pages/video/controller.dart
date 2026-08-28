@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show File, Platform;
 import 'dart:math' show min;
 import 'dart:ui';
 
@@ -10,6 +11,7 @@ import 'package:PiliPlus/grpc/bilibili/app/listener/v1.pbenum.dart'
     show PlaylistSource;
 import 'package:PiliPlus/grpc/dm.dart';
 import 'package:PiliPlus/http/browser_ua.dart';
+import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -131,6 +133,7 @@ class VideoDetailController extends GetxController
   double get uiScale => plPlayerController.uiScale;
 
   late VideoItem firstVideo;
+  AudioItem? firstAudio;
   String? videoUrl;
   String? audioUrl;
   Duration? defaultST;
@@ -541,6 +544,20 @@ class VideoDetailController extends GetxController
   int get currPosInMilliseconds =>
       defaultST?.inMilliseconds ?? plPlayerController.positionInMilliseconds;
   @override
+  Stream<Duration>? get positionStream =>
+      plPlayerController.isMedia3Hdr
+          ? plPlayerController.positionStream
+          : plPlayerController.videoPlayerController?.stream.position;
+  @override
+  Stream<bool>? get playingStream =>
+      plPlayerController.isMedia3Hdr
+          ? plPlayerController.playerStatus.map(
+              (status) => status?.isPlaying ?? false,
+            )
+          : plPlayerController.videoPlayerController?.stream.playing;
+  @override
+  bool get isPlaying => plPlayerController.isPlaying;
+  @override
   Future<void> seekTo(Duration duration, {required bool isSeek}) =>
       plPlayerController.seekTo(duration, isSeek: isSeek);
 
@@ -680,8 +697,11 @@ class VideoDetailController extends GetxController
   void updatePlayer() {
     final currentVideoQa = this.currentVideoQa.value;
     if (currentVideoQa == null) return;
-    _autoPlay.value = true;
-    playedTime = plPlayerController.videoPlayerController?.state.position;
+    // 清晰度切换不改变用户当前的暂停/播放选择。
+    _autoPlay.value = plPlayerController.playWhenReady;
+    playedTime = Duration(
+      milliseconds: plPlayerController.positionInMilliseconds,
+    );
     plPlayerController
       ..isBuffering.value = false
       ..buffered.value = 0;
@@ -691,11 +711,13 @@ class VideoDetailController extends GetxController
 
     /// 根据currentAudioQa 重新设置audioUrl
     if (currentAudioQa != null) {
-      final firstAudio = data.dash!.audio!.firstWhere(
+      firstAudio = data.dash!.audio!.firstWhere(
         (i) => i.id == currentAudioQa!.code,
         orElse: () => data.dash!.audio!.first,
       );
-      audioUrl = VideoUtils.getCdnUrl(firstAudio.playUrls, isAudio: true);
+      audioUrl = VideoUtils.getCdnUrl(firstAudio!.playUrls, isAudio: true);
+    } else {
+      firstAudio = null;
     }
 
     playerInit();
@@ -721,18 +743,61 @@ class VideoDetailController extends GetxController
     Duration? seek = defaultST ?? playedTime;
     if (seek == .zero) seek = null;
     seek ??= getFirstSegment();
+
+    final DataSource source;
+    if (isFileSource) {
+      source = FileSource(
+        dir: args['dirPath'],
+        typeTag: entry.typeTag!,
+        isMp4: entry.mediaType == 1,
+        hasDashAudio: entry.hasDashAudio,
+      );
+    } else if (HdrPlaybackPolicy.shouldUseMedia3(
+        isAndroid: Platform.isAndroid,
+        isLive: false,
+        isFile: isFileSource,
+        enabled: Pref.enableMedia3Hdr,
+        qualityCode: currentVideoQa.value?.code ?? 0,
+      ) &&
+      data.dash != null) {
+      final videoUrls = VideoUtils.getCdnUrls(firstVideo.playUrls);
+      final audioUrls = firstAudio == null
+          ? const <String>[]
+          : VideoUtils.getCdnUrls(firstAudio!.playUrls, isAudio: true);
+      if (videoUrls.isNotEmpty) {
+        source = HdrNetworkSource(
+          qualityCode: currentVideoQa.value!.code,
+          video: HdrTrackSource(
+            urls: videoUrls,
+            mimeType: firstVideo.mimeType,
+            codecs: firstVideo.codecs,
+            width: firstVideo.width,
+            height: firstVideo.height,
+            frameRate: firstVideo.frameRate,
+          ),
+          audio: audioUrls.isEmpty
+              ? null
+              : HdrTrackSource(
+                  urls: audioUrls,
+                  mimeType: firstAudio?.mimeType,
+                  codecs: firstAudio?.codecs,
+                  frameRate: firstAudio?.frameRate,
+                ),
+          headers: const {
+            'Referer': HttpString.baseUrl,
+            'Origin': HttpString.baseUrl,
+            'User-Agent': BrowserUa.pc,
+          },
+        );
+      } else {
+        source = NetworkSource(videoSource: videoUrl!, audioSource: audioUrl);
+      }
+    } else {
+      source = NetworkSource(videoSource: videoUrl!, audioSource: audioUrl);
+    }
+
     await plPlayerController.setDataSource(
-      isFileSource
-          ? FileSource(
-              dir: args['dirPath'],
-              typeTag: entry.typeTag!,
-              isMp4: entry.mediaType == 1,
-              hasDashAudio: entry.hasDashAudio,
-            )
-          : NetworkSource(
-              videoSource: videoUrl!,
-              audioSource: audioUrl,
-            ),
+      source,
       seekTo: seek,
       duration: data.timeLength == null
           ? null
@@ -879,6 +944,7 @@ class VideoDetailController extends GetxController
 
           // 实际为FLV/MP4格式，但已被淘汰，这里仅做兜底处理
           final videoQuality = VideoQuality.fromCode(data.quality!);
+          firstAudio = null;
           firstVideo = VideoItem(
             id: data.quality!,
             baseUrl: videoUrl,
@@ -949,7 +1015,6 @@ class VideoDetailController extends GetxController
       videoUrl = VideoUtils.getCdnUrl(firstVideo.playUrls);
 
       /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
-      AudioItem? firstAudio;
       final audioList = data.dash?.audio;
       if (audioList != null && audioList.isNotEmpty) {
         final List<int> audioIds = audioList.map((map) => map.id!).toList();
@@ -965,11 +1030,12 @@ class VideoDetailController extends GetxController
           (e) => e.id == closestNumber,
           orElse: () => audioList.first,
         );
-        audioUrl = VideoUtils.getCdnUrl(firstAudio.playUrls, isAudio: true);
-        if (firstAudio.id case final int id?) {
+        audioUrl = VideoUtils.getCdnUrl(firstAudio!.playUrls, isAudio: true);
+        if (firstAudio!.id case final int id?) {
           currentAudioQa = AudioQuality.fromCode(id);
         }
       } else {
+        firstAudio = null;
         audioUrl = '';
       }
       await _initPlayerIfNeeded(autoFullScreenFlag);
@@ -1030,7 +1096,11 @@ class VideoDetailController extends GetxController
   // 设定字幕轨道
   Future<void> setSubtitle(int index) async {
     if (index <= 0) {
-      await plPlayerController.videoPlayerController?.setSubtitleTrack(.no());
+      if (plPlayerController.isMedia3Hdr) {
+        await plPlayerController.clearSubtitle();
+      } else {
+        await plPlayerController.videoPlayerController?.setSubtitleTrack(.no());
+      }
       vttSubtitlesIndex.value = index;
       return;
     }
@@ -1038,13 +1108,31 @@ class VideoDetailController extends GetxController
     Future<void> setSub(({bool isData, String id}) subtitle) async {
       final sub = subtitles[index - 1];
 
-      String subUri = subtitle.id;
-      if (subtitle.isData) {
-        subUri = 'memory://$subUri';
+      if (plPlayerController.isMedia3Hdr) {
+        String? vtt;
+        if (subtitle.isData) {
+          vtt = subtitle.id;
+        } else {
+          try {
+            vtt = await File(subtitle.id).readAsString();
+          } catch (_) {
+            return;
+          }
+        }
+        await plPlayerController.setSubtitleVtt(
+          vtt,
+          language: sub.lan,
+          label: sub.lanDoc,
+        );
+      } else {
+        String subUri = subtitle.id;
+        if (subtitle.isData) {
+          subUri = 'memory://$subUri';
+        }
+        await plPlayerController.videoPlayerController?.setSubtitleTrack(
+          SubtitleTrack(subUri, sub.lanDoc, sub.lan, uri: true),
+        );
       }
-      await plPlayerController.videoPlayerController?.setSubtitleTrack(
-        SubtitleTrack(subUri, sub.lanDoc, sub.lan, uri: true),
-      );
       vttSubtitlesIndex.value = index;
     }
 
@@ -1260,6 +1348,7 @@ class VideoDetailController extends GetxController
     defaultST = null;
     videoUrl = null;
     audioUrl = null;
+    firstAudio = null;
 
     // danmaku
     savedDanmaku = null;

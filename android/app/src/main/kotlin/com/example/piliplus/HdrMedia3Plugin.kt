@@ -1,0 +1,870 @@
+package com.example.piliplus
+
+import android.app.Activity
+import android.content.Context
+import android.content.pm.ActivityInfo
+import android.graphics.Color
+import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.util.Base64
+import android.util.TypedValue
+import android.view.LayoutInflater
+import android.view.SurfaceView
+import android.view.View
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.Format
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
+import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import okhttp3.OkHttpClient
+import io.flutter.plugin.common.BinaryMessenger
+import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.StandardMessageCodec
+import io.flutter.plugin.platform.PlatformView
+import io.flutter.plugin.platform.PlatformViewFactory
+import io.flutter.embedding.engine.FlutterEngine
+import java.io.IOException
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.CopyOnWriteArrayList
+
+/** Android 原生 HDR 播放器的 Flutter 桥接层。 */
+@UnstableApi
+class HdrMedia3Plugin(
+    private val context: Context,
+    private val messenger: BinaryMessenger,
+) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
+    companion object {
+        const val METHOD_CHANNEL = "com.example.piliplus/media3_hdr"
+        const val EVENT_CHANNEL = "com.example.piliplus/media3_hdr/events"
+        const val VIEW_TYPE = "piliplus/media3_hdr_surface"
+    }
+
+    private var eventSink: EventChannel.EventSink? = null
+    // 会话需要使用 Activity 上下文读取当前显示器的 HDR 能力，同时由会话生命周期控制播放器。
+    private val manager = HdrMedia3Manager(context) { event ->
+        eventSink?.success(event)
+    }
+    private val methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
+    private val eventChannel = EventChannel(messenger, EVENT_CHANNEL)
+
+    fun register(engine: FlutterEngine) {
+        methodChannel.setMethodCallHandler(this)
+        eventChannel.setStreamHandler(this)
+        engine.platformViewsController.registry.registerViewFactory(
+            VIEW_TYPE,
+            HdrMedia3ViewFactory(manager),
+        )
+    }
+
+    override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            when (call.method) {
+                "createSession" -> {
+                    val sessionId = call.argument<String>("sessionId")
+                        ?: error("缺少 sessionId")
+                    manager.create(sessionId)
+                    result.success(null)
+                }
+
+                "load" -> {
+                    val sessionId = call.argument<String>("sessionId")
+                        ?: error("缺少 sessionId")
+                    manager.get(sessionId).load(
+                        HdrMedia3Source.from(call.arguments),
+                        call.argument<Number>("startPositionMs")?.toLong() ?: 0L,
+                        call.argument<Boolean>("playWhenReady") ?: false,
+                    )
+                    result.success(null)
+                }
+
+                "play" -> {
+                    manager.getSession(call).play()
+                    result.success(null)
+                }
+
+                "pause" -> {
+                    manager.getSession(call).pause()
+                    result.success(null)
+                }
+
+                "seekTo" -> {
+                    val position = call.argument<Number>("positionMs")?.toLong()
+                        ?: error("缺少 positionMs")
+                    manager.getSession(call).seekTo(position)
+                    result.success(null)
+                }
+
+                "setSpeed" -> {
+                    val speed = call.argument<Number>("speed")?.toFloat()
+                        ?: error("缺少 speed")
+                    manager.getSession(call).setSpeed(speed)
+                    result.success(null)
+                }
+
+                "setVolume" -> {
+                    val volume = call.argument<Number>("volume")?.toFloat()
+                        ?: error("缺少 volume")
+                    manager.getSession(call).setVolume(volume)
+                    result.success(null)
+                }
+
+                "setResizeMode" -> {
+                    manager.getSession(call).setResizeMode(
+                        call.argument<String>("mode") ?: "fit",
+                    )
+                    result.success(null)
+                }
+
+                "hideSurface" -> {
+                    manager.getSession(call).hideSurface()
+                    result.success(null)
+                }
+
+                "setSubtitle" -> {
+                    manager.getSession(call).setSubtitle(
+                        call.argument<String>("vtt"),
+                        call.argument<String>("language"),
+                        call.argument<String>("label"),
+                    )
+                    result.success(null)
+                }
+
+                "clearSubtitle" -> {
+                    manager.getSession(call).setSubtitle(null, null, null)
+                    result.success(null)
+                }
+
+                "setSubtitleStyle" -> {
+                    manager.getSession(call).setSubtitleStyle(
+                        call.argument<Number>("fontScale")?.toFloat() ?: 1.0f,
+                        call.argument<Number>("bottomPadding")?.toFloat() ?: 24.0f,
+                        call.argument<Number>("horizontalPadding")?.toFloat() ?: 24.0f,
+                        call.argument<Number>("backgroundOpacity")?.toFloat() ?: 0.67f,
+                    )
+                    result.success(null)
+                }
+
+                "releaseSession" -> {
+                    val sessionId = call.argument<String>("sessionId")
+                        ?: error("缺少 sessionId")
+                    manager.release(sessionId)
+                    result.success(null)
+                }
+
+                else -> result.notImplemented()
+            }
+        } catch (error: Throwable) {
+            result.error("MEDIA3_ERROR", error.message, null)
+        }
+    }
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        eventSink = events
+    }
+
+    override fun onCancel(arguments: Any?) {
+        eventSink = null
+    }
+
+    fun dispose() {
+        methodChannel.setMethodCallHandler(null)
+        eventChannel.setStreamHandler(null)
+        manager.releaseAll()
+        eventSink = null
+    }
+}
+
+@UnstableApi
+private class HdrMedia3ViewFactory(
+    private val manager: HdrMedia3Manager,
+) : PlatformViewFactory(StandardMessageCodec.INSTANCE) {
+    override fun create(context: Context, viewId: Int, args: Any?): PlatformView {
+        val params = args as? Map<*, *>
+        val sessionId = params?.get("sessionId") as? String
+            ?: error("缺少 sessionId")
+        return HdrMedia3PlatformView(manager.get(sessionId))
+    }
+}
+
+@UnstableApi
+private class HdrMedia3PlatformView(
+    private val session: HdrMedia3Session,
+) : PlatformView {
+    private val playerView = session.createView()
+
+    init {
+        session.attach(playerView)
+    }
+
+    override fun getView(): View = playerView
+
+    override fun dispose() {
+        session.detach(playerView)
+    }
+}
+
+@UnstableApi
+private class HdrMedia3Manager(
+    private val context: Context,
+    private val emit: (Map<String, Any?>) -> Unit,
+) {
+    private val sessions = linkedMapOf<String, HdrMedia3Session>()
+
+    fun create(sessionId: String): HdrMedia3Session {
+        return sessions.getOrPut(sessionId) {
+            HdrMedia3Session(context, sessionId, emit)
+        }
+    }
+
+    fun get(sessionId: String): HdrMedia3Session = create(sessionId)
+
+    fun getSession(call: MethodCall): HdrMedia3Session {
+        val sessionId = call.argument<String>("sessionId")
+            ?: error("缺少 sessionId")
+        return get(sessionId)
+    }
+
+    fun release(sessionId: String) {
+        sessions.remove(sessionId)?.release()
+    }
+
+    fun releaseAll() {
+        sessions.values.toList().forEach(HdrMedia3Session::release)
+        sessions.clear()
+    }
+}
+
+@UnstableApi
+internal data class HdrMedia3Track(
+    val urls: List<Uri>,
+    val mimeType: String?,
+    val codecs: String?,
+    val width: Int,
+    val height: Int,
+    val frameRate: String?,
+)
+
+@UnstableApi
+internal data class HdrMedia3Source(
+    val qualityCode: Int,
+    val video: HdrMedia3Track,
+    val audio: HdrMedia3Track?,
+    val headers: Map<String, String>,
+    val durationMs: Long?,
+    val subtitleVtt: String?,
+    val subtitleLanguage: String?,
+    val subtitleLabel: String?,
+) {
+    companion object {
+        fun from(arguments: Any?): HdrMedia3Source {
+            val map = arguments as? Map<*, *> ?: error("播放参数格式错误")
+            val video = parseTrack(map["video"] as? Map<*, *> ?: error("缺少视频轨道"))
+            val audioMap = map["audio"] as? Map<*, *>
+            val headers = (map["headers"] as? Map<*, *>)
+                ?.mapNotNull { (key, value) ->
+                    if (key is String && value is String) key to value else null
+                }
+                ?.toMap()
+                ?: emptyMap()
+            return HdrMedia3Source(
+                qualityCode = (map["qualityCode"] as? Number)?.toInt()
+                    ?: error("缺少 qualityCode"),
+                video = video,
+                audio = audioMap?.let(::parseTrack),
+                headers = headers,
+                durationMs = (map["durationMs"] as? Number)?.toLong(),
+                subtitleVtt = map["subtitleVtt"] as? String,
+                subtitleLanguage = map["subtitleLanguage"] as? String,
+                subtitleLabel = map["subtitleLabel"] as? String,
+            )
+        }
+
+        private fun parseTrack(map: Map<*, *>): HdrMedia3Track {
+            val urls = ((map["urls"] as? List<*>) ?: emptyList<Any?>())
+                .filterIsInstance<String>()
+                .filter(String::isNotBlank)
+                .distinct()
+                .map(Uri::parse)
+            if (urls.isEmpty()) error("轨道 URL 为空")
+            return HdrMedia3Track(
+                urls = urls,
+                mimeType = map["mimeType"] as? String,
+                codecs = map["codecs"] as? String,
+                width = (map["width"] as? Number)?.toInt() ?: 0,
+                height = (map["height"] as? Number)?.toInt() ?: 0,
+                frameRate = map["frameRate"] as? String,
+            )
+        }
+    }
+}
+
+@UnstableApi
+private class HdrMedia3Session(
+    private val context: Context,
+    private val sessionId: String,
+    private val emit: (Map<String, Any?>) -> Unit,
+) : Player.Listener, AnalyticsListener {
+    private val handler = Handler(Looper.getMainLooper())
+    private val httpClient = OkHttpClient.Builder()
+        .retryOnConnectionFailure(true)
+        .build()
+    private val player: ExoPlayer = ExoPlayer.Builder(
+        context,
+        DefaultRenderersFactory(context).setEnableDecoderFallback(true),
+    ).build().also { exoPlayer ->
+        exoPlayer.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(),
+            false,
+        )
+        exoPlayer.addListener(this)
+        exoPlayer.addAnalyticsListener(this)
+    }
+    private var playerView: PlayerView? = null
+    private var source: HdrMedia3Source? = null
+    private var released = false
+    private var hdrFormatValid = false
+    private var errorSent = false
+    private var subtitleFontScale = 1.0f
+    private var subtitleBottomPadding = 24.0f
+    private var subtitleHorizontalPadding = 24.0f
+    private var subtitleBackgroundOpacity = 0.67f
+    private var resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+    private var hdrWindowModeEnabled = false
+
+    private val progressRunnable = object : Runnable {
+        override fun run() {
+            if (released) return
+            emitProgress()
+            if (player.isPlaying) handler.postDelayed(this, 100)
+        }
+    }
+
+    fun createView(): PlayerView {
+        check(!released) { "播放器已经释放" }
+        return LayoutInflater.from(context)
+            .inflate(R.layout.view_hdr_player, null, false) as PlayerView
+    }
+
+    fun attach(view: PlayerView) {
+        if (released) return
+        playerView = view
+        view.useController = false
+        view.setKeepContentOnPlayerReset(true)
+        view.resizeMode = resizeMode
+        view.player = player
+        view.alpha = 1f
+        view.videoSurfaceView?.visibility = View.VISIBLE
+        view.videoSurfaceView?.alpha = 1f
+        view.visibility = View.VISIBLE
+        applySubtitleStyle(
+            view,
+            subtitleFontScale,
+            subtitleBottomPadding,
+            subtitleHorizontalPadding,
+            subtitleBackgroundOpacity,
+        )
+    }
+
+    fun detach(view: PlayerView) {
+        if (playerView === view) {
+            hideSurface(view)
+            playerView = null
+        }
+    }
+
+    fun hideSurface() {
+        playerView?.let(::hideSurface)
+    }
+
+    private fun hideSurface(view: PlayerView) {
+        // SurfaceView 使用独立合成层，路由切换前必须移除其合成层，不能只清空播放器引用。
+        view.visibility = View.GONE
+        view.alpha = 0f
+        val surfaceView = view.videoSurfaceView
+        surfaceView?.visibility = View.GONE
+        surfaceView?.alpha = 0f
+        when (surfaceView) {
+            is SurfaceView -> player.clearVideoSurfaceView(surfaceView)
+            else -> player.clearVideoSurface()
+        }
+        view.setKeepContentOnPlayerReset(false)
+        view.player = null
+    }
+
+    fun load(newSource: HdrMedia3Source, startPositionMs: Long = 0L, playWhenReady: Boolean = false) {
+        check(!released) { "播放器已经释放" }
+        if (!displaySupportsHdr()) {
+            fail("HDR_DISPLAY_UNSUPPORTED", "当前屏幕没有可用的 HDR 输出能力")
+            throw IllegalStateException("当前屏幕没有可用的 HDR 输出能力")
+        }
+        source = newSource
+        hdrFormatValid = false
+        errorSent = false
+        setHdrWindowMode(true)
+        val mediaSource = buildMediaSource(newSource)
+        player.setMediaSource(mediaSource, startPositionMs.coerceAtLeast(0L))
+        player.playWhenReady = playWhenReady
+        player.prepare()
+        emitEvent(
+            "loading",
+            mapOf(
+                "qualityCode" to newSource.qualityCode,
+                "durationMs" to newSource.durationMs,
+                "hdrSupported" to true,
+            ),
+        )
+        startTicker()
+    }
+
+    fun play() {
+        if (!released) player.play()
+    }
+
+    fun pause() {
+        if (!released) player.pause()
+    }
+
+    fun seekTo(positionMs: Long) {
+        if (!released) {
+            player.seekTo(positionMs.coerceAtLeast(0L))
+            emitProgress()
+        }
+    }
+
+    fun setSpeed(speed: Float) {
+        if (!released) player.setPlaybackSpeed(speed.coerceIn(0.1f, 4.0f))
+    }
+
+    fun setVolume(volume: Float) {
+        if (!released) player.volume = volume.coerceIn(0.0f, 1.0f)
+    }
+
+    fun setResizeMode(mode: String) {
+        resizeMode = when (mode) {
+            "fill" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+            "cover" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            "fitWidth" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+            "fitHeight" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT
+            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
+        playerView?.resizeMode = resizeMode
+    }
+
+    fun setSubtitle(vtt: String?, language: String?, label: String?) {
+        val current = source ?: return
+        rebuild(
+            current.copy(
+                subtitleVtt = vtt,
+                subtitleLanguage = language,
+                subtitleLabel = label,
+            ),
+        )
+    }
+
+    fun setSubtitleStyle(
+        fontScale: Float,
+        bottomPadding: Float,
+        horizontalPadding: Float,
+        backgroundOpacity: Float,
+    ) {
+        subtitleFontScale = fontScale.coerceIn(0.5f, 2.5f)
+        subtitleBottomPadding = bottomPadding.coerceIn(0.0f, 240.0f)
+        subtitleHorizontalPadding = horizontalPadding.coerceIn(0.0f, 240.0f)
+        subtitleBackgroundOpacity = backgroundOpacity.coerceIn(0.0f, 1.0f)
+        applySubtitleStyle(
+            playerView,
+            subtitleFontScale,
+            subtitleBottomPadding,
+            subtitleHorizontalPadding,
+            subtitleBackgroundOpacity,
+        )
+    }
+
+    private fun rebuild(newSource: HdrMedia3Source) {
+        if (released) return
+        val position = player.currentPosition
+        val playWhenReady = player.playWhenReady
+        val speed = player.playbackParameters.speed
+        load(newSource, position, playWhenReady)
+        player.setPlaybackSpeed(speed)
+    }
+
+    private fun buildMediaSource(source: HdrMedia3Source): MediaSource {
+        val candidateMap = linkedMapOf<String, List<Uri>>()
+        candidateMap[source.video.urls.first().toString()] = source.video.urls
+        source.audio?.let { candidateMap[it.urls.first().toString()] = it.urls }
+
+        val httpFactory = OkHttpDataSource.Factory(httpClient)
+            .setDefaultRequestProperties(source.headers)
+        val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
+        val fallbackFactory = DataSource.Factory {
+            MultiUriDataSource(defaultFactory, candidateMap)
+        }
+        val videoItemBuilder = MediaItem.Builder()
+            .setMediaId("$sessionId-video")
+            .setUri(source.video.urls.first())
+        source.video.mimeType?.takeIf(String::isNotBlank)?.let(videoItemBuilder::setMimeType)
+        if (!source.subtitleVtt.isNullOrBlank()) {
+            val encoded = Base64.encodeToString(
+                source.subtitleVtt.toByteArray(StandardCharsets.UTF_8),
+                Base64.NO_WRAP,
+            )
+            val subtitleUri = Uri.parse("data:text/vtt;base64,$encoded")
+            val subtitle = MediaItem.SubtitleConfiguration.Builder(subtitleUri)
+                .setMimeType(MimeTypes.TEXT_VTT)
+                .setLanguage(source.subtitleLanguage ?: "und")
+                .setLabel(source.subtitleLabel)
+                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                .build()
+            videoItemBuilder.setSubtitleConfigurations(listOf(subtitle))
+        }
+
+        // B 站 DASH 返回的是分离的 fMP4，两个轨道都固定走 ProgressiveMediaSource，
+        // 避免凭 URL 后缀误判媒体类型。
+        val progressiveFactory = ProgressiveMediaSource.Factory(fallbackFactory)
+        val videoSource = progressiveFactory.createMediaSource(videoItemBuilder.build())
+        val audio = source.audio
+        if (audio == null) return videoSource
+
+        val audioItem = MediaItem.Builder()
+            .setMediaId("$sessionId-audio")
+            .setUri(audio.urls.first())
+            .apply {
+                audio.mimeType?.takeIf(String::isNotBlank)?.let(::setMimeType)
+            }
+            .build()
+        val audioSource = ProgressiveMediaSource.Factory(fallbackFactory)
+            .createMediaSource(audioItem)
+        return MergingMediaSource(true, true, videoSource, audioSource)
+    }
+
+    private fun displaySupportsHdr(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
+        val activity = context as? Activity ?: return false
+        val display = activity.windowManager.defaultDisplay
+        return display.hdrCapabilities?.supportedHdrTypes?.isNotEmpty() == true
+    }
+
+    private fun setHdrWindowMode(enabled: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val activity = context as? Activity ?: return
+        try {
+            activity.window.colorMode = if (enabled) {
+                ActivityInfo.COLOR_MODE_HDR
+            } else {
+                ActivityInfo.COLOR_MODE_DEFAULT
+            }
+            hdrWindowModeEnabled = enabled
+        } catch (_: IllegalArgumentException) {
+            // 部分厂商窗口实现不接受颜色模式切换，SurfaceView 仍可独立输出 HDR。
+        }
+    }
+
+    private fun applySubtitleStyle(
+        view: PlayerView?,
+        fontScale: Float = 1.0f,
+        bottomPadding: Float = 24.0f,
+        horizontalPadding: Float = 24.0f,
+        backgroundOpacity: Float = 0.67f,
+    ) {
+        val subtitleView = view?.subtitleView ?: return
+        val density = context.resources.displayMetrics.density
+        subtitleView.setApplyEmbeddedStyles(false)
+        subtitleView.setApplyEmbeddedFontSizes(false)
+        subtitleView.setFixedTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            16.0f * fontScale.coerceIn(0.5f, 2.5f),
+        )
+        subtitleView.setPadding(
+            (horizontalPadding * density).toInt(),
+            0,
+            (horizontalPadding * density).toInt(),
+            (bottomPadding * density).toInt(),
+        )
+        val background = Color.argb(
+            (backgroundOpacity.coerceIn(0.0f, 1.0f) * 255.0f).toInt(),
+            0,
+            0,
+            0,
+        )
+        subtitleView.setStyle(
+            CaptionStyleCompat(
+                Color.WHITE,
+                background,
+                Color.TRANSPARENT,
+                CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                Color.BLACK,
+                null,
+            ),
+        )
+        subtitleView.setViewType(SubtitleView.VIEW_TYPE_CANVAS)
+    }
+
+    private fun startTicker() {
+        handler.removeCallbacks(progressRunnable)
+        handler.post(progressRunnable)
+    }
+
+    private fun emitProgress() {
+        val positionMs = player.currentPosition
+        val bufferedPositionMs = player.bufferedPosition
+        val durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
+        emitEvent(
+            "position",
+            mapOf(
+                "positionMs" to positionMs,
+                "bufferedPositionMs" to bufferedPositionMs,
+                "durationMs" to durationMs,
+            ),
+        )
+        emitEvent("buffered", mapOf("positionMs" to bufferedPositionMs))
+    }
+
+    private fun emitEvent(type: String, data: Map<String, Any?> = emptyMap()) {
+        emit(linkedMapOf<String, Any?>("sessionId" to sessionId, "type" to type).apply {
+            putAll(data)
+        })
+    }
+
+    private fun fail(code: String, message: String) {
+        if (errorSent || released) return
+        errorSent = true
+        emitEvent("error", mapOf("code" to code, "message" to message))
+    }
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        when (playbackState) {
+            Player.STATE_BUFFERING -> emitEvent("buffering", mapOf("value" to true))
+            Player.STATE_READY -> {
+                emitEvent(
+                    "ready",
+                    mapOf(
+                        "durationMs" to (player.duration.takeIf { it != C.TIME_UNSET } ?: 0L),
+                        "width" to player.videoSize.width,
+                        "height" to player.videoSize.height,
+                    ),
+                )
+                emitEvent("buffering", mapOf("value" to false))
+            }
+            Player.STATE_ENDED -> emitEvent("completed")
+        }
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        emitEvent("playing", mapOf("value" to isPlaying))
+        startTicker()
+    }
+
+    override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+        emitEvent(
+            "videoSize",
+            mapOf("width" to videoSize.width, "height" to videoSize.height),
+        )
+    }
+
+    override fun onRenderedFirstFrame() {
+        if (!hdrFormatValid) {
+            fail("HDR_FORMAT_UNSUPPORTED", "解码器没有确认 HDR 色彩输出")
+            return
+        }
+        emitEvent("firstFrame")
+    }
+
+    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+        fail(error.errorCodeName, error.message ?: "Media3 播放失败")
+    }
+
+    override fun onVideoInputFormatChanged(
+        eventTime: AnalyticsListener.EventTime,
+        format: Format,
+        decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+    ) {
+        val colorInfo = format.colorInfo
+        val isDolbyVision = format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION ||
+            format.codecs?.startsWith("dvh", ignoreCase = true) == true
+        val isHdrColor = colorInfo != null &&
+            colorInfo.colorSpace == C.COLOR_SPACE_BT2020 &&
+            (colorInfo.colorTransfer == C.COLOR_TRANSFER_ST2084 ||
+                colorInfo.colorTransfer == C.COLOR_TRANSFER_HLG)
+        val qualityCode = source?.qualityCode
+        hdrFormatValid = isDolbyVision || isHdrColor ||
+            (qualityCode == 129 && format.sampleMimeType == MimeTypes.VIDEO_H265)
+        emitEvent(
+            "inputFormat",
+            mapOf(
+                "mimeType" to format.sampleMimeType,
+                "codecs" to format.codecs,
+                "width" to format.width,
+                "height" to format.height,
+                "colorSpace" to colorInfo?.colorSpace,
+                "colorTransfer" to colorInfo?.colorTransfer,
+                "hdr" to hdrFormatValid,
+            ),
+        )
+    }
+
+    override fun onVideoDecoderInitialized(
+        eventTime: AnalyticsListener.EventTime,
+        decoderName: String,
+        initializedTimestampMs: Long,
+        initializationDurationMs: Long,
+    ) {
+        emitEvent("decoder", mapOf("name" to decoderName))
+    }
+
+    override fun onAudioDecoderInitialized(
+        eventTime: AnalyticsListener.EventTime,
+        decoderName: String,
+        initializedTimestampMs: Long,
+        initializationDurationMs: Long,
+    ) {
+        emitEvent("decoder", mapOf("track" to "audio", "name" to decoderName))
+    }
+
+    override fun onDroppedVideoFrames(
+        eventTime: AnalyticsListener.EventTime,
+        droppedFrames: Int,
+        elapsedMs: Long,
+    ) {
+        emitEvent(
+            "droppedFrames",
+            mapOf("count" to droppedFrames, "elapsedMs" to elapsedMs),
+        )
+    }
+
+    fun release() {
+        if (released) return
+        released = true
+        handler.removeCallbacksAndMessages(null)
+        if (hdrWindowModeEnabled) setHdrWindowMode(false)
+        playerView?.let(::hideSurface)
+        playerView = null
+        player.removeListener(this)
+        player.removeAnalyticsListener(this)
+        player.release()
+    }
+}
+
+/** 支持 B站主 URL、备用 URL 和断流续传的 DataSource。 */
+@UnstableApi
+internal class MultiUriDataSource(
+    private val factory: DataSource.Factory,
+    private val candidateMap: Map<String, List<Uri>>,
+) : DataSource {
+    private val listeners = CopyOnWriteArrayList<androidx.media3.datasource.TransferListener>()
+    private var current: DataSource? = null
+    private var originalSpec: DataSpec? = null
+    private var candidates: List<Uri> = emptyList()
+    private var candidateIndex = 0
+    private var bytesRead = 0L
+
+    override fun addTransferListener(listener: androidx.media3.datasource.TransferListener) {
+        listeners += listener
+        current?.addTransferListener(listener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        originalSpec = dataSpec
+        candidates = candidateMap[dataSpec.uri.toString()] ?: listOf(dataSpec.uri)
+        candidateIndex = 0
+        bytesRead = 0L
+        return openCandidate(dataSpec, dataSpec.position, dataSpec.length)
+    }
+
+    private fun openCandidate(dataSpec: DataSpec, position: Long, length: Long): Long {
+        var lastError: IOException? = null
+        while (candidateIndex < candidates.size) {
+            val uri = candidates[candidateIndex]
+            val candidateSpec = dataSpec.buildUpon()
+                .setUri(uri)
+                .setPosition(position)
+                .setLength(length)
+                .build()
+            val delegate = factory.createDataSource()
+            listeners.forEach(delegate::addTransferListener)
+            try {
+                current = delegate
+                return delegate.open(candidateSpec)
+            } catch (error: IOException) {
+                lastError = error
+                try {
+                    delegate.close()
+                } catch (_: IOException) {
+                    // 忽略失败候选 URL 的关闭异常，继续尝试下一个地址。
+                }
+                current = null
+                candidateIndex++
+            }
+        }
+        throw lastError ?: IOException("没有可用的媒体 URL")
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        while (true) {
+            val delegate = current ?: throw IOException("DataSource 尚未打开")
+            try {
+                val count = delegate.read(buffer, offset, length)
+                if (count > 0) bytesRead += count
+                return count
+            } catch (error: IOException) {
+                try {
+                    delegate.close()
+                } catch (_: IOException) {
+                    // 读取失败后的关闭异常不应阻止备用 URL 接管。
+                }
+                current = null
+                candidateIndex++
+                if (candidateIndex >= candidates.size) throw error
+                val spec = originalSpec ?: throw error
+                val remaining = if (spec.length == C.LENGTH_UNSET.toLong()) {
+                    C.LENGTH_UNSET.toLong()
+                } else {
+                    (spec.length - bytesRead).coerceAtLeast(0L)
+                }
+                openCandidate(
+                    spec,
+                    spec.position + bytesRead,
+                    remaining,
+                )
+            }
+        }
+    }
+
+    override fun getUri(): Uri? = current?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> =
+        current?.responseHeaders ?: emptyMap()
+
+    override fun close() {
+        try {
+            current?.close()
+        } finally {
+            current = null
+            originalSpec = null
+            candidates = emptyList()
+        }
+    }
+}
