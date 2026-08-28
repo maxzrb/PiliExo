@@ -51,12 +51,14 @@ import 'package:PiliPlus/plugin/pl_player/widgets/common_btn.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/forward_seek.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/mpv_convert_webp.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/play_pause_btn.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/playback_insight.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
+import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/mobile_observer.dart';
@@ -1287,6 +1289,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       if (cumulativeDy > threshold) {
         _gestureType = .center_down;
         if (isFullScreen ^ plPlayerController.fullScreenGestureReverse) {
+          feedBack();
           fullScreenTrigger(
             plPlayerController.fullScreenGestureReverse,
           );
@@ -1294,6 +1297,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       } else if (cumulativeDy < -threshold) {
         _gestureType = .center_up;
         if (!isFullScreen ^ plPlayerController.fullScreenGestureReverse) {
+          feedBack();
           fullScreenTrigger(
             !plPlayerController.fullScreenGestureReverse,
           );
@@ -1579,6 +1583,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               }
               return const SizedBox.shrink();
             },
+          ),
+
+        if (!isLive)
+          PlaybackInsightHud(
+            controller: plPlayerController,
+            isFullScreen: isFullScreen,
           ),
 
         /// 长按倍速 toast

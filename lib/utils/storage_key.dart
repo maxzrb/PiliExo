@@ -14,6 +14,7 @@ abstract final class SettingBoxKey {
       defaultPicQa = 'defaultPicQa',
       enableHA = 'enableHA',
       enableMedia3Hdr = 'enableMedia3Hdr',
+      playbackInsightMode = 'playbackInsightMode',
       audioOutput = 'audioOutput',
       bufferSize = 'bufferSize',
       bufferSec = 'bufferSec',

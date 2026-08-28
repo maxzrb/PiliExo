@@ -462,6 +462,15 @@ class HeaderControlState extends State<HeaderControl>
                     title: const Text('重载视频', style: titleStyle),
                   ),
                 ],
+                ListTile(
+                  dense: true,
+                  onTap: () {
+                    Get.back();
+                    showPlaybackInsight(this.context, plPlayerController);
+                  },
+                  leading: const Icon(Icons.info_outline, size: 20),
+                  title: const Text('播放器洞察', style: titleStyle),
+                ),
                 if (!plPlayerController.isMedia3Hdr)
                   PopupListTile<SuperResolutionType>(
                     dense: true,
@@ -773,17 +782,6 @@ class HeaderControlState extends State<HeaderControl>
                     },
                     leading: const Icon(Icons.download_outlined, size: 20),
                     title: const Text('保存字幕', style: titleStyle),
-                  ),
-                if (plPlayerController.isMedia3Hdr ||
-                    plPlayerController.videoPlayerController != null)
-                  ListTile(
-                    dense: true,
-                    title: const Text('播放器洞察', style: titleStyle),
-                    leading: const Icon(Icons.info_outline, size: 20),
-                    onTap: () => showPlaybackInsight(
-                      context,
-                      plPlayerController,
-                    ),
                   ),
                 ListTile(
                   dense: true,

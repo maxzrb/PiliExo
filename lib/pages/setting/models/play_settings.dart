@@ -11,6 +11,8 @@ import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_insight_settings.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -101,6 +103,14 @@ List<SettingsModel> get playSettings => [
     leading: Icon(MdiIcons.panVertical),
     setKey: SettingBoxKey.enableSlideFS,
     defaultVal: true,
+  ),
+  PopupModel<PlaybackInsightMode>(
+    title: '播放器洞察',
+    leading: const Icon(Icons.insights_outlined),
+    value: () => Pref.playbackInsightMode,
+    items: PlaybackInsightMode.values,
+    onSelected: (value, setState) =>
+        setPlaybackInsightMode(value).whenComplete(setState),
   ),
   if (PlatformUtils.isMobile)
     NormalModel(

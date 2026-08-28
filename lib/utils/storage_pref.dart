@@ -34,6 +34,7 @@ import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
@@ -814,6 +815,19 @@ abstract final class Pref {
 
   static bool get enableMedia3Hdr =>
       _setting.get(SettingBoxKey.enableMedia3Hdr, defaultValue: true);
+
+  static PlaybackInsightMode get playbackInsightMode {
+    final value = _setting.get(
+      SettingBoxKey.playbackInsightMode,
+      defaultValue: PlaybackInsightMode.smart.index,
+    );
+    final index = value is num
+        ? value.toInt()
+        : PlaybackInsightMode.smart.index;
+    return index >= 0 && index < PlaybackInsightMode.values.length
+        ? PlaybackInsightMode.values[index]
+        : PlaybackInsightMode.smart;
+  }
 
   static Set<int> get danmakuBlockType => Set<int>.from(
     _setting.get(SettingBoxKey.danmakuBlockType, defaultValue: const <int>{}),

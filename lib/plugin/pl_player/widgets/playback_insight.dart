@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
+import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_insight_settings.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -14,6 +18,151 @@ void showPlaybackInsight(
     context: context,
     builder: (_) => _PlaybackInsightDialog(controller: controller),
   );
+}
+
+/// 在播放器右上角显示洞察摘要。
+///
+/// 显示模式参考 BiliPai：显示模式常驻，智能模式只在检测到新掉帧时出现。
+/// 智能模式的掉帧摘要显示 5 秒后开始渐隐，避免遮挡视频内容。
+class PlaybackInsightHud extends StatefulWidget {
+  const PlaybackInsightHud({
+    super.key,
+    required this.controller,
+    required this.isFullScreen,
+  });
+
+  final PlPlayerController controller;
+  final bool isFullScreen;
+
+  @override
+  State<PlaybackInsightHud> createState() => _PlaybackInsightHudState();
+}
+
+class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
+  Timer? _smartHideTimer;
+  var _smartVisible = false;
+  var _lastDroppedFrames = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastDroppedFrames = widget.controller.playbackInsight.value.droppedFrames;
+    widget.controller.playbackInsight.addListener(_onSnapshotChanged);
+    playbackInsightModeNotifier.addListener(_onModeChanged);
+  }
+
+  void _onSnapshotChanged() {
+    final snapshot = widget.controller.playbackInsight.value;
+    final hasNewDroppedFrames = snapshot.droppedFrames > _lastDroppedFrames;
+    _lastDroppedFrames = snapshot.droppedFrames;
+    if (hasNewDroppedFrames &&
+        playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
+      _smartHideTimer?.cancel();
+      if (mounted) {
+        setState(() => _smartVisible = true);
+      } else {
+        _smartVisible = true;
+      }
+      _smartHideTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() => _smartVisible = false);
+        }
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onModeChanged() {
+    if (playbackInsightModeNotifier.value != PlaybackInsightMode.smart) {
+      _smartHideTimer?.cancel();
+      _smartVisible = false;
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _smartHideTimer?.cancel();
+    widget.controller.playbackInsight.removeListener(_onSnapshotChanged);
+    playbackInsightModeNotifier.removeListener(_onModeChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = widget.controller.playbackInsight.value;
+    final mode = playbackInsightModeNotifier.value;
+    final visible =
+        snapshot.hasMeasuredData &&
+        switch (mode) {
+          PlaybackInsightMode.always => true,
+          PlaybackInsightMode.smart => _smartVisible,
+          PlaybackInsightMode.off => false,
+        };
+    return Align(
+      alignment: Alignment.topRight,
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: widget.isFullScreen ? 14 : 8,
+          right: 10,
+        ),
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+          child: IgnorePointer(
+            ignoring: !visible,
+            child: GestureDetector(
+              onTap: () => showPlaybackInsight(context, widget.controller),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: Color(0xAD000000),
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _StatusDot(snapshot: snapshot),
+                      const SizedBox(width: 7),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            snapshot.summary,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            snapshot.statusText,
+                            style: const TextStyle(
+                              color: Color(0xBFFFFFFF),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PlaybackInsightDialog extends StatelessWidget {
