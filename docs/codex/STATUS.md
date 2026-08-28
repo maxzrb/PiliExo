@@ -159,4 +159,4 @@
 - Android 单测与 Gradle 9.5 R8 release 分 ABI 构建通过。新测试产物位于 `build/app/outputs/flutter-apk/`：arm64 `26,919,958` bytes，v7a `26,791,586` bytes；aapt 已核验包名 `com.maxzrb.piliexo`、versionName `26.8.28`、versionCode `2` 和单一对应 ABI，APK 内含 `libffmpegJNI.so`。
 - 说明文案已统一为“支持HDR的PiliPlus修改版”；发布流程补充了 SNAPSHOT/本地版本覆盖排错、测试版本冻结和 FFmpeg AAR 验收要求。
 - 本轮未创建或推送新标签、GitHub Release、ModelScope 资产；状态栏跟随视频模糊/变色与播放洞察按用户计划留待后续。
-- 本轮源码与文档已提交为 `035314a79`（`fix: restore test version metadata and add Dolby fallback`），本地 `pili_release.json` 已刷新到该提交。
+- 功能源码与 AAR 已提交为 `035314a79`（`fix: restore test version metadata and add Dolby fallback`）；本次最终交接记录补充提交为 `dbfbb1ecf`，本地 `pili_release.json` 已刷新到功能提交。
