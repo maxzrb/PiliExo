@@ -109,6 +109,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
+    // 官方 FFmpeg 音频扩展未发布到 Google Maven；该 AAR 仅包含 AC-3/E-AC-3/TrueHD 和两种手机 ABI。
+    implementation(files("libs/media3-decoder-ffmpeg-1.11.0-ac3-eac3-truehd.aar"))
     implementation("com.squareup.okhttp3:okhttp:5.3.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver3:5.3.0")

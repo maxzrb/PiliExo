@@ -3,6 +3,6 @@
 [更改] Android 正式包使用独立 applicationId `com.maxzrb.piliexo`，Release 按 `armeabi-v7a`、`arm64-v8a` 分包并启用 R8 与资源压缩。
 [更改] Android 更新优先使用 AerithDream/PiliExo ModelScope 镜像，无法连接时回退 GitHub Release。
 [更改] 普通视频默认画质顺序调整为 8K、HDR Vivid、杜比视界、HDR 真彩；蜂窝网络文案改为“移动数据”。
-[更改] 应用描述精简为“HDR支持的PiliPlus修改版”，适配关于页面的显示空间。
+[更改] 应用描述精简为“支持HDR的PiliPlus修改版”，适配关于页面的显示空间。
 [修复] 修正新安装时震动设置开关显示关闭的问题，与默认开启状态保持一致。
 [修复] 移除顶栏、主底栏和浮动底栏顶部边框，避免磨砂材质出现突兀亮线；同时提高轻薄档通透度。

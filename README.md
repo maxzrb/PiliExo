@@ -12,7 +12,7 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/maxzrb/PiliExo)
 ![GitHub all releases](https://img.shields.io/github/downloads/maxzrb/PiliExo/total)
 </div>
-    <p>Fork 自 PiliPlus、提供 HDR 支持的 B站第三方自用修改版</p>
+    <p>支持 HDR 的 PiliPlus 修改版</p>
     
 <img src="assets/screenshots/510shots_so.png" width="32%" alt="home" />
 <img src="assets/screenshots/174shots_so.png" width="32%" alt="home" />
