@@ -1,5 +1,5 @@
 import 'dart:ffi';
-import 'dart:io';
+import 'dart:io' show Directory, File;
 
 import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/fontconfig.g.dart';
@@ -10,7 +10,8 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:ffi/ffi.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'
+    show kDebugMode, defaultTargetPlatform, debugPrint;
 import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:jni/jni.dart';
@@ -62,11 +63,14 @@ abstract final class FontUtils {
     return _loadFont(fontFamily);
   }
 
+  @pragma('vm:notify-debugger-on-exception')
   static Future<void> _loadFont(String fontFamily) async {
-    _loadedFonts.add(fontFamily);
-    final bytes = await File(customFonts[fontFamily]!).readAsBytes();
-    // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
-    await FontLoader(fontFamily).loadFont(bytes, fontFamily);
+    try {
+      _loadedFonts.add(fontFamily);
+      final bytes = await File(customFonts[fontFamily]!).readAsBytes();
+      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+      await FontLoader(fontFamily).loadFont(bytes, fontFamily);
+    } catch (_) {}
   }
 
   @pragma('vm:notify-debugger-on-exception')
@@ -109,9 +113,12 @@ abstract final class FontUtils {
   static Set<String> getFont() {
     if (_initialized) return _fonts;
     _initialized = true;
-    if (!((Platform.isAndroid && _initAndroid()) ||
-        (Platform.isWindows && _initWindows()) ||
-        (Platform.isLinux && _initLinux()))) {
+    if (!switch (defaultTargetPlatform) {
+      .android => _initAndroid(),
+      .windows => _initWindows(),
+      .linux => _initLinux(),
+      _ => true,
+    }) {
       // TODO: ios/macos CTFontManagerCopyAvailableFontFamilyNames
       SmartDialog.showToast('加载系统字体失败');
     }
