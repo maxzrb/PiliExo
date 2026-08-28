@@ -28,11 +28,7 @@ try {
     $updatedText = [string]::Join([Environment]::NewLine, $updatedContent)
     if ($originalText -ne $updatedText) {
         # 只有版本确实变化时才写回，避免预构建脚本破坏 pubspec 的编码和换行。
-        [System.IO.File]::WriteAllText(
-            'pubspec.yaml',
-            $updatedText,
-            [System.Text.UTF8Encoding]::new($false)
-        )
+        [System.IO.File]::WriteAllText('pubspec.yaml', $updatedText, [System.Text.UTF8Encoding]::new($false))
     }
 
     $buildTime = [int]([DateTimeOffset]::Now.ToUnixTimeSeconds())
