@@ -1,0 +1,6 @@
+# 复制为 android/key.properties，并将密码替换为正式 keystore 的实际密码。
+# storeFile 相对于 android/app 模块目录解析，../ 指向 android/。
+storeFile=../piliexo-release.jks
+storePassword=请替换为正式 keystore 密码
+keyAlias=piliexo
+keyPassword=请替换为正式 key 密码

@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 01:38 (+08:00)
+- 更新时间：2026-08-29 02:08 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
-- 发布提交：`1669ff368df0c12a72e92fe409c3b84737c925d5`
+- 发布提交：`e29dc3dc987248e6cee5a6d4acd13cd656d98bbc`
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置。
 
 ## 已完成
@@ -42,6 +42,9 @@
 - 播放器洞察不再受当前后端实例条件隐藏，视频页“更多设置”靠前固定显示；设置页“播放器设置”新增“显示 / 智能 / 不显示”三档，默认智能。
 - 新增播放器洞察摘要 HUD：显示档常驻，智能档在起播首次拿到有效播放器数据或检测到新增掉帧时显示 5 秒并用 350ms 渐隐，不显示档关闭自动摘要；摘要已下移，点击摘要所在的黑色半透明 surface 后由同一层直接扩展为详情层，点击遮罩或关闭按钮收起，不再弹出二级对话框。
 - 智能洞察同步监听播放器控制条状态：控制条/进度条呼出时优先接管显示并覆盖当前起播/掉帧事件窗口；控制条关闭时同步关闭洞察、收起详情并取消这次已被覆盖的事件窗口；未呼出控制条时，起播/掉帧事件仍独立显示 5 秒；显示和不显示模式不受该联动影响。
+- 发布流程已明确正式标签按发布日期生成 `vYY.M.D.N`，日期变化时当天序号从 `.1` 开始；本次由远端 `v26.8.28.2` 正确推进为 `v26.8.29.1`，应用版本为 `26.8.29+1`。
+- 已发布 `v26.8.29.1`：GitHub Release 与 ModelScope `AerithDream/PiliExo` 双源均包含 arm64-v8a 和 armeabi-v7a 资产。
+- 已生成本地固定正式签名：`android/piliexo-release.jks`（PKCS12、RSA 4096、有效期 10000 天），`android/key.properties` 已接入 Gradle 且均被 Git 忽略。
 
 ## 验证
 
@@ -78,6 +81,9 @@
 - v26.8.28.2 arm64 正式 Release APK：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`，26,603,631 bytes；SHA-256 为 `05E64EB063878F55DEE512B533BEB2BE1CCC6A39DC9CBB35A163DCA7A1FA027E`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
 - v26.8.28.2 v7a 正式 Release APK：`dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`，26,479,433 bytes；SHA-256 为 `05674F4765F134944B4E1B1DA3B63B192C2D85C025808D1BCBAFBC9E499EB0D1`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
 - GitHub `v26.8.28.2` Release 资产状态为 `uploaded`；ModelScope `resolve/master/releases/v26.8.28.2/...apk` 两个地址实测 HTTP 200。
+- `v26.8.29.1` 已用正式签名重新构建并覆盖 Release 资产；arm64 为 27,003,414 bytes、SHA-256 `BE8198C3B071EDF7A8E25E9E872996BDCEAA6F9066DFF37EED88F53722B67166`，v7a 为 26,869,934 bytes、SHA-256 `07A58BBBA2B9D557C375E80B6D21A14DF4ADC3195E7FEF25D8E72AC7C98804E4`。
+- 正式签名版已通过 `aapt2` 核验 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=1`、对应 ABI 和 `libffmpegJNI.so`；`apksigner` V2 验证通过，证书 DN 为 `CN=PiliExo, O=AerithDream, C=CN`，证书 SHA-256 为 `43f72e53fa2eaf3bb6a689573659217064df8066a1987822d94c7f109fa0e982`，RSA 4096 位。
+- `v26.8.29.1` ModelScope 两个地址已用正式签名版覆盖，均返回 HTTP 200，`X-Linked-ETag` 与上述新 APK SHA-256 一致；GitHub Release 说明已同步更新。
 
 ## 当前限制
 
@@ -85,15 +91,15 @@
 - Release APK 使用本机已打补丁的 Flutter 3.47.1 构建；源码依赖声明已随上游同步为 Flutter 3.47.2，后续 CI 将按声明版本构建。
 - 设备端安装权限确认仍由用户自行处理；代理未再次安装或启动 APK。
 - 当前环境没有本轮 HDR/振动真机验收，SurfaceFlinger dataspace、HDR 屏幕模式、首帧、震动振幅、磨砂效果和长时间音画同步仍需实测。
-- 本地未提供 `android/key.properties`，本次自用 Release APK 使用 Gradle debug keystore 兜底签名；正式公开分发前仍应配置固定的正式签名。
-- 正式版本已按远端最新 Release 的 N+1 规则固定为 `26.8.28+2`；此前 `v26.8.28.3` 仅为历史测试构建，远端没有对应正式标签或 Release；后续测试包继续沿用 `+2`，下一次正式发布再读取远端最新标签递增。
+- 当前正式密钥只保存在本机并被 Git 忽略；必须备份 `android/piliexo-release.jks`、`android/key.properties` 和密码。正式签名版替换了此前 Debug 签名的同版本资产，旧 Debug 包不能覆盖安装，首次迁移需卸载后安装。
+- 正式版本现为 `v26.8.29.1` / `26.8.29+1`；后续测试包继续沿用该版本号，下一次正式发布按发布日期和当天正式发布次数重新计算。
 
 ## 下一步
 
-- 用户自行按设备 ABI 安装 `v26.8.28.2` APK 后，验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
+- 用户自行按设备 ABI 安装正式签名版 `v26.8.29.1` APK；若设备已有被覆盖前的 Debug 签名包，先卸载旧包再安装。随后验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
 - 复测 SDR↔HDR 切换红屏和返回播放列表残帧；确认无残留后再按 Release 标签继续迭代。
-- 待用户自行安装测试包后，重点验收状态栏跟随视频模糊的边界、HDR PixelCopy 兼容性、暂停/播放更新节奏，以及播放器洞察实际解码器和色彩信息；本轮不打新 Release。
-- 同时验收中部上下滑全屏震动、设置页三档洞察模式、智能档新增掉帧后 5 秒渐隐，以及“更多设置”中的手动详情入口；本轮不打新 Release。
+- 重点验收状态栏跟随视频模糊的边界、HDR PixelCopy 兼容性、暂停/播放更新节奏，以及播放器洞察实际解码器和色彩信息。
+- 同时验收中部上下滑全屏震动、设置页三档洞察模式、智能档起播/掉帧提示与控制条覆盖关闭语义，以及“更多设置”中的手动详情入口。
 
 ### 2026-08-28 20:06 (+08:00)
 
@@ -240,3 +246,19 @@
 - 复查 PiliPlus 上游 `main` 至 `9058ac144`：三个上游提交均已在本地以等价 cherry-pick 存在，没有新的独有提交需要合并。
 - 测试版本仍为 `26.8.28+2`，未创建新标签或 Release。Flutter 单测 8/8、Flutter analyze 无 error（42 条既有 info）、Gradle 9.5 双 ABI Release 和 `aapt2` 核验通过；未通过 ADB 安装或启动。
 - 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 01:58 (+08:00)
+
+- 按日期版本规则完成正式发布：远端最新 `v26.8.28.2`，本次发布日期为 2026-08-29，因此发布 `v26.8.29.1`，应用版本 `26.8.29+1`；发布提交为 `e29dc3dc987248e6cee5a6d4acd13cd656d98bbc`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.1>；两个资产状态均为 `uploaded`，arm64 SHA-256 `65845C055CA83D7354AA498B0E567F457BEB91AFC1AABC43BAD453BAEDFD8324`，v7a SHA-256 `97C08218F9C257F473E04FD2E773F02D2FD65D551E9588338074A7EEBBCACF40`。
+- ModelScope 镜像已上传并实测可访问：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.1/PiliExo_android_v26.8.29.1_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.1/PiliExo_android_v26.8.29.1_armeabi-v7a.apk>；HTTP 200、Content-Length 正确，`X-Linked-ETag` 与本地 SHA-256 一致。
+- `flutter test --no-pub` 8/8、Android `:app:testDebugUnitTest -Pkotlin.incremental=false`、Gradle 9.5 双 ABI Release 和 `aapt2` 核验通过；`flutter analyze --no-pub` 无 error，仅有项目既有 42 条 info。
+- 因没有 `android/key.properties`，本次 APK 使用本机 Android Debug keystore；与上一正式包证书一致，可覆盖更新，但后续应配置固定正式签名，避免 keystore 丢失或切换密钥导致无法升级。
+- 版本记录、Release Note 和发布流程已同步更新；当前测试包继续保持 `26.8.29+1`，当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 02:08 (+08:00)
+
+- 生成固定正式签名 `android/piliexo-release.jks`：PKCS12、RSA 4096、有效期 10000 天；`android/key.properties` 接入 Gradle，实际密钥与密码均未纳入 Git。
+- 用正式签名重建 `v26.8.29.1` 双 ABI APK：arm64 `27,003,414` bytes，SHA-256 `BE8198C3B071EDF7A8E25E9E872996BDCEAA6F9066DFF37EED88F53722B67166`；v7a `26,869,934` bytes，SHA-256 `07A58BBBA2B9D557C375E80B6D21A14DF4ADC3195E7FEF25D8E72AC7C98804E4`。
+- `aapt2`、`apksigner`、Gradle 9.5 核验通过；正式证书 SHA-256 为 `43f72e53fa2eaf3bb6a689573659217064df8066a1987822d94c7f109fa0e982`。
+- 已原地覆盖 GitHub Release 和 ModelScope 两个 ABI 资产，并把签名迁移说明写入 `version/release-notes-v26.8.29.1.md`；同版本的旧 Debug 包需卸载一次，后续版本使用同一正式密钥即可覆盖更新。
