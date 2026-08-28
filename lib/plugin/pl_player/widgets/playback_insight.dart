@@ -22,8 +22,8 @@ void showPlaybackInsight(
 
 /// 在播放器右上角显示洞察摘要。
 ///
-/// 显示模式参考 BiliPai：显示模式常驻，智能模式只在检测到新掉帧时出现。
-/// 智能模式的掉帧摘要显示 5 秒后开始渐隐，避免遮挡视频内容。
+/// 显示模式参考 BiliPai：显示模式常驻，智能模式由控制条和播放事件分别触发。
+/// 控制条可覆盖并关闭当前事件窗口；未发生控制条交互时，起播和掉帧摘要各自显示 5 秒后渐隐。
 class PlaybackInsightHud extends StatefulWidget {
   const PlaybackInsightHud({
     super.key,
@@ -40,17 +40,30 @@ class PlaybackInsightHud extends StatefulWidget {
 
 class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   Timer? _smartHideTimer;
-  var _smartVisible = false;
+  StreamSubscription? _controlsListener;
+  // 智能模式的控制条触发和起播/掉帧事件触发必须相互独立。
+  var _smartControlVisible = false;
+  var _smartAlertVisible = false;
   var _lastDroppedFrames = -1;
   var _detailsExpanded = false;
   var _initialWindowShown = false;
 
+  bool get _smartVisible {
+    // 控制条是优先来源；没有控制条时才显示起播/掉帧事件窗口。
+    if (_smartControlVisible) return true;
+    return _smartAlertVisible;
+  }
+
   @override
   void initState() {
     super.initState();
+    _smartControlVisible = widget.controller.showControls.value;
     _lastDroppedFrames = widget.controller.playbackInsight.value.droppedFrames;
     widget.controller.playbackInsight.addListener(_onSnapshotChanged);
     playbackInsightModeNotifier.addListener(_onModeChanged);
+    _controlsListener = widget.controller.showControls.listen(
+      _onControlsChanged,
+    );
 
     final snapshot = widget.controller.playbackInsight.value;
     if (snapshot.hasMeasuredData &&
@@ -65,6 +78,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     if (!snapshot.hasMeasuredData) {
       _initialWindowShown = false;
       _detailsExpanded = false;
+      _clearSmartAlertWindow();
     }
     final isInitialMeasurement =
         snapshot.hasMeasuredData && !_initialWindowShown;
@@ -82,30 +96,56 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   }
 
   void _showSmartWindow() {
+    // 这里只重置起播/掉帧事件窗口，不能影响控制条触发的显示状态。
     _smartHideTimer?.cancel();
+    _smartHideTimer = null;
+    if (_smartControlVisible) {
+      // 控制条打开时由控制条接管显示，自动事件不应继续覆盖视频内容。
+      _smartAlertVisible = false;
+      if (mounted) setState(() {});
+      return;
+    }
     if (mounted) {
-      setState(() => _smartVisible = true);
+      setState(() => _smartAlertVisible = true);
     } else {
-      _smartVisible = true;
+      _smartAlertVisible = true;
     }
     _smartHideTimer = Timer(const Duration(seconds: 5), () {
+      _smartHideTimer = null;
       if (mounted) {
-        setState(() => _smartVisible = false);
+        setState(() => _smartAlertVisible = false);
       }
     });
   }
 
+  void _clearSmartAlertWindow() {
+    _smartHideTimer?.cancel();
+    _smartHideTimer = null;
+    _smartAlertVisible = false;
+  }
+
+  void _onControlsChanged(bool visible) {
+    final wasVisible = _smartControlVisible;
+    _smartControlVisible = visible;
+    if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart &&
+        visible != wasVisible) {
+      // 控制条打开或关闭都结束当前事件窗口；用户的控制条操作可以主动消除遮挡。
+      _clearSmartAlertWindow();
+      _detailsExpanded = false;
+    }
+    if (mounted) setState(() {});
+  }
+
   void _onModeChanged() {
     if (playbackInsightModeNotifier.value != PlaybackInsightMode.smart) {
-      _smartHideTimer?.cancel();
-      _smartVisible = false;
+      _clearSmartAlertWindow();
     }
     final snapshot = widget.controller.playbackInsight.value;
-    if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart &&
-        snapshot.hasMeasuredData &&
-        !_initialWindowShown) {
-      _initialWindowShown = true;
-      _showSmartWindow();
+    if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
+      if (snapshot.hasMeasuredData && !_initialWindowShown) {
+        _initialWindowShown = true;
+        _showSmartWindow();
+      }
     }
     if (playbackInsightModeNotifier.value == PlaybackInsightMode.off) {
       _detailsExpanded = false;
@@ -126,6 +166,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   @override
   void dispose() {
     _smartHideTimer?.cancel();
+    _controlsListener?.cancel();
     widget.controller.playbackInsight.removeListener(_onSnapshotChanged);
     playbackInsightModeNotifier.removeListener(_onModeChanged);
     super.dispose();
@@ -148,7 +189,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final topPadding = widget.isFullScreen ? 80.0 : 44.0;
-        final endPadding = widget.isFullScreen ? 24.0 : 14.0;
+        final endPadding = widget.isFullScreen ? 36.0 : 14.0;
         return Stack(
           fit: StackFit.expand,
           children: [

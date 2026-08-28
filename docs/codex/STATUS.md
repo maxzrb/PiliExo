@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 01:09 (+08:00)
+- 更新时间：2026-08-29 01:38 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
 - 发布提交：`1669ff368df0c12a72e92fe409c3b84737c925d5`
@@ -41,6 +41,7 @@
 - 中部上滑/下滑切换全屏时，在真正越过手势阈值并执行切换的瞬间复用统一振幅震动反馈。
 - 播放器洞察不再受当前后端实例条件隐藏，视频页“更多设置”靠前固定显示；设置页“播放器设置”新增“显示 / 智能 / 不显示”三档，默认智能。
 - 新增播放器洞察摘要 HUD：显示档常驻，智能档在起播首次拿到有效播放器数据或检测到新增掉帧时显示 5 秒并用 350ms 渐隐，不显示档关闭自动摘要；摘要已下移，点击摘要所在的黑色半透明 surface 后由同一层直接扩展为详情层，点击遮罩或关闭按钮收起，不再弹出二级对话框。
+- 智能洞察同步监听播放器控制条状态：控制条/进度条呼出时优先接管显示并覆盖当前起播/掉帧事件窗口；控制条关闭时同步关闭洞察、收起详情并取消这次已被覆盖的事件窗口；未呼出控制条时，起播/掉帧事件仍独立显示 5 秒；显示和不显示模式不受该联动影响。
 
 ## 验证
 
@@ -62,6 +63,12 @@
 - 本轮使用 `aapt2` 核验两包均为 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2`，分别只包含 `arm64-v8a` 或 `armeabi-v7a`；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error，仅保留项目既有 42 条 info。
 - 本轮按 BiliPai 黑色半透明 surface 扩展逻辑重构后的测试 Release 已重新生成：arm64 `26,935,290` bytes，SHA-256 `5C3BD4F840C4442ECDDC2EDB96672ADE1D360D29FEC6C0564B00028EA77B73A7`；v7a `26,810,654` bytes，SHA-256 `B1B2F9639ECAEF5C40A99DB10A4D880DE4B96A7C2A152DFE696744A9F32688FC`。
 - 本轮 `aapt2` 核验两包均为 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2`，分别只包含目标 ABI；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error，仅保留项目既有 42 条 info。
+- 本轮智能模式控制条联动修复的测试 Release 已重新生成：arm64 `26,939,058` bytes，SHA-256 `05B3D22D020EF57558E0BE9BC7FE0C223A3C97C6FB3D69E1B348641FB138901F`；v7a `26,807,238` bytes，SHA-256 `788BD377A987C292BBC655E8E36825183461F564385527E550A7B14278D67A8B`。
+- 本轮再次核验 APK 均为 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2`，分别只包含 `arm64-v8a` 或 `armeabi-v7a`；Flutter 单测 8/8、Flutter analyze 无 error、Gradle 9.5 Release 构建通过。
+- 本轮修正智能模式可见性边界：未呼出控制条时起播/掉帧提示独立显示 5 秒；控制条打开时优先接管并覆盖事件提示，控制条关闭时同步关闭洞察并取消这次已被覆盖的事件窗口。测试 Release 已重新生成：arm64 `26,938,810` bytes，SHA-256 `B68176B0BFB53EF77AE49FFE708BB3D9233EF5529D7CF1FBA9C05DF40B97C95F`；v7a `26,807,554` bytes，SHA-256 `A35D54C62FA438441F9273AB5C6D5A3CBA7B4063160D9A0146F261C62B6A5BE9`。
+- 本轮再次通过 `aapt2` 核验包名、`versionName=26.8.28`、`versionCode=2` 与双 ABI；`flutter test --no-pub` 8/8、`flutter analyze --no-pub` 无 error（仅项目既有 42 条 info）、Gradle 9.5 Release 构建通过。
+- 本轮最终 Release 测试包包含智能洞察控制条优先级、事件窗口关闭语义和全屏摘要右移修正（全屏右侧内缩 36dp）；arm64 `26,939,018` bytes，SHA-256 `DB7EDEE5882ACB802040E2A48A75C197223AC089011A8A3E9AA167E792FEA49A`；v7a `26,807,566` bytes，SHA-256 `78D6B747E6CF5D9C90939F661B882E973E089532A3A71DB1499374E1B062223A`。
+- 最终包再次通过 `aapt2` 核验 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2` 和单一对应 ABI；PiliPlus 上游 `main` 没有本地尚未同步的独有提交。
 - Release APK：`dist/PiliExo_android_v26.8.28.1.apk`，68,793,128 bytes；SHA-256 为 `9D64CAD5C991485E4DCB323C2DAA8FA2DC5F8B300C97EA7DD8C71190B2D5664F`；包名保持 `com.example.piliplus`，显示名为 `PiliExo`。
 - v26.8.28.2 arm64 Release APK：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`，26,601,707 bytes；SHA-256 为 `94EA78F3AA2458B9C56F264ED8A99BAF8971AD0390B010FABFD7C558C6B371A6`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
 - v26.8.28.2 v7a Release APK：`dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`，26,480,705 bytes；SHA-256 为 `E9234886FC779CBC424A8B6965AB256353753549FFE973EDEBAA8C18EE4B196C`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
@@ -205,4 +212,31 @@
 - 修正 PiliExo：删除独立右侧 `Material` 详情卡片，改为同一个黑色半透明洞察 surface 从摘要态扩展为覆盖播放器主要区域的详情态，详情直接显示五组诊断数据；遮罩、关闭图标和关闭按钮可收起。
 - 智能模式增加起播窗口：首次获得有效播放器数据时显示 5 秒，后续新增掉帧继续显示 5 秒并重新计时；无数据时会重置起播状态，避免下一段视频不再提示。
 - 测试版本继续保持 `26.8.28+2`，未创建标签或 Release。`flutter test --no-pub` 8/8、Flutter analyze 无 error、Gradle 9.5 双 ABI Release、`aapt2` 包名/版本/ABI 核验通过；未通过 ADB 安装或启动。
+- 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 01:19 (+08:00)
+
+- 智能播放器洞察新增 `PlPlayerController.showControls` 监听：控制条/进度条呼出时主动显示洞察摘要，控制条自动隐藏或手动关闭时立即取消计时、隐藏摘要并收起详情。
+- 起播 5 秒和新增掉帧 5 秒逻辑继续保留；当控制条处于显示状态时洞察不被计时器提前隐藏，控制条关闭后按用户要求同步隐藏。
+- 测试版本继续保持 `26.8.28+2`，未创建标签或 Release。`flutter test --no-pub` 8/8、`flutter analyze --no-pub` 无 error、Gradle 9.5 双 ABI Release、`aapt2` 包名/版本/ABI 核验通过；未通过 ADB 安装或启动。
+- 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 01:28 (+08:00)
+
+- 根据用户反馈修正智能模式的可见性边界：控制条/进度条呼出时主动显示，收起时只清除控制条触发的显示并收起由控制条打开的详情；起播和新增掉帧触发的 5 秒事件窗口不被控制条收起取消，因此即使控制条已经隐藏，提示仍能正常出现。
+- 测试版本仍为 `26.8.28+2`，未创建新标签或 Release。`flutter test --no-pub` 8/8、`flutter analyze --no-pub` 无 error（42 条既有 info）、Gradle 9.5 双 ABI Release 和 `aapt2` 包信息核验通过；未通过 ADB 安装或启动。
+- 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 01:34 (+08:00)
+
+- 根据用户进一步澄清调整智能模式：未呼出控制条时，起播和新增掉帧事件独立显示 5 秒；控制条呼出后由控制条状态优先接管并覆盖当前事件窗口，控制条关闭时同步关闭洞察、收起详情并取消这次已被覆盖的事件窗口，避免自动提示继续遮挡重要画面。
+- 检查 PiliPlus 上游 `main` 至 `9058ac144`：`37ae9cf2d`、`4da811080`、`9058ac144` 三个提交在本地已有等价 cherry-pick（分别为 `5935b03c1`、`032847b1b`、`b4bed5166`），没有新的上游提交需要合并。
+- 测试版本仍为 `26.8.28+2`，本轮尚未重新构建新增逻辑，未创建新标签或 Release；当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 01:38 (+08:00)
+
+- 完成智能洞察最终交互：未呼出控制条时，起播/掉帧事件各自显示 5 秒；控制条呼出后优先接管并覆盖当前事件窗口，控制条关闭时同步关闭洞察、收起详情并取消这次已被覆盖的事件窗口，避免重要画面继续被遮挡。
+- 全屏洞察摘要再向左移动 12dp，右侧内缩从 24dp 调整为 36dp；普通窗口位置不变。
+- 复查 PiliPlus 上游 `main` 至 `9058ac144`：三个上游提交均已在本地以等价 cherry-pick 存在，没有新的独有提交需要合并。
+- 测试版本仍为 `26.8.28+2`，未创建新标签或 Release。Flutter 单测 8/8、Flutter analyze 无 error（42 条既有 info）、Gradle 9.5 双 ABI Release 和 `aapt2` 核验通过；未通过 ADB 安装或启动。
 - 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
