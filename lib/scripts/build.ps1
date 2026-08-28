@@ -8,7 +8,8 @@ try {
 
     $commitHash = (git rev-parse HEAD).Trim()
 
-    $updatedContent = foreach ($line in (Get-Content -Path 'pubspec.yaml' -Encoding UTF8)) {
+    $originalContent = Get-Content -Path 'pubspec.yaml' -Encoding UTF8
+    $updatedContent = foreach ($line in $originalContent) {
         if ($line -match '^\s*version:\s*(\d{2}\.\d{1,2}\.\d{1,2})\+(\d+)') {
             $versionName = $matches[1]
             $versionCode = [int]$matches[2]
@@ -23,7 +24,16 @@ try {
         throw 'version must use YY.M.D+build format, for example 26.8.28+1'
     }
 
-    $updatedContent | Set-Content -Path 'pubspec.yaml' -Encoding UTF8
+    $originalText = [string]::Join([Environment]::NewLine, $originalContent)
+    $updatedText = [string]::Join([Environment]::NewLine, $updatedContent)
+    if ($originalText -ne $updatedText) {
+        # 只有版本确实变化时才写回，避免预构建脚本破坏 pubspec 的编码和换行。
+        [System.IO.File]::WriteAllText(
+            'pubspec.yaml',
+            $updatedText,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+    }
 
     $buildTime = [int]([DateTimeOffset]::Now.ToUnixTimeSeconds())
 
