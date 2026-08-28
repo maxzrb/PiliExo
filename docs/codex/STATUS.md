@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-28 20:39 (+08:00)
+- 更新时间：2026-08-28 21:11 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
-- 发布提交：`f50faf24a631af5873825c8b72a4bdd6e05a5a1a`
+- 发布提交：`1669ff368df0c12a72e92fe409c3b84737c925d5`
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置。
 
 ## 已完成
@@ -31,6 +31,7 @@
 - 修正震动反馈设置项初始开关显示为关闭的问题；新安装显示为开启，已有用户明确关闭的选择保持不变。
 - 新增 `docs/发布流程.md`，记录测试阶段冻结版本号、发布时递增、双 ABI 构建、签名、GitHub/ModelScope 发布和回滚要点。
 - 已创建 `maxzrb/PiliExo` fork、`AerithDream/PiliExo` 数据集并发布 `v26.8.28.1`。
+- 按远端最新 Release `v26.8.28.1` 的 N+1 规则发布正式版 `v26.8.28.2`，GitHub 与 ModelScope 双源资产均已上传。
 
 ## 验证
 
@@ -49,7 +50,9 @@
 - v26.8.28.2 Release 仅包含 `arm64-v8a`、`armeabi-v7a` 两种 native ABI；相较 v26.8.28.1 通用包，单包体积降低约 61%。
 - v26.8.28.3 arm64 Release APK：`dist/PiliExo_android_v26.8.28.3_arm64-v8a.apk`，26,603,903 bytes；SHA-256 为 `2B13DAA38924C02708549A61F09AFF7AA2844425AD8BC79C994D6E9DE390E686`；包名为 `com.maxzrb.piliexo`，versionCode 为 3。
 - v26.8.28.3 v7a Release APK：`dist/PiliExo_android_v26.8.28.3_armeabi-v7a.apk`，26,479,041 bytes；SHA-256 为 `45C3AC59CB541BE496CC85715A5D8342744308A667019F2EBD3F941D92E7E283`；包名为 `com.maxzrb.piliexo`，versionCode 为 3。
-- GitHub Release 资产状态为 `uploaded`；ModelScope `resolve/master/releases/v26.8.28.1/...apk` 实测 302 后返回 200。
+- v26.8.28.2 arm64 正式 Release APK：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`，26,603,631 bytes；SHA-256 为 `05E64EB063878F55DEE512B533BEB2BE1CCC6A39DC9CBB35A163DCA7A1FA027E`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
+- v26.8.28.2 v7a 正式 Release APK：`dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`，26,479,433 bytes；SHA-256 为 `05674F4765F134944B4E1B1DA3B63B192C2D85C025808D1BCBAFBC9E499EB0D1`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
+- GitHub `v26.8.28.2` Release 资产状态为 `uploaded`；ModelScope `resolve/master/releases/v26.8.28.2/...apk` 两个地址实测 HTTP 200。
 
 ## 当前限制
 
@@ -57,12 +60,12 @@
 - Release APK 使用本机已打补丁的 Flutter 3.47.1 构建；源码依赖声明已随上游同步为 Flutter 3.47.2，后续 CI 将按声明版本构建。
 - 设备端安装权限确认仍由用户自行处理；代理未再次安装或启动 APK。
 - 当前环境没有本轮 HDR/振动真机验收，SurfaceFlinger dataspace、HDR 屏幕模式、首帧、震动振幅、磨砂效果和长时间音画同步仍需实测。
-- 本地未提供 `android/key.properties`，本轮 APK 使用 Gradle debug keystore 兜底签名；发布到 GitHub/ModelScope 前应配置与后续版本一致的正式签名。
-- 当前测试修复仍使用 `26.8.28+3`，未新增测试版本；正式发布前才递增版本号并生成 Release 标签。
+- 本地未提供 `android/key.properties`，本次自用 Release APK 使用 Gradle debug keystore 兜底签名；正式公开分发前仍应配置固定的正式签名。
+- 正式版本已按远端最新 Release 的 N+1 规则固定为 `26.8.28+2`；后续测试包继续沿用该版本，下一次正式发布再读取远端最新标签递增。
 
 ## 下一步
 
-- 用户自行按设备 ABI 安装 `v26.8.28.3` APK 后，验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
+- 用户自行按设备 ABI 安装 `v26.8.28.2` APK 后，验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
 - 复测 SDR↔HDR 切换红屏和返回播放列表残帧；确认无残留后再按 Release 标签继续迭代。
 
 ### 2026-08-28 20:06 (+08:00)
@@ -133,3 +136,11 @@
 - 版本递增为 `v26.8.28.3`；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error/warning（42 条 info），Android `:app:testDebugUnitTest -Pkotlin.incremental=false` 通过，Gradle Release 构建通过，`git diff --check` 通过。
 - 成品：`dist/PiliExo_android_v26.8.28.3_arm64-v8a.apk`（26,604,087 bytes，SHA-256 `2B2DEFDF6B4A8239CB0288CCFD9212279B41C256B5E719DA26FF6C06D05B01E1`）和 `dist/PiliExo_android_v26.8.28.3_armeabi-v7a.apk`（26,479,865 bytes，SHA-256 `F9E46227B2ED70E07BE03614524B0C981D8EB0160376244367A2FF763C849E9A`）；aapt 已核验包名、versionCode 和 native ABI。
 - 未通过 ADB 安装或启动；当前改动仍在 `feature/android-media3-hdr` 工作树中，尚未提交或发布 v26.8.28.3。
+
+### 2026-08-28 21:11 (+08:00)
+
+- 按用户确认的版本规则，正式发布编号取远端最新 Release 的 N+1；远端最新 `v26.8.28.1`，本次发布 `v26.8.28.2`，测试包不占用编号。
+- 提交 `1669ff368df0c12a72e92fe409c3b84737c925d5` 已推送到 `maxzrb/PiliExo` 的 `main`，标签 `v26.8.28.2` 已推送；GitHub Release 已创建并上传两个 ABI 资产。
+- ModelScope `AerithDream/PiliExo` 已上传 `releases/v26.8.28.2/` 下的 arm64 与 v7a 资产，两个镜像地址均实测 HTTP 200。
+- 正式 APK 哈希：arm64 `05E64EB063878F55DEE512B533BEB2BE1CCC6A39DC9CBB35A163DCA7A1FA027E`（26,603,631 bytes）；v7a `05674F4765F134944B4E1B1DA3B63B192C2D85C025808D1BCBAFBC9E499EB0D1`（26,479,433 bytes）。
+- `flutter test --no-pub` 8/8、Gradle 9.5 Release 分包构建、aapt 包名/版本/ABI 核验通过；未通过 ADB 安装或启动。由于没有 `android/key.properties`，本次 APK 使用 debug keystore 兜底签名。
