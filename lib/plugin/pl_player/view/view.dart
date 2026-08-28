@@ -1585,12 +1585,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             },
           ),
 
-        if (!isLive)
-          PlaybackInsightHud(
-            controller: plPlayerController,
-            isFullScreen: isFullScreen,
-          ),
-
         /// 长按倍速 toast
         if (!isLive)
           IgnorePointer(
@@ -2196,6 +2190,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   )
                 : const SizedBox.shrink();
           }),
+
+        // 洞察面板放在播放器控件之后，展开时可以覆盖同层控件并接收遮罩点击。
+        if (!isLive)
+          PlaybackInsightHud(
+            controller: plPlayerController,
+            isFullScreen: isFullScreen,
+          ),
       ],
     );
     if (PlatformUtils.isDesktop) {
