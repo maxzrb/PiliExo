@@ -119,6 +119,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
                       focusColor: Colors.transparent,
                       value: _selectedFont,
                       isExpanded: true,
+                      underline: const SizedBox.shrink(),
                       items: <DropdownMenuItem<String?>>[
                         const DropdownMenuItem(value: null, child: Text('默认')),
                         ...FontUtils.customFonts.keys.map(
