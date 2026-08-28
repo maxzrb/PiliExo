@@ -4,6 +4,7 @@ import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/floating_navigation_bar.dart';
+import 'package:PiliPlus/common/widgets/frosted_surface.dart';
 import 'package:PiliPlus/common/widgets/flutter/pop_scope.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/main_layout.dart';
@@ -342,6 +343,9 @@ class _MainAppState extends PopScopeState<MainApp>
       } else if (_mainController.enableMYBar) {
         bottomNav = Obx(
           () => NavigationBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
             maintainBottomViewPadding: true,
             onDestinationSelected: _mainController.setIndex,
             selectedIndex: _mainController.selectedIndex.value,
@@ -376,6 +380,10 @@ class _MainAppState extends PopScopeState<MainApp>
                 .toList(),
           ),
         );
+      }
+
+      if (!_mainController.floatingNavBar) {
+        bottomNav = FrostedSurface(showBorder: false, child: bottomNav);
       }
 
       if (_mainController.hideBottomBar) {

@@ -461,6 +461,7 @@ List<SettingsModel> get extraSettings => [
   ),
   SwitchModel(
     setKey: SettingBoxKey.feedBackEnable,
+    defaultVal: true,
     onChanged: (value) {
       enableFeedback = value;
       feedBack();
@@ -471,7 +472,8 @@ List<SettingsModel> get extraSettings => [
   ),
   NormalModel(
     title: '震动强度',
-    getSubtitle: () => '当前：${_feedbackStrengthLabel(feedbackStrength)}（$feedbackStrength/255）',
+    getSubtitle: () =>
+        '当前：${_feedbackStrengthLabel(feedbackStrength)}（$feedbackStrength/255）',
     leading: const Icon(Icons.tune),
     onTap: _showFeedbackStrengthDialog,
   ),
@@ -750,6 +752,7 @@ Future<void> _showFeedbackStrengthDialog(
   BuildContext context,
   VoidCallback setState,
 ) async {
+  final initialStrength = feedbackStrength;
   final value = await showDialog<double>(
     context: context,
     builder: (context) => SliderDialog(
@@ -759,9 +762,15 @@ Future<void> _showFeedbackStrengthDialog(
       max: 255,
       divisions: 254,
       precise: 0,
+      onChanged: (value) {
+        // 拖动滑块时即时使用临时强度震动，确认后才保存设置。
+        feedbackStrength = value.round().clamp(1, 255).toInt();
+        feedBack();
+      },
     ),
   );
   if (value == null) {
+    feedbackStrength = initialStrength;
     return;
   }
 

@@ -1,4 +1,4 @@
-package com.example.piliplus
+package com.maxzrb.piliexo
 
 import android.os.Build
 import android.os.Bundle

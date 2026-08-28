@@ -1,4 +1,4 @@
-package com.example.piliplus
+package com.maxzrb.piliexo
 
 import android.content.Context
 import android.os.Build
@@ -15,7 +15,7 @@ class HapticFeedbackPlugin(
     messenger: BinaryMessenger,
 ) : MethodChannel.MethodCallHandler {
     companion object {
-        const val CHANNEL = "com.example.piliplus/haptics"
+        const val CHANNEL = "com.maxzrb.piliexo/haptics"
         private const val DEFAULT_DURATION_MS = 18L
     }
 

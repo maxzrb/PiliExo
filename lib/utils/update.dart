@@ -125,11 +125,9 @@ abstract final class Update {
       final Map<String, dynamic>? asset;
       if (Platform.isAndroid) {
         final androidInfo = await DeviceInfoPlugin().androidInfo;
-        asset = _findAsset(
+        asset = findAndroidAsset(
           assets,
           androidInfo.supportedAbis,
-          ext: ext,
-          fallbackExtension: '.apk',
         );
       } else {
         asset = _findAsset(
@@ -186,6 +184,47 @@ abstract final class Update {
     return value.map(_asMap).whereType<Map<String, dynamic>>().toList();
   }
 
+  /// 按系统报告的首选 ABI 选择精确 APK；找不到时只允许回退通用 APK。
+  ///
+  /// 不再把另一个架构的 APK 当作通用包，避免 Android 安装成功后启动崩溃。
+  static Map<String, dynamic>? findAndroidAsset(
+    List<Map<String, dynamic>> assets,
+    Iterable<String> supportedAbis,
+  ) {
+    for (final abi in supportedAbis) {
+      final normalizedAbi = abi.toLowerCase();
+      for (final asset in assets) {
+        final name = asset['name']?.toString() ?? '';
+        if (_androidAbiFromName(name) == normalizedAbi &&
+            name.toLowerCase().endsWith('.apk')) {
+          return asset;
+        }
+      }
+    }
+
+    for (final asset in assets) {
+      final name = asset['name']?.toString() ?? '';
+      final normalizedName = name.toLowerCase();
+      if (normalizedName.endsWith('.apk') &&
+          _androidAbiFromName(name) == null &&
+          (normalizedName.contains('universal') ||
+              normalizedName.contains('android'))) {
+        return asset;
+      }
+    }
+    return null;
+  }
+
+  static String? _androidAbiFromName(String name) {
+    final normalizedName = name.toLowerCase();
+    for (final abi in const ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86']) {
+      if (normalizedName.contains(abi)) {
+        return abi;
+      }
+    }
+    return null;
+  }
+
   static Map<String, dynamic>? _findAsset(
     List<Map<String, dynamic>> assets,
     Iterable<String> platforms, {
@@ -221,10 +260,7 @@ abstract final class Update {
 
   static String _modelScopeAssetUrl(String tag, String assetName) {
     final encodedTag = Uri.encodeComponent(tag);
-    final encodedName = assetName
-        .split('/')
-        .map(Uri.encodeComponent)
-        .join('/');
+    final encodedName = assetName.split('/').map(Uri.encodeComponent).join('/');
     return '${Constants.modelScopeReleaseBaseUrl}/$encodedTag/$encodedName';
   }
 

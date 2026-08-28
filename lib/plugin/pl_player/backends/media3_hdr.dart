@@ -35,10 +35,10 @@ class HdrMedia3Event {
 /// 这里不暴露 media_kit 的 Player 状态，播放器控制器只消费统一的事件和快照。
 class HdrMedia3Controller {
   static const _methodChannel = MethodChannel(
-    'com.example.piliplus/media3_hdr',
+    'com.maxzrb.piliexo/media3_hdr',
   );
   static const _eventChannel = EventChannel(
-    'com.example.piliplus/media3_hdr/events',
+    'com.maxzrb.piliexo/media3_hdr/events',
   );
   static final Stream<HdrMedia3Event> _nativeEvents = _eventChannel
       .receiveBroadcastStream()
@@ -274,7 +274,7 @@ class HdrMedia3Controller {
   Widget buildView({Key? key}) {
     return PlatformViewLink(
       key: key,
-      viewType: 'piliplus/media3_hdr_surface',
+      viewType: 'piliexo/media3_hdr_surface',
       surfaceFactory: (context, controller) {
         return AndroidViewSurface(
           controller: controller as AndroidViewController,
@@ -285,7 +285,7 @@ class HdrMedia3Controller {
       onCreatePlatformView: (params) {
         final controller = PlatformViewsService.initExpensiveAndroidView(
           id: params.id,
-          viewType: 'piliplus/media3_hdr_surface',
+          viewType: 'piliexo/media3_hdr_surface',
           layoutDirection: TextDirection.ltr,
           creationParams: <String, Object?>{'sessionId': sessionId},
           creationParamsCodec: const StandardMessageCodec(),

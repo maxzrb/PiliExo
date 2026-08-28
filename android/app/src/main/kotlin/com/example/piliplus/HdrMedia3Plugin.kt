@@ -1,4 +1,4 @@
-package com.example.piliplus
+package com.maxzrb.piliexo
 
 import android.app.Activity
 import android.content.Context
@@ -54,9 +54,9 @@ class HdrMedia3Plugin(
     private val messenger: BinaryMessenger,
 ) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
     companion object {
-        const val METHOD_CHANNEL = "com.example.piliplus/media3_hdr"
-        const val EVENT_CHANNEL = "com.example.piliplus/media3_hdr/events"
-        const val VIEW_TYPE = "piliplus/media3_hdr_surface"
+        const val METHOD_CHANNEL = "com.maxzrb.piliexo/media3_hdr"
+        const val EVENT_CHANNEL = "com.maxzrb.piliexo/media3_hdr/events"
+        const val VIEW_TYPE = "piliexo/media3_hdr_surface"
     }
 
     private var eventSink: EventChannel.EventSink? = null

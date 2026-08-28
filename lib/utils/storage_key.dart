@@ -154,6 +154,8 @@ abstract final class SettingBoxKey {
       showDynDispute = 'showDynDispute',
       touchSlopH = 'touchSlopH',
       floatingNavBar = 'floatingNavBar',
+      enableFrostedSurface = 'enableFrostedSurface',
+      frostedSurfaceStyle = 'frostedSurfaceStyle',
       removeSafeArea = 'removeSafeArea',
       angleDegrees = 'angleDegrees',
       liveStream = 'liveStream',

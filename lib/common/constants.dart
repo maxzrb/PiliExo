@@ -1,6 +1,6 @@
 abstract final class Constants {
   static const appName = 'PiliExo';
-  static const appDescription = 'Fork 自 PiliPlus、提供 HDR 支持的 B站第三方自用修改版';
+  static const appDescription = 'HDR支持的PiliPlus修改版';
   static const upstreamUrl = 'https://github.com/bggRGjQaUbCoE/PiliPlus';
   static const sourceCodeUrl = 'https://github.com/maxzrb/PiliExo';
   static const modelScopeDatasetUrl =

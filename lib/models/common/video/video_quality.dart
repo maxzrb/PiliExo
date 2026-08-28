@@ -1,6 +1,6 @@
 enum VideoQuality {
-  hdrVivid(129, 'HDR Vivid', 'HDR Vivid'),
   super8k(127, '8K 超高清', '8K'),
+  hdrVivid(129, 'HDR Vivid', 'HDR Vivid'),
   dolbyVision(126, '杜比视界', '杜比'),
   hdr(125, 'HDR 真彩', 'HDR'),
   super4K(120, '4K 超高清', '4K'),

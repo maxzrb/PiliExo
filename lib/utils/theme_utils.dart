@@ -70,7 +70,8 @@ abstract final class ThemeUtils {
         titleSpacing: 0,
         centerTitle: false,
         scrolledUnderElevation: 0,
-        backgroundColor: colorScheme.surface,
+        // AppBar 外层由 FrostedSurface 提供模糊，直接使用 AppBar 的页面也保留半透明。
+        backgroundColor: colorScheme.surface.withValues(alpha: 0.72),
         titleTextStyle: TextStyle(
           fontSize: 16,
           fontWeight: fontWeight,
@@ -79,7 +80,12 @@ abstract final class ThemeUtils {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.transparent,
         surfaceTintColor: isDark ? colorScheme.surfaceContainerHighest : null,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       snackBarTheme: SnackBarThemeData(
         elevation: 20,

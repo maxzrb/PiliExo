@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'package:PiliPlus/common/widgets/frosted_surface.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -67,6 +68,13 @@ class FloatingNavigationBar extends StatelessWidget {
     final defaults = _NavigationBarDefaultsM3(context);
 
     final navigationBarTheme = NavigationBarTheme.of(context);
+    final baseBackgroundColor =
+        backgroundColor ??
+        navigationBarTheme.backgroundColor ??
+        defaults.backgroundColor!;
+    final frostedBackgroundColor = baseBackgroundColor.a == 0
+        ? ColorScheme.of(context).surface.withValues(alpha: 0.72)
+        : baseBackgroundColor.withValues(alpha: 0.72);
     final effectiveLabelBehavior =
         labelBehavior ??
         navigationBarTheme.labelBehavior ??
@@ -81,54 +89,51 @@ class FloatingNavigationBar extends StatelessWidget {
         padding.right,
         bottomPadding + padding.bottom,
       ),
-      child: SizedBox(
-        height: _kNavigationHeight,
-        width: destinations.length * _kIndicatorWidth,
-        child: DecoratedBox(
-          decoration: ShapeDecoration(
-            color: ElevationOverlay.applySurfaceTint(
-              backgroundColor ??
-                  navigationBarTheme.backgroundColor ??
-                  defaults.backgroundColor!,
-              surfaceTintColor ??
-                  navigationBarTheme.surfaceTintColor ??
-                  defaults.surfaceTintColor,
-              elevation ?? navigationBarTheme.elevation ?? defaults.elevation!,
+      child: FrostedSurface(
+        borderRadius: _kBorderRadius,
+        color: frostedBackgroundColor,
+        showBorder: false,
+        child: SizedBox(
+          height: _kNavigationHeight,
+          width: destinations.length * _kIndicatorWidth,
+          child: DecoratedBox(
+            decoration: ShapeDecoration(
+              color: Colors.transparent,
+              shape: RoundedSuperellipseBorder(
+                side: defaults.borderSide,
+                borderRadius: _kBorderRadius,
+              ),
             ),
-            shape: RoundedSuperellipseBorder(
-              side: defaults.borderSide,
-              borderRadius: _kBorderRadius,
-            ),
-          ),
-          child: Padding(
-            padding: _kIndicatorPadding,
-            child: Row(
-              crossAxisAlignment: .stretch,
-              children: <Widget>[
-                for (int i = 0; i < destinations.length; i++)
-                  Expanded(
-                    child: _SelectableAnimatedBuilder(
-                      duration: animationDuration,
-                      isSelected: i == selectedIndex,
-                      builder: (context, animation) {
-                        return _NavigationDestinationInfo(
-                          index: i,
-                          selectedIndex: selectedIndex,
-                          totalNumberOfDestinations: destinations.length,
-                          selectedAnimation: animation,
-                          labelBehavior: effectiveLabelBehavior,
-                          indicatorColor: indicatorColor,
-                          indicatorShape: indicatorShape,
-                          overlayColor: overlayColor,
-                          onTap: _handleTap(i),
-                          labelTextStyle: labelTextStyle,
-                          labelPadding: labelPadding,
-                          child: destinations[i],
-                        );
-                      },
+            child: Padding(
+              padding: _kIndicatorPadding,
+              child: Row(
+                crossAxisAlignment: .stretch,
+                children: <Widget>[
+                  for (int i = 0; i < destinations.length; i++)
+                    Expanded(
+                      child: _SelectableAnimatedBuilder(
+                        duration: animationDuration,
+                        isSelected: i == selectedIndex,
+                        builder: (context, animation) {
+                          return _NavigationDestinationInfo(
+                            index: i,
+                            selectedIndex: selectedIndex,
+                            totalNumberOfDestinations: destinations.length,
+                            selectedAnimation: animation,
+                            labelBehavior: effectiveLabelBehavior,
+                            indicatorColor: indicatorColor,
+                            indicatorShape: indicatorShape,
+                            overlayColor: overlayColor,
+                            onTap: _handleTap(i),
+                            labelTextStyle: labelTextStyle,
+                            labelPadding: labelPadding,
+                            child: destinations[i],
+                          );
+                        },
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -11,6 +11,7 @@ class SliderDialog extends StatefulWidget {
     this.divisions,
     this.suffix = '',
     this.precise = 1,
+    this.onChanged,
   });
 
   final double value;
@@ -20,6 +21,7 @@ class SliderDialog extends StatefulWidget {
   final int? divisions;
   final String suffix;
   final int precise;
+  final ValueChanged<double>? onChanged;
 
   @override
   State<SliderDialog> createState() => _SliderDialogState();
@@ -49,9 +51,11 @@ class _SliderDialogState extends State<SliderDialog> {
           label:
               '${_tempValue.toStringAsFixed(widget.precise)}${widget.suffix}',
           onChanged: (double value) {
+            final nextValue = value.toPrecision(widget.precise);
             setState(() {
-              _tempValue = value.toPrecision(widget.precise);
+              _tempValue = nextValue;
             });
+            widget.onChanged?.call(nextValue);
           },
         ),
       ),

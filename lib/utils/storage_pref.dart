@@ -9,6 +9,7 @@ import 'package:PiliPlus/models/common/dynamic/dynamic_badge_mode.dart';
 import 'package:PiliPlus/models/common/dynamic/dynamics_type.dart';
 import 'package:PiliPlus/models/common/dynamic/up_panel_position.dart';
 import 'package:PiliPlus/models/common/follow_order_type.dart';
+import 'package:PiliPlus/models/common/frosted_surface_style.dart';
 import 'package:PiliPlus/models/common/member/tab_type.dart';
 import 'package:PiliPlus/models/common/msg/msg_unread_type.dart';
 import 'package:PiliPlus/models/common/nav_bar_config.dart';
@@ -149,14 +150,14 @@ abstract final class Pref {
   }
 
   static bool get feedBackEnable =>
-      _setting.get(SettingBoxKey.feedBackEnable, defaultValue: false);
+      _setting.get(SettingBoxKey.feedBackEnable, defaultValue: true);
 
   static int get feedBackStrength {
     final value = _setting.get(
       SettingBoxKey.feedBackStrength,
-      defaultValue: 128,
+      defaultValue: 80,
     );
-    return value is num ? value.toInt().clamp(1, 255).toInt() : 128;
+    return value is num ? value.toInt().clamp(1, 255).toInt() : 80;
   }
 
   static int get picQuality =>
@@ -773,6 +774,22 @@ abstract final class Pref {
 
   static bool get enableMYBar =>
       _setting.get(SettingBoxKey.enableMYBar, defaultValue: true);
+
+  static bool get enableFrostedSurface =>
+      _setting.get(SettingBoxKey.enableFrostedSurface, defaultValue: true);
+
+  static FrostedSurfaceStyle get frostedSurfaceStyle {
+    final value = _setting.get(
+      SettingBoxKey.frostedSurfaceStyle,
+      defaultValue: FrostedSurfaceStyle.standard.index,
+    );
+    final index = value is num
+        ? value.toInt()
+        : FrostedSurfaceStyle.standard.index;
+    return index >= 0 && index < FrostedSurfaceStyle.values.length
+        ? FrostedSurfaceStyle.values[index]
+        : FrostedSurfaceStyle.standard;
+  }
 
   static Transition get pageTransition =>
       Transition.values[_setting.get(

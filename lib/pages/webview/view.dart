@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:PiliPlus/common/widgets/frosted_surface.dart';
 import 'package:PiliPlus/common/widgets/route_aware_mixin.dart'
     show routeObserver;
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
@@ -106,89 +107,95 @@ class _WebviewPageState extends State<WebviewPage> with RouteAware {
     return Scaffold(
       appBar: widget.url != null
           ? null
-          : AppBar(
-              title: Obx(
-                () => Text(
-                  _title.value.isNotEmpty ? _title.value : _url,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          : FrostedPreferredSize(
+              child: AppBar(
+                title: Obx(
+                  () => Text(
+                    _title.value.isNotEmpty ? _title.value : _url,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              bottom: PreferredSize(
-                preferredSize: Size.zero,
-                child: Obx(
-                  () => _progress.value < 1
-                      ? LinearProgressIndicator(value: _progress.value)
-                      : const SizedBox.shrink(),
+                bottom: PreferredSize(
+                  preferredSize: Size.zero,
+                  child: Obx(
+                    () => _progress.value < 1
+                        ? LinearProgressIndicator(value: _progress.value)
+                        : const SizedBox.shrink(),
+                  ),
                 ),
-              ),
-              actions: _isPop
-                  ? null
-                  : [
-                      PopupMenuButton(
-                        onSelected: (item) async {
-                          switch (item) {
-                            case WebviewMenuItem.refresh:
-                              _webViewController?.reload();
-                              break;
-                            case WebviewMenuItem.copy:
-                              WebUri? uri = await _webViewController?.getUrl();
-                              if (uri != null) {
-                                Utils.copyText(uri.toString());
-                              }
-                              break;
-                            case WebviewMenuItem.openInBrowser:
-                              WebUri? uri = await _webViewController?.getUrl();
-                              if (uri != null) {
-                                PageUtils.launchURL(uri.toString());
-                              }
-                              break;
-                            case WebviewMenuItem.clearCache:
-                              try {
-                                await InAppWebViewController.clearAllCache();
-                                await _webViewController?.clearHistory();
-                                SmartDialog.showToast('已清理');
-                              } catch (e) {
-                                SmartDialog.showToast(e.toString());
-                              }
-                              break;
-                            case WebviewMenuItem.goBack:
-                              if (await _webViewController?.canGoBack() ==
-                                  true) {
-                                _webViewController?.goBack();
-                              } else {
-                                Get.back();
-                              }
-                              break;
-                            case WebviewMenuItem.resetCookie:
-                              await LoginUtils.setWebCookie();
-                              SmartDialog.showToast('设置成功，刷新或重新打开网页');
-                              break;
-                          }
-                        },
-                        itemBuilder: (context) =>
-                            <PopupMenuEntry<WebviewMenuItem>>[
-                              ...WebviewMenuItem.values
-                                  .take(WebviewMenuItem.values.length - 1)
-                                  .map(
-                                    (item) => PopupMenuItem(
-                                      value: item,
-                                      child: Text(item.title),
+                actions: _isPop
+                    ? null
+                    : [
+                        PopupMenuButton(
+                          onSelected: (item) async {
+                            switch (item) {
+                              case WebviewMenuItem.refresh:
+                                _webViewController?.reload();
+                                break;
+                              case WebviewMenuItem.copy:
+                                WebUri? uri = await _webViewController
+                                    ?.getUrl();
+                                if (uri != null) {
+                                  Utils.copyText(uri.toString());
+                                }
+                                break;
+                              case WebviewMenuItem.openInBrowser:
+                                WebUri? uri = await _webViewController
+                                    ?.getUrl();
+                                if (uri != null) {
+                                  PageUtils.launchURL(uri.toString());
+                                }
+                                break;
+                              case WebviewMenuItem.clearCache:
+                                try {
+                                  await InAppWebViewController.clearAllCache();
+                                  await _webViewController?.clearHistory();
+                                  SmartDialog.showToast('已清理');
+                                } catch (e) {
+                                  SmartDialog.showToast(e.toString());
+                                }
+                                break;
+                              case WebviewMenuItem.goBack:
+                                if (await _webViewController?.canGoBack() ==
+                                    true) {
+                                  _webViewController?.goBack();
+                                } else {
+                                  Get.back();
+                                }
+                                break;
+                              case WebviewMenuItem.resetCookie:
+                                await LoginUtils.setWebCookie();
+                                SmartDialog.showToast('设置成功，刷新或重新打开网页');
+                                break;
+                            }
+                          },
+                          itemBuilder: (context) =>
+                              <PopupMenuEntry<WebviewMenuItem>>[
+                                ...WebviewMenuItem.values
+                                    .take(WebviewMenuItem.values.length - 1)
+                                    .map(
+                                      (item) => PopupMenuItem(
+                                        value: item,
+                                        child: Text(item.title),
+                                      ),
+                                    ),
+                                const PopupMenuDivider(),
+                                PopupMenuItem(
+                                  value: WebviewMenuItem.goBack,
+                                  child: Text(
+                                    WebviewMenuItem.goBack.title,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .error,
                                     ),
                                   ),
-                              const PopupMenuDivider(),
-                              PopupMenuItem(
-                                value: WebviewMenuItem.goBack,
-                                child: Text(
-                                  WebviewMenuItem.goBack.title,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
                                 ),
-                              ),
-                            ],
-                      ),
-                    ],
+                              ],
+                        ),
+                      ],
+              ),
             ),
       body: _isPop
           ? null

@@ -1,5 +1,6 @@
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/custom_height_widget.dart';
+import 'package:PiliPlus/common/widgets/frosted_surface.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart' show tabBarView;
 import 'package:PiliPlus/pages/common/common_page.dart';
@@ -112,9 +113,12 @@ class _HomePageState extends CommonPageState<HomePage>
             return CustomHeightWidget(
               offset: Offset(0, -offset),
               height: Style.topBarHeight - offset,
-              child: Padding(
-                padding: padding,
-                child: child,
+              child: FrostedSurface(
+                showBorder: false,
+                child: Padding(
+                  padding: padding,
+                  child: child,
+                ),
               ),
             );
           },
@@ -131,16 +135,19 @@ class _HomePageState extends CommonPageState<HomePage>
               duration: const Duration(milliseconds: 500),
               height: showSearchBar ? Style.topBarHeight : 0,
               padding: padding,
-              child: child,
+              child: FrostedSurface(showBorder: false, child: child),
             ),
           );
         });
       }
     }
-    return Container(
-      height: Style.topBarHeight,
-      padding: padding,
-      child: child,
+    return FrostedSurface(
+      showBorder: false,
+      child: Container(
+        height: Style.topBarHeight,
+        padding: padding,
+        child: child,
+      ),
     );
   }
 

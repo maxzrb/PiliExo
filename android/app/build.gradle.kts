@@ -18,9 +18,18 @@ if (!isBuiltInKotlinEnabled) {
 }
 
 android {
-    namespace = "com.example.piliplus"
+    namespace = "com.maxzrb.piliexo"
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
+
+    // 同时兼容 Flutter CLI 写入 local.properties 和 CI 直接传入 Gradle 属性。
+    val resolvedVersionCode = providers.gradleProperty("flutter.versionCode")
+        .orNull
+        ?.toIntOrNull()
+        ?: flutter.versionCode
+    val resolvedVersionName = providers.gradleProperty("flutter.versionName")
+        .orNull
+        ?: flutter.versionName
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -28,11 +37,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.piliplus"
+        applicationId = "com.maxzrb.piliexo"
         minSdk = flutter.minSdkVersion
         targetSdk = 37
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = resolvedVersionCode
+        versionName = resolvedVersionName
     }
 
     packagingOptions.jniLibs.useLegacyPackaging = true
@@ -65,6 +74,13 @@ android {
             signingConfig = config ?: signingConfigs["debug"]
         }
         release {
+            // Release 包启用 R8 和资源压缩，架构拆分后进一步降低下载体积。
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (project.hasProperty("dev")) {
                 applicationIdSuffix = ".dev"
                 resValue(
@@ -73,10 +89,6 @@ android {
                     value = "PiliExo dev",
                 )
             }
-//            proguardFiles(
-//                getDefaultProguardFile("proguard-android-optimize.txt"),
-//                "proguard-rules.pro"
-//            )
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -86,7 +98,7 @@ android {
     applicationVariants.all {
         val variant = this
         variant.outputs.forEach { output ->
-            (output as ApkVariantOutputImpl).versionCodeOverride = flutter.versionCode
+            (output as ApkVariantOutputImpl).versionCodeOverride = resolvedVersionCode
         }
     }
 }

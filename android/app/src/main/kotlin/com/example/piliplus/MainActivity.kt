@@ -1,4 +1,4 @@
-package com.example.piliplus
+package com.maxzrb.piliexo
 
 import android.content.Intent
 import android.content.res.Configuration

@@ -99,7 +99,7 @@ List<SettingsModel> get videoSettings => [
     onTap: _showVideoQaDialog,
   ),
   NormalModel(
-    title: '蜂窝网络画质',
+    title: '移动数据画质',
     leading: const Icon(Icons.video_settings_outlined),
     getSubtitle: () =>
         '当前画质：${VideoQuality.fromCode(Pref.defaultVideoQaCellular).desc}',
@@ -113,7 +113,7 @@ List<SettingsModel> get videoSettings => [
     onTap: _showAudioQaDialog,
   ),
   NormalModel(
-    title: '蜂窝网络音质',
+    title: '移动数据音质',
     leading: const Icon(Icons.music_video_outlined),
     getSubtitle: () =>
         '当前音质：${AudioQuality.fromCode(Pref.defaultAudioQaCellular).desc}',
@@ -126,7 +126,7 @@ List<SettingsModel> get videoSettings => [
     onTap: _showLiveQaDialog,
   ),
   NormalModel(
-    title: '蜂窝网络直播默认画质',
+    title: '移动数据直播默认画质',
     leading: const Icon(Icons.video_settings_outlined),
     getSubtitle: () =>
         '当前画质：${LiveQuality.fromCode(Pref.liveQualityCellular)?.desc}',
@@ -140,7 +140,7 @@ List<SettingsModel> get videoSettings => [
     onTap: _showCodecsDialog,
   ),
   NormalModel(
-    title: '蜂窝网络首选解码格式',
+    title: '移动数据首选解码格式',
     leading: const Icon(Icons.movie_creation_outlined),
     getSubtitle: () =>
         '首选解码格式：${(Pref.preferCodecsCellular.map((i) => i.name).join(","))}，请根据设备支持情况与需求调整',
@@ -268,7 +268,7 @@ Future<void> _showVideoCellularQaDialog(
   final res = await showDialog<int>(
     context: context,
     builder: (context) => SelectDialog<int>(
-      title: '蜂窝网络画质',
+      title: '移动数据画质',
       value: Pref.defaultVideoQaCellular,
       values: VideoQuality.values.map((e) => (e.code, e.desc)).toList(),
     ),
@@ -307,7 +307,7 @@ Future<void> _showAudioCellularQaDialog(
   final res = await showDialog<int>(
     context: context,
     builder: (context) => SelectDialog<int>(
-      title: '蜂窝网络音质',
+      title: '移动数据音质',
       value: Pref.defaultAudioQaCellular,
       values: AudioQuality.values.map((e) => (e.code, e.desc)).toList(),
     ),
@@ -346,7 +346,7 @@ Future<void> _showLiveCellularQaDialog(
   final res = await showDialog<int>(
     context: context,
     builder: (context) => SelectDialog<int>(
-      title: '蜂窝网络直播默认画质',
+      title: '移动数据直播默认画质',
       value: Pref.liveQualityCellular,
       values: LiveQuality.values.map((e) => (e.code, e.desc)).toList(),
     ),
@@ -385,7 +385,7 @@ Future<void> _showCellularCodecsDialog(
   final res = await showDialog<List<VideoDecodeFormatType>>(
     context: context,
     builder: (context) => OrderedMultiSelectDialog<VideoDecodeFormatType>(
-      title: '蜂窝网络首选解码格式',
+      title: '移动数据首选解码格式',
       initValues: Pref.preferCodecsCellular,
       values: {for (final e in VideoDecodeFormatType.values) e: e.name},
     ),

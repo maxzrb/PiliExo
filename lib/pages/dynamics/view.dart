@@ -1,3 +1,4 @@
+import 'package:PiliPlus/common/widgets/frosted_surface.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart' show tabBarView;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/dynamic/dynamics_type.dart';
@@ -168,38 +169,40 @@ class _DynamicsPageState extends CommonPageState<DynamicsPage>
       primary: false,
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.transparent,
-      appBar: PreferredSize(
-        preferredSize: const .fromHeight(50),
-        child: Row(
-          children: [
-            ?leading,
-            Expanded(
-              child: TabBar(
-                dividerHeight: 0,
-                isScrollable: true,
-                tabAlignment: .start,
-                dividerColor: Colors.transparent,
-                labelColor: theme.colorScheme.primary,
-                indicatorColor: theme.colorScheme.primary,
-                controller: _dynamicsController.tabController,
-                unselectedLabelColor: theme.colorScheme.onSurface,
-                labelStyle:
-                    TabBarTheme.of(
-                      context,
-                    ).labelStyle?.copyWith(fontSize: 13) ??
-                    const TextStyle(fontSize: 13),
-                tabs: DynamicsTabType.values
-                    .map((e) => Tab(text: e.label))
-                    .toList(),
-                onTap: (index) {
-                  if (!_dynamicsController.tabController.indexIsChanging) {
-                    _dynamicsController.animateToTop();
-                  }
-                },
+      appBar: FrostedPreferredSize(
+        child: PreferredSize(
+          preferredSize: const .fromHeight(50),
+          child: Row(
+            children: [
+              ?leading,
+              Expanded(
+                child: TabBar(
+                  dividerHeight: 0,
+                  isScrollable: true,
+                  tabAlignment: .start,
+                  dividerColor: Colors.transparent,
+                  labelColor: theme.colorScheme.primary,
+                  indicatorColor: theme.colorScheme.primary,
+                  controller: _dynamicsController.tabController,
+                  unselectedLabelColor: theme.colorScheme.onSurface,
+                  labelStyle:
+                      TabBarTheme.of(
+                        context,
+                      ).labelStyle?.copyWith(fontSize: 13) ??
+                      const TextStyle(fontSize: 13),
+                  tabs: DynamicsTabType.values
+                      .map((e) => Tab(text: e.label))
+                      .toList(),
+                  onTap: (index) {
+                    if (!_dynamicsController.tabController.indexIsChanging) {
+                      _dynamicsController.animateToTop();
+                    }
+                  },
+                ),
               ),
-            ),
-            actions,
-          ],
+              actions,
+            ],
+          ),
         ),
       ),
       drawer: drawer,

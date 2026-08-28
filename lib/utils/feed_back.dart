@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 bool enableFeedback = Pref.feedBackEnable;
 int feedbackStrength = Pref.feedBackStrength;
 
-const _hapticChannel = MethodChannel('com.example.piliplus/haptics');
+const _hapticChannel = MethodChannel('com.maxzrb.piliexo/haptics');
 
 void feedBack() {
   if (!enableFeedback) {

@@ -1,15 +1,15 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-28 18:18 (+08:00)
+- 更新时间：2026-08-28 20:39 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
 - 发布提交：`f50faf24a631af5873825c8b72a4bdd6e05a5a1a`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置。
 
 ## 已完成
 
 - 添加 Media3 1.11.0、OkHttp 5.3.0 依赖及原生 `SurfaceView` 布局。
-- 注册 `piliplus/media3_hdr_surface` Hybrid Composition PlatformView、MethodChannel 和 EventChannel。
+- 注册 `piliexo/media3_hdr_surface` Hybrid Composition PlatformView、MethodChannel 和 EventChannel。
 - 实现 HDR 会话、分离 fMP4 音视频合并、请求头、主/备用 URL、Range 续传、字幕和 HDR 格式事件。
 - Dart 播放控制器统一接入 Media3/mpv，支持 HDR 画质路由、状态恢复、原生字幕、倍速、画面模式和失败回退。
 - HDR 模式禁用 Flutter 缩放/镜像/Anime4K/截图入口，保留 Flutter 控制栏和弹幕。
@@ -20,11 +20,21 @@
 - 应用标识、源码链接、问题反馈和 Release 更新入口切换到 `maxzrb/PiliExo`；ModelScope 镜像固定为 `AerithDream/PiliExo`。
 - 更新检查改为按 `vYY.M.D.build` Release 标签比较，Android 下载先探测 ModelScope，失败后回退 GitHub Release 资产。
 - 所有底栏和侧栏导航项统一使用 Android 原生可调振幅震动，设置页新增 1–255 强度调节。
+- 新安装默认开启震动反馈，默认强度为 80；拖动强度滑块时即时震动，取消调节不保存临时值。
+- 普通视频两个画质选择入口统一将 8K、HDR Vivid、杜比视界、HDR 真彩置于前列；“蜂窝网络”文案统一改为“移动数据”。
+- 顶栏、底栏和普通页面 AppBar 增加磨砂半透明效果；浮动底栏继续使用原生 Flutter 渲染，不影响 HDR SurfaceView。
+- Android Release 改为 `com.maxzrb.piliexo`，仅生成 `armeabi-v7a` 和 `arm64-v8a`；启用 R8、资源压缩和对应 ABI 下载选择。
+- 关于页和应用元数据描述精简为“HDR支持的PiliPlus修改版”，并修正透明主题下浮动底栏的磨砂底色。
+- 外观设置新增磨砂总开关与轻薄、标准、浓厚三档效果，配置变化会即时刷新顶栏、底栏、浮动底栏和特殊页面顶栏；关闭时恢复不透明底色。
+- 根据真机截图移除顶栏与状态栏交界处的顶部边框，并降低轻薄档遮罩不透明度，使磨砂背景更通透。
+- 移除主底栏和浮动底栏磨砂容器的顶部边框，避免底栏顶部出现突兀亮线。
+- 修正震动反馈设置项初始开关显示为关闭的问题；新安装显示为开启，已有用户明确关闭的选择保持不变。
+- 新增 `docs/发布流程.md`，记录测试阶段冻结版本号、发布时递增、双 ABI 构建、签名、GitHub/ModelScope 发布和回滚要点。
 - 已创建 `maxzrb/PiliExo` fork、`AerithDream/PiliExo` 数据集并发布 `v26.8.28.1`。
 
 ## 验证
 
-- `flutter test --no-pub`：通过，5 个测试全部通过；本机 SDK 为 3.47.1，而同步后的 `pubspec.yaml` 要求 3.47.2，普通 `flutter test` 因版本解析被阻止。
+- `flutter test --no-pub`：通过，8 个测试全部通过，其中包含 Android ABI 资产选择测试；本机 SDK 为 3.47.1，而同步后的 `pubspec.yaml` 要求 3.47.2，普通 `flutter test` 因版本解析被阻止。
 - Media3 1.11.0 + OkHttp 5.3.0 独立 Android API 工程：Kotlin 编译及 `HdrMedia3SourceTest` 通过（含 5xx、Range 和断流续传）。
 - 目标文件定向 `flutter analyze`：无 error，仅有 lint info。
 - `git diff --check`：通过；仅报告仓库既有的 LF/CRLF 自动转换提示。
@@ -34,6 +44,11 @@
 - Android `:app:testDebugUnitTest -Pkotlin.incremental=false`：通过。
 - Android `assembleRelease`：通过（缓存 Gradle、Media3 1.11.0、OkHttp 5.3.0）。
 - Release APK：`dist/PiliExo_android_v26.8.28.1.apk`，68,793,128 bytes；SHA-256 为 `9D64CAD5C991485E4DCB323C2DAA8FA2DC5F8B300C97EA7DD8C71190B2D5664F`；包名保持 `com.example.piliplus`，显示名为 `PiliExo`。
+- v26.8.28.2 arm64 Release APK：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`，26,601,707 bytes；SHA-256 为 `94EA78F3AA2458B9C56F264ED8A99BAF8971AD0390B010FABFD7C558C6B371A6`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
+- v26.8.28.2 v7a Release APK：`dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`，26,480,705 bytes；SHA-256 为 `E9234886FC779CBC424A8B6965AB256353753549FFE973EDEBAA8C18EE4B196C`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
+- v26.8.28.2 Release 仅包含 `arm64-v8a`、`armeabi-v7a` 两种 native ABI；相较 v26.8.28.1 通用包，单包体积降低约 61%。
+- v26.8.28.3 arm64 Release APK：`dist/PiliExo_android_v26.8.28.3_arm64-v8a.apk`，26,603,903 bytes；SHA-256 为 `2B13DAA38924C02708549A61F09AFF7AA2844425AD8BC79C994D6E9DE390E686`；包名为 `com.maxzrb.piliexo`，versionCode 为 3。
+- v26.8.28.3 v7a Release APK：`dist/PiliExo_android_v26.8.28.3_armeabi-v7a.apk`，26,479,041 bytes；SHA-256 为 `45C3AC59CB541BE496CC85715A5D8342744308A667019F2EBD3F941D92E7E283`；包名为 `com.maxzrb.piliexo`，versionCode 为 3。
 - GitHub Release 资产状态为 `uploaded`；ModelScope `resolve/master/releases/v26.8.28.1/...apk` 实测 302 后返回 200。
 
 ## 当前限制
@@ -41,12 +56,30 @@
 - 完整 `flutter analyze --no-pub` 报告 42 条 info/lint，无 error；包含项目既有弃用提示和新增 HDR 文件的风格提示。
 - Release APK 使用本机已打补丁的 Flutter 3.47.1 构建；源码依赖声明已随上游同步为 Flutter 3.47.2，后续 CI 将按声明版本构建。
 - 设备端安装权限确认仍由用户自行处理；代理未再次安装或启动 APK。
-- 当前环境没有 HDR/振动真机验收，SurfaceFlinger dataspace、HDR 屏幕模式、首帧、震动振幅和长时间音画同步仍需实测。
+- 当前环境没有本轮 HDR/振动真机验收，SurfaceFlinger dataspace、HDR 屏幕模式、首帧、震动振幅、磨砂效果和长时间音画同步仍需实测。
+- 本地未提供 `android/key.properties`，本轮 APK 使用 Gradle debug keystore 兜底签名；发布到 GitHub/ModelScope 前应配置与后续版本一致的正式签名。
+- 当前测试修复仍使用 `26.8.28+3`，未新增测试版本；正式发布前才递增版本号并生成 Release 标签。
 
 ## 下一步
 
-- 用户自行安装 `v26.8.28.1` APK 后，验收所有底栏/侧栏导航震动强度、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
+- 用户自行按设备 ABI 安装 `v26.8.28.3` APK 后，验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
 - 复测 SDR↔HDR 切换红屏和返回播放列表残帧；确认无残留后再按 Release 标签继续迭代。
+
+### 2026-08-28 20:06 (+08:00)
+
+- 根据用户截图确认顶栏与状态栏之间的视觉缝隙来自顶栏顶部边框；已将顶栏边框关闭，并将轻薄磨砂档透明度调为 0.64，使背景透出更多。
+- 修正震动设置 `SwitchModel` 的默认值为开启，解决新安装或无历史设置时界面开关显示为关闭的问题；已有明确关闭值不被覆盖。
+- 新增 `docs/发布流程.md`，明确测试阶段保持 `26.8.28+3` 不变，只有正式发布时推进版本号、生成 `vYY.M.D.N` 标签并填写 `[新增]`、`[更改]`、`[修复]`、`[同步]` 发布说明。
+- 使用同一版本号重新构建并核验 v26.8.28.3 双 ABI APK：arm64 为 26,604,031 bytes，SHA-256 `426BE600CCA5AD02C740063BE2315984ED74C178A6665AAE580A963AA108A1A8`；v7a 为 26,479,661 bytes，SHA-256 `8590D4F9A77C13EBB5ED77B7CA6B68904DC3E1ACAD8A7DCEFDCAEF40C4947431`。
+- `flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error/warning（42 条 info），Android 单测和 Gradle Release 构建通过；本轮未通过 ADB 安装或启动，v26.8.28.3 尚未发布。
+
+### 2026-08-28 20:39 (+08:00)
+
+- 根据用户反馈移除主底栏和浮动底栏 `FrostedSurface` 的顶部边框，磨砂材质保留，避免底栏上沿出现突兀亮线。
+- 用户提供 `D:\read\gradle-9.5.0-all.zip` 后，已复制到 Gradle wrapper 标准缓存并确认 `Gradle 9.5.0` 可用；该缓存可供其它使用同一分发包的项目复用。
+- Flutter 分包命令因插件 Kotlin 增量缓存跨 C/D 盘符失败；改用 `kotlin.incremental=false` 和 `split-per-abi=true` 的 Gradle 9.5 任务后构建成功。
+- 测试版本继续保持 `26.8.28+3`，未递增版本号。v26.8.28.3 双 ABI APK 已重新核验：arm64 为 26,603,903 bytes，SHA-256 `2B13DAA38924C02708549A61F09AFF7AA2844425AD8BC79C994D6E9DE390E686`；v7a 为 26,479,041 bytes，SHA-256 `45C3AC59CB541BE496CC85715A5D8342744308A667019F2EBD3F941D92E7E283`。
+- `flutter test --no-pub` 8/8 通过，Gradle 9.5 Release 分包构建成功；未通过 ADB 安装或启动，v26.8.28.3 尚未发布。
 
 ## Session Log
 
@@ -79,3 +112,24 @@
 - GitHub fork、ModelScope 数据集和 `v26.8.28.1` Release 已创建并验证；Release 资产与镜像文件 SHA-256 均为 `9D64CAD5C991485E4DCB323C2DAA8FA2DC5F8B300C97EA7DD8C71190B2D5664F`。
 - 保留 GitHub fork 创建时带入的上游 Flutter 3.47.2、主题、自定义字体和依赖更新，并在 `[同步]` 版本记录中标注。
 - 验证：`flutter test --no-pub` 5/5 通过；`flutter analyze --no-pub` 无 error；Android `:app:testDebugUnitTest` 和 release 构建通过。未通过 ADB 安装或启动。
+
+### 2026-08-28 18:58 (+08:00)
+
+- 新安装默认开启震动并将默认振幅设为 80；新增滑块拖动即时反馈，取消对话框时恢复原值。
+- 两个普通视频画质列表调整为 8K、HDR Vivid、杜比视界、HDR 真彩优先；“蜂窝网络”设置文案改为“移动数据”。
+- 顶栏、底栏、普通页面 AppBar 和浮动底栏加入磨砂半透明背景；HDR 视频仍使用原生 `SurfaceView`，未引入 `SurfaceTexture`。
+- Android 应用标识切换为 `com.maxzrb.piliexo`，Release 开启 R8/资源压缩并仅构建 `arm64-v8a`、`armeabi-v7a`；更新器按 `supportedAbis` 选择匹配资产，找不到时只回退通用 APK。
+- 关于页描述精简为“HDR支持的PiliPlus修改版”；修正透明 NavigationBar 主题下浮动底栏的磨砂底色。
+- 验证：`flutter test --no-pub` 8/8 通过；`flutter analyze --no-pub` 无 error；Android `:app:testDebugUnitTest -Pkotlin.incremental=false` 通过；Gradle Release 构建通过；`git diff --check` 通过。
+- 成品：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`（26,601,707 bytes，SHA-256 `94EA78F3AA2458B9C56F264ED8A99BAF8971AD0390B010FABFD7C558C6B371A6`）和 `dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`（26,480,705 bytes，SHA-256 `E9234886FC779CBC424A8B6965AB256353753549FFE973EDEBAA8C18EE4B196C`）；aapt 已核验包名、版本号和 native ABI。
+- 本地没有 `android/key.properties`，所以本次构建使用 debug keystore 兜底签名，未上传为正式 Release。
+- 未通过 ADB 安装或启动；当前改动仍在 `feature/android-media3-hdr` 工作树中，尚未提交或发布 v26.8.28.2。
+
+### 2026-08-28 19:49 (+08:00)
+
+- 新增外观设置“磨砂半透明”开关，默认开启；新增“轻薄 / 标准 / 浓厚”三档，分别调整模糊半径和透明度，切换即时生效。
+- `FrostedSurface` 增加全局配置监听，主页顶栏、主底栏、浮动底栏、普通 `SimpleScaffold` AppBar，以及动态/WebView/日志特殊顶栏统一响应设置；关闭后不使用 `BackdropFilter` 并恢复不透明背景。
+- 应用描述保持为“HDR支持的PiliPlus修改版”；修复透明 NavigationBar 主题下浮动底栏无底色的问题。
+- 版本递增为 `v26.8.28.3`；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error/warning（42 条 info），Android `:app:testDebugUnitTest -Pkotlin.incremental=false` 通过，Gradle Release 构建通过，`git diff --check` 通过。
+- 成品：`dist/PiliExo_android_v26.8.28.3_arm64-v8a.apk`（26,604,087 bytes，SHA-256 `2B2DEFDF6B4A8239CB0288CCFD9212279B41C256B5E719DA26FF6C06D05B01E1`）和 `dist/PiliExo_android_v26.8.28.3_armeabi-v7a.apk`（26,479,865 bytes，SHA-256 `F9E46227B2ED70E07BE03614524B0C981D8EB0160376244367A2FF763C849E9A`）；aapt 已核验包名、versionCode 和 native ABI。
+- 未通过 ADB 安装或启动；当前改动仍在 `feature/android-media3-hdr` 工作树中，尚未提交或发布 v26.8.28.3。
