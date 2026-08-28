@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 00:57 (+08:00)
+- 更新时间：2026-08-29 01:09 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
 - 发布提交：`1669ff368df0c12a72e92fe409c3b84737c925d5`
@@ -40,7 +40,7 @@
 - 新增播放器洞察：参考 BiliPai 的概览、视频、音频、播放和事件信息，在视频页“更多设置 → 播放器洞察”打开，实时显示 Media3 HDR 或 mpv 已报告的解码器、格式、色彩、缓冲、首帧和掉帧信息。
 - 中部上滑/下滑切换全屏时，在真正越过手势阈值并执行切换的瞬间复用统一振幅震动反馈。
 - 播放器洞察不再受当前后端实例条件隐藏，视频页“更多设置”靠前固定显示；设置页“播放器设置”新增“显示 / 智能 / 不显示”三档，默认智能。
-- 新增播放器洞察摘要 HUD：显示档常驻，智能档仅在检测到新增掉帧时显示 5 秒并用 350ms 渐隐，不显示档关闭自动摘要；摘要已下移，点击摘要会在播放器同层展开右侧详情面板，点击遮罩或关闭按钮收起，不再弹出二级对话框。
+- 新增播放器洞察摘要 HUD：显示档常驻，智能档在起播首次拿到有效播放器数据或检测到新增掉帧时显示 5 秒并用 350ms 渐隐，不显示档关闭自动摘要；摘要已下移，点击摘要所在的黑色半透明 surface 后由同一层直接扩展为详情层，点击遮罩或关闭按钮收起，不再弹出二级对话框。
 
 ## 验证
 
@@ -60,6 +60,8 @@
 - 本轮包含新 HUD/设置/手势反馈的测试 Release 已重新生成：arm64 `26,932,238` bytes，SHA-256 `3FC08D7B22227B034F265D5AD67B48357731BD28AD494DBE029D2CB2E0DBBD28`；v7a `26,802,938` bytes，SHA-256 `1AB745AE2A5F235578BCB58090FE4412A6BBEE1FA65E02A020756EF5FA09E849`。
 - 本轮洞察内联展开修复的测试 Release 已重新生成：arm64 `26,937,774` bytes，SHA-256 `CEB32DA13C25A00A3B7DD497B7BA9E545A7BA8C8F24A8B76AEDD0D5292B73B46`；v7a `26,807,498` bytes，SHA-256 `FCDC791140051CBB431FF0097C403B9E06589BEC0224A7FD2E7E797C3963FD46`。
 - 本轮使用 `aapt2` 核验两包均为 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2`，分别只包含 `arm64-v8a` 或 `armeabi-v7a`；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error，仅保留项目既有 42 条 info。
+- 本轮按 BiliPai 黑色半透明 surface 扩展逻辑重构后的测试 Release 已重新生成：arm64 `26,935,290` bytes，SHA-256 `5C3BD4F840C4442ECDDC2EDB96672ADE1D360D29FEC6C0564B00028EA77B73A7`；v7a `26,810,654` bytes，SHA-256 `B1B2F9639ECAEF5C40A99DB10A4D880DE4B96A7C2A152DFE696744A9F32688FC`。
+- 本轮 `aapt2` 核验两包均为 `com.maxzrb.piliexo`、`versionName=26.8.28`、`versionCode=2`，分别只包含目标 ABI；`flutter test --no-pub` 8/8 通过，`flutter analyze --no-pub` 无 error，仅保留项目既有 42 条 info。
 - Release APK：`dist/PiliExo_android_v26.8.28.1.apk`，68,793,128 bytes；SHA-256 为 `9D64CAD5C991485E4DCB323C2DAA8FA2DC5F8B300C97EA7DD8C71190B2D5664F`；包名保持 `com.example.piliplus`，显示名为 `PiliExo`。
 - v26.8.28.2 arm64 Release APK：`dist/PiliExo_android_v26.8.28.2_arm64-v8a.apk`，26,601,707 bytes；SHA-256 为 `94EA78F3AA2458B9C56F264ED8A99BAF8971AD0390B010FABFD7C558C6B371A6`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
 - v26.8.28.2 v7a Release APK：`dist/PiliExo_android_v26.8.28.2_armeabi-v7a.apk`，26,480,705 bytes；SHA-256 为 `E9234886FC779CBC424A8B6965AB256353753549FFE973EDEBAA8C18EE4B196C`；包名为 `com.maxzrb.piliexo`，versionCode 为 2。
@@ -195,4 +197,12 @@
 - 洞察摘要位置下移并增加右侧内缩；详情面板按播放器实际尺寸自适应，横屏最大宽度约为可用宽度的 42%、最大高度 360，竖屏最大高度 520。
 - 将 `PlaybackInsightHud` 放到播放器控件绘制层之后，保证展开面板能够覆盖同层控制条并接收点击；保留视频页“更多设置 → 播放器洞察”的手动对话框入口。
 - 测试版本继续保持 `26.8.28+2`，未创建标签或 Release。`flutter test --no-pub` 8/8、Gradle 9.5 双 ABI Release、`aapt2` 包名/版本/ABI 核验通过；未通过 ADB 安装或启动。
+- 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。
+
+### 2026-08-29 01:09 (+08:00)
+
+- 重新核对 BiliPai `VideoPlayerOverlay.kt`：洞察点击通过 `showInsightDetails` 切换同层状态，使用播放器范围的半透明黑色遮罩拦截背景点击，详情内容由 Overlay 中的 surface 承载；不使用 Dialog。
+- 修正 PiliExo：删除独立右侧 `Material` 详情卡片，改为同一个黑色半透明洞察 surface 从摘要态扩展为覆盖播放器主要区域的详情态，详情直接显示五组诊断数据；遮罩、关闭图标和关闭按钮可收起。
+- 智能模式增加起播窗口：首次获得有效播放器数据时显示 5 秒，后续新增掉帧继续显示 5 秒并重新计时；无数据时会重置起播状态，避免下一段视频不再提示。
+- 测试版本继续保持 `26.8.28+2`，未创建标签或 Release。`flutter test --no-pub` 8/8、Flutter analyze 无 error、Gradle 9.5 双 ABI Release、`aapt2` 包名/版本/ABI 核验通过；未通过 ADB 安装或启动。
 - 当前工作树保留用户截图 `tmp/latest_frosted_gap.jpg` 未跟踪。

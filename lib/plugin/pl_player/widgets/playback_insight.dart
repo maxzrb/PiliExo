@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
@@ -44,6 +43,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   var _smartVisible = false;
   var _lastDroppedFrames = -1;
   var _detailsExpanded = false;
+  var _initialWindowShown = false;
 
   @override
   void initState() {
@@ -51,34 +51,61 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     _lastDroppedFrames = widget.controller.playbackInsight.value.droppedFrames;
     widget.controller.playbackInsight.addListener(_onSnapshotChanged);
     playbackInsightModeNotifier.addListener(_onModeChanged);
+
+    final snapshot = widget.controller.playbackInsight.value;
+    if (snapshot.hasMeasuredData &&
+        playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
+      _initialWindowShown = true;
+      _showSmartWindow();
+    }
   }
 
   void _onSnapshotChanged() {
     final snapshot = widget.controller.playbackInsight.value;
+    if (!snapshot.hasMeasuredData) {
+      _initialWindowShown = false;
+      _detailsExpanded = false;
+    }
+    final isInitialMeasurement =
+        snapshot.hasMeasuredData && !_initialWindowShown;
+    if (isInitialMeasurement) {
+      _initialWindowShown = true;
+    }
     final hasNewDroppedFrames = snapshot.droppedFrames > _lastDroppedFrames;
     _lastDroppedFrames = snapshot.droppedFrames;
-    if (hasNewDroppedFrames &&
+    if ((hasNewDroppedFrames || isInitialMeasurement) &&
         playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
-      _smartHideTimer?.cancel();
-      if (mounted) {
-        setState(() => _smartVisible = true);
-      } else {
-        _smartVisible = true;
-      }
-      _smartHideTimer = Timer(const Duration(seconds: 5), () {
-        if (mounted) {
-          setState(() => _smartVisible = false);
-        }
-      });
+      _showSmartWindow();
     } else if (mounted) {
       setState(() {});
     }
+  }
+
+  void _showSmartWindow() {
+    _smartHideTimer?.cancel();
+    if (mounted) {
+      setState(() => _smartVisible = true);
+    } else {
+      _smartVisible = true;
+    }
+    _smartHideTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() => _smartVisible = false);
+      }
+    });
   }
 
   void _onModeChanged() {
     if (playbackInsightModeNotifier.value != PlaybackInsightMode.smart) {
       _smartHideTimer?.cancel();
       _smartVisible = false;
+    }
+    final snapshot = widget.controller.playbackInsight.value;
+    if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart &&
+        snapshot.hasMeasuredData &&
+        !_initialWindowShown) {
+      _initialWindowShown = true;
+      _showSmartWindow();
     }
     if (playbackInsightModeNotifier.value == PlaybackInsightMode.off) {
       _detailsExpanded = false;
@@ -115,7 +142,8 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
           PlaybackInsightMode.smart => _smartVisible,
           PlaybackInsightMode.off => false,
         };
-    final showHud = _detailsExpanded || insightVisible;
+    final hasHudData =
+        snapshot.hasMeasuredData && mode != PlaybackInsightMode.off;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -124,72 +152,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            if (showHud)
-              Align(
-                alignment: Alignment.topRight,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    top: topPadding,
-                    right: endPadding,
-                  ),
-                  child: AnimatedOpacity(
-                    opacity: insightVisible ? 1 : 0,
-                    duration: const Duration(milliseconds: 350),
-                    curve: Curves.easeOut,
-                    child: IgnorePointer(
-                      ignoring: !insightVisible,
-                      child: GestureDetector(
-                        onTap: _toggleDetails,
-                        child: DecoratedBox(
-                          decoration: const BoxDecoration(
-                            color: Color(0xAD000000),
-                            borderRadius: BorderRadius.all(
-                              Radius.circular(10),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 7,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _StatusDot(snapshot: snapshot),
-                                const SizedBox(width: 7),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      snapshot.summary,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    Text(
-                                      snapshot.statusText,
-                                      style: const TextStyle(
-                                        color: Color(0xBFFFFFFF),
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (_detailsExpanded) ...[
+            if (_detailsExpanded)
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -197,19 +160,54 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
                   child: const ColoredBox(color: Color(0x1F000000)),
                 ),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: _PlaybackInsightPanel(
-                    controller: widget.controller,
-                    onDismiss: _closeDetails,
-                    availableWidth: constraints.maxWidth - 16,
-                    availableHeight: constraints.maxHeight - 16,
+            if (hasHudData || _detailsExpanded)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                top: _detailsExpanded ? 12 : topPadding,
+                right: _detailsExpanded ? 12 : endPadding,
+                bottom: _detailsExpanded ? 12 : null,
+                left: _detailsExpanded ? 12 : null,
+                child: IgnorePointer(
+                  ignoring: !_detailsExpanded && !insightVisible,
+                  child: AnimatedOpacity(
+                    opacity: _detailsExpanded || insightVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOut,
+                    child: Material(
+                      color: _detailsExpanded
+                          ? const Color(0xD9000000)
+                          : const Color(0xAD000000),
+                      elevation: _detailsExpanded ? 8 : 0,
+                      borderRadius: BorderRadius.circular(
+                        _detailsExpanded ? 14 : 10,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        child: _detailsExpanded
+                            ? _PlaybackInsightExpandedContent(
+                                key: const ValueKey('expanded'),
+                                snapshot: snapshot,
+                                onDismiss: _closeDetails,
+                              )
+                            : IgnorePointer(
+                                key: const ValueKey('summary'),
+                                ignoring: !insightVisible,
+                                child: GestureDetector(
+                                  onTap: _toggleDetails,
+                                  child: _PlaybackInsightSummary(
+                                    snapshot: snapshot,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ],
           ],
         );
       },
@@ -217,100 +215,206 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   }
 }
 
-/// 洞察摘要点击后在播放器同一层展开，避免再弹出一个二级对话框。
-class _PlaybackInsightPanel extends StatelessWidget {
-  const _PlaybackInsightPanel({
-    required this.controller,
-    required this.onDismiss,
-    required this.availableWidth,
-    required this.availableHeight,
-  });
+class _PlaybackInsightSummary extends StatelessWidget {
+  const _PlaybackInsightSummary({required this.snapshot});
 
-  final PlPlayerController controller;
-  final VoidCallback onDismiss;
-  final double availableWidth;
-  final double availableHeight;
+  final PlaybackInsightSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<PlaybackInsightSnapshot>(
-      valueListenable: controller.playbackInsight,
-      builder: (context, snapshot, child) {
-        final colorScheme = ColorScheme.of(context);
-        final isLandscape = availableWidth > availableHeight;
-        final preferredWidth = isLandscape
-            ? math.max(260.0, availableWidth * 0.42)
-            : math.min(440.0, availableWidth - 24);
-        final panelWidth = math.max(
-          0.0,
-          math.min(availableWidth, preferredWidth),
-        );
-        final preferredHeight = isLandscape
-            ? math.min(360.0, availableHeight)
-            : math.min(520.0, availableHeight * 0.84);
-        final panelHeight = math.max(
-          0.0,
-          math.min(availableHeight, preferredHeight),
-        );
-        return Material(
-          color: colorScheme.surface.withValues(alpha: 0.96),
-          elevation: 8,
-          borderRadius: BorderRadius.circular(14),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            width: panelWidth,
-            height: panelHeight,
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, top: 6),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          '播放器洞察',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _StatusDot(snapshot: snapshot),
+          const SizedBox(width: 7),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                snapshot.summary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                snapshot.statusText,
+                style: const TextStyle(
+                  color: Color(0xBFFFFFFF),
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 洞察摘要所在的黑色 surface 点击后直接扩展为详情层。
+class _PlaybackInsightExpandedContent extends StatelessWidget {
+  const _PlaybackInsightExpandedContent({
+    super.key,
+    required this.snapshot,
+    required this.onDismiss,
+  });
+
+  final PlaybackInsightSnapshot snapshot;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 16, top: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '播放器洞察',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
-                      _StatusDot(snapshot: snapshot),
-                      IconButton(
-                        tooltip: '关闭',
-                        onPressed: onDismiss,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.close),
+                    ),
+                    Text(
+                      snapshot.statusText,
+                      style: const TextStyle(
+                        color: Color(0xBFFFFFFF),
+                        fontSize: 11,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              _StatusDot(snapshot: snapshot),
+              TextButton(
+                onPressed: () =>
+                    Utils.copyText(_buildPlaybackInsightReport(snapshot)),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('复制'),
+              ),
+              IconButton(
+                tooltip: '关闭',
+                onPressed: onDismiss,
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: Color(0x44FFFFFF)),
+        Expanded(
+          child: SelectionArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _InsightOverlaySection(
+                    title: '概览',
+                    rows: snapshot.overviewRows,
                   ),
-                ),
-                Expanded(
-                  child: _PlaybackInsightBody(snapshot: snapshot),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () => Utils.copyText(
-                          _buildPlaybackInsightReport(snapshot),
-                        ),
-                        child: const Text('复制'),
-                      ),
-                      TextButton(
-                        onPressed: onDismiss,
-                        child: Text(
-                          '关闭',
-                          style: TextStyle(color: colorScheme.outline),
-                        ),
-                      ),
-                    ],
+                  _InsightOverlaySection(
+                    title: '视频',
+                    rows: snapshot.videoRows,
                   ),
-                ),
-              ],
+                  _InsightOverlaySection(
+                    title: '音频',
+                    rows: snapshot.audioRows,
+                  ),
+                  _InsightOverlaySection(
+                    title: '播放',
+                    rows: snapshot.runtimeRows,
+                  ),
+                  _InsightOverlaySection(
+                    title: '事件',
+                    rows: snapshot.eventRows,
+                  ),
+                ],
+              ),
             ),
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+}
+
+class _InsightOverlaySection extends StatelessWidget {
+  const _InsightOverlaySection({required this.title, required this.rows});
+
+  final String title;
+  final List<PlaybackInsightRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final colorScheme = ColorScheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: colorScheme.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      row.label,
+                      style: const TextStyle(
+                        color: Color(0xBFFFFFFF),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 6,
+                    child: Text(
+                      row.value,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
