@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 19:34 (+08:00)
+- 更新时间：2026-08-29 19:45 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`04f32f4ca`（本轮上游同步前回退点）
-- 发布提交：`7a2edd7c9fd1ee9aaaf71e5052301ed04b60c5e2`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。当前 v26.8.29.4 已覆盖更新下载弹窗交互，版本号保持不变；已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，待后续真机回归后再决定是否发布。
+- 分析基线：`7f4595a2e`（v26.8.29.5 发布提交）
+- 发布提交：`7f4595a2e51c0b1303ea92fd8b12ad05be4426bb`
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 `v26.8.29.5`。
 
 ## 已完成
 
@@ -451,3 +451,13 @@
 - 依赖升级将 `flutter_html` 切换到上游 Git `dev` 分支，锁定解析提交 `e33a789a4dce561267a995d3bc48c638c3950e02`；其余锁文件更新按上游提交保留。`flutter pub get` 已完成依赖解析，但因 Windows 未启用开发者模式的插件符号链接检查返回非零；未产生额外锁文件改动。
 - 验证通过：固定 Flutter 3.47.2 下 `flutter test --no-pub` 14/14、全量 `flutter analyze --no-pub --no-fatal-infos` 无 error（保留项目既有 42 条 info）、Android `:app:compileDebugKotlin --console=plain --warning-mode=none` 和 `:app:assembleDebug --console=plain --warning-mode=none`。
 - 当前版本仍为 `v26.8.29.4` / `26.8.29+4`，Release 标签未改动，本轮未递增版本、未发布、未推送；工作区源码和记录已完成本地提交，仍保留 `tmp/` 未跟踪目录。
+
+## 2026-08-29 19:45
+
+- 按用户要求将上游字体页面重构、字体设置迁移保护、选择区域补丁和依赖升级发布为 `v26.8.29.5`，应用版本为 `26.8.29+5`；发布提交 `7f4595a2e51c0b1303ea92fd8b12ad05be4426bb` 已推送至 `maxzrb/PiliExo` 的 `main`，标签已创建并指向该提交。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.5>；两个资产状态均为 `uploaded`。
+- ModelScope：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.5/PiliExo_android_v26.8.29.5_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.5/PiliExo_android_v26.8.29.5_armeabi-v7a.apk>；均返回 HTTP 200，`Content-Length` 与 `X-Linked-ETag` 和本地产物一致。
+- arm64 APK：`31,641,310` bytes，SHA-256 `0AFDF2C4F537BE138A3F75CDBDED051D9909DFA5165D096AD0B65670D0CAB3BA`；armeabi-v7a APK：`31,514,507` bytes，SHA-256 `A2AC73058AA1118AFA495DDDCBE8A162A28715E4C66FD1267FAB73FB6E508533`。
+- 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=5`、双 ABI、每包均含对应 `libffmpegJNI.so`；两个包均通过 `apksigner` V2 验证，正式签名证书保持不变。
+- 发布前验证通过：Flutter 3.47.2 工具链校验、`flutter pub get`、`flutter test --no-pub` 14/14、全量 analyze 无 error、Android `compileDebugKotlin`、Debug `assembleDebug` 和双 ABI Release 构建；`git diff --check` 通过。
+- 当前版本为 `v26.8.29.5` / `26.8.29+5`，本轮已发布并推送；工作区仅保留用户未跟踪目录 `tmp/`，未纳入版本控制。
