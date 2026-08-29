@@ -1,3 +1,4 @@
+import 'package:PiliPlus/build_config.dart';
 import 'package:PiliPlus/utils/release_version.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,6 +25,17 @@ void main() {
 
       expect(first.compareTo(second), lessThan(0));
       expect(second.compareTo(nextDay), lessThan(0));
+    });
+
+    test('发布序号不使用 Android versionCode', () {
+      final version = ReleaseVersion.fromBuildMetadata(
+        versionName: '26.8.30',
+        releaseBuild: 1,
+      );
+
+      expect(version?.tag, 'v26.8.30.1');
+      expect(BuildConfig.versionCode, isNot(BuildConfig.releaseBuild));
+      expect(ReleaseVersion.current?.build, BuildConfig.releaseBuild);
     });
   });
 }

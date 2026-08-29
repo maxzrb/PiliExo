@@ -22,10 +22,23 @@ android {
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
-    // 同时兼容 Flutter CLI 写入 local.properties 和 CI 直接传入 Gradle 属性。
-    val resolvedVersionCode = providers.gradleProperty("flutter.versionCode")
+    // Android versionCode 与 pubspec 的当天发布序号分开维护，避免日期变化后发生降级安装。
+    // 允许显式的 pili.androidVersionCode 覆盖用于临时验证，但正式构建以仓库配置为准。
+    val versionProperties = Properties().also {
+        val propertiesFile = rootProject.file("version.properties")
+        if (propertiesFile.exists()) {
+            propertiesFile.inputStream().use { stream -> it.load(stream) }
+        }
+    }
+    val checkedInVersionCode = versionProperties.getProperty("versionCode")
+        ?.trim()
+        ?.toIntOrNull()
+        ?.takeIf { it > 0 }
+    val resolvedVersionCode = providers.gradleProperty("pili.androidVersionCode")
         .orNull
         ?.toIntOrNull()
+        ?.takeIf { it > 0 }
+        ?: checkedInVersionCode
         ?: flutter.versionCode
     val resolvedVersionName = providers.gradleProperty("flutter.versionName")
         .orNull

@@ -1,6 +1,6 @@
 import 'package:PiliPlus/build_config.dart';
 
-/// PiliExo 使用 v两位年份.月份.日期.当天构建次数作为发布标签。
+/// PiliExo 使用 v两位年份.月份.日期.当天发布次数作为发布标签。
 final class ReleaseVersion implements Comparable<ReleaseVersion> {
   const ReleaseVersion({
     required this.year,
@@ -33,15 +33,31 @@ final class ReleaseVersion implements Comparable<ReleaseVersion> {
       day: int.parse(match.group(3)!),
       build: int.parse(match.group(4)!),
     );
-    if (version.month < 1 || version.month > 12 || version.day < 1 || version.day > 31) {
+    if (version.month < 1 ||
+        version.month > 12 ||
+        version.day < 1 ||
+        version.day > 31) {
       return null;
     }
     return version;
   }
 
+  static ReleaseVersion? fromBuildMetadata({
+    required String versionName,
+    required int releaseBuild,
+  }) {
+    if (releaseBuild < 1) {
+      return null;
+    }
+    final name = versionName.split('-').first;
+    return tryParse('v$name.$releaseBuild');
+  }
+
   static ReleaseVersion? get current {
-    final name = BuildConfig.versionName.split('-').first;
-    return tryParse('v$name.${BuildConfig.versionCode}');
+    return fromBuildMetadata(
+      versionName: BuildConfig.versionName,
+      releaseBuild: BuildConfig.releaseBuild,
+    );
   }
 
   String get tag => 'v$year.$month.$day.$build';

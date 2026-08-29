@@ -1,12 +1,19 @@
 abstract final class BuildConfig {
-  // 未传入发布元数据时，使用 pubspec.yaml 当前正式版本，避免本地构建显示为 SNAPSHOT。
+  // versionCode 是 Android 安装版本号，必须按正式 Release 全局递增，不能按日期重置。
   static const int versionCode = int.fromEnvironment(
     'pili.code',
-    defaultValue: 1,
+    defaultValue: 8,
   );
+
+  // releaseBuild 是 vYY.M.D.N 中当天的发布序号，与 Android versionCode 分开维护。
+  static const int releaseBuild = int.fromEnvironment(
+    'pili.releaseBuild',
+    defaultValue: 2,
+  );
+
   static const String versionName = String.fromEnvironment(
     'pili.name',
-    defaultValue: '26.8.29',
+    defaultValue: '26.8.30',
   );
 
   static const int buildTime = int.fromEnvironment('pili.time');
@@ -14,4 +21,6 @@ abstract final class BuildConfig {
     'pili.hash',
     defaultValue: 'N/A',
   );
+
+  static String get displayVersion => '$versionName+$releaseBuild';
 }
