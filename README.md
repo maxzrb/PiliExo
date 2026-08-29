@@ -4,7 +4,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：`v26.8.29.7`。
+- 当前正式版本：`v26.8.30.1`。
 - 仅 Android 构建和发布；其他平台代码随上游保留，暂不作为本 fork 的发布目标。
 - 固定使用 Flutter `3.47.2`；Android Kotlin 增量编译默认关闭，用于规避项目与 Flutter 插件缓存跨盘时的路径问题。
 - Android Release 提供 `arm64-v8a` 和 `armeabi-v7a`，正式包使用 `com.maxzrb.piliexo`。
