@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 19:03 (+08:00)
+- 更新时间：2026-08-29 19:34 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`7a2edd7c9`
+- 分析基线：`04f32f4ca`（本轮上游同步前回退点）
 - 发布提交：`7a2edd7c9fd1ee9aaaf71e5052301ed04b60c5e2`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。当前 v26.8.29.4 已覆盖更新下载弹窗交互，版本号保持不变。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。当前 v26.8.29.4 已覆盖更新下载弹窗交互，版本号保持不变；已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，待后续真机回归后再决定是否发布。
 
 ## 已完成
 
@@ -442,3 +442,12 @@
 - 新 arm64 APK：`31,666,544` bytes，SHA-256 `0828E730F59173416761ECE5467907F625BD1B51487F502D7F7277BF6C1CA359`；新 armeabi-v7a APK：`31,542,223` bytes，SHA-256 `A54C25EE33934229554ADB1B012748AFF9E44CA05425D729A4243D09F4892197`。GitHub digest 与 ModelScope `X-Linked-ETag` 均已回读一致。
 - 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=4`、双 ABI、正式证书 `CN=PiliExo, O=AerithDream, C=CN` 4096 位 RSA、V2 签名；Flutter 测试 14/14、Android Release 构建均通过。
 - 当前工作区已推送 `origin/main`，仅保留用户未跟踪目录 `tmp/`；发布记录已提交，不修改用户未跟踪目录 `tmp/`。
+
+## 2026-08-29 19:34
+
+- 以 `04f32f4ca` 为回退基线建立本地分支 `backup/pre-upstream-font-sync-20260829`，未修改或提交用户未跟踪目录 `tmp/`。
+- 按 PiliPlus 上游顺序引入 `6ee11d392`（字体页面重构）、`1f43c60d8`（默认字体回退）、`85803c196`（选择区域补丁）、`db77169b4`（字体设置存储重构）、`32a39e466`（依赖升级）和 `4667f5f53`（字体设置保存修复），均无冲突；对应本地提交为 `b2458d7ef`、`28c9c204a`、`61a436178`、`aa2ab3dde`、`66a33702b`、`5e72218ce`。
+- 为避免已有用户自定义字体在存储模型切换时丢失，新增旧版 `customAppFont` 索引到 `customFont.otf` 的启动迁移，并保留旧索引/文件以支持回退；自定义字体保存改为等待文件写入完成。
+- 依赖升级将 `flutter_html` 切换到上游 Git `dev` 分支，锁定解析提交 `e33a789a4dce561267a995d3bc48c638c3950e02`；其余锁文件更新按上游提交保留。`flutter pub get` 已完成依赖解析，但因 Windows 未启用开发者模式的插件符号链接检查返回非零；未产生额外锁文件改动。
+- 验证通过：固定 Flutter 3.47.2 下 `flutter test --no-pub` 14/14、全量 `flutter analyze --no-pub --no-fatal-infos` 无 error（保留项目既有 42 条 info）、Android `:app:compileDebugKotlin --console=plain --warning-mode=none` 和 `:app:assembleDebug --console=plain --warning-mode=none`。
+- 当前版本仍为 `v26.8.29.4` / `26.8.29+4`，Release 标签未改动，本轮未递增版本、未发布、未推送；工作区源码和记录已完成本地提交，仍保留 `tmp/` 未跟踪目录。
