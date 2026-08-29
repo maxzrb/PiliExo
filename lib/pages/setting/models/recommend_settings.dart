@@ -14,11 +14,15 @@ import 'package:material_ui/material_ui.dart';
 
 List<SettingsModel> get recommendSettings {
   var appRatio = Pref.appRcmdRatio;
+  var pendingRefresh = Pref.appRcmdRatioPending;
   return [
     NormalModel(
       title: '首页推荐来源',
       leading: const Icon(Icons.model_training_outlined),
-      getSubtitle: () => RecommendMix.describeRatio(appRatio),
+      getSubtitle: () => RecommendMix.describeRatio(
+        appRatio,
+        pending: pendingRefresh,
+      ),
       onTap: (context, setState) async {
         final value = await showDialog<double>(
           context: context,
@@ -35,11 +39,22 @@ List<SettingsModel> get recommendSettings {
           ),
         );
         if (value == null || !context.mounted) return;
-        appRatio = RecommendMix.normalizeRatio(value);
+        final nextRatio = RecommendMix.normalizeRatio(value);
+        final changed = nextRatio != appRatio;
+        appRatio = nextRatio;
+        if (changed) {
+          pendingRefresh = true;
+        }
         await GStorage.setting.put(SettingBoxKey.appRcmdRatio, appRatio);
+        if (changed) {
+          await GStorage.setting.put(
+            SettingBoxKey.appRcmdRatioPending,
+            true,
+          );
+        }
         if (!context.mounted) return;
         setState();
-        SmartDialog.showToast('已保存，重启后生效');
+        SmartDialog.showToast(changed ? '已保存，下次刷新生效' : '设置未改变');
       },
     ),
     SwitchModel(

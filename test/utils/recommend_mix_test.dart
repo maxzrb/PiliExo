@@ -10,6 +10,14 @@ void main() {
     expect(RecommendMix.normalizeRatio(null, fallback: 20), 20);
   });
 
+  test('混合推荐说明下一次刷新生效，而不是重启生效', () {
+    expect(
+      RecommendMix.describeRatio(70, pending: true),
+      'App 70% · Web 30%（下次刷新生效）',
+    );
+    expect(RecommendMix.describeRatio(70), 'App 70% · Web 30%');
+  });
+
   test('Web 和 App 端点只返回对应来源', () {
     const app = ['a1', 'a2', 'a3'];
     const web = ['w1', 'w2', 'w3'];

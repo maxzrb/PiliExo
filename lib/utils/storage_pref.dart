@@ -332,6 +332,10 @@ abstract final class Pref {
     );
   }
 
+  static bool get appRcmdRatioPending =>
+      _setting.get(SettingBoxKey.appRcmdRatioPending, defaultValue: false) ==
+      true;
+
   /// 兼容旧调用方：只有纯 App 推荐时才返回 true。
   static bool get appRcmd => appRcmdRatio == RecommendMix.maxAppRatio;
 

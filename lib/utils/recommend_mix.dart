@@ -19,12 +19,13 @@ abstract final class RecommendMix {
   }
 
   /// 返回设置页中显示的推荐来源说明。
-  static String describeRatio(int appRatio) {
+  static String describeRatio(int appRatio, {bool pending = false}) {
     final ratio = normalizeRatio(appRatio);
+    final suffix = pending ? '（下次刷新生效）' : '';
     return switch (ratio) {
       0 => 'Web 推荐（纯 Web）',
       100 => 'App 推荐（纯 App）',
-      _ => 'App $ratio% · Web ${100 - ratio}%（重启后生效）',
+      _ => 'App $ratio% · Web ${100 - ratio}%$suffix',
     };
   }
 
