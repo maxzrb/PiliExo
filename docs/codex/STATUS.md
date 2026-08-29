@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 13:53 (+08:00)
+- 更新时间：2026-08-29 14:06 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
 - 发布提交：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
@@ -58,6 +58,7 @@
 - 将 Android Kotlin 跨盘缓存修复写入 `android/gradle.properties`：默认 `kotlin.incremental=false`；保留 `android.builtInKotlin=false` 和 `android.newDsl=false` 兼容开关，避免当前 Flutter Gradle 插件与 AGP 9 新 DSL 的类型冲突。
 - 将固定 Flutter 工具链、跨盘构建约束和标准发布检查命令写入 `docs/发布流程.md`，并在本次 `v26.8.29.3` 发布中按该流程执行。
 - 已发布正式版 `v26.8.29.3`，应用版本为 `26.8.29+3`，发布提交为 `4b3baa808180c40c6857b71f0701ee70e4bc3ec5`；GitHub 与 ModelScope 均已同步双 ABI 资产。
+- 修正播放时画质/音质切换行为：只更新当前播放器，不再回写默认画质、移动数据画质、默认音质和移动数据音质；设置页手动修改仍正常持久化。
 
 ## 验证
 
@@ -350,3 +351,11 @@
 - arm64 APK：31,663,011 bytes，SHA-256 `F127645D45EB69E74616FFD4937BA9A9D2EFD819842CA1FE4C066B3770B71224`；armeabi-v7a APK：31,536,321 bytes，SHA-256 `D9D871CC1C7F0C6EB6E0ABC42ABE301F6C5FDB7CCF818B1B65F7FA3D58136565`。两个包均通过 `aapt2` 和 `apksigner` V2 核验。
 - 本轮发布前已通过 Flutter 3.47.2 工具链校验、`flutter pub get`、`flutter test --no-pub` 11/11、全量 analyze 无 error、标准 ARM 双 ABI Release 构建和 `git diff --check`。
 - 当前工作树仅保留用户未跟踪目录 `tmp/`；本次发布后的 HandShake 收尾记录已写入，准备提交，不修改或提交该目录。
+
+### 2026-08-29 14:06 (+08:00)
+
+- 根据用户反馈修正播放时画质/音质切换：删除播放器底栏和视频页顶部控件对四个默认画质/音质配置键的回写，仅保留当前播放器的画质、音质和播放位置切换。
+- 设置页“默认画质”“移动数据画质”“默认音质”“移动数据音质”的手动保存逻辑保持不变；`播放器设置仅对当前生效` 仍继续控制其它播放器设置。
+- 修改文件：`lib/plugin/pl_player/view/view.dart`、`lib/pages/video/widgets/header_control.dart`。
+- 验证通过：两个目标文件 Flutter analyze 无问题，`flutter test --no-pub` 11/11 通过，`git diff --check` 通过；本轮未打包、未创建新 Release。
+- 当前版本仍为 `v26.8.29.3` / `26.8.29+3`；工作区保留用户未跟踪目录 `tmp/`，本轮代码与记录改动尚未提交。

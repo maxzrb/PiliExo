@@ -44,7 +44,6 @@ import 'package:PiliPlus/services/shutdown_timer_service.dart'
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
-import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
@@ -971,7 +970,7 @@ class HeaderControlState extends State<HeaderControl>
                     final isCurr = currentVideoQa.code == item.quality;
                     return ListTile(
                       dense: true,
-                      onTap: () async {
+                      onTap: () {
                         if (isCurr) {
                           return;
                         }
@@ -985,15 +984,7 @@ class HeaderControlState extends State<HeaderControl>
 
                         SmartDialog.showToast("画质已变为：${newQa.desc}");
 
-                        // update
-                        if (!plPlayerController.tempPlayerConf) {
-                          setting.put(
-                            await ConnectivityUtils.isWiFi
-                                ? SettingBoxKey.defaultVideoQa
-                                : SettingBoxKey.defaultVideoQaCellular,
-                            quality,
-                          );
-                        }
+                        // 播放中切换只更新当前播放器，不回写默认画质偏好。
                       },
                       // 可能包含会员解锁画质
                       enabled: index >= totalQaSam - usefulQaSam,
@@ -1051,7 +1042,7 @@ class HeaderControlState extends State<HeaderControl>
                     final isCurr = currentAudioQa.code == item.id;
                     return ListTile(
                       dense: true,
-                      onTap: () async {
+                      onTap: () {
                         if (isCurr) {
                           return;
                         }
@@ -1065,15 +1056,7 @@ class HeaderControlState extends State<HeaderControl>
 
                         SmartDialog.showToast("音质已变为：${newQa.desc}");
 
-                        // update
-                        if (!plPlayerController.tempPlayerConf) {
-                          setting.put(
-                            await ConnectivityUtils.isWiFi
-                                ? SettingBoxKey.defaultAudioQa
-                                : SettingBoxKey.defaultAudioQaCellular,
-                            quality,
-                          );
-                        }
+                        // 播放中切换只更新当前播放器，不回写默认音质偏好。
                       },
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
