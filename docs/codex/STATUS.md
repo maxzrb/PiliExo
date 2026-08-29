@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 21:25 (+08:00)
+- 更新时间：2026-08-29 21:48 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`e7d82d4a2`（v26.8.29.6 更新机制测试版本后的工作基线）
-- 发布提交：`6ea847e367ee7c39e0d08239238a0f1ba25aefbe`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布用于验证更新机制的 `v26.8.29.6`；当前补充更新弹窗进度布局和 Web/App 推荐混合比例设置，暂不发布新版本。
+- 分析基线：a576d3692（v26.8.29.6 覆盖版本的 Release 目标提交）
+- 发布提交：a576d369216a885fc31bd60dc65bd989c3275919
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并将更新弹窗进度布局、Web/App 推荐混合比例设置覆盖到正式 v26.8.29.6，保持同版本号不递增。
 
 ## 已完成
 
@@ -482,7 +482,7 @@
 - ModelScope：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.6/PiliExo_android_v26.8.29.6_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.6/PiliExo_android_v26.8.29.6_armeabi-v7a.apk>；均返回 HTTP 200，`Content-Length` 与 `X-Linked-ETag` 和本地产物一致。
 - arm64 APK：`31,641,669` bytes，SHA-256 `229C4208DF487805B697E31A7D0BFC1C6EBDA09517711E5CE16B49D529DBC9B2`；armeabi-v7a APK：`31,514,450` bytes，SHA-256 `7993E28E1B468C7CDE77ECA003CB10E80640183AC42464059688CE88C208FD62`。
 - 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=6`、双 ABI、对应 `libffmpegJNI.so`、正式签名 V2；发布前 Flutter 3.47.2、`flutter pub get`、`flutter test --no-pub` 15/15、全量 analyze 无 error、Android Debug/Release 构建和 `git diff --check` 均通过。
-- 当前版本为 `v26.8.29.6` / `26.8.29+6`；本轮为更新机制测试发布，用户未跟踪目录 `tmp/` 保留不变。
+- v26.8.29.6 已完成同版本 Release 覆盖；用户未跟踪目录 tmp/ 保留不变，未纳入发布提交。
 
 ## 2026-08-29 21:25
 
@@ -491,4 +491,13 @@
 - 推荐设置改为“首页推荐来源”滑块，显示 Web 推荐和 App 推荐两个端点；旧版 `appRcmd` 布尔设置兼容映射，选择结果写入 `appRcmdRatio`，保持原设置的重启生效约束。
 - BiliPai 参考：其首页推荐合并策略同时请求 Web 与移动端接口、交错合并并去重；本地实现进一步加入可调比例。
 - 验证通过：`flutter test --no-pub` 19/19；全量 `flutter analyze --no-pub --no-fatal-infos` 无 error，仅保留项目既有 42 条 info；`flutter build apk --debug --no-pub` 成功，Debug APK 为 `154,168,037` bytes，SHA-256 `52DBB53B46813315C05DB198BBBB3906457AC8BE159794376F4018189555EFB7`；`git diff --check` 通过。
-- 当前版本仍为 `v26.8.29.6` / `26.8.29+6`，本轮不递增版本、不发布 Release；源码和记录尚未提交，用户未跟踪目录 `tmp/` 保留不变。
+- v26.8.29.6 已完成同版本 Release 覆盖；用户未跟踪目录 tmp/ 保留不变，未纳入发布提交。
+
+## 2026-08-29 21:48
+
+- 将更新弹窗进度布局和 Web/App 推荐混合比例设置提交为 3e9e80949，补充发布记录修正提交 9dea9e7da、a576d369；提交已推送至远端 main。
+- 按用户要求保持 26.8.29+6，将标签 v26.8.29.6 移动到 a576d369216a885fc31bd60dc65bd989c3275919，并覆盖同名 GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.6>。
+- GitHub 双 ABI 资产已覆盖：arm64-v8a 31,646,652 bytes，SHA-256 5A456E6F0B0C62F1EA2DAF7C75C042DC9E5FC5DAC7AD7977B20709703B4C4C97；armeabi-v7a 31,519,008 bytes，SHA-256 2C1013E0BE56604D404AC08DABBDA5C41D02802AA2E6AE69A0D7B7E5A73553C5。
+- ModelScope AerithDream/PiliExo 的 releases/v26.8.29.6/ 双 ABI 资产已覆盖；远端 HTTP 200、Content-Length 和 X-Linked-ETag 均与本地产物一致。
+- 发布校验通过：固定 Flutter 3.47.2、flutter test --no-pub 19/19、全量 analyze 无 error（42 条既有 info）、Debug/双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 资源核验、两个 APK 的 apksigner V2 签名核验和 git diff --check。
+- 本轮未递增版本、未改变播放器渲染后端，未处理用户未跟踪目录 tmp/。
