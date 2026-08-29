@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 13:24 (+08:00)
+- 更新时间：2026-08-29 13:53 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`68b9a377f9dc13aabd99d265e67bcaec81f11207`
-- 发布提交：`68b9a377f9dc13aabd99d265e67bcaec81f11207`
+- 分析基线：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
+- 发布提交：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置。
 
 ## 已完成
@@ -56,7 +56,8 @@
 - 检查更新的 Android 下载流程接入 Aria2-next 2.6.7：内置 ARM64 执行文件，使用 32 分片、断点续传和 SHA-256 校验，下载完成后自动唤起系统 APK 安装器；不支持 ARM64 时回退应用内 HTTP 下载。
 - 将 Flutter 工具链统一锁定为 `3.47.2`：`.fvmrc`、`pubspec.yaml`、`pubspec.lock` 和实际 SDK 均由 `lib/scripts/verify_flutter.ps1` 校验，5 个 GitHub Actions 工作流统一从 `.fvmrc` 读取并在构建前校验。
 - 将 Android Kotlin 跨盘缓存修复写入 `android/gradle.properties`：默认 `kotlin.incremental=false`；保留 `android.builtInKotlin=false` 和 `android.newDsl=false` 兼容开关，避免当前 Flutter Gradle 插件与 AGP 9 新 DSL 的类型冲突。
-- 将固定 Flutter 工具链、跨盘构建约束和标准发布检查命令写入 `docs/发布流程.md`；本轮不递增 `26.8.29+2`，不创建新 Release。
+- 将固定 Flutter 工具链、跨盘构建约束和标准发布检查命令写入 `docs/发布流程.md`，并在本次 `v26.8.29.3` 发布中按该流程执行。
+- 已发布正式版 `v26.8.29.3`，应用版本为 `26.8.29+3`，发布提交为 `4b3baa808180c40c6857b71f0701ee70e4bc3ec5`；GitHub 与 ModelScope 均已同步双 ABI 资产。
 
 ## 验证
 
@@ -70,6 +71,8 @@
 - `v26.8.29.2` 双 ABI 正式 APK 已通过 `aapt2` 核验：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=2`，分别只含 `arm64-v8a` 或 `armeabi-v7a`，且包含对应 `libffmpegJNI.so`。
 - `v26.8.29.2` 两包均通过 `apksigner` V2 签名验证，签名证书 DN 为 `CN=PiliExo, O=AerithDream, C=CN`；arm64 `25,681,072` bytes，SHA-256 `E3988B841C173F8D3D2595299A639FC2EE2C1541CE1F80665832F3FB0A83BF92`；v7a `25,550,590` bytes，SHA-256 `D0876E6967C7DC5F182925E8083C4B5F2E62E0A92E1500715C018904489556E1`。
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.2>；ModelScope：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.2/PiliExo_android_v26.8.29.2_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.2/PiliExo_android_v26.8.29.2_armeabi-v7a.apk>。
+- `v26.8.29.3` 发布验证通过：GitHub 两个资产状态为 `uploaded`，ModelScope 两个镜像地址 HTTP 200；arm64 SHA-256 `F127645D45EB69E74616FFD4937BA9A9D2EFD819842CA1FE4C066B3770B71224`，v7a SHA-256 `D9D871CC1C7F0C6EB6E0ABC42ABE301F6C5FDB7CCF818B1B65F7FA3D58136565`，镜像 `X-Linked-ETag` 与本地值一致。
+- `v26.8.29.3` APK 已由 `aapt2` 核验包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=3` 和对应 ABI；两个包均通过 `apksigner` V2 签名验证。
 - 本轮 Android Debug APK 已通过 Gradle `assembleDebug -Pkotlin.incremental=false`：包名/更新权限/FileProvider 已合并，APK 内含 `assets/aria2-next/arm64-v8a/aria2-next`（13,121,080 bytes）及许可证说明；APK `154,189,619` bytes，SHA-256 `AA47C5ADB927F328175D3BB757F3966AF8F5744E8BDAE37199DBF65995EA6FDC`。
 - 本轮 `flutter test --no-pub`：11/11 通过；相关文件 `flutter analyze --no-pub --no-fatal-infos` 无 error，仅保留控制器既有 4 条 info；Android `:app:compileDebugKotlin -Pkotlin.incremental=false` 通过；`git diff --check` 通过。
 - 本轮 Flutter 3.47.2 工具链校验通过；全量 `flutter test --no-pub` 11/11 通过；全量 `flutter analyze --no-pub --no-fatal-infos` 无 error，仅有项目既有 42 条 info。
@@ -112,15 +115,15 @@
 ## 当前限制
 
 - 完整 `flutter analyze --no-pub` 报告 42 条 info/lint，无 error；包含项目既有弃用提示和新增 HDR 文件的风格提示。
-- 本机已准备并验证打补丁的 Flutter 3.47.2 SDK；当前发布包 `v26.8.29.2` 的历史 APK 仍按其发布记录保留，后续构建应继续通过工具链校验脚本。
+- 本机已准备并验证打补丁的 Flutter 3.47.2 SDK；当前发布包为 `v26.8.29.3`，后续构建应继续通过工具链校验脚本。
 - 设备端安装权限确认仍由用户自行处理；代理未再次安装或启动 APK。
 - 当前环境没有本轮 HDR/振动真机验收，SurfaceFlinger dataspace、HDR 屏幕模式、首帧、震动振幅、磨砂效果和长时间音画同步仍需实测。
 - 当前正式密钥只保存在本机并被 Git 忽略；必须备份 `android/piliexo-release.jks`、`android/key.properties` 和密码。正式签名版替换了此前 Debug 签名的同版本资产，旧 Debug 包不能覆盖安装，首次迁移需卸载后安装。
-- 正式版本现为 `v26.8.29.2` / `26.8.29+2`；后续测试包继续沿用该版本号，下一次正式发布按发布日期和当天正式发布次数重新计算。
+- 正式版本现为 `v26.8.29.3` / `26.8.29+3`；后续测试包继续沿用该版本号，下一次正式发布按发布日期和当天正式发布次数重新计算。
 
 ## 下一步
 
-- 用户自行按设备 ABI 安装正式签名版 `v26.8.29.2` APK；若设备已有被覆盖前的 Debug 签名包，先卸载旧包再安装。随后验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
+- 用户自行按设备 ABI 安装正式签名版 `v26.8.29.3` APK；若设备已有被覆盖前的 Debug 签名包，先卸载旧包再安装。随后验收默认震动、滑块即时反馈、磨砂开关与三档效果、HDR10、Dolby Vision、HDR Vivid、横竖屏、前后台、画中画、拖动、字幕和 30 分钟连续播放。
 - 复测 SDR↔HDR 切换红屏和返回播放列表残帧；确认无残留后再按 Release 标签继续迭代。
 - 重点验收状态栏跟随视频模糊的边界、HDR PixelCopy 兼容性、暂停/播放更新节奏，以及播放器洞察实际解码器和色彩信息。
 - 同时验收中部上下滑全屏震动、设置页三档洞察模式、智能档起播/掉帧提示与控制条覆盖关闭语义，以及“更多设置”中的手动详情入口。
@@ -338,3 +341,12 @@
 - Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`，208,644,128 bytes，SHA-256 `EC4C6A6DAD3FDC5640E57F0E11A1229A38D96AAC707A1F4AB54EFE5F2793E3F7`；已核验包含 Aria2-next ARM64 资源、许可证说明和 FileProvider。
 - 标准 ARM 双 ABI Release 构建成功：arm64 `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`（31,662,862 bytes，SHA-256 `72E7F5FE88BAFA2CD07EE83D6CDE30B49FD6556607590753FBF70BD6F72E21BA`），v7a `build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk`（31,536,514 bytes，SHA-256 `923102E4C35B626B0B9F5C5448274506B436D6AAE927CEAE2DFA9EB6F201D5D9`）；`aapt2` 核验包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=2` 和对应 ABI，`apksigner` V2 验证通过。
 - 当前工作区保留用户未跟踪目录 `tmp/`，本轮源码、工作流和记录改动尚未提交；未进行 ADB 真机安装或启动验收。
+
+### 2026-08-29 13:53 (+08:00)
+
+- 按同日正式发布规则将版本递增为 `v26.8.29.3`，应用版本为 `26.8.29+3`；发布提交 `4b3baa808180c40c6857b71f0701ee70e4bc3ec5` 已推送至 `maxzrb/PiliExo` 的 `main`，并创建、推送带注释标签。
+- GitHub Release 已发布：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.3>；arm64 与 armeabi-v7a 两个资产状态均为 `uploaded`。
+- ModelScope `AerithDream/PiliExo` 已同步：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.3/PiliExo_android_v26.8.29.3_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.3/PiliExo_android_v26.8.29.3_armeabi-v7a.apk>；两个地址 HTTP 200，`X-Linked-ETag` 与本地 SHA-256 一致。
+- arm64 APK：31,663,011 bytes，SHA-256 `F127645D45EB69E74616FFD4937BA9A9D2EFD819842CA1FE4C066B3770B71224`；armeabi-v7a APK：31,536,321 bytes，SHA-256 `D9D871CC1C7F0C6EB6E0ABC42ABE301F6C5FDB7CCF818B1B65F7FA3D58136565`。两个包均通过 `aapt2` 和 `apksigner` V2 核验。
+- 本轮发布前已通过 Flutter 3.47.2 工具链校验、`flutter pub get`、`flutter test --no-pub` 11/11、全量 analyze 无 error、标准 ARM 双 ABI Release 构建和 `git diff --check`。
+- 当前工作树仅保留用户未跟踪目录 `tmp/`；本次发布后的 HandShake 收尾记录已写入，准备提交，不修改或提交该目录。
