@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 19:45 (+08:00)
+- 更新时间：2026-08-29 20:23 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`7f4595a2e`（v26.8.29.5 发布提交）
-- 发布提交：`7f4595a2e51c0b1303ea92fd8b12ad05be4426bb`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 `v26.8.29.5`。
+- 分析基线：`8f15d8547`（v26.8.29.5 覆盖修复提交）
+- 发布提交：`8f15d8547146d799ffa8d92138cdbea5e55b8623`
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并将两个交互修复覆盖到 `v26.8.29.5`。
 
 ## 已完成
 
@@ -461,3 +461,13 @@
 - 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=5`、双 ABI、每包均含对应 `libffmpegJNI.so`；两个包均通过 `apksigner` V2 验证，正式签名证书保持不变。
 - 发布前验证通过：Flutter 3.47.2 工具链校验、`flutter pub get`、`flutter test --no-pub` 14/14、全量 analyze 无 error、Android `compileDebugKotlin`、Debug `assembleDebug` 和双 ABI Release 构建；`git diff --check` 通过。
 - 当前版本为 `v26.8.29.5` / `26.8.29+5`，本轮已发布并推送；工作区仅保留用户未跟踪目录 `tmp/`，未纳入版本控制。
+
+## 2026-08-29 20:23
+
+- 修复更新弹窗下载进度被放在更新说明滚动区域末尾的问题：下载状态区现在固定在滚动内容之外，进度条无需滚动即可看到；更新说明仍可独立滚动。
+- 修复控制条/进度条隐藏后关闭播放器洞察详情时摘要闪现的问题：详情期间不再启动摘要渐隐点击计时，关闭时按当前可见状态直接移除隐藏摘要层；新增对应 widget 回归测试。
+- 修复提交 `8f15d8547146d799ffa8d92138cdbea5e55b8623` 已推送至 `maxzrb/PiliExo` 的 `main`；同名标签 `v26.8.29.5` 已从 `7f4595a2e` 覆盖移动到该提交，GitHub Release 资产和说明已更新。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.5>；arm64 APK `31,641,652` bytes，SHA-256 `D3DE77320FDE29C988E215EADFC887C0F646B327283A5026BEE2E94AA3C85E7E`；armeabi-v7a APK `31,514,355` bytes，SHA-256 `271D167B11E1A3741D5A43686E376DDE4E36A94A7A0233729E938418FC849CCC`。
+- ModelScope 同路径资产已覆盖，两个地址均 HTTP 200，`Content-Length` 和 `X-Linked-ETag` 与上述本地产物 SHA-256 一致。
+- 验证通过：固定 Flutter 3.47.2、`flutter test --no-pub` 15/15、全量 analyze 无 error（42 条既有 info）、Android Debug/双 ABI Release 构建、包名/版本/ABI/`libffmpegJNI.so`/正式签名 V2 校验和 `git diff --check`。
+- 当前版本仍为 `v26.8.29.5` / `26.8.29+5`，本轮为同版本资产覆盖，不递增版本号；工作区仅保留用户未跟踪目录 `tmp/`。
