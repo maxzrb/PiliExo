@@ -244,6 +244,9 @@ abstract final class SettingBoxKey {
       liveCdnUrl = 'liveCdnUrl',
       saveReply = 'saveReply',
       appFont = 'appFont';
+
+  /// 旧版自定义字体索引，仅用于升级迁移，不再写入新配置。
+  static const String legacyCustomAppFont = 'customAppFont';
 }
 
 abstract final class LocalCacheKey {

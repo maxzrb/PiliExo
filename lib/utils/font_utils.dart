@@ -25,10 +25,13 @@ abstract final class FontUtils {
 
   static const _kFontExts = ['ttf', 'ttc', 'otf'];
 
+  /// 新版将当前自定义字体统一保存为一个文件；该文件名用于兼容迁移。
+  static final fontFile = File(path.join(appSupportDirPath, 'customFont.otf'));
+
   static AppFont _appFont = _initAppFont();
   static AppFont get appFont => _appFont;
   static set appFont(AppFont value) {
-    assert(isCustom == _isCutsomFont(fontFamily));
+    assert(value.isCustom == _isCutsomFont(value.fontFamily));
     _appFont = value;
   }
 
@@ -39,6 +42,9 @@ abstract final class FontUtils {
   static AppFont _initAppFont() {
     final appFont = GStorage.setting.get(SettingBoxKey.appFont);
     if (_isCutsomFont(appFont)) {
+      if (!fontFile.existsSync()) {
+        _migrateLegacyFont(appFont);
+      }
       if (fontFile.existsSync()) {
         return (fontFamily: appFont, isCustom: true);
       } else {
@@ -50,10 +56,29 @@ abstract final class FontUtils {
     }
   }
 
+  /// 将旧版按字体分别保存的当前字体迁移到新版统一文件，保留旧索引以便回退。
+  static void _migrateLegacyFont(String fontFamily) {
+    final legacyFonts = GStorage.setting.get(
+      SettingBoxKey.legacyCustomAppFont,
+    );
+    if (legacyFonts is! Map) return;
+
+    final legacyPath = legacyFonts[fontFamily];
+    if (legacyPath is! String || legacyPath.isEmpty) return;
+
+    final legacyFile = File(legacyPath);
+    if (!legacyFile.existsSync()) return;
+
+    try {
+      fontFile.parent.createSync(recursive: true);
+      legacyFile.copySync(fontFile.path);
+    } catch (e) {
+      if (kDebugMode) debugPrint('旧版自定义字体迁移失败: $e');
+    }
+  }
+
   static String? get fontFamily => _appFont.fontFamily;
   static bool get isCustom => _appFont.isCustom;
-
-  static final fontFile = File(path.join(appSupportDirPath, 'customFont.otf'));
 
   static Future<void>? init() {
     if (isCustom) {

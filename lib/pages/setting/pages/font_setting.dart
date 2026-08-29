@@ -69,7 +69,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
       if (_appFont.isCustom) {
         final bytes = _customFonts[_selectedFont];
         assert(bytes != null);
-        FontUtils.fontFile.writeAsBytes(bytes!);
+        await FontUtils.fontFile.writeAsBytes(bytes!);
       } else {
         FontUtils.removeFontIfExists();
       }
