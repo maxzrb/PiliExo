@@ -312,17 +312,17 @@ class MainController extends GetxController
           const Duration(milliseconds: 500),
           () {
             if (currentNav == NavigationBarType.home) {
-              homeController.onRefresh();
+              homeController.refreshWithIndicator();
             } else if (currentNav == NavigationBarType.dynamics) {
-              dynamicController.onRefresh();
+              dynamicController.refreshWithIndicator();
             }
           },
         );
       } else {
         if (currentNav == NavigationBarType.home) {
-          homeController.toTopOrRefresh();
+          homeController.toTopOrRefreshWithIndicator();
         } else if (currentNav == NavigationBarType.dynamics) {
-          dynamicController.toTopOrRefresh();
+          dynamicController.toTopOrRefreshWithIndicator();
         }
       }
       _lastSelectTime = now;

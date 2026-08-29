@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 02:08 (+08:00)
+- 更新时间：2026-08-29 11:30 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
 - 发布提交：`e29dc3dc987248e6cee5a6d4acd13cd656d98bbc`
@@ -45,12 +45,20 @@
 - 发布流程已明确正式标签按发布日期生成 `vYY.M.D.N`，日期变化时当天序号从 `.1` 开始；本次由远端 `v26.8.28.2` 正确推进为 `v26.8.29.1`，应用版本为 `26.8.29+1`。
 - 已发布 `v26.8.29.1`：GitHub Release 与 ModelScope `AerithDream/PiliExo` 双源均包含 arm64-v8a 和 armeabi-v7a 资产。
 - 已生成本地固定正式签名：`android/piliexo-release.jks`（PKCS12、RSA 4096、有效期 10000 天），`android/key.properties` 已接入 Gradle 且均被 Git 忽略。
+- 修复播放器洞察详情跟随控制条隐藏逻辑被收起的问题：查看详情期间控制条状态变化只清理自动摘要，不再关闭详情。
+- 调整全屏播放器洞察详情布局：详情沿用摘要的实际宽度和右上位置，仅向下扩展高度，避免详情面板铺满播放器。
+- 底栏重复点击首页或动态触发刷新时，改为先显示对应现有下拉刷新动画，再执行原有刷新回调；滚动未到顶部时仍保持只回到顶部的行为。
+- 为首页各内容 tab 和动态各 tab 的现有 `RefreshIndicator` 绑定程序化触发 key，未改变手动下拉刷新路径。
+- 补齐播放器洞察“视频”详情分组中的视频码率展示，复用已有的 `videoBitrate` 数据，并增加回归测试。
 
 ## 验证
 
 - `flutter test --no-pub`：通过，8 个测试全部通过，其中包含 Android ABI 资产选择测试；本机 SDK 为 3.47.1，而同步后的 `pubspec.yaml` 要求 3.47.2，普通 `flutter test` 因版本解析被阻止。
 - Media3 1.11.0 + OkHttp 5.3.0 独立 Android API 工程：Kotlin 编译及 `HdrMedia3SourceTest` 通过（含 5xx、Range 和断流续传）。
 - 目标文件定向 `flutter analyze`：无 error，仅有 lint info。
+- 本轮播放器洞察修复后，目标文件 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 8/8 通过，`git diff --check` 通过；未生成 APK，未进行真机验收。
+- 本轮底栏刷新动画改动后，11 个相关 Dart 文件 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 8/8 通过，`git diff --check` 通过；未生成 APK，未进行真机验收。
+- 本轮播放器洞察码率修复后，相关模型和测试文件 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 9/9 通过，`git diff --check` 通过；未生成 APK，未进行真机验收。
 - `git diff --check`：通过；仅报告仓库既有的 LF/CRLF 自动转换提示。
 - 使用项目补丁脚本修复 Flutter 3.47.1 与项目 `material_ui` 的基线兼容后，Android `assembleDebug` 构建通过。
 - APK 已生成：`build/app/outputs/flutter-apk/app-debug.apk`，201236035 bytes；最新 SHA-256 为 `ABCC62569508456C5B7872AB725F611BBF227B88B5AE5FDE95E9E3A9A44BCBDC`。
@@ -262,3 +270,27 @@
 - 用正式签名重建 `v26.8.29.1` 双 ABI APK：arm64 `27,003,414` bytes，SHA-256 `BE8198C3B071EDF7A8E25E9E872996BDCEAA6F9066DFF37EED88F53722B67166`；v7a `26,869,934` bytes，SHA-256 `07A58BBBA2B9D557C375E80B6D21A14DF4ADC3195E7FEF25D8E72AC7C98804E4`。
 - `aapt2`、`apksigner`、Gradle 9.5 核验通过；正式证书 SHA-256 为 `43f72e53fa2eaf3bb6a689573659217064df8066a1987822d94c7f109fa0e982`。
 - 已原地覆盖 GitHub Release 和 ModelScope 两个 ABI 资产，并把签名迁移说明写入 `version/release-notes-v26.8.29.1.md`；同版本的旧 Debug 包需卸载一次，后续版本使用同一正式密钥即可覆盖更新。
+
+### 2026-08-29 11:01 (+08:00)
+
+- 根据用户反馈修复播放器洞察详情被隐藏逻辑收起的问题：智能模式下控制条显示状态变化不再关闭已打开的详情，仅清理自动摘要窗口。
+- 调整全屏详情面板：沿用摘要的实际宽度、右侧位置和顶部位置，仅增加纵向高度，并限制在播放器可用高度内；普通窗口布局保持不变。
+- 修改文件：`lib/plugin/pl_player/widgets/playback_insight.dart`。
+- 验证：目标文件 `flutter analyze --no-pub` 无问题；`flutter test --no-pub` 8/8 通过；`git diff --check` 通过；未生成 APK，未进行真机验收。
+- 环境：系统 PATH 未提供 `dart`/`flutter`，本轮使用 `C:\Users\maxzr\AppData\Local\Temp\flutter-3.47.1-sdk\flutter\bin\` 下的 SDK，并继续使用 `--no-pub`；`git pull --ff-only` 因当前分支未设置上游而未同步。
+- Git：工作区保留用户未跟踪目录 `tmp/`；本轮新增播放器洞察源码改动及 HandShake 记录改动，尚未提交。
+
+### 2026-08-29 11:13 (+08:00)
+
+- 根据用户反馈，为底栏首页/动态刷新接入现有下拉刷新动画：点击当前导航项触发刷新时，通过对应 `RefreshIndicatorState.show()` 显示动画，再执行原有网络刷新回调。
+- 首页推荐、热门、分区、直播、番剧、影视 tab，以及动态各 tab 均绑定独立刷新 key；手动下拉刷新逻辑保持不变，滚动未到顶部时仍只执行回到顶部。
+- 修改文件：`lib/pages/common/common_controller.dart`、`lib/pages/main/controller.dart`、`lib/pages/home/controller.dart`、`lib/pages/rank/controller.dart`、`lib/pages/dynamics/controller.dart`，以及首页/动态刷新视图文件。
+- 验证：11 个相关 Dart 文件 `flutter analyze --no-pub` 无问题；`flutter test --no-pub` 8/8 通过；`git diff --check` 通过；未生成 APK，未进行真机验收。
+- Git：继续保留上一轮播放器洞察改动、本轮刷新动画改动及用户未跟踪目录 `tmp/`，尚未提交。
+
+### 2026-08-29 11:30 (+08:00)
+
+- 根据用户反馈补齐播放器洞察“视频”详情分组中的“视频码率”；视频/音频码率均继续使用播放器已采集的数据，不新增推测值。
+- 新增 `test/plugin/pl_player/playback_insight_test.dart` 回归测试，确认视频码率和音频码率分别出现在对应详情分组。
+- 验证：相关文件 `flutter analyze --no-pub` 无问题；`flutter test --no-pub` 9/9 通过；`git diff --check` 通过；未生成 APK，未进行真机验收。
+- Git：工作区继续保留上一轮播放器洞察/底栏刷新改动和用户未跟踪目录 `tmp/`，本轮码率修复尚未提交。

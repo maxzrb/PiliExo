@@ -98,6 +98,7 @@ class PlaybackInsightSnapshot {
     PlaybackInsightRow('媒体类型', videoMimeType),
     PlaybackInsightRow('色彩信息', videoColor),
     PlaybackInsightRow('帧率', frameRate),
+    PlaybackInsightRow('视频码率', videoBitrate),
     PlaybackInsightRow('视频解码器', videoDecoder),
     PlaybackInsightRow('掉帧', '$droppedFrames'),
   ]);

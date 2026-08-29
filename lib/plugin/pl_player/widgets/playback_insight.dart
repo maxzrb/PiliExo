@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
@@ -129,9 +130,8 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     _smartControlVisible = visible;
     if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart &&
         visible != wasVisible) {
-      // 控制条打开或关闭都结束当前事件窗口；用户的控制条操作可以主动消除遮挡。
+      // 控制条打开或关闭都结束自动摘要窗口；查看详情时不能因此收起详情。
       _clearSmartAlertWindow();
-      _detailsExpanded = false;
     }
     if (mounted) setState(() {});
   }
@@ -190,6 +190,20 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
       builder: (context, constraints) {
         final topPadding = widget.isFullScreen ? 80.0 : 44.0;
         final endPadding = widget.isFullScreen ? 36.0 : 14.0;
+        final availableWidth = math.max(
+          0.0,
+          constraints.maxWidth - endPadding,
+        );
+        final availableHeight = math.max(
+          0.0,
+          constraints.maxHeight - topPadding - 12,
+        );
+        // 全屏详情沿用摘要的实际宽度，只向下扩展纵向空间。
+        final fullScreenDetailWidth = math.min(
+          availableWidth,
+          _playbackInsightSummaryWidth(context, snapshot),
+        );
+        final fullScreenDetailHeight = math.min(360.0, availableHeight);
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -205,10 +219,16 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
-                top: _detailsExpanded ? 12 : topPadding,
-                right: _detailsExpanded ? 12 : endPadding,
-                bottom: _detailsExpanded ? 12 : null,
-                left: _detailsExpanded ? 12 : null,
+                top: _detailsExpanded && !widget.isFullScreen ? 12 : topPadding,
+                right: endPadding,
+                bottom: _detailsExpanded && !widget.isFullScreen ? 12 : null,
+                left: _detailsExpanded && !widget.isFullScreen ? 12 : null,
+                width: _detailsExpanded && widget.isFullScreen
+                    ? fullScreenDetailWidth
+                    : null,
+                height: _detailsExpanded && widget.isFullScreen
+                    ? fullScreenDetailHeight
+                    : null,
                 child: IgnorePointer(
                   ignoring: !_detailsExpanded && !insightVisible,
                   child: AnimatedOpacity(
@@ -297,6 +317,48 @@ class _PlaybackInsightSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+double _playbackInsightSummaryWidth(
+  BuildContext context,
+  PlaybackInsightSnapshot snapshot,
+) {
+  final textScaler = MediaQuery.textScalerOf(context);
+  final textDirection = Directionality.of(context);
+  final defaultStyle = DefaultTextStyle.of(context).style;
+
+  double measure(String text, TextStyle style) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: defaultStyle.merge(style),
+      ),
+      textDirection: textDirection,
+      textScaler: textScaler,
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  final textWidth = math.max(
+    measure(
+      snapshot.summary,
+      const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    measure(
+      snapshot.statusText,
+      const TextStyle(
+        color: Color(0xBFFFFFFF),
+        fontSize: 10,
+      ),
+    ),
+  );
+  // 摘要的水平内边距、状态圆点和两者之间的间距。
+  return textWidth + 10 * 2 + 9 + 7;
 }
 
 /// 洞察摘要所在的黑色 surface 点击后直接扩展为详情层。
