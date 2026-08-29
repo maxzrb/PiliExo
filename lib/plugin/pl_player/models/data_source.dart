@@ -4,10 +4,14 @@ import 'package:path/path.dart' as path;
 sealed class DataSource {
   final String videoSource;
   final String? audioSource;
+  final int? videoBitrate;
+  final int? audioBitrate;
 
   DataSource({
     required this.videoSource,
     required this.audioSource,
+    this.videoBitrate,
+    this.audioBitrate,
   });
 }
 
@@ -15,6 +19,8 @@ class NetworkSource extends DataSource {
   NetworkSource({
     required super.videoSource,
     required super.audioSource,
+    super.videoBitrate,
+    super.audioBitrate,
   });
 }
 
@@ -29,6 +35,7 @@ class HdrTrackSource {
   final int? width;
   final int? height;
   final String? frameRate;
+  final int? bitrate;
 
   HdrTrackSource({
     required Iterable<String> urls,
@@ -37,6 +44,7 @@ class HdrTrackSource {
     this.width,
     this.height,
     this.frameRate,
+    this.bitrate,
   }) : urls = urls.where((url) => url.isNotEmpty).toSet().toList() {
     if (this.urls.isEmpty) {
       throw ArgumentError('HDR 轨道至少需要一个 URL');
@@ -50,6 +58,7 @@ class HdrTrackSource {
     if (width != null) 'width': width,
     if (height != null) 'height': height,
     if (frameRate != null) 'frameRate': frameRate,
+    if (bitrate != null) 'bitrate': bitrate,
   };
 }
 
@@ -68,7 +77,12 @@ class HdrNetworkSource extends NetworkSource {
     required this.video,
     this.audio,
     this.headers = const {},
-  }) : super(videoSource: video.urls.first, audioSource: audio?.urls.first);
+  }) : super(
+         videoSource: video.urls.first,
+         audioSource: audio?.urls.first,
+         videoBitrate: video.bitrate,
+         audioBitrate: audio?.bitrate,
+       );
 }
 
 /// HDR 后端选择规则，保持平台和播放类型判断集中在一个无副作用接口中。

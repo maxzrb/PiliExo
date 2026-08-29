@@ -24,7 +24,11 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version-file: pubspec.yaml
+          flutter-version-file: .fvmrc
+
+      - name: 校验Flutter工具链
+        shell: pwsh
+        run: lib/scripts/verify_flutter.ps1
 
       - name: Add fastforge and Inno Setup
         run: |

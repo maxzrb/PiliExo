@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 更新 APK 只允许从应用私有 cache/update 目录共享给系统安装器。 -->
+    <cache-path
+        name="update"
+        path="update/" />
+</paths>

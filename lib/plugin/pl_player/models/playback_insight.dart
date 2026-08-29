@@ -62,8 +62,10 @@ class PlaybackInsightSnapshot {
       videoCodec.isNotEmpty ||
       videoMimeType.isNotEmpty ||
       videoDecoder.isNotEmpty ||
+      videoBitrate.isNotEmpty ||
       audioCodec.isNotEmpty ||
-      audioDecoder.isNotEmpty;
+      audioDecoder.isNotEmpty ||
+      audioBitrate.isNotEmpty;
 
   String get summary {
     final parts = [

@@ -11,6 +11,7 @@ import io.flutter.embedding.engine.FlutterEngine
 class MainActivity : AudioServiceActivity() {
     private var hdrMedia3Plugin: HdrMedia3Plugin? = null
     private var hapticFeedbackPlugin: HapticFeedbackPlugin? = null
+    private var androidUpdatePlugin: AndroidUpdatePlugin? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -18,6 +19,8 @@ class MainActivity : AudioServiceActivity() {
         hdrMedia3Plugin?.register(flutterEngine)
         hapticFeedbackPlugin = HapticFeedbackPlugin(this, flutterEngine.dartExecutor.binaryMessenger)
         hapticFeedbackPlugin?.register()
+        androidUpdatePlugin = AndroidUpdatePlugin(this, flutterEngine.dartExecutor.binaryMessenger)
+        androidUpdatePlugin?.register()
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
@@ -25,6 +28,8 @@ class MainActivity : AudioServiceActivity() {
         hdrMedia3Plugin = null
         hapticFeedbackPlugin?.dispose()
         hapticFeedbackPlugin = null
+        androidUpdatePlugin?.dispose()
+        androidUpdatePlugin = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 

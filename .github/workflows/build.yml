@@ -75,8 +75,12 @@ jobs:
               id: flutter-action
               with:
                   channel: stable
-                  flutter-version-file: pubspec.yaml
+                  flutter-version-file: .fvmrc
                   cache: true
+
+            - name: 校验Flutter工具链
+              shell: pwsh
+              run: lib/scripts/verify_flutter.ps1
 
             - name: Apply Patch
               shell: pwsh

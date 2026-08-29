@@ -12,10 +12,15 @@ import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:material_ui/material_ui.dart';
 
 abstract final class Update {
+  static const _androidUpdateChannel = MethodChannel(
+    'com.maxzrb.piliexo/update',
+  );
+
   // 检查更新
   static Future<void> checkUpdate([bool isAuto = true]) async {
     if (kDebugMode) return;
@@ -145,11 +150,19 @@ abstract final class Update {
       final tag = data['tag_name']?.toString();
       if (Platform.isAndroid && assetName != null && tag != null) {
         final mirrorUrl = _modelScopeAssetUrl(tag, assetName);
-        if (await _isReachable(mirrorUrl)) {
-          await PageUtils.launchURL(mirrorUrl);
+        final urls = <String>[
+          if (await _isReachable(mirrorUrl)) mirrorUrl,
+          if (githubUrl != null && githubUrl.isNotEmpty) githubUrl,
+        ];
+        if (urls.isNotEmpty) {
+          await _downloadAndroidUpdate(
+            urls: urls,
+            fileName: assetName,
+            expectedSha256: _assetSha256(asset),
+          );
           return;
         }
-        SmartDialog.showToast('镜像不可用，已切换 GitHub 下载');
+        SmartDialog.showToast('没有可用的更新下载地址');
       }
 
       if (githubUrl != null && githubUrl.isNotEmpty) {
@@ -164,6 +177,73 @@ abstract final class Update {
           ? '${Constants.sourceCodeUrl}/releases/latest'
           : '${Constants.sourceCodeUrl}/releases/tag/${Uri.encodeComponent(tag)}';
       await PageUtils.launchURL(fallback);
+    }
+  }
+
+  /// Android 优先使用内置 Aria2-next；不支持该架构时回退到单连接 HTTP 下载。
+  ///
+  /// Aria2-next 完成并校验文件后会直接唤起系统安装器，系统仍会按 Android
+  /// 安全策略显示安装确认界面，应用本身不能静默替用户确认安装。
+  static Future<void> _downloadAndroidUpdate({
+    required List<String> urls,
+    required String fileName,
+    required String? expectedSha256,
+  }) async {
+    try {
+      SmartDialog.showLoading(msg: '正在下载更新（Aria2-next 32 分片）');
+      try {
+        await _androidUpdateChannel.invokeMethod<bool>('downloadAndInstall', {
+          'urls': urls,
+          'fileName': fileName,
+          'expectedSha256': expectedSha256,
+        });
+      } on PlatformException catch (error) {
+        if (error.code != 'aria2_unavailable' &&
+            error.code != 'download_failed') {
+          rethrow;
+        }
+        // 目前 Aria2-next 官方 Android 发行包提供 ARM64；其它架构仍保持可更新。
+        SmartDialog.showLoading(msg: '正在下载更新');
+        final savePath = await _androidUpdateChannel.invokeMethod<String>(
+          'prepareUpdateFile',
+          {'fileName': fileName},
+        );
+        if (savePath == null || savePath.isEmpty) {
+          throw StateError('无法准备更新文件');
+        }
+
+        Object? lastError;
+        var downloaded = false;
+        for (final url in urls) {
+          try {
+            await Dio().download(
+              url,
+              savePath,
+              deleteOnError: true,
+              options: Options(
+                headers: {'user-agent': BrowserUa.mob},
+                followRedirects: true,
+                receiveTimeout: const Duration(minutes: 10),
+                sendTimeout: const Duration(minutes: 10),
+              ),
+            );
+            downloaded = true;
+            break;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        if (!downloaded) {
+          throw StateError('更新下载失败：$lastError');
+        }
+        await _androidUpdateChannel.invokeMethod<bool>('installApk', {
+          'path': savePath,
+          'expectedSha256': expectedSha256,
+        });
+      }
+      SmartDialog.showToast('更新已下载，正在打开安装程序');
+    } finally {
+      SmartDialog.dismiss();
     }
   }
 
@@ -262,6 +342,15 @@ abstract final class Update {
     final encodedTag = Uri.encodeComponent(tag);
     final encodedName = assetName.split('/').map(Uri.encodeComponent).join('/');
     return '${Constants.modelScopeReleaseBaseUrl}/$encodedTag/$encodedName';
+  }
+
+  static String? _assetSha256(Map<String, dynamic> asset) {
+    final digest = asset['digest']?.toString().trim().toLowerCase();
+    if (digest == null) return null;
+    final normalized = digest.startsWith('sha256:')
+        ? digest.substring('sha256:'.length)
+        : digest;
+    return RegExp(r'^[0-9a-f]{64}$').hasMatch(normalized) ? normalized : null;
   }
 
   static Future<bool> _isReachable(String url) async {

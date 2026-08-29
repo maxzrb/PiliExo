@@ -774,6 +774,7 @@ class VideoDetailController extends GetxController
             width: firstVideo.width,
             height: firstVideo.height,
             frameRate: firstVideo.frameRate,
+            bitrate: firstVideo.bandWidth,
           ),
           audio: audioUrls.isEmpty
               ? null
@@ -782,6 +783,7 @@ class VideoDetailController extends GetxController
                   mimeType: firstAudio?.mimeType,
                   codecs: firstAudio?.codecs,
                   frameRate: firstAudio?.frameRate,
+                  bitrate: firstAudio?.bandWidth,
                 ),
           headers: const {
             'Referer': HttpString.baseUrl,
@@ -790,10 +792,20 @@ class VideoDetailController extends GetxController
           },
         );
       } else {
-        source = NetworkSource(videoSource: videoUrl!, audioSource: audioUrl);
+        source = NetworkSource(
+          videoSource: videoUrl!,
+          audioSource: audioUrl,
+          videoBitrate: firstVideo.bandWidth,
+          audioBitrate: firstAudio?.bandWidth,
+        );
       }
     } else {
-      source = NetworkSource(videoSource: videoUrl!, audioSource: audioUrl);
+      source = NetworkSource(
+        videoSource: videoUrl!,
+        audioSource: audioUrl,
+        videoBitrate: firstVideo.bandWidth,
+        audioBitrate: firstAudio?.bandWidth,
+      );
     }
 
     await plPlayerController.setDataSource(

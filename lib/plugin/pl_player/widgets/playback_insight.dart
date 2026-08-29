@@ -188,22 +188,43 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final topPadding = widget.isFullScreen ? 80.0 : 44.0;
-        final endPadding = widget.isFullScreen ? 36.0 : 14.0;
-        final availableWidth = math.max(
-          0.0,
-          constraints.maxWidth - endPadding,
-        );
-        final availableHeight = math.max(
-          0.0,
-          constraints.maxHeight - topPadding - 12,
-        );
-        // 全屏详情沿用摘要的实际宽度，只向下扩展纵向空间。
-        final fullScreenDetailWidth = math.min(
-          availableWidth,
-          _playbackInsightSummaryWidth(context, snapshot),
-        );
-        final fullScreenDetailHeight = math.min(360.0, availableHeight);
+        final fullscreenPolicy = widget.isFullScreen
+            ? _resolvePlaybackInsightFullscreenPolicy(constraints.maxWidth)
+            : null;
+        final topPadding = fullscreenPolicy?.summaryTopPadding ?? 44.0;
+        final endPadding = fullscreenPolicy?.summaryEndPadding ?? 14.0;
+        final fullScreenDetailWidth = fullscreenPolicy == null
+            ? 0.0
+            : math.min(
+                math.max(
+                  0.0,
+                  constraints.maxWidth - fullscreenPolicy.detailEdgePadding * 2,
+                ),
+                math.min(
+                  fullscreenPolicy.detailMaxWidth,
+                  math.max(
+                    fullscreenPolicy.detailMinWidth,
+                    constraints.maxWidth * fullscreenPolicy.detailWidthFactor,
+                  ),
+                ),
+              );
+        final fullScreenDetailHeight = fullscreenPolicy == null
+            ? 0.0
+            : math.min(
+                fullscreenPolicy.detailMaxHeight,
+                math.max(
+                  0.0,
+                  constraints.maxHeight -
+                      fullscreenPolicy.detailEdgePadding * 2,
+                ),
+              );
+        final fullScreenDetailTop = fullscreenPolicy == null
+            ? 0.0
+            : math.max(
+                fullscreenPolicy.detailEdgePadding,
+                (constraints.maxHeight - fullScreenDetailHeight) / 2,
+              );
+        final isFullscreenDetail = _detailsExpanded && widget.isFullScreen;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -219,16 +240,18 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
-                top: _detailsExpanded && !widget.isFullScreen ? 12 : topPadding,
-                right: endPadding,
+                top: isFullscreenDetail
+                    ? fullScreenDetailTop
+                    : _detailsExpanded
+                    ? 12
+                    : topPadding,
+                right: isFullscreenDetail
+                    ? fullscreenPolicy!.detailEdgePadding
+                    : endPadding,
                 bottom: _detailsExpanded && !widget.isFullScreen ? 12 : null,
                 left: _detailsExpanded && !widget.isFullScreen ? 12 : null,
-                width: _detailsExpanded && widget.isFullScreen
-                    ? fullScreenDetailWidth
-                    : null,
-                height: _detailsExpanded && widget.isFullScreen
-                    ? fullScreenDetailHeight
-                    : null,
+                width: isFullscreenDetail ? fullScreenDetailWidth : null,
+                height: isFullscreenDetail ? fullScreenDetailHeight : null,
                 child: IgnorePointer(
                   ignoring: !_detailsExpanded && !insightVisible,
                   child: AnimatedOpacity(
@@ -261,6 +284,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
                                   onTap: _toggleDetails,
                                   child: _PlaybackInsightSummary(
                                     snapshot: snapshot,
+                                    fullscreenPolicy: fullscreenPolicy,
                                   ),
                                 ),
                               ),
@@ -277,88 +301,171 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
 }
 
 class _PlaybackInsightSummary extends StatelessWidget {
-  const _PlaybackInsightSummary({required this.snapshot});
+  const _PlaybackInsightSummary({
+    required this.snapshot,
+    this.fullscreenPolicy,
+  });
 
   final PlaybackInsightSnapshot snapshot;
+  final _PlaybackInsightFullscreenPolicy? fullscreenPolicy;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _StatusDot(snapshot: snapshot),
-          const SizedBox(width: 7),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                snapshot.summary,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+    final horizontalPadding = fullscreenPolicy?.summaryHorizontalPadding ?? 10;
+    final verticalPadding = fullscreenPolicy?.summaryVerticalPadding ?? 7;
+    final summaryFontSize = fullscreenPolicy?.summaryFontSize ?? 12;
+    final statusFontSize = math.max(9.0, summaryFontSize - 1);
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: fullscreenPolicy?.summaryMinHeight ?? 0,
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: verticalPadding,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StatusDot(
+              snapshot: snapshot,
+              size: fullscreenPolicy?.summaryDotSize ?? 9,
+            ),
+            SizedBox(
+              width: fullscreenPolicy?.summarySpacing ?? 7,
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  snapshot.summary,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: summaryFontSize,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Text(
-                snapshot.statusText,
-                style: const TextStyle(
-                  color: Color(0xBFFFFFFF),
-                  fontSize: 10,
+                Text(
+                  snapshot.statusText,
+                  style: TextStyle(
+                    color: const Color(0xBFFFFFFF),
+                    fontSize: statusFontSize,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-double _playbackInsightSummaryWidth(
-  BuildContext context,
-  PlaybackInsightSnapshot snapshot,
+/// 全屏洞察尺寸策略参考 BiliPai 的播放器覆盖层分档。
+class _PlaybackInsightFullscreenPolicy {
+  const _PlaybackInsightFullscreenPolicy({
+    required this.summaryTopPadding,
+    required this.summaryEndPadding,
+    required this.summaryHorizontalPadding,
+    required this.summaryVerticalPadding,
+    required this.summaryMinHeight,
+    required this.summaryDotSize,
+    required this.summarySpacing,
+    required this.summaryFontSize,
+    required this.detailEdgePadding,
+    required this.detailWidthFactor,
+    required this.detailMinWidth,
+    required this.detailMaxWidth,
+    required this.detailMaxHeight,
+  });
+
+  final double summaryTopPadding;
+  final double summaryEndPadding;
+  final double summaryHorizontalPadding;
+  final double summaryVerticalPadding;
+  final double summaryMinHeight;
+  final double summaryDotSize;
+  final double summarySpacing;
+  final double summaryFontSize;
+  final double detailEdgePadding;
+  final double detailWidthFactor;
+  final double detailMinWidth;
+  final double detailMaxWidth;
+  final double detailMaxHeight;
+}
+
+_PlaybackInsightFullscreenPolicy _resolvePlaybackInsightFullscreenPolicy(
+  double width,
 ) {
-  final textScaler = MediaQuery.textScalerOf(context);
-  final textDirection = Directionality.of(context);
-  final defaultStyle = DefaultTextStyle.of(context).style;
-
-  double measure(String text, TextStyle style) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: defaultStyle.merge(style),
-      ),
-      textDirection: textDirection,
-      textScaler: textScaler,
-      maxLines: 1,
-    )..layout();
-    return painter.width;
+  if (width >= 1600) {
+    return const _PlaybackInsightFullscreenPolicy(
+      summaryTopPadding: 104,
+      summaryEndPadding: 36,
+      summaryHorizontalPadding: 12,
+      summaryVerticalPadding: 6,
+      summaryMinHeight: 48,
+      summaryDotSize: 8,
+      summarySpacing: 8,
+      summaryFontSize: 14,
+      detailEdgePadding: 16,
+      detailWidthFactor: 0.42,
+      detailMinWidth: 320,
+      detailMaxWidth: 440,
+      detailMaxHeight: 360,
+    );
   }
-
-  final textWidth = math.max(
-    measure(
-      snapshot.summary,
-      const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    measure(
-      snapshot.statusText,
-      const TextStyle(
-        color: Color(0xBFFFFFFF),
-        fontSize: 10,
-      ),
-    ),
+  if (width >= 840) {
+    return const _PlaybackInsightFullscreenPolicy(
+      summaryTopPadding: 92,
+      summaryEndPadding: 28,
+      summaryHorizontalPadding: 12,
+      summaryVerticalPadding: 6,
+      summaryMinHeight: 48,
+      summaryDotSize: 8,
+      summarySpacing: 8,
+      summaryFontSize: 13,
+      detailEdgePadding: 16,
+      detailWidthFactor: 0.42,
+      detailMinWidth: 320,
+      detailMaxWidth: 440,
+      detailMaxHeight: 360,
+    );
+  }
+  if (width >= 600) {
+    return const _PlaybackInsightFullscreenPolicy(
+      summaryTopPadding: 86,
+      summaryEndPadding: 26,
+      summaryHorizontalPadding: 12,
+      summaryVerticalPadding: 6,
+      summaryMinHeight: 48,
+      summaryDotSize: 8,
+      summarySpacing: 8,
+      summaryFontSize: 12,
+      detailEdgePadding: 16,
+      detailWidthFactor: 0.42,
+      detailMinWidth: 320,
+      detailMaxWidth: 440,
+      detailMaxHeight: 360,
+    );
+  }
+  return const _PlaybackInsightFullscreenPolicy(
+    summaryTopPadding: 80,
+    summaryEndPadding: 24,
+    summaryHorizontalPadding: 12,
+    summaryVerticalPadding: 6,
+    summaryMinHeight: 48,
+    summaryDotSize: 8,
+    summarySpacing: 8,
+    summaryFontSize: 12,
+    detailEdgePadding: 16,
+    detailWidthFactor: 0.42,
+    detailMinWidth: 320,
+    detailMaxWidth: 440,
+    detailMaxHeight: 360,
   );
-  // 摘要的水平内边距、状态圆点和两者之间的间距。
-  return textWidth + 10 * 2 + 9 + 7;
 }
 
 /// 洞察摘要所在的黑色 surface 点击后直接扩展为详情层。
@@ -636,9 +743,10 @@ String _buildPlaybackInsightReport(PlaybackInsightSnapshot snapshot) {
 }
 
 class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.snapshot});
+  const _StatusDot({required this.snapshot, this.size = 9});
 
   final PlaybackInsightSnapshot snapshot;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -649,8 +757,8 @@ class _StatusDot extends StatelessWidget {
         ? const Color(0xFFFFB74D)
         : const Color(0xFF66E28A);
     return Container(
-      width: 9,
-      height: 9,
+      width: size,
+      height: size,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }

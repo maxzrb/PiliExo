@@ -1,0 +1,10 @@
+PiliExo 内置 Aria2-next
+
+版本：2.6.7
+来源：https://github.com/AnInsomniacy/aria2-next/releases/tag/v2.6.7
+许可证：GNU General Public License v2.0
+本资源的 Android ARM64 二进制 SHA-256：
+B188B01AE2EBBA2B45E01FFDF3A507DBA19871BF902487465985482F400AF9B2
+
+PiliExo 通过独立进程调用该下载器，用于检查更新时的分片下载；Aria2-next
+不可用的 Android 架构会回退到应用内 HTTP 下载路径。

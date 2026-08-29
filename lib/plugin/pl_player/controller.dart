@@ -196,11 +196,15 @@ class PlPlayerController with BlockConfigMixin {
         videoColor: _hdrVideoColor,
         frameRate: _hdrFrameRate,
         videoDecoder: _hdrVideoDecoder,
-        videoBitrate: _hdrVideoBitrate,
+        videoBitrate: _hdrVideoBitrate.isNotEmpty
+            ? _hdrVideoBitrate
+            : _formatBitrate(dataSource.videoBitrate),
         audioCodec: _hdrAudioCodecs,
         audioMimeType: _hdrAudioMimeType,
         audioDecoder: _hdrAudioDecoder,
-        audioBitrate: _hdrAudioBitrate,
+        audioBitrate: _hdrAudioBitrate.isNotEmpty
+            ? _hdrAudioBitrate
+            : _formatBitrate(dataSource.audioBitrate),
         cdnHost: _mediaHost(dataSource.videoSource),
         positionMs: hdr.position.inMilliseconds,
         durationMs: hdr.duration.inMilliseconds,
@@ -222,6 +226,8 @@ class PlPlayerController with BlockConfigMixin {
     final videoTrack = state.track.video;
     final audioTrack = state.track.audio;
     final videoParams = state.videoParams;
+    final videoBitrate = _formatBitrate(videoTrack.bitrate);
+    final audioBitrate = _formatBitrate(audioTrack.bitrate);
     final colorParts = [
       videoParams.primaries,
       videoParams.gamma,
@@ -236,10 +242,14 @@ class PlPlayerController with BlockConfigMixin {
           ? ''
           : '${videoTrack.fps!.toStringAsFixed(2)} fps',
       videoDecoder: videoTrack.decoder ?? '',
-      videoBitrate: _formatBitrate(videoTrack.bitrate),
+      videoBitrate: videoBitrate.isNotEmpty
+          ? videoBitrate
+          : _formatBitrate(dataSource.videoBitrate),
       audioCodec: audioTrack.codec ?? '',
       audioDecoder: audioTrack.decoder ?? '',
-      audioBitrate: _formatBitrate(audioTrack.bitrate),
+      audioBitrate: audioBitrate.isNotEmpty
+          ? audioBitrate
+          : _formatBitrate(dataSource.audioBitrate),
       cdnHost: _mediaHost(dataSource.videoSource),
       positionMs: state.position.inMilliseconds,
       durationMs: state.duration.inMilliseconds,
@@ -1419,6 +1429,8 @@ class PlPlayerController with BlockConfigMixin {
         NetworkSource(
           videoSource: hdrSource.videoSource,
           audioSource: hdrSource.audioSource,
+          videoBitrate: hdrSource.videoBitrate,
+          audioBitrate: hdrSource.audioBitrate,
         ),
         seekTo: seekTo,
         duration: sourceDuration,
