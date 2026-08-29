@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 22:13 (+08:00)
+- 更新时间：2026-08-29 22:39 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：2381922ad（v26.8.29.7 Release 目标提交）
+- 分析基线：e1b0d9698（v26.8.29.7 发布记录后的 README 整理基线）
 - 发布提交：2381922ada34af2cc8cd674c166196314d81dd11
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.29.7；首页推荐来源设置保存后在下一次刷新读取，刷新成功后清除待生效提示。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.29.7；首页推荐来源设置保存后在下一次刷新读取，刷新成功后清除待生效提示；README 已补充 PiliExo 实际改动说明，并在分隔标记后保留上游 README 原文。
 
 ## 已完成
 
@@ -511,3 +511,9 @@
 - ModelScope AerithDream/PiliExo 的 releases/v26.8.29.7/ 双 ABI 资产已同步；两个地址 HTTP 200，Content-Length 和 X-Linked-ETag 与本地产物一致。
 - 发布校验通过：Flutter 3.47.2、flutter test --no-pub 20/20、全量 analyze 无 error（42 条既有 info）、双 ABI Release 构建、aapt2 核验 versionCode=7/对应 ABI/FFmpeg 资源、两个 APK 的 apksigner V2 签名核验和 git diff --check。
 - 本轮公开 Release 说明未加入额外用途描述；版本号为 26.8.29+7，播放器渲染后端未改变，用户未跟踪目录 tmp/ 未处理。
+
+## 2026-08-29 22:39
+
+- 重构根目录 `README.md`：顶部补充 PiliExo 的 Android 定位、HDR 播放器、播放器洞察、更新下载、推荐混合、默认画质/音质和字体重构等实际改动，以及当前构建与下载说明。
+- 在“以下为原项目readme内容”分隔标记后保留 PiliPlus 上游 `main` README，来源基线为 `9624c37255837412e8677a6b9d69fdfac720b68a`；仅清理 3 处徽章链接尾随空白。
+- 本轮未修改版本号、未构建或发布新 Release；`git diff --check` 通过，用户未跟踪目录 `tmp/` 未处理。

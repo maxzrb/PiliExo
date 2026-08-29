@@ -1,3 +1,37 @@
+# PiliExo
+
+PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Android fork，面向 Android 在线 UGC/PGC 视频提供原生 HDR 播放能力。当前包名为 `com.maxzrb.piliexo`，SDR、直播和离线播放仍保留原有 mpv 路径。
+
+## 项目状态
+
+- 当前正式版本：`v26.8.29.7`。
+- 仅 Android 构建和发布；其他平台代码随上游保留，暂不作为本 fork 的发布目标。
+- 固定使用 Flutter `3.47.2`；Android Kotlin 增量编译默认关闭，用于规避项目与 Flutter 插件缓存跨盘时的路径问题。
+- Android Release 提供 `arm64-v8a` 和 `armeabi-v7a`，正式包使用 `com.maxzrb.piliexo`。
+
+## PiliExo 的实际修改
+
+- Android 在线 UGC/PGC 的 HDR 播放使用 Media3 原生 `SurfaceView`；SDR、直播、离线和播放器回退继续使用 mpv。
+- 播放器洞察提供概览、视频、音频、播放和事件详情，补齐视频码率，并优化摘要/详情在全屏播放器中的位置和展开交互。
+- 检查更新优先使用 ModelScope，失败时回退 GitHub；Android ARM64 使用 Aria2-next 32 分片、断点续传、SHA-256 校验和系统安装器，更新弹窗显示实时进度和取消操作。
+- 首页推荐支持 Web 推荐与 App 推荐两端滑块，按 10% 步进调整混合比例；保存后下一次首页刷新生效，刷新成功后不再显示待生效提示，混合结果会交错、去重并在单路失败时兜底。
+- 播放时修改画质、移动数据画质或音质只作用于当前播放，不回写默认画质、移动数据画质、默认音质和移动数据音质。
+- 同步 PiliPlus 字体页面重构、字体存储迁移、选择区域补丁和相关依赖升级。
+
+## 下载与发布
+
+- [GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
+- [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
+- [版本迭代记录](version/版本迭代记录.md) · [Android 发布流程](docs/发布流程.md)
+
+本项目是个人为了兴趣而开发的第三方自用修改版，仅用于学习和测试，请于下载后 24 小时内删除。所用 API 皆从官方网站收集，不提供任何破解内容。
+
+下方原项目 README 取自 PiliPlus 上游 `main`，保留原文以便对照（同步基线：`9624c37255837412e8677a6b9d69fdfac720b68a`）。
+
+---
+
+## 以下为原项目readme内容
+
 <div align="center">
     <img width="200" height="200" src="assets/images/logo/logo.png">
 </div>
@@ -5,14 +39,14 @@
 
 
 <div align="center">
-    <h1>PiliExo</h1>
+    <h1>PiliPlus</h1>
 <div align="center">
     
-![GitHub repo size](https://img.shields.io/github/repo-size/maxzrb/PiliExo)
-![GitHub Repo stars](https://img.shields.io/github/stars/maxzrb/PiliExo)
-![GitHub all releases](https://img.shields.io/github/downloads/maxzrb/PiliExo/total)
+![GitHub repo size](https://img.shields.io/github/repo-size/bggRGjQaUbCoE/PiliPlus)
+![GitHub Repo stars](https://img.shields.io/github/stars/bggRGjQaUbCoE/PiliPlus)
+![GitHub all releases](https://img.shields.io/github/downloads/bggRGjQaUbCoE/PiliPlus/total)
 </div>
-    <p>支持 HDR 的 PiliPlus 修改版</p>
+    <p>使用Flutter开发的BiliBili第三方客户端</p>
     
 <img src="assets/screenshots/510shots_so.png" width="32%" alt="home" />
 <img src="assets/screenshots/174shots_so.png" width="32%" alt="home" />
@@ -26,8 +60,6 @@
 <br/>
 
 ## 适配平台
-
-本仓库当前只构建和验证 Android 版本；其他平台代码继承自上游，暂不作为本 fork 的发布目标。
 
 - [x] Android
 - [x] iOS
@@ -215,17 +247,14 @@
 
 ## 下载
 
-Android 安装包以本仓库 Release 标签为准，应用会优先从
-[AerithDream/PiliExo ModelScope 数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-下载，无法连接时回退到 [GitHub Releases](https://github.com/maxzrb/PiliExo/releases)。
+可以通过右侧release进行下载或拉取代码到本地进行编译
 
 <br/>
 
 ## 声明
 
-此项目（PiliExo）是个人为了兴趣而开发的第三方自用修改版，仅用于学习和测试，请于下载后24小时内删除。
+此项目（PiliPlus）是个人为了兴趣而开发，仅用于学习和测试，请于下载后24小时内删除。
 所用API皆从官方网站收集，不提供任何破解内容。
-本项目 fork 自 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus)，在 Android 端增加原生 HDR 播放支持；上游更新将不定期同步并在版本记录中标注。
 在此致敬原作者：[guozhigq/pilipala](https://github.com/guozhigq/pilipala)
 在此致敬上游作者：[orz12/PiliPalaX](https://github.com/orz12/PiliPalaX)
 本仓库做了更激进的修改，感谢原作者的开源精神。
@@ -249,10 +278,10 @@ Android 安装包以本仓库 Release 标签为准，应用会优先从
 
 ## Star History
 
-<a href="https://star-history.dera.page/#maxzrb/PiliExo&Date">
+<a href="https://star-history.dera.page/#bggRGjQaUbCoE/PiliPlus&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=maxzrb/PiliExo&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=maxzrb/PiliExo&type=Date" />
-   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=maxzrb/PiliExo&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=bggRGjQaUbCoE/PiliPlus&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=bggRGjQaUbCoE/PiliPlus&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=bggRGjQaUbCoE/PiliPlus&type=Date" />
  </picture>
 </a>
