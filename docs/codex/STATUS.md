@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 11:30 (+08:00)
+- 更新时间：2026-08-29 12:06 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`ea67b9313f5513bd0752f9d144e78036c40e5104`
-- 发布提交：`e29dc3dc987248e6cee5a6d4acd13cd656d98bbc`
+- 分析基线：`68b9a377f9dc13aabd99d265e67bcaec81f11207`
+- 发布提交：`68b9a377f9dc13aabd99d265e67bcaec81f11207`
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置。
 
 ## 已完成
@@ -50,6 +50,7 @@
 - 底栏重复点击首页或动态触发刷新时，改为先显示对应现有下拉刷新动画，再执行原有刷新回调；滚动未到顶部时仍保持只回到顶部的行为。
 - 为首页各内容 tab 和动态各 tab 的现有 `RefreshIndicator` 绑定程序化触发 key，未改变手动下拉刷新路径。
 - 补齐播放器洞察“视频”详情分组中的视频码率展示，复用已有的 `videoBitrate` 数据，并增加回归测试。
+- 已发布正式版 `v26.8.29.2`，应用版本为 `26.8.29+2`，发布提交为 `68b9a377f9dc13aabd99d265e67bcaec81f11207`；GitHub 与 ModelScope 均已同步双 ABI 资产。
 
 ## 验证
 
@@ -59,6 +60,11 @@
 - 本轮播放器洞察修复后，目标文件 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 8/8 通过，`git diff --check` 通过；未生成 APK，未进行真机验收。
 - 本轮底栏刷新动画改动后，11 个相关 Dart 文件 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 8/8 通过，`git diff --check` 通过；未生成 APK，未进行真机验收。
 - 本轮播放器洞察码率修复后，相关模型和测试文件 `flutter analyze --no-pub` 无问题，`flutter test --no-pub` 9/9 通过，`git diff --check` 通过；未生成 APK，未进行真机验收。
+- `v26.8.29.2` 发布构建：`flutter test --no-pub` 10/10 通过；定向 14 项 Dart 文件 `flutter analyze --no-pub` 无问题；`git diff --check` 通过。
+- `v26.8.29.2` 双 ABI 正式 APK 已通过 `aapt2` 核验：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=2`，分别只含 `arm64-v8a` 或 `armeabi-v7a`，且包含对应 `libffmpegJNI.so`。
+- `v26.8.29.2` 两包均通过 `apksigner` V2 签名验证，签名证书 DN 为 `CN=PiliExo, O=AerithDream, C=CN`；arm64 `25,681,072` bytes，SHA-256 `E3988B841C173F8D3D2595299A639FC2EE2C1541CE1F80665832F3FB0A83BF92`；v7a `25,550,590` bytes，SHA-256 `D0876E6967C7DC5F182925E8083C4B5F2E62E0A92E1500715C018904489556E1`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.2>；ModelScope：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.2/PiliExo_android_v26.8.29.2_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.2/PiliExo_android_v26.8.29.2_armeabi-v7a.apk>。
+- ModelScope 两个路径回读后 SHA-256 与本地产物完全一致；发布工作区继续保留用户未跟踪目录 `tmp/`，未将其纳入提交。
 - `git diff --check`：通过；仅报告仓库既有的 LF/CRLF 自动转换提示。
 - 使用项目补丁脚本修复 Flutter 3.47.1 与项目 `material_ui` 的基线兼容后，Android `assembleDebug` 构建通过。
 - APK 已生成：`build/app/outputs/flutter-apk/app-debug.apk`，201236035 bytes；最新 SHA-256 为 `ABCC62569508456C5B7872AB725F611BBF227B88B5AE5FDE95E9E3A9A44BCBDC`。
@@ -294,3 +300,12 @@
 - 新增 `test/plugin/pl_player/playback_insight_test.dart` 回归测试，确认视频码率和音频码率分别出现在对应详情分组。
 - 验证：相关文件 `flutter analyze --no-pub` 无问题；`flutter test --no-pub` 9/9 通过；`git diff --check` 通过；未生成 APK，未进行真机验收。
 - Git：工作区继续保留上一轮播放器洞察/底栏刷新改动和用户未跟踪目录 `tmp/`，本轮码率修复尚未提交。
+
+### 2026-08-29 12:06 (+08:00)
+
+- 按正式发布流程将播放器洞察和底栏刷新动画修复发布为 `v26.8.29.2`，应用版本 `26.8.29+2`；版本提交 `68b9a377f9dc13aabd99d265e67bcaec81f11207` 已推送至 fork `main`，并创建正式标签。
+- GitHub Release 已发布：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.2>；两个 APK 资产均为 `uploaded`。ModelScope 数据集 `AerithDream/PiliExo` 已上传至 `releases/v26.8.29.2/` 对应目录。
+- arm64 APK `25,681,072` bytes，SHA-256 `E3988B841C173F8D3D2595299A639FC2EE2C1541CE1F80665832F3FB0A83BF92`；armeabi-v7a APK `25,550,590` bytes，SHA-256 `D0876E6967C7DC5F182925E8083C4B5F2E62E0A92E1500715C018904489556E1`。
+- 发布验证通过：`flutter test --no-pub` 10/10；定向 Dart analyze 无问题；`aapt2` 包名/版本/ABI/`libffmpegJNI.so` 核验通过；`apksigner` V2 正式签名核验通过；ModelScope 回读文件 SHA-256 与本地一致；`git diff --check` 通过。
+- 构建环境使用本机 Flutter 3.47.1（项目声明 3.47.2），构建时以 `kotlin.incremental=false` 规避跨盘 Kotlin 缓存问题，并预下载且 MD5 校验媒体库依赖；未进行 ADB 真机安装或启动验收。
+- 当前工作树仍保留用户未跟踪目录 `tmp/`，未提交发布产物目录和 `pili_release.json` 等忽略文件。
