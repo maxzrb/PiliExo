@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 19:00 (+08:00)
+- 更新时间：2026-08-29 19:03 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`7a2edd7c9`
 - 发布提交：`7a2edd7c9fd1ee9aaaf71e5052301ed04b60c5e2`
@@ -441,4 +441,4 @@
 - ModelScope 同路径资产已覆盖：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.4/PiliExo_android_v26.8.29.4_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.4/PiliExo_android_v26.8.29.4_armeabi-v7a.apk>。
 - 新 arm64 APK：`31,666,544` bytes，SHA-256 `0828E730F59173416761ECE5467907F625BD1B51487F502D7F7277BF6C1CA359`；新 armeabi-v7a APK：`31,542,223` bytes，SHA-256 `A54C25EE33934229554ADB1B012748AFF9E44CA05425D729A4243D09F4892197`。GitHub digest 与 ModelScope `X-Linked-ETag` 均已回读一致。
 - 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=4`、双 ABI、正式证书 `CN=PiliExo, O=AerithDream, C=CN` 4096 位 RSA、V2 签名；Flutter 测试 14/14、Android Release 构建均通过。
-- 当前工作区已推送 `origin/main`，仅保留用户未跟踪目录 `tmp/`；发布记录改动待提交，不修改该目录。
+- 当前工作区已推送 `origin/main`，仅保留用户未跟踪目录 `tmp/`；发布记录已提交，不修改用户未跟踪目录 `tmp/`。
