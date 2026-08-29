@@ -1,8 +1,41 @@
+import 'dart:io';
+
+import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
+import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_insight_settings.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/playback_insight.dart';
+import 'package:PiliPlus/utils/storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive_ce/hive.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late Directory hiveDirectory;
+  late PlPlayerController controller;
+
+  setUpAll(() async {
+    hiveDirectory = await Directory.systemTemp.createTemp(
+      'piliexo-playback-insight-test-',
+    );
+    Hive.init(hiveDirectory.path);
+    GStorage.setting = await Hive.openBox('setting');
+    GStorage.localCache = await Hive.openBox('localCache');
+    GStorage.video = await Hive.openBox('video');
+    controller = PlPlayerController.getInstance();
+  });
+
+  tearDownAll(() async {
+    controller.playerStatus.value = .paused;
+    controller.dispose();
+    await GStorage.video.close();
+    await GStorage.localCache.close();
+    await GStorage.setting.close();
+    await hiveDirectory.delete(recursive: true);
+  });
+
   test('播放器洞察视频详情包含视频码率', () {
     const snapshot = PlaybackInsightSnapshot(
       videoBitrate: '5.00 Mbps',
@@ -52,5 +85,66 @@ void main() {
       videoBitrate: 5000000,
     );
     expect(fallbackSource.videoBitrate, 5000000);
+  });
+
+  testWidgets('摘要黑色背景区域可以点击展开详情', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.always;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 320,
+            height: 200,
+            child: PlaybackInsightHud(
+              controller: controller,
+              isFullScreen: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // 点击摘要右侧的留白，而不是文本本身，验证整个黑色 surface 都可点击。
+    await tester.tapAt(const Offset(304, 62));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('播放器洞察'), findsOneWidget);
+  });
+
+  testWidgets('智能摘要渐隐期间仍可以点击展开详情', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.smart;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 320,
+            height: 200,
+            child: PlaybackInsightHud(
+              controller: controller,
+              isFullScreen: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 5));
+
+    // 自动摘要刚开始渐隐时，点击仍应被摘要层接收。
+    await tester.tapAt(const Offset(304, 62));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('播放器洞察'), findsOneWidget);
   });
 }

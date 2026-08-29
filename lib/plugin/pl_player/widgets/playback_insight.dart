@@ -40,7 +40,10 @@ class PlaybackInsightHud extends StatefulWidget {
 }
 
 class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
+  static const _summaryFadeDuration = Duration(milliseconds: 350);
+
   Timer? _smartHideTimer;
+  Timer? _summaryHitTestTimer;
   StreamSubscription? _controlsListener;
   // 智能模式的控制条触发和起播/掉帧事件触发必须相互独立。
   var _smartControlVisible = false;
@@ -48,6 +51,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   var _lastDroppedFrames = -1;
   var _detailsExpanded = false;
   var _initialWindowShown = false;
+  var _summaryHitTestEnabled = false;
 
   bool get _smartVisible {
     // 控制条是优先来源；没有控制条时才显示起播/掉帧事件窗口。
@@ -100,6 +104,9 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     // 这里只重置起播/掉帧事件窗口，不能影响控制条触发的显示状态。
     _smartHideTimer?.cancel();
     _smartHideTimer = null;
+    _summaryHitTestTimer?.cancel();
+    _summaryHitTestTimer = null;
+    _summaryHitTestEnabled = false;
     if (_smartControlVisible) {
       // 控制条打开时由控制条接管显示，自动事件不应继续覆盖视频内容。
       _smartAlertVisible = false;
@@ -113,8 +120,22 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     }
     _smartHideTimer = Timer(const Duration(seconds: 5), () {
       _smartHideTimer = null;
+      _keepSummaryHitTestDuringFade();
       if (mounted) {
         setState(() => _smartAlertVisible = false);
+      }
+    });
+  }
+
+  void _keepSummaryHitTestDuringFade() {
+    _summaryHitTestTimer?.cancel();
+    _summaryHitTestEnabled = true;
+    _summaryHitTestTimer = Timer(_summaryFadeDuration, () {
+      _summaryHitTestTimer = null;
+      if (mounted) {
+        setState(() => _summaryHitTestEnabled = false);
+      } else {
+        _summaryHitTestEnabled = false;
       }
     });
   }
@@ -122,16 +143,23 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   void _clearSmartAlertWindow() {
     _smartHideTimer?.cancel();
     _smartHideTimer = null;
+    _summaryHitTestTimer?.cancel();
+    _summaryHitTestTimer = null;
+    _summaryHitTestEnabled = false;
     _smartAlertVisible = false;
   }
 
   void _onControlsChanged(bool visible) {
     final wasVisible = _smartControlVisible;
+    final wasInsightVisible = _smartVisible;
     _smartControlVisible = visible;
     if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart &&
         visible != wasVisible) {
       // 控制条打开或关闭都结束自动摘要窗口；查看详情时不能因此收起详情。
       _clearSmartAlertWindow();
+      if (!visible && wasInsightVisible) {
+        _keepSummaryHitTestDuringFade();
+      }
     }
     if (mounted) setState(() {});
   }
@@ -155,7 +183,14 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
 
   void _toggleDetails() {
     if (!mounted) return;
-    setState(() => _detailsExpanded = !_detailsExpanded);
+    setState(() {
+      _detailsExpanded = !_detailsExpanded;
+      if (_detailsExpanded) {
+        _summaryHitTestTimer?.cancel();
+        _summaryHitTestTimer = null;
+        _summaryHitTestEnabled = false;
+      }
+    });
   }
 
   void _closeDetails() {
@@ -166,6 +201,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   @override
   void dispose() {
     _smartHideTimer?.cancel();
+    _summaryHitTestTimer?.cancel();
     _controlsListener?.cancel();
     widget.controller.playbackInsight.removeListener(_onSnapshotChanged);
     playbackInsightModeNotifier.removeListener(_onModeChanged);
@@ -185,6 +221,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
         };
     final hasHudData =
         snapshot.hasMeasuredData && mode != PlaybackInsightMode.off;
+    final summaryInteractive = insightVisible || _summaryHitTestEnabled;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -253,7 +290,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
                 width: isFullscreenDetail ? fullScreenDetailWidth : null,
                 height: isFullscreenDetail ? fullScreenDetailHeight : null,
                 child: IgnorePointer(
-                  ignoring: !_detailsExpanded && !insightVisible,
+                  ignoring: !_detailsExpanded && !summaryInteractive,
                   child: AnimatedOpacity(
                     opacity: _detailsExpanded || insightVisible ? 1 : 0,
                     duration: const Duration(milliseconds: 350),
@@ -277,15 +314,13 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
                                 snapshot: snapshot,
                                 onDismiss: _closeDetails,
                               )
-                            : IgnorePointer(
+                            : GestureDetector(
                                 key: const ValueKey('summary'),
-                                ignoring: !insightVisible,
-                                child: GestureDetector(
-                                  onTap: _toggleDetails,
-                                  child: _PlaybackInsightSummary(
-                                    snapshot: snapshot,
-                                    fullscreenPolicy: fullscreenPolicy,
-                                  ),
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _toggleDetails,
+                                child: _PlaybackInsightSummary(
+                                  snapshot: snapshot,
+                                  fullscreenPolicy: fullscreenPolicy,
                                 ),
                               ),
                       ),

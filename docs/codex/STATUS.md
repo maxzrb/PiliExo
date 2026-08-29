@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 14:06 (+08:00)
+- 更新时间：2026-08-29 18:11 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
+- 分析基线：`670de9d07`
 - 发布提交：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。
 
 ## 已完成
 
@@ -59,8 +59,20 @@
 - 将固定 Flutter 工具链、跨盘构建约束和标准发布检查命令写入 `docs/发布流程.md`，并在本次 `v26.8.29.3` 发布中按该流程执行。
 - 已发布正式版 `v26.8.29.3`，应用版本为 `26.8.29+3`，发布提交为 `4b3baa808180c40c6857b71f0701ee70e4bc3ec5`；GitHub 与 ModelScope 均已同步双 ABI 资产。
 - 修正播放时画质/音质切换行为：只更新当前播放器，不再回写默认画质、移动数据画质、默认音质和移动数据音质；设置页手动修改仍正常持久化。
+- 新增独立的“Android 液态玻璃”开关，默认关闭，Android 13（API 33）以下显示禁用和版本提示，开关即时生效且与磨砂设置相互独立。
+- 通过 Kyant Backdrop 2.0.0 和 Android Compose PlatformView 接入三类紧凑控件：浮动/固定底栏、首页搜索胶囊和非播放器页面主悬浮按钮；导航交互、文字、语义和震动仍由 Flutter 保持。
+- 修复 `BiliDocumentsProvider` authority 硬编码导致 Debug 包 `com.maxzrb.piliexo.debug` 与已安装 Release 包冲突的问题，改为使用构建变体 `${applicationId}.MTDataFilesProvider`。
+- 修复液态玻璃启用后的崩溃风险：取样改为独立 Bitmap 快照，限制每个控件为单一 Kyant 渲染层，并增加启动探测保护；升级后已有开启状态先安全回退，异常后下次启动不重复创建原生视图。
+- 原生层从混合合成的 `FlutterImageView` 取样，按 33ms 限流并在视图不可见、窗口失焦或应用暂停时停止；连续取样失败自动熔断回退现有磨砂，用户开关不清除。
+- 新增液态玻璃 Dart/Android 单测及 Kyant Apache-2.0 许可说明；本轮保持 `26.8.29+3`，未创建新 Release。
 
 ## 验证
+
+- 本轮 `flutter test --no-pub`：14/14 通过；液态玻璃测试覆盖默认关闭、持久化/即时同步、API 33 门槛、启动探测标记、状态复制和预设分支。
+- 本轮目标文件 `flutter analyze --no-pub`：无问题；全量 `flutter analyze --no-pub --no-fatal-infos` 的项目既有提示未作为错误处理。
+- Android `:app:testDebugUnitTest --tests com.maxzrb.piliexo.AndroidLiquidGlassPluginTest`：通过，覆盖原生参数合并、坐标换算、可见/焦点生命周期、33ms 限流常量和三次失败熔断。
+- Android 默认 `android\gradlew.bat :app:compileDebugKotlin --console=plain`、原生单测与 `:app:assembleDebug --console=plain --warning-mode=none`：通过；最终 Debug APK `build/app/outputs/flutter-apk/app-debug.apk` 为 `214,432,947` bytes，SHA-256 `95FC380AD172C85F82EDB7AF9A4B29119F103DB2E1F59231AB918F9C8DE03A3A`，已核验包含 Kyant 许可资产。
+- `git diff --check`：通过；工作区继续保留用户未跟踪目录 `tmp/`，本轮源码和记录改动尚未提交；Debug 合并 Manifest 已确认使用 `com.maxzrb.piliexo.debug.MTDataFilesProvider`，Provider 冲突已排除，但设备仍拒绝 USB 安装授权，未完成最终 Debug 包的 ADB 真机验收。
 
 - `flutter test --no-pub`：通过，8 个测试全部通过，其中包含 Android ABI 资产选择测试；本机 SDK 为 3.47.1，而同步后的 `pubspec.yaml` 要求 3.47.2，普通 `flutter test` 因版本解析被阻止。
 - Media3 1.11.0 + OkHttp 5.3.0 独立 Android API 工程：Kotlin 编译及 `HdrMedia3SourceTest` 通过（含 5xx、Range 和断流续传）。
@@ -359,3 +371,47 @@
 - 修改文件：`lib/plugin/pl_player/view/view.dart`、`lib/pages/video/widgets/header_control.dart`。
 - 验证通过：两个目标文件 Flutter analyze 无问题，`flutter test --no-pub` 11/11 通过，`git diff --check` 通过；本轮未打包、未创建新 Release。
 - 当前版本仍为 `v26.8.29.3` / `26.8.29+3`；工作区保留用户未跟踪目录 `tmp/`，本轮代码与记录改动尚未提交。
+
+## 2026-08-29 16:48
+
+- 根据设备崩溃日志定位并修复液态玻璃的实际 Java 异常：ComposeView 挂载到 FlutterView 时找不到 `ViewTreeLifecycleOwner`，此前会在 Flutter 平台视图 JNI 检查处升级为 SIGABRT；现在由 `LiquidGlassViewTree` 在 Activity decor 根视图和 ComposeView 挂载前绑定 FlutterActivity 生命周期，宿主不兼容时创建透明回退视图。
+- 补充 `androidx.lifecycle:lifecycle-runtime-android:2.9.4` 依赖，并继续保留 TLHC/Virtual Display 回退、SurfaceView 局部 PixelCopy、原生异常兜底和液态玻璃安全版本探测。
+- 验证通过：Flutter 全量测试 14/14、液态玻璃定向 analyze、Android `:app:testDebugUnitTest`、Kotlin 编译、Debug APK 构建和 `git diff --check`。
+- 最新 Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`，`214,432,460` bytes，SHA-256 `41A9157489B9F214D822C386E47F53B7434CA64F44C3A413743B08B1DE3D9184`。
+- 设备当前仍处于锁屏状态，安装最新包仍被系统返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，因此尚未完成最新包的真机启动确认；不创建新 Release，工作区继续保留用户未跟踪目录 `tmp/`。
+
+## 2026-08-29 17:02
+
+- 设备已成功安装并启动上一版 Debug APK，确认 `ViewTreeLifecycleOwner` 问题已消失；新日志进一步暴露 ComposeView 要求 `ViewTreeSavedStateRegistryOwner`，因此新增与 FlutterActivity 生命周期同步的轻量 SavedStateOwner，并将其安装到 FlutterView、Activity 根视图和 ComposeView。
+- 原生视图树兼容代码改为 Java 辅助层，显式覆盖 FlutterView 根节点；新增 `androidx.savedstate:savedstate-android:1.4.0` 依赖。Android 原生单测、Kotlin 编译和 Debug APK 构建均通过。
+- 最新 Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`，`214,432,460` bytes，SHA-256 `032F54C849001705F1590DB5E25C7FD9DF4F06160CCAF8D1344F8C0823BE3B7E`。
+- 当前设备上的 16:53 包仍是上一构建，最新 17:02 包尚未完成设备安装确认；不创建新 Release，工作区继续保留用户未跟踪目录 `tmp/`。
+
+## 2026-08-29 17:04
+
+- 增加液态玻璃平台视图挂载后的二次 ViewTree owner 绑定：覆盖创建时 FlutterView 尚未进入 Activity 视图树的时序，避免首次 measure 时再次缺少 Lifecycle/SavedState owner。
+- 验证通过：Android `:app:testDebugUnitTest`、Kotlin 编译、Debug APK 构建和 `git diff --check`；最新 Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`，`214,432,460` bytes，SHA-256 `276BEEE7CFAAC3DD7DB7EFB0B3DFB44024C9EF36C43001041CB24B8DF1EF9D75`。
+- 设备端覆盖安装仍返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，最新包尚未完成真机启动确认；不创建新 Release，工作区继续保留用户未跟踪目录 `tmp/`。
+
+## 2026-08-29 17:28
+
+- 对照 BiliPai 与 Kyant 官方示例修复液态玻璃视觉退化：原生表面从 `drawPlainBackdrop` 恢复为带 `Highlight`、`Shadow`、`InnerShadow` 的 `drawBackdrop`，底栏选中胶囊增加独立 lens、深度折射和色散层，按压缩放调整为轻量弹性。
+- 扩大 Flutter 背板局部取样窗口并保留真实坐标，避免把目标矩形截图拉伸后丢失周围像素；通过显式 padding 让 Kyant lens 能访问折射边缘的取样内容。继续使用 TLHC/Virtual Display、SurfaceView PixelCopy、30 FPS 限流和现有异常熔断策略。
+- 新增取样窗口边界与目标 inset 单测；Android `:app:testDebugUnitTest`、Kotlin 编译、Debug `assembleDebug`、目标 Dart analyze 均通过。
+- 新 Debug APK：`build/app/outputs/flutter-apk/app-debug.apk`，SHA-256 `DB484BEC24F9CC0D7637541671E6374ADBF406D768C37C36DE9D4C14DC4470DC`；设备仍处于锁屏/通知遮罩，覆盖安装返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，因此未完成真机视觉回归。
+- 当前版本仍为 `v26.8.29.3` / `26.8.29+3`，不创建新 Release；工作区继续保留用户未跟踪目录 `tmp/`，源码和记录尚未提交。
+
+## 2026-08-29 17:37
+
+- 按用户要求撤回 Android Kyant 液态玻璃方案：移除 Compose/Kyant 依赖、原生 PlatformView/取样实现、Flutter 包装层、设置开关、许可证和对应 Dart/Android 单测。
+- 已恢复浮动/固定底栏、首页搜索胶囊和普通页面悬浮按钮的原有 Flutter/磨砂渲染；播放器、HDR SurfaceView、播放器洞察及此前其它修复保持不变。
+- 保留 `BiliDocumentsProvider` 的 `${applicationId}.MTDataFilesProvider` 修复，以避免 Debug/Release Provider 冲突；保留用户未跟踪目录 `tmp/`，未执行整仓回退。
+- 验证：Flutter `test --no-pub` 11/11 通过；Flutter 全量 analyze 无 error（仅项目既有 info）；Android `:app:compileDebugKotlin` 从 `android` 目录通过；`git diff --check` 通过。
+- 当前版本仍为 `v26.8.29.3` / `26.8.29+3`，不创建新 Release；回退后的源码和记录尚未提交。
+
+## 2026-08-29 18:11
+
+- 修复播放器洞察摘要点击区域过小的问题：摘要点击层改为不透明命中，黑色 surface 的留白区域也可进入详情；智能摘要开始渐隐后的 350ms 内继续保留点击能力。
+- 新增播放器洞察交互回归测试，覆盖摘要留白点击和智能摘要渐隐期间点击展开详情；保留此前 Provider authority 修复。
+- 按同日版本规则将正式版本准备为 `v26.8.29.4` / `26.8.29+4`，发布说明已写入 `version/release-notes-v26.8.29.4.md`；等待正式双 ABI 构建和发布。
+- 验证：Flutter 工具链 3.47.2、`flutter pub get`、全量 `flutter test --no-pub` 12/12、全量 analyze 无 error（仅项目既有 info）、`git diff --check` 通过。
