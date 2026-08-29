@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 20:23 (+08:00)
+- 更新时间：2026-08-29 20:32 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`8f15d8547`（v26.8.29.5 覆盖修复提交）
-- 发布提交：`8f15d8547146d799ffa8d92138cdbea5e55b8623`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并将两个交互修复覆盖到 `v26.8.29.5`。
+- 分析基线：`6ea847e36`（v26.8.29.6 更新机制测试版本）
+- 发布提交：`6ea847e367ee7c39e0d08239238a0f1ba25aefbe`
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布用于验证更新机制的 `v26.8.29.6`。
 
 ## 已完成
 
@@ -471,3 +471,13 @@
 - ModelScope 同路径资产已覆盖，两个地址均 HTTP 200，`Content-Length` 和 `X-Linked-ETag` 与上述本地产物 SHA-256 一致。
 - 验证通过：固定 Flutter 3.47.2、`flutter test --no-pub` 15/15、全量 analyze 无 error（42 条既有 info）、Android Debug/双 ABI Release 构建、包名/版本/ABI/`libffmpegJNI.so`/正式签名 V2 校验和 `git diff --check`。
 - 当前版本仍为 `v26.8.29.5` / `26.8.29+5`，本轮为同版本资产覆盖，不递增版本号；工作区仅保留用户未跟踪目录 `tmp/`。
+
+## 2026-08-29 20:32
+
+- 按用户要求发布更新机制测试版本 `v26.8.29.6`，应用版本为 `26.8.29+6`；发布提交 `6ea847e367ee7c39e0d08239238a0f1ba25aefbe` 已推送至 `maxzrb/PiliExo` 的 `main`，标签已创建并指向该提交。
+- Release 说明明确标注本版本用于验证更新检测、版本比较、ModelScope 优先下载、GitHub 兜底和安装流程；Release 为正式发布状态（非草稿、非预发布），便于 `v26.8.29.5` 实际检测升级。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.6>；双 ABI 资产状态均为 `uploaded`。
+- ModelScope：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.6/PiliExo_android_v26.8.29.6_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.6/PiliExo_android_v26.8.29.6_armeabi-v7a.apk>；均返回 HTTP 200，`Content-Length` 与 `X-Linked-ETag` 和本地产物一致。
+- arm64 APK：`31,641,669` bytes，SHA-256 `229C4208DF487805B697E31A7D0BFC1C6EBDA09517711E5CE16B49D529DBC9B2`；armeabi-v7a APK：`31,514,450` bytes，SHA-256 `7993E28E1B468C7CDE77ECA003CB10E80640183AC42464059688CE88C208FD62`。
+- 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=6`、双 ABI、对应 `libffmpegJNI.so`、正式签名 V2；发布前 Flutter 3.47.2、`flutter pub get`、`flutter test --no-pub` 15/15、全量 analyze 无 error、Android Debug/Release 构建和 `git diff --check` 均通过。
+- 当前版本为 `v26.8.29.6` / `26.8.29+6`；本轮为更新机制测试发布，用户未跟踪目录 `tmp/` 保留不变。
