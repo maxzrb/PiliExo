@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 18:46 (+08:00)
+- 更新时间：2026-08-29 19:00 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`ae6c0fcc2`
-- 发布提交：`ae6c0fcc286a2a99cd97b403a5b0a1dedea555ff`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。当前在 v26.8.29.4 发布基线之上改进更新弹窗下载交互，暂未提交或发布新版本。
+- 分析基线：`7a2edd7c9`
+- 发布提交：`7a2edd7c9fd1ee9aaaf71e5052301ed04b60c5e2`
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。当前 v26.8.29.4 已覆盖更新下载弹窗交互，版本号保持不变。
 
 ## 已完成
 
@@ -433,3 +433,12 @@
 - 修改文件：`lib/utils/update.dart`、`android/app/src/main/kotlin/com/example/piliplus/AndroidUpdatePlugin.kt`、`test/utils/update_asset_test.dart`。
 - 验证通过：Flutter `test --no-pub` 14/14；全量 `flutter analyze --no-pub --no-fatal-infos` 无 error（保留项目既有 42 条 info）；Android `:app:assembleDebug --console=plain --warning-mode=none` 成功；`git diff --check` 通过。
 - 当前版本仍为 `v26.8.29.4` / `26.8.29+4`，本轮不递增版本号、不创建新 Release；工作区保留用户未跟踪目录 `tmp/`，三处源码/测试文件及本记录尚未提交。
+
+## 2026-08-29 19:00
+
+- 按用户要求不递增版本，已将更新下载弹窗交互修复覆盖到正式版 `v26.8.29.4`；源码提交为 `7a2edd7c9fd1ee9aaaf71e5052301ed04b60c5e2`，同名标签已强制移动到该提交。
+- GitHub Release 已原地替换同名双 ABI 资产并更新说明：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.4>。
+- ModelScope 同路径资产已覆盖：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.4/PiliExo_android_v26.8.29.4_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.4/PiliExo_android_v26.8.29.4_armeabi-v7a.apk>。
+- 新 arm64 APK：`31,666,544` bytes，SHA-256 `0828E730F59173416761ECE5467907F625BD1B51487F502D7F7277BF6C1CA359`；新 armeabi-v7a APK：`31,542,223` bytes，SHA-256 `A54C25EE33934229554ADB1B012748AFF9E44CA05425D729A4243D09F4892197`。GitHub digest 与 ModelScope `X-Linked-ETag` 均已回读一致。
+- 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=4`、双 ABI、正式证书 `CN=PiliExo, O=AerithDream, C=CN` 4096 位 RSA、V2 签名；Flutter 测试 14/14、Android Release 构建均通过。
+- 当前工作区已推送 `origin/main`，仅保留用户未跟踪目录 `tmp/`；发布记录改动待提交，不修改该目录。
