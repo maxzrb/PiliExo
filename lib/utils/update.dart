@@ -586,43 +586,51 @@ class _UpdateDialogState extends State<_UpdateDialog> {
       title: Text(_isDownloading ? '正在下载更新' : '🎉 发现新版本'),
       content: SizedBox(
         height: _isDownloading ? 320 : 280,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(widget.tag, style: const TextStyle(fontSize: 20)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isDownloading) ...[
+              Text(_downloadStatus ?? '正在下载更新…'),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                minHeight: 5,
+                value: _progress.value,
+              ),
               const SizedBox(height: 8),
-              Text('${widget.data['body'] ?? '暂无更新说明'}'),
-              TextButton(
-                onPressed: _isDownloading
-                    ? null
-                    : () => PageUtils.launchURL(
-                        '${Constants.sourceCodeUrl}/releases/tag/${Uri.encodeComponent(widget.tag)}',
+              Text(_progressLabel),
+              const SizedBox(height: 12),
+            ],
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.tag, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(height: 8),
+                    Text('${widget.data['body'] ?? '暂无更新说明'}'),
+                    TextButton(
+                      onPressed: _isDownloading
+                          ? null
+                          : () => PageUtils.launchURL(
+                              '${Constants.sourceCodeUrl}/releases/tag/${Uri.encodeComponent(widget.tag)}',
+                            ),
+                      child: Text(
+                        '点此查看完整更新内容',
+                        style: TextStyle(color: colorScheme.primary),
                       ),
-                child: Text(
-                  '点此查看完整更新内容',
-                  style: TextStyle(color: colorScheme.primary),
+                    ),
+                    if (!_isDownloading && _downloadStatus != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _downloadStatus!,
+                        style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (_isDownloading) ...[
-                const SizedBox(height: 12),
-                Text(_downloadStatus ?? '正在下载更新…'),
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  minHeight: 5,
-                  value: _progress.value,
-                ),
-                const SizedBox(height: 8),
-                Text(_progressLabel),
-              ] else if (_downloadStatus != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _downloadStatus!,
-                  style: TextStyle(color: colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       actions: _buildActions(colorScheme),

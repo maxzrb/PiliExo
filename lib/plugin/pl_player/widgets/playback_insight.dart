@@ -157,7 +157,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
         visible != wasVisible) {
       // 控制条打开或关闭都结束自动摘要窗口；查看详情时不能因此收起详情。
       _clearSmartAlertWindow();
-      if (!visible && wasInsightVisible) {
+      if (!visible && wasInsightVisible && !_detailsExpanded) {
         _keepSummaryHitTestDuringFade();
       }
     }
@@ -195,7 +195,19 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
 
   void _closeDetails() {
     if (!mounted) return;
-    setState(() => _detailsExpanded = false);
+    final keepSummary = switch (playbackInsightModeNotifier.value) {
+      PlaybackInsightMode.always => true,
+      PlaybackInsightMode.smart => _smartControlVisible || _smartAlertVisible,
+      PlaybackInsightMode.off => false,
+    };
+    setState(() {
+      _detailsExpanded = false;
+      if (!keepSummary) {
+        _summaryHitTestTimer?.cancel();
+        _summaryHitTestTimer = null;
+        _summaryHitTestEnabled = false;
+      }
+    });
   }
 
   @override
@@ -219,8 +231,6 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
           PlaybackInsightMode.smart => _smartVisible,
           PlaybackInsightMode.off => false,
         };
-    final hasHudData =
-        snapshot.hasMeasuredData && mode != PlaybackInsightMode.off;
     final summaryInteractive = insightVisible || _summaryHitTestEnabled;
 
     return LayoutBuilder(
@@ -273,7 +283,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
                   child: const ColoredBox(color: Color(0x1F000000)),
                 ),
               ),
-            if (hasHudData || _detailsExpanded)
+            if (insightVisible || _summaryHitTestEnabled || _detailsExpanded)
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,

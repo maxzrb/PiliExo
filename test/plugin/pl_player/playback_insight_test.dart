@@ -147,4 +147,41 @@ void main() {
 
     expect(find.text('播放器洞察'), findsOneWidget);
   });
+
+  testWidgets('控制条隐藏后关闭详情不会闪出摘要', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.smart;
+    controller.showControls.value = true;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 320,
+            height: 200,
+            child: PlaybackInsightHud(
+              controller: controller,
+              isFullScreen: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tapAt(const Offset(304, 62));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('播放器洞察'), findsOneWidget);
+
+    controller.showControls.value = false;
+    await tester.pump();
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pump();
+
+    expect(find.text('播放器洞察'), findsNothing);
+    expect(find.text('1920×1080'), findsNothing);
+  });
 }
