@@ -34,6 +34,7 @@ import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/recommend_filter.dart';
+import 'package:PiliPlus/utils/recommend_mix.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -162,6 +163,69 @@ abstract final class VideoHttp {
     } else {
       return Error(res.data['message']);
     }
+  }
+
+  // 首页 App/Web 混合推荐：并行请求两路推荐，再按设置的比例交错合并。
+  static Future<LoadingState<List<BaseRcmdVideoItemModel>>> rcmdVideoListMixed({
+    required int freshIdx,
+    required int appRatio,
+    int ps = 20,
+  }) async {
+    final results = await Future.wait<LoadingState<dynamic>>([
+      _safeRcmdRequest<RcmdVideoItemAppModel>(
+        () => rcmdVideoListApp(freshIdx: freshIdx),
+      ),
+      _safeRcmdRequest<RcmdVideoItemModel>(
+        () => rcmdVideoList(ps: ps, freshIdx: freshIdx),
+      ),
+    ]);
+    final appState = results[0];
+    final webState = results[1];
+    final appList = _baseRcmdList(appState);
+    final webList = _baseRcmdList(webState);
+
+    if (appList.isEmpty && webList.isEmpty) {
+      final appError = appState is Error ? appState.errMsg : null;
+      final webError = webState is Error ? webState.errMsg : null;
+      return Error(appError ?? webError ?? '获取混合推荐失败');
+    }
+
+    return Success(
+      RecommendMix.mix(
+        app: appList,
+        web: webList,
+        appRatio: appRatio,
+        maxItems: ps,
+        keyOf: _recommendItemKey,
+      ),
+    );
+  }
+
+  static Future<LoadingState<List<T>>> _safeRcmdRequest<T>(
+    Future<LoadingState<List<T>>> Function() request,
+  ) async {
+    try {
+      return await request();
+    } catch (error) {
+      return Error(error.toString());
+    }
+  }
+
+  static List<BaseRcmdVideoItemModel> _baseRcmdList(
+    LoadingState<dynamic> state,
+  ) {
+    final data = state.dataOrNull;
+    return data is List
+        ? data.whereType<BaseRcmdVideoItemModel>().toList()
+        : const [];
+  }
+
+  static String _recommendItemKey(BaseRcmdVideoItemModel item) {
+    final bvid = item.bvid;
+    if (bvid != null && bvid.isNotEmpty) return 'bvid:$bvid';
+    final aid = item.aid;
+    if (aid != null) return 'aid:$aid';
+    return '${item.owner.mid}:${item.title}';
   }
 
   // 最热视频

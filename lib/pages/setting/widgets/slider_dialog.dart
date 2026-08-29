@@ -11,6 +11,8 @@ class SliderDialog extends StatefulWidget {
     this.divisions,
     this.suffix = '',
     this.precise = 1,
+    this.minLabel,
+    this.maxLabel,
     this.onChanged,
   });
 
@@ -21,6 +23,8 @@ class SliderDialog extends StatefulWidget {
   final int? divisions;
   final String suffix;
   final int precise;
+  final String? minLabel;
+  final String? maxLabel;
   final ValueChanged<double>? onChanged;
 
   @override
@@ -42,21 +46,51 @@ class _SliderDialogState extends State<SliderDialog> {
       title: widget.title,
       contentPadding: const .only(top: 20, left: 8, right: 8, bottom: 8),
       content: SizedBox(
-        height: 40,
-        child: Slider(
-          value: _tempValue,
-          min: widget.min,
-          max: widget.max,
-          divisions: widget.divisions,
-          label:
-              '${_tempValue.toStringAsFixed(widget.precise)}${widget.suffix}',
-          onChanged: (double value) {
-            final nextValue = value.toPrecision(widget.precise);
-            setState(() {
-              _tempValue = nextValue;
-            });
-            widget.onChanged?.call(nextValue);
-          },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 40,
+              child: Slider(
+                value: _tempValue,
+                min: widget.min,
+                max: widget.max,
+                divisions: widget.divisions,
+                label:
+                    '${_tempValue.toStringAsFixed(widget.precise)}${widget.suffix}',
+                onChanged: (double value) {
+                  final nextValue = value.toPrecision(widget.precise);
+                  setState(() {
+                    _tempValue = nextValue;
+                  });
+                  widget.onChanged?.call(nextValue);
+                },
+              ),
+            ),
+            if (widget.minLabel != null || widget.maxLabel != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      widget.minLabel ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                    Text(
+                      widget.maxLabel ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
       actions: [

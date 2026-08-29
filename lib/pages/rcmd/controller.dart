@@ -5,7 +5,7 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 
 class RcmdController extends CommonListController {
   late bool enableSaveLastData = Pref.enableSaveLastData;
-  final bool appRcmd = Pref.appRcmd;
+  final int appRcmdRatio = Pref.appRcmdRatio;
 
   int? lastRefreshAt;
   late bool savedRcmdTip = Pref.savedRcmdTip;
@@ -22,9 +22,14 @@ class RcmdController extends CommonListController {
 
   @override
   Future<LoadingState> customGetData() {
-    return appRcmd
-        ? VideoHttp.rcmdVideoListApp(freshIdx: page)
-        : VideoHttp.rcmdVideoList(freshIdx: page, ps: 20);
+    return switch (appRcmdRatio) {
+      0 => VideoHttp.rcmdVideoList(freshIdx: page, ps: 20),
+      100 => VideoHttp.rcmdVideoListApp(freshIdx: page),
+      _ => VideoHttp.rcmdVideoListMixed(
+        freshIdx: page,
+        appRatio: appRcmdRatio,
+      ),
+    };
   }
 
   @override

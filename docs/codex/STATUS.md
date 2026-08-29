@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 20:32 (+08:00)
+- 更新时间：2026-08-29 21:25 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`6ea847e36`（v26.8.29.6 更新机制测试版本）
+- 分析基线：`e7d82d4a2`（v26.8.29.6 更新机制测试版本后的工作基线）
 - 发布提交：`6ea847e367ee7c39e0d08239238a0f1ba25aefbe`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布用于验证更新机制的 `v26.8.29.6`。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布用于验证更新机制的 `v26.8.29.6`；当前补充更新弹窗进度布局和 Web/App 推荐混合比例设置，暂不发布新版本。
 
 ## 已完成
 
@@ -65,6 +65,8 @@
 - 修复液态玻璃启用后的崩溃风险：取样改为独立 Bitmap 快照，限制每个控件为单一 Kyant 渲染层，并增加启动探测保护；升级后已有开启状态先安全回退，异常后下次启动不重复创建原生视图。
 - 原生层从混合合成的 `FlutterImageView` 取样，按 33ms 限流并在视图不可见、窗口失焦或应用暂停时停止；连续取样失败自动熔断回退现有磨砂，用户开关不清除。
 - 新增液态玻璃 Dart/Android 单测及 Kyant Apache-2.0 许可说明；本轮保持 `26.8.29+3`，未创建新 Release。
+- 更新下载弹窗的进度状态区固定在更新日志滚动区域下方、取消下载按钮上方，日志和下载反馈不再争抢滚动空间。
+- 参考 BiliPai 的两路推荐并行请求、交错合并和视频去重方式，新增 Web/App 推荐混合模式；设置页用一条 Web～App 两端滑块按 10% 步进调整 App 占比，旧版 App/Web 开关会自动映射到 100%/0%。
 
 ## 验证
 
@@ -481,3 +483,12 @@
 - arm64 APK：`31,641,669` bytes，SHA-256 `229C4208DF487805B697E31A7D0BFC1C6EBDA09517711E5CE16B49D529DBC9B2`；armeabi-v7a APK：`31,514,450` bytes，SHA-256 `7993E28E1B468C7CDE77ECA003CB10E80640183AC42464059688CE88C208FD62`。
 - 发布包核验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.29`、`versionCode=6`、双 ABI、对应 `libffmpegJNI.so`、正式签名 V2；发布前 Flutter 3.47.2、`flutter pub get`、`flutter test --no-pub` 15/15、全量 analyze 无 error、Android Debug/Release 构建和 `git diff --check` 均通过。
 - 当前版本为 `v26.8.29.6` / `26.8.29+6`；本轮为更新机制测试发布，用户未跟踪目录 `tmp/` 保留不变。
+
+## 2026-08-29 21:25
+
+- 完成更新弹窗进度布局修复：更新日志保持独立滚动，下载状态、进度条和已下载大小固定在日志下方，取消下载按钮位于其下方。
+- 完成首页 Web/App 推荐混合模式：0% 为纯 Web、100% 为纯 App，中间按 10% 步进加权交错两路推荐并按 bvid/avid 去重；单路请求失败时使用另一侧结果，保留原有纯 Web/纯 App 请求路径。
+- 推荐设置改为“首页推荐来源”滑块，显示 Web 推荐和 App 推荐两个端点；旧版 `appRcmd` 布尔设置兼容映射，选择结果写入 `appRcmdRatio`，保持原设置的重启生效约束。
+- BiliPai 参考：其首页推荐合并策略同时请求 Web 与移动端接口、交错合并并去重；本地实现进一步加入可调比例。
+- 验证通过：`flutter test --no-pub` 19/19；全量 `flutter analyze --no-pub --no-fatal-infos` 无 error，仅保留项目既有 42 条 info；`flutter build apk --debug --no-pub` 成功，Debug APK 为 `154,168,037` bytes，SHA-256 `52DBB53B46813315C05DB198BBBB3906457AC8BE159794376F4018189555EFB7`；`git diff --check` 通过。
+- 当前版本仍为 `v26.8.29.6` / `26.8.29+6`，本轮不递增版本、不发布 Release；源码和记录尚未提交，用户未跟踪目录 `tmp/` 保留不变。

@@ -40,6 +40,7 @@ import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/recommend_mix.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/utils.dart';
@@ -322,8 +323,17 @@ abstract final class Pref {
   static String get banWordForZone =>
       _setting.get(SettingBoxKey.banWordForZone, defaultValue: '');
 
-  static bool get appRcmd =>
-      _setting.get(SettingBoxKey.appRcmd, defaultValue: true);
+  static int get appRcmdRatio {
+    final legacyAppRcmd =
+        _setting.get(SettingBoxKey.appRcmd, defaultValue: true) == true;
+    return RecommendMix.normalizeRatio(
+      _setting.get(SettingBoxKey.appRcmdRatio),
+      fallback: legacyAppRcmd ? RecommendMix.maxAppRatio : 0,
+    );
+  }
+
+  /// 兼容旧调用方：只有纯 App 推荐时才返回 true。
+  static bool get appRcmd => appRcmdRatio == RecommendMix.maxAppRatio;
 
   static String get systemProxyHost =>
       _setting.get(SettingBoxKey.systemProxyHost, defaultValue: '');

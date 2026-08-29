@@ -589,17 +589,6 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_isDownloading) ...[
-              Text(_downloadStatus ?? '正在下载更新…'),
-              const SizedBox(height: 12),
-              LinearProgressIndicator(
-                minHeight: 5,
-                value: _progress.value,
-              ),
-              const SizedBox(height: 8),
-              Text(_progressLabel),
-              const SizedBox(height: 12),
-            ],
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -630,6 +619,17 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 ),
               ),
             ),
+            if (_isDownloading) ...[
+              const SizedBox(height: 12),
+              Text(_downloadStatus ?? '正在下载更新…'),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                minHeight: 5,
+                value: _progress.value,
+              ),
+              const SizedBox(height: 8),
+              Text(_progressLabel),
+            ],
           ],
         ),
       ),
