@@ -12,7 +12,6 @@ import 'package:PiliPlus/utils/font_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -78,16 +77,6 @@ class _FontSettingPageState extends State<FontSettingPage> {
       ..back()
       ..updateMyAppTheme();
   }
-
-  /// ref [Typography._withPlatform]
-  /// ref [Material]
-  static final String? _kFontFamily = (switch (defaultTargetPlatform) {
-    .iOS => Typography.whiteCupertino,
-    .android || .fuchsia => Typography.whiteMountainView,
-    .windows => Typography.whiteRedmond,
-    .macOS => Typography.whiteRedwoodCity,
-    .linux => Typography.whiteHelsinki,
-  }).bodyMedium?.fontFamily;
 
   Future<void> _onFontChanged(String? value) async {
     if (_selectedFont == value) return;
@@ -172,7 +161,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
                       : "我能吞下玻璃而不伤身体"}\n\n'
                   '注：部分字体可能无法应用',
                   style: TextStyle(
-                    fontFamily: _selectedFont ?? _kFontFamily,
+                    fontFamily: _selectedFont ?? '',
                     fontWeight: _selectedWeight == -1
                         ? null
                         : FontWeight.values[_selectedWeight],

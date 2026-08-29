@@ -48,6 +48,7 @@ abstract final class FontUtils {
 
   static Future<void> clearFonts() {
     customFonts.clear();
+    _loadedFonts.clear();
     final dir = Directory(_kFontDir);
     return Future.wait([
       if (dir.existsSync()) dir.delete(recursive: true),
