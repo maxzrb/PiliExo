@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 00:42 (+08:00)
+- 更新时间：2026-08-30 01:10 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：31c000054（v26.8.30.1 上游同步源代码提交）
-- 发布提交：31c000054bbfab05af9addac864c287f5dbe8469
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.1；本轮同步 PiliPlus `9624c37`、`06b8894`，保留动态页磨砂和 Media3 HDR 画中画逻辑；首页推荐来源设置保存后在下一次刷新读取，刷新成功后清除待生效提示；README 已补充 PiliExo 实际改动说明，并在分隔标记后保留上游 README 原文。
+- 分析基线：bee12ddbd（v26.8.30.2 版本号修复源代码提交）
+- 发布提交：bee12ddbdefca9527839629ba69f11ed932a0392
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.2；本轮修复 Android `versionCode` 随日期发布序号重置导致无法覆盖安装的问题，保留 `vYY.M.D.N` 标签格式并将 Android 安装版本号改为全局递增；README 和发布流程已同步更新。
 
 ## 已完成
 
@@ -527,3 +527,15 @@
 - 已推送 `main` 和标签 `v26.8.30.1`；GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.1>，状态为正式发布，双 ABI 资产均 uploaded。
 - ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.1/` 双 ABI 资产；两个地址 HTTP 200，Content-Length 与 X-Linked-ETag 均与本地产物一致。
 - 本轮未执行真机交互回归；本地回退分支 `backup/pre-upstream-9624-20260830` 保留，用户未跟踪目录 `tmp/` 未处理。
+
+## 2026-08-30 01:10
+
+- 定位并修复 `v26.8.30.1` 无法覆盖 `v26.8.29.7` 的原因：前者错误地将日期发布序号 `1` 同时作为 Android `versionCode`，被系统判定为低版本。
+- 新增 `android/version.properties` 作为全局 Android 版本号来源，本次 `v26.8.30.2` 使用 `versionCode=8`；Gradle 不再接受 `android/local.properties` 中过期的 `flutter.versionCode` 覆盖正式版本号。
+- `pili_release.json` 分离 `pili.code`（Android `versionCode`）和 `pili.releaseBuild`（标签末段）；更新检查、关于页面和 Release 标签继续使用 `v26.8.30.2` / `26.8.30+2`。
+- 发布流程已明确：日期变化时标签末段可从 1 重新开始，但每个新 Release 的 Android `versionCode` 必须在上一正式包基础上加 1；同名 Release 资产覆盖才可保持原值。
+- 验证通过：Flutter 3.47.2 工具链、`flutter pub get`、`flutter test --no-pub` 21/21、全量 analyze 无 error（42 条既有 info）、Gradle Debug/双 ABI Release 构建、`aapt2` 包名/版本/ABI、`apksigner` V2 签名和 `git diff --check`。
+- `v26.8.30.2` 发布提交 `bee12ddbddefca9527839629ba69f11ed932a0392` 已推送到 `maxzrb/PiliExo` 的 `main` 并创建正式标签；GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.2>。
+- arm64-v8a APK：`31,630,867` bytes，SHA-256 `04C9B1AB3C078B8D585725333BD9C8E47575FF3BF2919FF987574037CE0448D5`；armeabi-v7a APK：`31,509,357` bytes，SHA-256 `39AB66AF59353FFA13DF4EAA7594D31211105C829B85306E447543CD11823A12`；两个包均包含对应 `libffmpegJNI.so`，正式签名 V2 校验通过。
+- ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.2/` 双 ABI 资产；两个地址 HTTP 200，Content-Length 和 X-Linked-ETag 与本地产物哈希一致。
+- 本轮未执行真机交互回归；用户未跟踪目录 `tmp/` 保留不变，未纳入版本控制。
