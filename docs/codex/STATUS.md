@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 18:11 (+08:00)
+- 更新时间：2026-08-29 18:19 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`670de9d07`
-- 发布提交：`4b3baa808180c40c6857b71f0701ee70e4bc3ec5`
+- 分析基线：`ae6c0fcc2`
+- 发布提交：`ae6c0fcc286a2a99cd97b403a5b0a1dedea555ff`
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。
 
 ## 已完成
@@ -415,3 +415,12 @@
 - 新增播放器洞察交互回归测试，覆盖摘要留白点击和智能摘要渐隐期间点击展开详情；保留此前 Provider authority 修复。
 - 按同日版本规则将正式版本准备为 `v26.8.29.4` / `26.8.29+4`，发布说明已写入 `version/release-notes-v26.8.29.4.md`；等待正式双 ABI 构建和发布。
 - 验证：Flutter 工具链 3.47.2、`flutter pub get`、全量 `flutter test --no-pub` 12/12、全量 analyze 无 error（仅项目既有 info）、`git diff --check` 通过。
+
+## 2026-08-29 18:19
+
+- 已发布正式版 `v26.8.29.4`，发布提交为 `ae6c0fcc286a2a99cd97b403a5b0a1dedea555ff`，已推送至 `maxzrb/PiliExo` 的 `main` 并创建带注释标签。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.4>；两个 ABI 资产状态均为 `uploaded`。
+- ModelScope：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.4/PiliExo_android_v26.8.29.4_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.29.4/PiliExo_android_v26.8.29.4_armeabi-v7a.apk>；均返回 HTTP 200，长度和 `X-Linked-ETag` 与本地产物一致。
+- arm64 APK：`31,662,286` bytes，SHA-256 `2F93405EC16B18C054DD65899754FDD193AAF7F995EFF610EF1CF334407A5110`；armeabi-v7a APK：`31,536,417` bytes，SHA-256 `39CC232BE1BE933A2EC64586E4BF8E37325E8F58FF7B6D71F737B5328691F616`。
+- 发布验证：Flutter 3.47.2 工具链校验、`flutter pub get`、`flutter test --no-pub` 12/12、全量 analyze 无 error、双 ABI `aapt2` 包名/版本/ABI/FFmpeg 资源核验、既有正式证书 V2 签名核验、`git diff --check` 全部通过。
+- 当前版本为 `v26.8.29.4` / `26.8.29+4`；正式构建使用既有 `CN=PiliExo, O=AerithDream, C=CN` 4096 位 RSA 签名，工作区仅保留用户未跟踪目录 `tmp/`，不纳入版本控制。
