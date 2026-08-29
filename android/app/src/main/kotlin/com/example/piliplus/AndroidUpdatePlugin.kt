@@ -39,6 +39,9 @@ class AndroidUpdatePlugin(
     @Volatile
     private var aria2Process: Process? = null
 
+    @Volatile
+    private var downloadCancelled = false
+
     fun register() {
         channel.setMethodCallHandler(this)
     }
@@ -66,6 +69,8 @@ class AndroidUpdatePlugin(
                 }
             }
 
+            "cancelDownload" -> cancelDownload(result)
+
             else -> result.notImplemented()
         }
     }
@@ -78,16 +83,26 @@ class AndroidUpdatePlugin(
             .distinct()
         val fileName = call.argument<String>("fileName")
         val expectedSha256 = call.argument<String>("expectedSha256")
+        val totalBytes = call.argument<Number>("totalBytes")
+            ?.toLong()
+            ?.takeIf { it > 0L }
 
         if (urls.isEmpty() || fileName.isNullOrBlank()) {
             result.error("update_arguments", "更新下载参数不完整", null)
             return
         }
 
+        downloadCancelled = false
         executor.execute {
             try {
+                if (downloadCancelled) {
+                    throw UpdateFailure("download_cancelled", "已取消更新下载")
+                }
                 urls.forEach(::validateDownloadUrl)
                 val executable = ensureAria2Executable()
+                if (downloadCancelled) {
+                    throw UpdateFailure("download_cancelled", "已取消更新下载")
+                }
                 val outputFile = prepareUpdateFile(fileName)
                 val command = buildAria2Command(executable, outputFile, urls)
                 val process = ProcessBuilder(command)
@@ -96,16 +111,36 @@ class AndroidUpdatePlugin(
                 aria2Process = process
 
                 val log = StringBuilder()
-                process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { line ->
-                        if (log.length < MAX_LOG_LENGTH) {
-                            log.appendLine(line.take(MAX_LOG_LENGTH - log.length))
+                val logThread = Thread {
+                    process.inputStream.bufferedReader().useLines { lines ->
+                        lines.forEach { line ->
+                            if (log.length < MAX_LOG_LENGTH) {
+                                log.appendLine(line.take(MAX_LOG_LENGTH - log.length))
+                            }
                         }
                     }
                 }
+                val progressThread = Thread {
+                    while (isProcessAlive(process)) {
+                        postDownloadProgress(outputFile, totalBytes)
+                        try {
+                            Thread.sleep(250L)
+                        } catch (_: InterruptedException) {
+                            break
+                        }
+                    }
+                    postDownloadProgress(outputFile, totalBytes)
+                }
+                logThread.start()
+                progressThread.start()
                 val exitCode = process.waitFor()
+                progressThread.join(1_000L)
+                logThread.join(1_000L)
                 aria2Process = null
 
+                if (downloadCancelled) {
+                    throw UpdateFailure("download_cancelled", "已取消更新下载")
+                }
                 if (exitCode != 0 || !outputFile.isFile || outputFile.length() == 0L) {
                     throw UpdateFailure(
                         "download_failed",
@@ -116,6 +151,10 @@ class AndroidUpdatePlugin(
                 verifySha256(outputFile, expectedSha256)
                 mainHandler.post {
                     try {
+                        if (downloadCancelled) {
+                            result.error("download_cancelled", "已取消更新下载", null)
+                            return@post
+                        }
                         installApk(outputFile, expectedSha256)
                         result.success(true)
                     } catch (error: Exception) {
@@ -129,6 +168,34 @@ class AndroidUpdatePlugin(
                 aria2Process = null
                 postError(result, "download_failed", error.message)
             }
+        }
+    }
+
+    private fun cancelDownload(result: MethodChannel.Result) {
+        downloadCancelled = true
+        aria2Process?.destroy()
+        result.success(true)
+    }
+
+    private fun isProcessAlive(process: Process): Boolean {
+        return try {
+            process.exitValue()
+            false
+        } catch (_: IllegalThreadStateException) {
+            true
+        }
+    }
+
+    private fun postDownloadProgress(file: File, totalBytes: Long?) {
+        val downloadedBytes = if (file.isFile) file.length() else 0L
+        mainHandler.post {
+            channel.invokeMethod(
+                "downloadProgress",
+                mapOf(
+                    "downloadedBytes" to downloadedBytes,
+                    "totalBytes" to (totalBytes ?: 0L),
+                ),
+            )
         }
     }
 

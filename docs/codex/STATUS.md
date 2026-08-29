@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 18:19 (+08:00)
+- 更新时间：2026-08-29 18:46 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：`ae6c0fcc2`
 - 发布提交：`ae6c0fcc286a2a99cd97b403a5b0a1dedea555ff`
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 `com.maxzrb.piliexo`，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。当前在 v26.8.29.4 发布基线之上改进更新弹窗下载交互，暂未提交或发布新版本。
 
 ## 已完成
 
@@ -424,3 +424,12 @@
 - arm64 APK：`31,662,286` bytes，SHA-256 `2F93405EC16B18C054DD65899754FDD193AAF7F995EFF610EF1CF334407A5110`；armeabi-v7a APK：`31,536,417` bytes，SHA-256 `39CC232BE1BE933A2EC64586E4BF8E37325E8F58FF7B6D71F737B5328691F616`。
 - 发布验证：Flutter 3.47.2 工具链校验、`flutter pub get`、`flutter test --no-pub` 12/12、全量 analyze 无 error、双 ABI `aapt2` 包名/版本/ABI/FFmpeg 资源核验、既有正式证书 V2 签名核验、`git diff --check` 全部通过。
 - 当前版本为 `v26.8.29.4` / `26.8.29+4`；正式构建使用既有 `CN=PiliExo, O=AerithDream, C=CN` 4096 位 RSA 签名，工作区仅保留用户未跟踪目录 `tmp/`，不纳入版本控制。
+
+## 2026-08-29 18:46
+
+- 改进自动/手动更新下载交互：发现新版本后沿用同一个更新弹窗，点击下载后弹窗切换为下载状态，显示当前阶段、进度条和已下载/总大小，不再关闭弹窗后仅显示无交互的加载提示。
+- Android Aria2-next 下载通过更新 MethodChannel 按约 250ms 回传文件大小；非 ARM64 的 Dio HTTP 回退使用 `onReceiveProgress`，两条路径都支持已知 Release 资产大小和未知大小的不确定进度。
+- 增加弹窗内“取消下载”操作，取消会终止 Aria2 进程或 Dio 请求，不回退到浏览器，也不会安装未完成文件；关闭更新弹窗时同样取消正在进行的下载。
+- 修改文件：`lib/utils/update.dart`、`android/app/src/main/kotlin/com/example/piliplus/AndroidUpdatePlugin.kt`、`test/utils/update_asset_test.dart`。
+- 验证通过：Flutter `test --no-pub` 14/14；全量 `flutter analyze --no-pub --no-fatal-infos` 无 error（保留项目既有 42 条 info）；Android `:app:assembleDebug --console=plain --warning-mode=none` 成功；`git diff --check` 通过。
+- 当前版本仍为 `v26.8.29.4` / `26.8.29+4`，本轮不递增版本号、不创建新 Release；工作区保留用户未跟踪目录 `tmp/`，三处源码/测试文件及本记录尚未提交。

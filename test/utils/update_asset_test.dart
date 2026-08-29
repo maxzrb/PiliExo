@@ -38,4 +38,30 @@ void main() {
       expect(asset, isNull);
     });
   });
+
+  group('更新下载进度', () {
+    test('按总大小计算进度并限制在 0 到 1', () {
+      expect(
+        const UpdateDownloadProgress(
+          downloadedBytes: 50,
+          totalBytes: 100,
+        ).value,
+        0.5,
+      );
+      expect(
+        const UpdateDownloadProgress(
+          downloadedBytes: 150,
+          totalBytes: 100,
+        ).value,
+        1,
+      );
+    });
+
+    test('没有总大小时使用不确定进度', () {
+      expect(
+        const UpdateDownloadProgress(downloadedBytes: 50).value,
+        isNull,
+      );
+    });
+  });
 }
