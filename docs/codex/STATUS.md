@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-29 21:48 (+08:00)
+- 更新时间：2026-08-29 22:13 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：a576d3692（v26.8.29.6 覆盖版本的 Release 目标提交）
-- 发布提交：a576d369216a885fc31bd60dc65bd989c3275919
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并将更新弹窗进度布局、Web/App 推荐混合比例设置覆盖到正式 v26.8.29.6，保持同版本号不递增。
+- 分析基线：2381922ad（v26.8.29.7 Release 目标提交）
+- 发布提交：2381922ada34af2cc8cd674c166196314d81dd11
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.29.7；首页推荐来源设置保存后在下一次刷新读取，刷新成功后清除待生效提示。
 
 ## 已完成
 
@@ -501,3 +501,13 @@
 - ModelScope AerithDream/PiliExo 的 releases/v26.8.29.6/ 双 ABI 资产已覆盖；远端 HTTP 200、Content-Length 和 X-Linked-ETag 均与本地产物一致。
 - 发布校验通过：固定 Flutter 3.47.2、flutter test --no-pub 19/19、全量 analyze 无 error（42 条既有 info）、Debug/双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 资源核验、两个 APK 的 apksigner V2 签名核验和 git diff --check。
 - 本轮未递增版本、未改变播放器渲染后端，未处理用户未跟踪目录 tmp/。
+
+## 2026-08-29 22:13
+
+- 修复首页推荐来源设置状态：混合比例说明仅在设置刚变更且尚未刷新时显示“下次刷新生效”，首页刷新成功后自动清除，后续再次进入设置页只显示当前比例。
+- RcmdController 改为每次推荐请求动态读取最新比例，设置保存后无需重启，下一次下拉刷新即可应用；新增待刷新状态存储键和回归断言。
+- 发布提交 2381922ada34af2cc8cd674c166196314d81dd11 已推送至远端 main，并创建正式标签 v26.8.29.7。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.29.7>；arm64-v8a APK 31,647,323 bytes，SHA-256 3C3C75CD209698B1C270401258F275FEEAA81ABD25E9658E384079554F767629；armeabi-v7a APK 31,519,676 bytes，SHA-256 D240C537DA0A0B317A4854E4E21556FAE86ED025D0D8F15FA31408ED6C9BFF2C。
+- ModelScope AerithDream/PiliExo 的 releases/v26.8.29.7/ 双 ABI 资产已同步；两个地址 HTTP 200，Content-Length 和 X-Linked-ETag 与本地产物一致。
+- 发布校验通过：Flutter 3.47.2、flutter test --no-pub 20/20、全量 analyze 无 error（42 条既有 info）、双 ABI Release 构建、aapt2 核验 versionCode=7/对应 ABI/FFmpeg 资源、两个 APK 的 apksigner V2 签名核验和 git diff --check。
+- 本轮公开 Release 说明未加入额外用途描述；版本号为 26.8.29+7，播放器渲染后端未改变，用户未跟踪目录 tmp/ 未处理。
