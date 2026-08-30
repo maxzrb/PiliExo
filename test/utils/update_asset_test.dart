@@ -64,4 +64,37 @@ void main() {
       );
     });
   });
+
+  group('更新下载源状态', () {
+    test('ModelScope 地址显示镜像源', () {
+      expect(
+        updateDownloadSourceLabel(
+          'https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/app.apk',
+        ),
+        'ModelScope 镜像源',
+      );
+    });
+
+    test('GitHub 地址显示 GitHub 源', () {
+      expect(
+        updateDownloadSourceLabel(
+          'https://github.com/maxzrb/PiliExo/releases/download/v1/app.apk',
+        ),
+        'GitHub 源',
+      );
+      expect(
+        updateDownloadSourceLabel(
+          'https://release-assets.githubusercontent.com/app.apk',
+        ),
+        'GitHub 源',
+      );
+    });
+
+    test('未知地址显示备用下载源', () {
+      expect(
+        updateDownloadSourceLabel('https://example.com/app.apk'),
+        '备用下载源',
+      );
+    });
+  });
 }

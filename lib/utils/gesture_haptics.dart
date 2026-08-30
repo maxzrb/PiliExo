@@ -2,6 +2,7 @@
 const int kDefaultGestureHapticStepPercent = 3;
 const int kMinGestureHapticStepPercent = 1;
 const int kMaxGestureHapticStepPercent = 20;
+const double _gestureHapticFloatingPointEpsilon = 0.000001;
 
 int normalizeGestureHapticStepPercent(int value) => value
     .clamp(kMinGestureHapticStepPercent, kMaxGestureHapticStepPercent)
@@ -33,7 +34,12 @@ class GestureHapticTickTracker {
     }
 
     final delta = percent - _lastFeedbackPercent!;
-    final crossedSteps = (delta.abs() / normalizedStep).floor();
+    // 音量/亮度来自连续的浮点运算，刚好跨过刻度时可能会得到
+    // 2.999999999% 之类的结果，允许极小误差避免漏掉本应触发的震动。
+    final crossedSteps =
+        ((delta.abs() + _gestureHapticFloatingPointEpsilon) /
+                normalizedStep)
+            .floor();
     if (crossedSteps < 1) return false;
 
     _lastFeedbackPercent =

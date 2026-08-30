@@ -43,6 +43,13 @@ void main() {
     expect(tracker.update(9, stepPercent: 3), isTrue);
   });
 
+  test('接近刻度边界时允许浮点误差，避免漏触发', () {
+    final tracker = GestureHapticTickTracker();
+
+    tracker.begin(50, stepPercent: 3);
+    expect(tracker.update(53 - 0.0000000001, stepPercent: 3), isTrue);
+  });
+
   test('刻度值限制在 1 到 20 的可调范围', () {
     expect(normalizeGestureHapticStepPercent(0), 1);
     expect(normalizeGestureHapticStepPercent(3), 3);

@@ -33,6 +33,7 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/mpv_bandwidth.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
@@ -87,6 +88,7 @@ class PlPlayerController with BlockConfigMixin {
     const PlaybackInsightSnapshot(),
   );
   PlaybackTelemetry _playbackTelemetry = const PlaybackTelemetry();
+  MpvBandwidthSampler? _mpvBandwidthSampler;
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
   VoidCallback? _onInitCallback;
@@ -152,6 +154,8 @@ class PlPlayerController with BlockConfigMixin {
 
   void _resetPlaybackInsight() {
     _playbackTelemetry = const PlaybackTelemetry();
+    _mpvBandwidthSampler?.reset();
+    _mpvBandwidthSampler = null;
     _notifyPlaybackInsight();
   }
 
@@ -199,13 +203,28 @@ class PlPlayerController with BlockConfigMixin {
     }
 
     final player = _videoPlayerController;
-    final state = player?.state;
-    if (state == null) return const PlaybackInsightSnapshot();
+    if (player == null) return const PlaybackInsightSnapshot();
+    final state = player.state;
     final videoTrack = state.track.video;
     final audioTrack = state.track.audio;
     final videoParams = state.videoParams;
+    final audioParams = state.audioParams;
     final videoBitrate = _formatBitrate(videoTrack.bitrate);
     final audioBitrate = _formatBitrate(audioTrack.bitrate);
+    final audioChannelLayout =
+        <String?>[
+          audioParams.hrChannels,
+          audioParams.channels,
+          audioTrack.channels,
+        ].firstWhere(
+          (value) => value?.isNotEmpty == true,
+          orElse: () => null,
+        );
+    final bandwidthEstimate = _formatBitrate(
+      (_mpvBandwidthSampler ??= MpvBandwidthSampler(player.getProperty)).sample(
+        isPlaying: state.playing,
+      ),
+    );
     final colorParts = [
       videoParams.primaries,
       videoParams.gamma,
@@ -218,19 +237,27 @@ class PlPlayerController with BlockConfigMixin {
       videoColor: colorParts.join(' / '),
       frameRate: _formatFrameRate(videoTrack.fps),
       videoDecoder: videoTrack.decoder ?? '',
+      videoDecoderType: videoParams.hwPixelformat?.isNotEmpty == true
+          ? '硬解'
+          : '',
       videoBitrate: videoBitrate.isNotEmpty
           ? videoBitrate
           : _formatBitrate(dataSource.videoBitrate),
       audioCodec: audioTrack.codec ?? '',
-      audioSampleRate: _formatSampleRate(audioTrack.samplerate),
-      audioChannelCount: _formatChannelCount(audioTrack.channelscount),
-      audioChannelLayout: audioTrack.channels ?? '',
+      audioSampleRate: _formatSampleRate(
+        audioParams.sampleRate ?? audioTrack.samplerate,
+      ),
+      audioChannelCount: _formatChannelCount(
+        audioParams.channelCount ?? audioTrack.channelscount,
+      ),
+      audioChannelLayout: audioChannelLayout ?? '',
       audioDecoder: audioTrack.decoder ?? '',
       audioBitrate: audioBitrate.isNotEmpty
           ? audioBitrate
           : _formatBitrate(dataSource.audioBitrate),
       cdnHost: _mediaHost(dataSource.videoSource),
       cdnUri: dataSource.videoSource,
+      bandwidthEstimate: bandwidthEstimate,
       playerState: state.buffering
           ? '缓冲中'
           : state.playing
@@ -250,7 +277,7 @@ class PlPlayerController with BlockConfigMixin {
     );
   }
 
-  void _notifyPlaybackInsight() {
+  void _notifyPlaybackInsight([Object? _]) {
     playbackInsight.value = playbackInsightSnapshot;
   }
 
@@ -1353,6 +1380,16 @@ class PlPlayerController with BlockConfigMixin {
     _notifyPlaybackInsight();
   }
 
+  void _onBufferChanged(Duration buffer) {
+    buffered.value = buffer.inSeconds;
+    _notifyPlaybackInsight();
+  }
+
+  void _onDurationChanged(Duration value) {
+    updateDuration(value);
+    _notifyPlaybackInsight();
+  }
+
   void _onHdrEvent(HdrMedia3Controller controller, HdrMedia3Event event) {
     if (!identical(controller, _hdrMedia3Controller)) return;
     switch (event.type) {
@@ -1697,10 +1734,12 @@ class PlPlayerController with BlockConfigMixin {
       stream.position.listen((Duration position) {
         _onPositionChanged(position);
       }),
-      stream.duration.listen(updateDuration),
-      stream.buffer.listen((Duration buffer) {
-        buffered.value = buffer.inSeconds;
-      }),
+      stream.duration.listen(_onDurationChanged),
+      stream.buffer.listen(_onBufferChanged),
+      stream.audioParams.listen(_notifyPlaybackInsight),
+      stream.videoParams.listen(_notifyPlaybackInsight),
+      stream.track.listen(_notifyPlaybackInsight),
+      stream.size.listen(_notifyPlaybackInsight),
       stream.buffering.listen((bool buffering) {
         _onBufferingChanged(buffering);
       }),

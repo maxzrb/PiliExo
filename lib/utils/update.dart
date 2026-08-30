@@ -35,6 +35,21 @@ class UpdateDownloadProgress {
   }
 }
 
+/// 根据实际尝试的地址生成更新下载状态文案。
+String updateDownloadSourceLabel(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  if (host == 'modelscope.cn' || host.endsWith('.modelscope.cn')) {
+    return 'ModelScope 镜像源';
+  }
+  if (host == 'github.com' ||
+      host.endsWith('.github.com') ||
+      host == 'githubusercontent.com' ||
+      host.endsWith('.githubusercontent.com')) {
+    return 'GitHub 源';
+  }
+  return '备用下载源';
+}
+
 abstract final class Update {
   static const _androidUpdateChannel = MethodChannel(
     'com.maxzrb.piliexo/update',
@@ -201,7 +216,7 @@ abstract final class Update {
     }
   }
 
-  /// Android 优先使用内置 Aria2-next；不支持该架构时回退到单连接 HTTP 下载。
+  /// Android 优先使用内置 Aria2-next；不支持该架构时回退到应用内备用源下载。
   ///
   /// Aria2-next 完成并校验文件后会直接唤起系统安装器，系统仍会按 Android
   /// 安全策略显示安装确认界面，应用本身不能静默替用户确认安装。
@@ -248,7 +263,6 @@ abstract final class Update {
           rethrow;
         }
         // 目前 Aria2-next 官方 Android 发行包提供 ARM64；其它架构仍保持可更新。
-        onStatus?.call('正在使用普通 HTTP 下载');
         reportProgress(
           UpdateDownloadProgress(downloadedBytes: 0, totalBytes: totalBytes),
         );
@@ -267,6 +281,7 @@ abstract final class Update {
             if (cancelToken.isCancelled) {
               throw const _UpdateCancelled();
             }
+            onStatus?.call('正在使用${updateDownloadSourceLabel(url)}下载');
             await Dio().download(
               url,
               savePath,

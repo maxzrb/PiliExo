@@ -151,6 +151,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   Offset? _initialFocalPoint;
   final _volumeHapticTracker = GestureHapticTickTracker();
   final _brightnessHapticTracker = GestureHapticTickTracker();
+  double _pendingVolumeDelta = 0;
 
   bool _pauseDueToPauseUponEnteringBackgroundMode = false;
 
@@ -1135,6 +1136,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _beginVolumeHapticGesture() {
+    EasyThrottle.cancel('setVolume');
+    _pendingVolumeDelta = 0;
     _volumeHapticTracker.begin(
       plPlayerController.volume.value * 100.0,
       stepPercent: Pref.volumeSlideFeedbackStep,
@@ -1157,6 +1160,38 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     if (shouldFeedback && enableFeedback && Pref.enableVolumeSlideFeedback) {
       feedBack();
     }
+  }
+
+  void _queueGestureVolumeDelta(double delta) {
+    if (!delta.isFinite || delta == 0) {
+      return;
+    }
+    // 节流只限制播放器/系统音量调用频率，不能丢弃手指在这段时间内的位移。
+    _pendingVolumeDelta += delta;
+    EasyThrottle.throttle(
+      'setVolume',
+      const Duration(milliseconds: 20),
+      _applyPendingGestureVolumeDelta,
+    );
+  }
+
+  void _applyPendingGestureVolumeDelta() {
+    final delta = _pendingVolumeDelta;
+    _pendingVolumeDelta = 0;
+    if (!delta.isFinite || delta == 0) {
+      return;
+    }
+    final volume = clampDouble(
+      plPlayerController.volume.value + delta,
+      0.0,
+      plPlayerController.maxVolume,
+    );
+    _setGestureVolume(volume);
+  }
+
+  void _flushPendingGestureVolumeDelta() {
+    EasyThrottle.cancel('setVolume');
+    _applyPendingGestureVolumeDelta();
   }
 
   void _setGestureBrightness(double brightness) {
@@ -1340,24 +1375,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     } else if (_gestureType == .right) {
       // 右边区域
       final double level = maxHeight * 0.5;
-      EasyThrottle.throttle(
-        'setVolume',
-        const Duration(milliseconds: 20),
-        () {
-          final double volume = clampDouble(
-            plPlayerController.volume.value - delta.dy / level,
-            0.0,
-            plPlayerController.maxVolume,
-          );
-          _setGestureVolume(volume);
-        },
-      );
+      _queueGestureVolumeDelta(-delta.dy / level);
     }
   }
 
   void _onPanEnd(ScaleEndDetails details) {
     if (_gestureType == .horizontal) {
       _onHorizontalDragEnd();
+    } else if (_gestureType == .right) {
+      _flushPendingGestureVolumeDelta();
     }
     _initialFocalPoint = null;
     _gestureType = null;
@@ -1526,24 +1552,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       }
 
       final double level = maxHeight * 0.5;
-      EasyThrottle.throttle(
-        'setVolume',
-        const Duration(milliseconds: 20),
-        () {
-          final double volume = clampDouble(
-            plPlayerController.volume.value - event.localPanDelta.dy / level,
-            0.0,
-            plPlayerController.maxVolume,
-          );
-          _setGestureVolume(volume);
-        },
-      );
+      _queueGestureVolumeDelta(-event.localPanDelta.dy / level);
     }
   }
 
   void _onPointerPanZoomEnd(PointerPanZoomEndEvent event) {
     if (_gestureType == .horizontal) {
       _onHorizontalDragEnd();
+    } else if (_gestureType == .right) {
+      _flushPendingGestureVolumeDelta();
     }
     _gestureType = null;
   }

@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 15:36 (+08:00)
+- 更新时间：2026-08-30 17:41 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：fc95ec99b（v26.8.30.4 发布提交）
 - 发布提交：fc95ec99b08a940b0765f530d763edf54af2a538
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.4；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置音量/亮度侧滑震动；当前正式版本为 `v26.8.30.4`，Android `versionCode=10`。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.4；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置音量/亮度侧滑震动；侧滑音量节流已改为累计位移并在手势结束补提交，更新下载回退状态显示实际 ModelScope/GitHub 源；普通 mpv 视频洞察已接入 cache-speed 带宽估计及参数变化刷新；当前正式版本为 `v26.8.30.4`，Android `versionCode=10`。
 
 ## 已完成
 
@@ -597,3 +597,19 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.4>，状态为正式版、两个资产均 `uploaded`。arm64 APK `31,660,715` bytes，SHA-256 `7A4A6386D23A16B712D31131FB0CB9B160ECC3B7D47CF476180BCCBAECA23238`；armeabi-v7a APK `31,542,511` bytes，SHA-256 `A64EA15F64DA21FFE1D70F400BEA4AC71B1E994E0A5B8D5A7744EB610A900E8B`。
 - ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.4/` 双 ABI 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.4/PiliExo_android_v26.8.30.4_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.4/PiliExo_android_v26.8.30.4_armeabi-v7a.apk>；均返回 HTTP 200，长度和 `X-Linked-ETag` 与本地产物 SHA-256 一致。
 - 发布后工作区仅保留用户未跟踪目录 `tmp/`；`pili_release.json`、构建目录和本机 Flutter SDK 均未纳入版本控制。本轮未执行真机交互回归，后续需按发布流程验收音量/亮度震动默认值及播放器功能。
+
+## 2026-08-30 16:39
+
+- 修复播放器侧滑音量震动偶尔漏触发：20ms 节流期间累计全部位移，下一次更新或手势结束时一次性应用，避免被丢弃的位移导致实际音量和震动刻度不同步；手势开始时清理上一轮节流状态。
+- 刻度判断增加极小浮点误差容忍，保留用户设置的默认 3% 和自定义刻度范围，不改为每 1% 震动；新增接近边界时的单元测试。
+- 更新下载在应用内备用下载回退时按当前实际地址显示“正在使用 ModelScope 镜像源下载”或“正在使用 GitHub 源下载”，移除无区分度的“普通 HTTP 下载”提示；新增 ModelScope、GitHub 和未知地址文案测试。
+- 验证通过：定向更新/侧滑震动测试 14/14、全量 Flutter 测试 41/41、全量 Analyze 无 error（51 条既有 info）、`git diff --check`。
+- 本轮未修改版本号、未构建或发布 Release；工作区仅保留源码/测试/记录改动，用户未跟踪目录 `tmp/` 继续保留。
+
+## 2026-08-30 17:41
+
+- 修复普通视频播放器洞察缺少带宽估计：通过 media-kit 暴露的 mpv `cache-speed` 属性按 250ms 最小间隔采样，将字节/秒转换为统一 Telemetry 的比特/秒；暂停或播放结束后冻结最近一次有效值，切换媒体时清空。
+- 普通 mpv 洞察补充状态流刷新：前向缓冲、持续时间、实际音视频参数、轨道和视频尺寸变化都会触发快照更新；音频优先使用解码输出参数，检测到 `hw-pixelformat` 时显示硬解，未有可靠标记的硬/软解继续留空，不根据名称猜测。
+- 审计 HDR/普通视频差异：Media3 的 Representation、Profile/Level、Dolby Vision 结构化信息、硬/软解判定、掉帧统计和 fallback 历史来自 Media3/AnalyticsListener；mpv/media-kit 当前公开模型没有等价可靠字段，保持空白属于后端能力差异，不伪造数据。
+- 新增 mpv 带宽采样器测试，验证节流、暂停冻结、无效值保留和重置；全量 Flutter 测试 44/44、Analyze 无 error（51 条既有 info）、`git diff --check` 通过。
+- 本轮未修改版本号、未构建或发布 Release；保留用户未跟踪目录 `tmp/`，此前音量震动和更新源状态改动仍在同一工作区待提交。
