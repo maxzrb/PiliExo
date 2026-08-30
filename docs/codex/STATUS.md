@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 17:41 (+08:00)
+- 更新时间：2026-08-30 18:22 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：fc95ec99b（v26.8.30.4 发布提交）
-- 发布提交：fc95ec99b08a940b0765f530d763edf54af2a538
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.4；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置音量/亮度侧滑震动；侧滑音量节流已改为累计位移并在手势结束补提交，更新下载回退状态显示实际 ModelScope/GitHub 源；普通 mpv 视频洞察已接入 cache-speed 带宽估计及参数变化刷新；当前正式版本为 `v26.8.30.4`，Android `versionCode=10`。
+- 分析基线：fd56cd6a6（v26.8.30.5 发布提交）
+- 发布提交：fd56cd6a6e2f8c5fe8f36ba919ef2dfefbb47e77
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.5；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置音量/亮度侧滑震动；侧滑音量节流已改为累计位移并在手势结束补提交，更新下载回退状态显示实际 ModelScope/GitHub 源；普通 mpv 视频洞察已接入 cache-speed 带宽估计及参数变化刷新；当前正式版本为 `v26.8.30.5`，Android `versionCode=11`。
 
 ## 已完成
 
@@ -613,3 +613,12 @@
 - 审计 HDR/普通视频差异：Media3 的 Representation、Profile/Level、Dolby Vision 结构化信息、硬/软解判定、掉帧统计和 fallback 历史来自 Media3/AnalyticsListener；mpv/media-kit 当前公开模型没有等价可靠字段，保持空白属于后端能力差异，不伪造数据。
 - 新增 mpv 带宽采样器测试，验证节流、暂停冻结、无效值保留和重置；全量 Flutter 测试 44/44、Analyze 无 error（51 条既有 info）、`git diff --check` 通过。
 - 本轮未修改版本号、未构建或发布 Release；保留用户未跟踪目录 `tmp/`，此前音量震动和更新源状态改动仍在同一工作区待提交。
+
+## 2026-08-30 18:22
+
+- 发布 `v26.8.30.5`，发布提交为 `fd56cd6a6e2f8c5fe8f36ba919ef2dfefbb47e77`；应用版本 `26.8.30+5`，Android 全局 `versionCode=11`。`main`、annotated tag、GitHub Release 标题和 ModelScope 目录均统一使用 `v26.8.30.5`。
+- 发布前验证通过：Flutter 3.47.2、`flutter pub get`、全量 Flutter 测试 44/44、全量 Analyze 无 error（51 条既有 info）、Android `:app:testDebugUnitTest`、`git diff --check`。Flutter 补丁脚本按流程执行时显式设置 `FLUTTER_ROOT` 和 `GITHUB_WORKSPACE`，避免跨盘环境变量缺失。
+- 双 ABI Release 构建命令为 `flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --dart-define-from-file=pili_release.json --no-pub`；aapt2 核验包名 `com.maxzrb.piliexo`、`versionName=26.8.30`、`versionCode=11`、对应 ABI 和 `libffmpegJNI.so`，Release 映射保留 `FfmpegAudioRenderer`，apksigner V2 正式签名校验通过。
+- arm64-v8a：`31,663,821` bytes，SHA-256 `3d029bb144147f0de86e26918ab124c37edbaffc882df0644bb271e7d7434d9b`；armeabi-v7a：`31,546,308` bytes，SHA-256 `2e2f8f7289327e69e340d7696616cbccaf68641c5a15f34c2117839146dae4ad`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.5>，两个资产均为 `uploaded`；ModelScope 资产为 <https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.5/PiliExo_android_v26.8.30.5_arm64-v8a.apk> 和 <https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.5/PiliExo_android_v26.8.30.5_armeabi-v7a.apk>，均 HTTP 200，长度及 `X-Linked-ETag` 与本地产物一致。
+- 本轮未执行真机交互回归；普通 mpv/media-kit 仍仅展示其公开且可靠的带宽/参数数据，Media3 专属 Representation、Profile/Level、Dolby Vision 结构化字段和完整硬/软解信息不伪造。构建目录、`pili_release.json` 和 `dist/` 未纳入版本控制，用户未跟踪目录 `tmp/` 保留不变。
