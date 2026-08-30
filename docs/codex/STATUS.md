@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 14:59 (+08:00)
+- 更新时间：2026-08-30 15:36 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：840f195bc（v26.8.30.3 发布提交）
-- 发布提交：840f195bc83b3f45b43d9c494659b134c712b8da
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.3；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置侧滑震动；当前检查点提交为 `4b1414a5d`，后续音量/亮度震动改动尚未提交。
+- 分析基线：fc95ec99b（v26.8.30.4 发布提交）
+- 发布提交：fc95ec99b08a940b0765f530d763edf54af2a538
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.4；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置音量/亮度侧滑震动；当前正式版本为 `v26.8.30.4`，Android `versionCode=10`。
 
 ## 已完成
 
@@ -587,3 +587,13 @@
 - 发布流程已写入统一 Tag 规则：Git tag、GitHub Release 目标 tag/标题、Release Note 文件名和 ModelScope 目录必须统一为同一个 `vYY.M.D.N`，不得添加 `PiliExo` 前缀或省略 `v`。
 - 验证通过：全量 Flutter 测试 32/32；洞察相关 Dart 测试 9/9；全量 Analyze 无 error（47 条既有 info）；Android `:app:compileDebugKotlin` 与 `HdrMedia3SourceTest`（8 项）通过；`git diff --check` 通过。
 - 本轮未修改版本号、未构建或发布 Release；当前正式版本仍为 `v26.8.30.3`。用户未跟踪目录 `tmp/` 保留不变，源码和记录尚未提交。
+
+## 2026-08-30 15:36
+
+- 已将音量/亮度侧滑刻度震动及“震动调节”二级设置提交为 `482a2405c`，随后将版本发布提交 `fc95ec99b` 推送到 `maxzrb/PiliExo` 的 `main`；用户未跟踪目录 `tmp/` 未纳入提交。
+- 正式版本为 `v26.8.30.4`，应用版本 `26.8.30+4`，Android 全局 `versionCode=10`；创建并推送 annotated tag `v26.8.30.4`，tag 解引用对象为 `fc95ec99b08a940b0765f530d763edf54af2a538`。
+- 发布前使用官方 Flutter 3.47.2，并按项目 `lib/scripts/patch.ps1 android` 应用 Flutter/material_ui 补丁；`flutter pub get`、全量 Flutter 测试 38/38、全量 Analyze 无 error（50 条 info）通过。
+- Android `:app:testDebugUnitTest` 通过；双 ABI Release 构建成功。aapt2 核验包名 `com.maxzrb.piliexo`、`versionName=26.8.30`、`versionCode=10` 和对应 ABI；两个 APK 均包含对应 `libffmpegJNI.so`，Release 映射保留 `FfmpegAudioRenderer`；apksigner V2 正式签名校验通过。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.4>，状态为正式版、两个资产均 `uploaded`。arm64 APK `31,660,715` bytes，SHA-256 `7A4A6386D23A16B712D31131FB0CB9B160ECC3B7D47CF476180BCCBAECA23238`；armeabi-v7a APK `31,542,511` bytes，SHA-256 `A64EA15F64DA21FFE1D70F400BEA4AC71B1E994E0A5B8D5A7744EB610A900E8B`。
+- ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.4/` 双 ABI 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.4/PiliExo_android_v26.8.30.4_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.4/PiliExo_android_v26.8.30.4_armeabi-v7a.apk>；均返回 HTTP 200，长度和 `X-Linked-ETag` 与本地产物 SHA-256 一致。
+- 发布后工作区仅保留用户未跟踪目录 `tmp/`；`pili_release.json`、构建目录和本机 Flutter SDK 均未纳入版本控制。本轮未执行真机交互回归，后续需按发布流程验收音量/亮度震动默认值及播放器功能。
