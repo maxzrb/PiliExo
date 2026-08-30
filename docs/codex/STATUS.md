@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 14:27 (+08:00)
+- 更新时间：2026-08-30 14:59 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：840f195bc（v26.8.30.3 发布提交）
 - 发布提交：840f195bc83b3f45b43d9c494659b134c712b8da
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.3；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器当前补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry 和可选音频焦点接管，保留 Media3/FFmpeg 解码链路不变；当前正在优化播放器洞察实时数据、解码器硬软解判定和起播摘要时长。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.3；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置侧滑震动；当前检查点提交为 `4b1414a5d`，后续音量/亮度震动改动尚未提交。
 
 ## 已完成
 
@@ -568,6 +568,15 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.3>；双 ABI 资产状态均为 `uploaded`，GitHub digest 与本地 SHA-256 一致。
 - ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.3/` 双 ABI 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.3/PiliExo_android_v26.8.30.3_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.3/PiliExo_android_v26.8.30.3_armeabi-v7a.apk>；两个地址 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地产物哈希一致。
 - 为兼容项目现有 Flutter 私有 API，按发布流程安全应用 Flutter 3.47.2 本地补丁并保留其工作区修改；本项目源码与发布记录已提交，用户未跟踪目录 `tmp/` 保留不变且未纳入版本控制。本轮未执行真机交互回归。
+
+## 2026-08-30 14:59
+
+- 已按用户要求先创建回退检查点提交 `4b1414a5d`，包含此前播放器洞察修复、起播摘要 3 秒调整和统一 Release Tag 流程；未将用户未跟踪目录 `tmp/` 纳入提交。
+- 新增播放器侧滑刻度震动：音量使用右侧滑动，亮度使用左侧滑动；按连续手势累计跨越的百分比刻度触发，不会每 1% 震动。刻度范围为 1%–20%，默认 3%，一次跨越多个刻度最多触发一次并保留剩余距离。
+- 设置页将原“震动反馈/震动强度”收拢为“震动调节”二级弹窗，集中配置底栏/侧栏点击震动、震动强度、音量滑动震动、亮度滑动震动及两者刻度；默认音量滑动震动开启、亮度滑动震动关闭，强度沿用原底栏震动强度。
+- 亮度调节未改动原有亮度逻辑，仅在开启对应选项且全局震动反馈开启时提供刻度震动；其他音量入口、亮度入口和横向进度手势不增加震动。
+- 验证通过：侧滑震动与设置持久化测试 5/5；全量 Flutter 测试 38/38；全量 Analyze 无 error（50 条既有 info）；`git diff --check` 通过。
+- 当前 HEAD 为回退检查点 `4b1414a5d` 加上未提交的侧滑震动改动；未修改版本号、未构建或发布 Release。用户未跟踪目录 `tmp/` 继续保留。
 
 ## 2026-08-30 14:27
 

@@ -37,6 +37,7 @@ import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/filtering_text.dart';
 import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/gesture_haptics.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -459,23 +460,11 @@ List<SettingsModel> get extraSettings => [
     defaultVal: false,
     onChanged: (value) => ImageGridView.enableImgMenu = value,
   ),
-  SwitchModel(
-    setKey: SettingBoxKey.feedBackEnable,
-    defaultVal: true,
-    onChanged: (value) {
-      enableFeedback = value;
-      feedBack();
-    },
-    leading: const Icon(Icons.vibration_outlined),
-    title: '震动反馈',
-    subtitle: '所有底栏/侧栏导航项生效，请确定手机设置中已开启震动反馈',
-  ),
   NormalModel(
-    title: '震动强度',
-    getSubtitle: () =>
-        '当前：${_feedbackStrengthLabel(feedbackStrength)}（$feedbackStrength/255）',
-    leading: const Icon(Icons.tune),
-    onTap: _showFeedbackStrengthDialog,
+    title: '震动调节',
+    subtitle: '配置底栏/侧栏、音量和亮度滑动震动',
+    leading: const Icon(Icons.vibration_outlined),
+    onTap: _showHapticSettingsDialog,
   ),
   const SwitchModel(
     title: '大家都在搜',
@@ -748,36 +737,224 @@ String _feedbackStrengthLabel(int strength) {
   return '强';
 }
 
-Future<void> _showFeedbackStrengthDialog(
+Future<void> _showHapticSettingsDialog(
   BuildContext context,
   VoidCallback setState,
 ) async {
-  final initialStrength = feedbackStrength;
-  final value = await showDialog<double>(
+  await showDialog<void>(
     context: context,
-    builder: (context) => SliderDialog(
-      title: const Text('震动强度'),
-      value: feedbackStrength.toDouble(),
-      min: 1,
-      max: 255,
-      divisions: 254,
-      precise: 0,
-      onChanged: (value) {
-        // 拖动滑块时即时使用临时强度震动，确认后才保存设置。
-        feedbackStrength = value.round().clamp(1, 255).toInt();
-        feedBack();
-      },
-    ),
+    builder: (context) => const _HapticSettingsDialog(),
   );
-  if (value == null) {
-    feedbackStrength = initialStrength;
-    return;
+  setState();
+}
+
+class _HapticSettingsDialog extends StatefulWidget {
+  const _HapticSettingsDialog();
+
+  @override
+  State<_HapticSettingsDialog> createState() => _HapticSettingsDialogState();
+}
+
+class _HapticSettingsDialogState extends State<_HapticSettingsDialog> {
+  late bool _feedbackEnabled;
+  late int _strength;
+  late bool _volumeEnabled;
+  late bool _brightnessEnabled;
+  late int _volumeStep;
+  late int _brightnessStep;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedbackEnabled = enableFeedback;
+    _strength = feedbackStrength;
+    _volumeEnabled = Pref.enableVolumeSlideFeedback;
+    _brightnessEnabled = Pref.enableBrightnessSlideFeedback;
+    _volumeStep = Pref.volumeSlideFeedbackStep;
+    _brightnessStep = Pref.brightnessSlideFeedbackStep;
   }
 
-  feedbackStrength = value.round().clamp(1, 255).toInt();
-  await GStorage.setting.put(SettingBoxKey.feedBackStrength, feedbackStrength);
-  feedBack();
-  setState();
+  void _setFeedbackEnabled(bool value) {
+    setState(() => _feedbackEnabled = value);
+    enableFeedback = value;
+    GStorage.setting.put(SettingBoxKey.feedBackEnable, value);
+    if (value) feedBack();
+  }
+
+  void _setStrength(double value) {
+    final strength = value.round().clamp(1, 255).toInt();
+    setState(() => _strength = strength);
+    feedbackStrength = strength;
+    GStorage.setting.put(SettingBoxKey.feedBackStrength, strength);
+    if (_feedbackEnabled) feedBack();
+  }
+
+  void _setVolumeEnabled(bool value) {
+    setState(() => _volumeEnabled = value);
+    GStorage.setting.put(SettingBoxKey.enableVolumeSlideFeedback, value);
+  }
+
+  void _setBrightnessEnabled(bool value) {
+    setState(() => _brightnessEnabled = value);
+    GStorage.setting.put(SettingBoxKey.enableBrightnessSlideFeedback, value);
+  }
+
+  void _setVolumeStep(double value) {
+    final step = normalizeGestureHapticStepPercent(value.round());
+    setState(() => _volumeStep = step);
+    GStorage.setting.put(SettingBoxKey.volumeSlideFeedbackStep, step);
+  }
+
+  void _setBrightnessStep(double value) {
+    final step = normalizeGestureHapticStepPercent(value.round());
+    setState(() => _brightnessStep = step);
+    GStorage.setting.put(SettingBoxKey.brightnessSlideFeedbackStep, step);
+  }
+
+  Widget _switchOption({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: Text(
+        subtitle,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.outline,
+        ),
+      ),
+      trailing: Switch(value: value, onChanged: onChanged),
+      onTap: () => onChanged(!value),
+    );
+  }
+
+  Widget _stepOption({
+    required String title,
+    required int value,
+    required bool enabled,
+    required ValueChanged<double> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(title)),
+              Text(
+                '每 $value%',
+                style: TextStyle(color: theme.colorScheme.outline),
+              ),
+            ],
+          ),
+          Slider(
+            value: value.toDouble(),
+            min: kMinGestureHapticStepPercent.toDouble(),
+            max: kMaxGestureHapticStepPercent.toDouble(),
+            divisions:
+                kMaxGestureHapticStepPercent - kMinGestureHapticStepPercent,
+            label: '$value%',
+            onChanged: enabled ? onChanged : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _strengthOption() {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(child: Text('震动强度')),
+              Text(
+                '${_feedbackStrengthLabel(_strength)}（$_strength/255）',
+                style: TextStyle(color: theme.colorScheme.outline),
+              ),
+            ],
+          ),
+          Slider(
+            value: _strength.toDouble(),
+            min: 1,
+            max: 255,
+            divisions: 254,
+            label: '$_strength',
+            onChanged: _feedbackEnabled ? _setStrength : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('震动调节'),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.72,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _switchOption(
+                title: '底栏/侧栏点击震动',
+                subtitle: '导航项点击时提供震动反馈',
+                value: _feedbackEnabled,
+                onChanged: _setFeedbackEnabled,
+              ),
+              _strengthOption(),
+              const Divider(),
+              _switchOption(
+                title: '音量滑动震动',
+                subtitle: '屏幕右侧滑动调节音量时按刻度震动',
+                value: _volumeEnabled,
+                onChanged: _setVolumeEnabled,
+              ),
+              _stepOption(
+                title: '音量震动刻度',
+                value: _volumeStep,
+                enabled: _volumeEnabled,
+                onChanged: _setVolumeStep,
+              ),
+              _switchOption(
+                title: '亮度滑动震动',
+                subtitle: '屏幕左侧滑动调节亮度时按刻度震动',
+                value: _brightnessEnabled,
+                onChanged: _setBrightnessEnabled,
+              ),
+              _stepOption(
+                title: '亮度震动刻度',
+                value: _brightnessStep,
+                enabled: _brightnessEnabled,
+                onChanged: _setBrightnessStep,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: Navigator.of(context).pop,
+          child: Text(
+            '关闭',
+            style: TextStyle(color: Theme.of(context).colorScheme.outline),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 void _showDownPathDialog(BuildContext context, VoidCallback setState) {

@@ -58,11 +58,13 @@ import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
+import 'package:PiliPlus/utils/gesture_haptics.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/mobile_observer.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:collection/collection.dart';
@@ -147,6 +149,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   GestureType? _gestureType;
   Offset? _initialFocalPoint;
+  final _volumeHapticTracker = GestureHapticTickTracker();
+  final _brightnessHapticTracker = GestureHapticTickTracker();
 
   bool _pauseDueToPauseUponEnteringBackgroundMode = false;
 
@@ -1130,6 +1134,44 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     _initialFocalPoint = details.localFocalPoint;
   }
 
+  void _beginVolumeHapticGesture() {
+    _volumeHapticTracker.begin(
+      plPlayerController.volume.value * 100.0,
+      stepPercent: Pref.volumeSlideFeedbackStep,
+    );
+  }
+
+  void _beginBrightnessHapticGesture() {
+    _brightnessHapticTracker.begin(
+      _brightnessValue.value * 100.0,
+      stepPercent: Pref.brightnessSlideFeedbackStep,
+    );
+  }
+
+  void _setGestureVolume(double volume) {
+    final shouldFeedback = _volumeHapticTracker.update(
+      volume * 100.0,
+      stepPercent: Pref.volumeSlideFeedbackStep,
+    );
+    plPlayerController.setVolume(volume);
+    if (shouldFeedback && enableFeedback && Pref.enableVolumeSlideFeedback) {
+      feedBack();
+    }
+  }
+
+  void _setGestureBrightness(double brightness) {
+    final shouldFeedback = _brightnessHapticTracker.update(
+      brightness * 100.0,
+      stepPercent: Pref.brightnessSlideFeedbackStep,
+    );
+    setBrightness(brightness);
+    if (shouldFeedback &&
+        enableFeedback &&
+        Pref.enableBrightnessSlideFeedback) {
+      feedBack();
+    }
+  }
+
   void _onScaleUpdate(double scale) {
     if (plPlayerController.media3HdrActive.value) {
       showRestoreScaleBtn.value = false;
@@ -1197,8 +1239,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           // 左边区域
           if (PlatformUtils.isDesktop) {
             _gestureType = .right;
+            _beginVolumeHapticGesture();
           } else {
             _gestureType = .left;
+            _beginBrightnessHapticGesture();
           }
         } else if (tapPosition < sectionWidth * 2) {
           if (!plPlayerController.enableSlideFS) {
@@ -1212,6 +1256,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           }
           // 右边区域
           _gestureType = .right;
+          _beginVolumeHapticGesture();
         }
       }
       return;
@@ -1265,7 +1310,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       final double level = maxHeight * 3;
       final double brightness = (_brightnessValue.value - delta.dy / level)
           .clamp(0.0, 1.0);
-      setBrightness(brightness);
+      _setGestureBrightness(brightness);
     } else if (_gestureType == .center) {
       // 全屏
       const double threshold = 2.5; // 滑动阈值
@@ -1304,7 +1349,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             0.0,
             plPlayerController.maxVolume,
           );
-          plPlayerController.setVolume(volume);
+          _setGestureVolume(volume);
         },
       );
     }
@@ -1466,6 +1511,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         _gestureType = .horizontal;
       } else if (dy > 3 * dx) {
         _gestureType = .right;
+        _beginVolumeHapticGesture();
       }
       return;
     }
@@ -1489,7 +1535,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             0.0,
             plPlayerController.maxVolume,
           );
-          plPlayerController.setVolume(volume);
+          _setGestureVolume(volume);
         },
       );
     }

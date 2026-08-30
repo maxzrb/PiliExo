@@ -38,6 +38,7 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/gesture_haptics.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/recommend_mix.dart';
@@ -160,6 +161,34 @@ abstract final class Pref {
       defaultValue: 80,
     );
     return value is num ? value.toInt().clamp(1, 255).toInt() : 80;
+  }
+
+  static bool get enableVolumeSlideFeedback => _setting.get(
+    SettingBoxKey.enableVolumeSlideFeedback,
+    defaultValue: true,
+  );
+
+  static bool get enableBrightnessSlideFeedback => _setting.get(
+    SettingBoxKey.enableBrightnessSlideFeedback,
+    defaultValue: false,
+  );
+
+  static int get volumeSlideFeedbackStep => _gestureHapticStep(
+    SettingBoxKey.volumeSlideFeedbackStep,
+  );
+
+  static int get brightnessSlideFeedbackStep => _gestureHapticStep(
+    SettingBoxKey.brightnessSlideFeedbackStep,
+  );
+
+  static int _gestureHapticStep(String key) {
+    final value = _setting.get(
+      key,
+      defaultValue: kDefaultGestureHapticStepPercent,
+    );
+    return normalizeGestureHapticStepPercent(
+      value is num ? value.round() : kDefaultGestureHapticStepPercent,
+    );
   }
 
   static int get picQuality =>
