@@ -82,6 +82,31 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      snapshot.overviewRows.any((row) => row.label == '当前 Representation'),
+      isFalse,
+    );
+  });
+
+  test('概览不重复展示冗长 Representation 内容', () {
+    final snapshot = PlaybackInsightSnapshot(
+      representation: 'video-0 · q=129 · 3840x2160 · dvhe.08.06',
+      representationId: 'video-0',
+      quality: '129',
+      resolution: '3840×2160',
+      videoCodec: 'Dolby Vision',
+      videoCodecString: 'dvhe.08.06',
+    );
+
+    expect(
+      snapshot.overviewRows.map((row) => row.label),
+      isNot(contains('当前 Representation')),
+    );
+    expect(
+      snapshot.videoRows.map((row) => row.label),
+      contains('Codec String'),
+    );
+    expect(snapshot.overviewRows.map((row) => row.label), contains('分辨率'));
   });
 
   test('Representation fallback 历史可被洞察页读取', () {

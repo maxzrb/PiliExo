@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 13:38 (+08:00)
+- 更新时间：2026-08-30 14:27 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：840f195bc（v26.8.30.3 发布提交）
 - 发布提交：840f195bc83b3f45b43d9c494659b134c712b8da
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.3；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器当前补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry 和可选音频焦点接管，保留 Media3/FFmpeg 解码链路不变。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.3；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器当前补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry 和可选音频焦点接管，保留 Media3/FFmpeg 解码链路不变；当前正在优化播放器洞察实时数据、解码器硬软解判定和起播摘要时长。
 
 ## 已完成
 
@@ -568,3 +568,13 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.3>；双 ABI 资产状态均为 `uploaded`，GitHub digest 与本地 SHA-256 一致。
 - ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.3/` 双 ABI 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.3/PiliExo_android_v26.8.30.3_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.3/PiliExo_android_v26.8.30.3_armeabi-v7a.apk>；两个地址 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地产物哈希一致。
 - 为兼容项目现有 Flutter 私有 API，按发布流程安全应用 Flutter 3.47.2 本地补丁并保留其工作区修改；本项目源码与发布记录已提交，用户未跟踪目录 `tmp/` 保留不变且未纳入版本控制。本轮未执行真机交互回归。
+
+## 2026-08-30 14:27
+
+- 优化播放器洞察展示：概览移除冗长的“当前 Representation”行，Representation 数据仍保留在统一 Telemetry 和 fallback 历史中，视频/音频详情继续展示拆分后的实际字段。
+- Media3 洞察进度改为按 `playWhenReady` 每 100ms 刷新，缓冲阶段也会继续更新前向缓冲和带宽；用户暂停或播放结束时停止带宽采样与刷新，并保留暂停前的带宽估计值。
+- 硬/软解判定优先读取 Android 10+ 实际 `MediaCodecInfo` 的 `isHardwareAccelerated` / `isSoftwareOnly` 标记，低版本回退到 Media3 codec 能力标记；解码器初始化回调同时使用最近格式和播放器当前格式，避免回调顺序导致始终未知。
+- 智能模式下起播摘要显示时间调整为 3 秒；掉帧事件仍显示 5 秒，显示/不显示模式和控制条联动逻辑不变。
+- 发布流程已写入统一 Tag 规则：Git tag、GitHub Release 目标 tag/标题、Release Note 文件名和 ModelScope 目录必须统一为同一个 `vYY.M.D.N`，不得添加 `PiliExo` 前缀或省略 `v`。
+- 验证通过：全量 Flutter 测试 32/32；洞察相关 Dart 测试 9/9；全量 Analyze 无 error（47 条既有 info）；Android `:app:compileDebugKotlin` 与 `HdrMedia3SourceTest`（8 项）通过；`git diff --check` 通过。
+- 本轮未修改版本号、未构建或发布 Release；当前正式版本仍为 `v26.8.30.3`。用户未跟踪目录 `tmp/` 保留不变，源码和记录尚未提交。

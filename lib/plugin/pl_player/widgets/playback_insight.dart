@@ -24,7 +24,7 @@ void showPlaybackInsight(
 /// 在播放器右上角显示洞察摘要。
 ///
 /// 显示模式参考 BiliPai：显示模式常驻，智能模式由控制条和播放事件分别触发。
-/// 控制条可覆盖并关闭当前事件窗口；未发生控制条交互时，起播和掉帧摘要各自显示 5 秒后渐隐。
+/// 控制条可覆盖并关闭当前事件窗口；未发生控制条交互时，起播摘要显示 3 秒、掉帧摘要显示 5 秒后渐隐。
 class PlaybackInsightHud extends StatefulWidget {
   const PlaybackInsightHud({
     super.key,
@@ -41,6 +41,8 @@ class PlaybackInsightHud extends StatefulWidget {
 
 class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   static const _summaryFadeDuration = Duration(milliseconds: 350);
+  static const _startupSummaryDuration = Duration(seconds: 3);
+  static const _eventSummaryDuration = Duration(seconds: 5);
 
   Timer? _smartHideTimer;
   Timer? _summaryHitTestTimer;
@@ -74,7 +76,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     if (snapshot.hasMeasuredData &&
         playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
       _initialWindowShown = true;
-      _showSmartWindow();
+      _showSmartWindow(duration: _startupSummaryDuration);
     }
   }
 
@@ -94,13 +96,17 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     _lastDroppedFrames = snapshot.droppedFrames;
     if ((hasNewDroppedFrames || isInitialMeasurement) &&
         playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
-      _showSmartWindow();
+      _showSmartWindow(
+        duration: isInitialMeasurement
+            ? _startupSummaryDuration
+            : _eventSummaryDuration,
+      );
     } else if (mounted) {
       setState(() {});
     }
   }
 
-  void _showSmartWindow() {
+  void _showSmartWindow({required Duration duration}) {
     // 这里只重置起播/掉帧事件窗口，不能影响控制条触发的显示状态。
     _smartHideTimer?.cancel();
     _smartHideTimer = null;
@@ -118,7 +124,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     } else {
       _smartAlertVisible = true;
     }
-    _smartHideTimer = Timer(const Duration(seconds: 5), () {
+    _smartHideTimer = Timer(duration, () {
       _smartHideTimer = null;
       _keepSummaryHitTestDuringFade();
       if (mounted) {
@@ -172,7 +178,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     if (playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
       if (snapshot.hasMeasuredData && !_initialWindowShown) {
         _initialWindowShown = true;
-        _showSmartWindow();
+        _showSmartWindow(duration: _startupSummaryDuration);
       }
     }
     if (playbackInsightModeNotifier.value == PlaybackInsightMode.off) {

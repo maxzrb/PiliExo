@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.media.MediaCodecList
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -27,6 +28,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.TransferListener
 import androidx.media3.exoplayer.DecoderCounters
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlaybackException
@@ -38,6 +40,7 @@ import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
@@ -351,6 +354,27 @@ internal fun createRepresentationFallbackPlan(
     speed = speed,
 )
 
+/** 只有用户仍然准备播放时才允许带宽采样，暂停后冻结当前估计值。 */
+internal class BandwidthSamplingGate {
+    @Volatile
+    var enabled: Boolean = false
+        private set
+
+    fun setPlayWhenReady(playWhenReady: Boolean) {
+        enabled = playWhenReady
+    }
+}
+
+/** 使用可靠的 Android/Media3 codec 能力标记生成洞察中的硬软解文案。 */
+internal fun decoderTypeFromFlags(
+    hardwareAccelerated: Boolean,
+    softwareOnly: Boolean,
+): String = when {
+    hardwareAccelerated -> "硬解"
+    softwareOnly -> "软解"
+    else -> "未知"
+}
+
 @UnstableApi
 internal data class HdrMedia3Source(
     val qualityCode: Int,
@@ -438,13 +462,124 @@ private class HdrMedia3Session(
     private val httpClient = OkHttpClient.Builder()
         .retryOnConnectionFailure(true)
         .build()
+    private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
+    private val bandwidthSamplingGate = BandwidthSamplingGate()
+    private data class BandwidthTransferKey(
+        val source: DataSource,
+        val uri: Uri,
+        val position: Long,
+        val length: Long,
+        val key: String?,
+    )
+
+    private val activeBandwidthTransfers = mutableMapOf<BandwidthTransferKey, Int>()
+
+    private fun bandwidthTransferKey(
+        source: DataSource,
+        dataSpec: DataSpec,
+    ) = BandwidthTransferKey(
+        source = source,
+        uri = dataSpec.uri,
+        position = dataSpec.position,
+        length = dataSpec.length,
+        key = dataSpec.key,
+    )
+
+    private fun markBandwidthTransferStarted(
+        source: DataSource,
+        dataSpec: DataSpec,
+    ): Boolean {
+        if (!bandwidthSamplingGate.enabled) return false
+        val key = bandwidthTransferKey(source, dataSpec)
+        synchronized(activeBandwidthTransfers) {
+            activeBandwidthTransfers[key] =
+                (activeBandwidthTransfers[key] ?: 0) + 1
+        }
+        return true
+    }
+
+    private fun hasActiveBandwidthTransfer(
+        source: DataSource,
+        dataSpec: DataSpec,
+    ): Boolean = synchronized(activeBandwidthTransfers) {
+        activeBandwidthTransfers[bandwidthTransferKey(source, dataSpec)]
+            ?.let { it > 0 } == true
+    }
+
+    private fun markBandwidthTransferEnded(
+        source: DataSource,
+        dataSpec: DataSpec,
+    ): Boolean {
+        val key = bandwidthTransferKey(source, dataSpec)
+        synchronized(activeBandwidthTransfers) {
+            val count = activeBandwidthTransfers[key] ?: return false
+            if (count <= 1) {
+                activeBandwidthTransfers.remove(key)
+            } else {
+                activeBandwidthTransfers[key] = count - 1
+            }
+        }
+        return true
+    }
+
+    private val bandwidthTransferListener = object : TransferListener {
+        override fun onTransferInitializing(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+        ) {
+            if (bandwidthSamplingGate.enabled) {
+                bandwidthMeter.onTransferInitializing(source, dataSpec, isNetwork)
+            }
+        }
+
+        override fun onTransferStart(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+        ) {
+            if (markBandwidthTransferStarted(source, dataSpec)) {
+                bandwidthMeter.onTransferStart(source, dataSpec, isNetwork)
+            }
+        }
+
+        override fun onBytesTransferred(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+            bytesTransferred: Int,
+        ) {
+            // 暂停期间不计入新字节，但仍需结束暂停前已开始的传输，避免 meter
+            // 永久保留未闭合的样本；恢复播放后新传输会重新开始计量。
+            if (hasActiveBandwidthTransfer(source, dataSpec) &&
+                bandwidthSamplingGate.enabled
+            ) {
+                bandwidthMeter.onBytesTransferred(
+                    source,
+                    dataSpec,
+                    isNetwork,
+                    bytesTransferred,
+                )
+            }
+        }
+
+        override fun onTransferEnd(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+        ) {
+            if (markBandwidthTransferEnded(source, dataSpec)) {
+                bandwidthMeter.onTransferEnd(source, dataSpec, isNetwork)
+            }
+        }
+    }
     private val player: ExoPlayer = ExoPlayer.Builder(
         context,
         DefaultRenderersFactory(context)
             // 先使用设备硬解；设备没有可用 AC-3/E-AC-3 解码器时再使用 FFmpeg 软件解码。
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true),
-    ).build().also { exoPlayer ->
+    ).setBandwidthMeter(bandwidthMeter).build().also { exoPlayer ->
         exoPlayer.setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -490,8 +625,10 @@ private class HdrMedia3Session(
     private val progressRunnable = object : Runnable {
         override fun run() {
             if (released) return
+            // 缓冲阶段 isPlaying 可能为 false，但只要仍准备播放就要继续刷新缓冲和带宽。
+            bandwidthSamplingGate.setPlayWhenReady(shouldSampleBandwidth())
             emitProgress()
-            if (player.isPlaying) handler.postDelayed(this, 100)
+            if (bandwidthSamplingGate.enabled) handler.postDelayed(this, 100)
         }
     }
 
@@ -625,6 +762,7 @@ private class HdrMedia3Session(
         val mediaSource = buildMediaSource(newSource, representation)
         player.setMediaSource(mediaSource, startPositionMs.coerceAtLeast(0L))
         player.playWhenReady = playWhenReady
+        bandwidthSamplingGate.setPlayWhenReady(playWhenReady)
         player.prepare()
         emitEvent(
             "loading",
@@ -647,11 +785,20 @@ private class HdrMedia3Session(
     }
 
     fun play() {
-        if (!released) player.play()
+        if (!released) {
+            bandwidthSamplingGate.setPlayWhenReady(true)
+            player.play()
+            startTicker()
+        }
     }
 
     fun pause() {
-        if (!released) player.pause()
+        if (!released) {
+            // 先关闭采样，再让播放器停止，避免暂停边界仍把网络数据计入带宽。
+            bandwidthSamplingGate.setPlayWhenReady(false)
+            player.pause()
+            startTicker()
+        }
     }
 
     fun seekTo(positionMs: Long) {
@@ -729,6 +876,7 @@ private class HdrMedia3Session(
 
         val httpFactory = OkHttpDataSource.Factory(httpClient)
             .setDefaultRequestProperties(source.headers)
+            .setTransferListener(bandwidthTransferListener)
         val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
         val fallbackFactory = DataSource.Factory {
             MultiUriDataSource(defaultFactory, candidateMap)
@@ -824,20 +972,43 @@ private class HdrMedia3Session(
         )
     }
 
-    private fun decoderType(decoderName: String, format: Format?): String {
-        val mimeType = format?.sampleMimeType ?: return "未知"
-        val decoderInfo = try {
-            MediaCodecUtil.getDecoderInfos(mimeType, false, false)
-                .firstOrNull { it.name == decoderName }
+    private fun platformDecoderInfo(decoderName: String): android.media.MediaCodecInfo? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return null
+        return try {
+            MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.firstOrNull { info ->
+                !info.isEncoder && info.name.equals(decoderName, ignoreCase = true)
+            }
         } catch (_: Throwable) {
             null
         }
-        return when {
-            decoderInfo?.hardwareAccelerated == true -> "硬解"
-            decoderInfo?.softwareOnly == true -> "软解"
-            decoderInfo != null -> "未知"
-            else -> "未知"
+    }
+
+    private fun decoderType(decoderName: String, format: Format?): String {
+        // Android 10+ 直接提供硬件加速/纯软件 codec 标记，优先使用实际初始化的 codec。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            platformDecoderInfo(decoderName)?.let { info ->
+                val type = decoderTypeFromFlags(
+                    hardwareAccelerated = info.isHardwareAccelerated,
+                    softwareOnly = info.isSoftwareOnly,
+                )
+                if (type != "未知") return type
+            }
         }
+
+        // 低版本没有 Android 标记时，使用 Media3 对同一 codec 的能力标记。
+        val mimeType = format?.sampleMimeType ?: return "未知"
+        val decoderInfo = try {
+            MediaCodecUtil.getDecoderInfos(mimeType, false, false)
+                .firstOrNull { it.name.equals(decoderName, ignoreCase = true) }
+        } catch (_: Throwable) {
+            null
+        }
+        return decoderInfo?.let {
+            decoderTypeFromFlags(
+                hardwareAccelerated = it.hardwareAccelerated,
+                softwareOnly = it.softwareOnly,
+            )
+        } ?: "未知"
     }
 
     private fun actualCodec(mimeType: String?): String = when (mimeType) {
@@ -1027,6 +1198,7 @@ private class HdrMedia3Session(
             plan.positionMs,
         )
         player.playWhenReady = plan.playWhenReady
+        bandwidthSamplingGate.setPlayWhenReady(plan.playWhenReady)
         player.prepare()
         player.setPlaybackSpeed(plan.speed)
         return true
@@ -1089,10 +1261,20 @@ private class HdrMedia3Session(
 
     private fun startTicker() {
         handler.removeCallbacks(progressRunnable)
+        bandwidthSamplingGate.setPlayWhenReady(shouldSampleBandwidth())
         handler.post(progressRunnable)
     }
 
+    private fun shouldSampleBandwidth(): Boolean =
+        player.playWhenReady && player.playbackState != Player.STATE_ENDED
+
     private fun emitProgress() {
+        bandwidthSamplingGate.setPlayWhenReady(shouldSampleBandwidth())
+        if (bandwidthSamplingGate.enabled) {
+            bandwidthMeter.getBitrateEstimate()
+                .takeIf { it > 0L }
+                ?.let { bandwidthEstimate = it }
+        }
         val positionMs = player.currentPosition
         val bufferedPositionMs = player.bufferedPosition
         val durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
@@ -1170,7 +1352,12 @@ private class HdrMedia3Session(
                 )
                 emitEvent("buffering", mapOf("value" to false))
             }
-            Player.STATE_ENDED -> emitEvent("completed")
+            Player.STATE_ENDED -> {
+                bandwidthSamplingGate.setPlayWhenReady(false)
+                handler.removeCallbacks(progressRunnable)
+                emitProgress()
+                emitEvent("completed")
+            }
         }
     }
 
@@ -1226,7 +1413,10 @@ private class HdrMedia3Session(
             mapOf(
                 "track" to "video",
                 "name" to decoderName,
-                "decoderType" to decoderType(decoderName, lastVideoFormat),
+                "decoderType" to decoderType(
+                    decoderName,
+                    lastVideoFormat ?: player.videoFormat,
+                ),
             ),
         )
     }
@@ -1242,7 +1432,10 @@ private class HdrMedia3Session(
             mapOf(
                 "track" to "audio",
                 "name" to decoderName,
-                "decoderType" to decoderType(decoderName, lastAudioFormat),
+                "decoderType" to decoderType(
+                    decoderName,
+                    lastAudioFormat ?: player.audioFormat,
+                ),
             ),
         )
     }
@@ -1329,6 +1522,8 @@ private class HdrMedia3Session(
         totalBytesLoaded: Long,
         bitrateEstimate: Long,
     ) {
+        if (!bandwidthSamplingGate.enabled || !player.playWhenReady) return
+        if (bitrateEstimate <= 0L) return
         bandwidthEstimate = bitrateEstimate
         emitEvent(
             "bandwidthEstimate",
@@ -1385,6 +1580,7 @@ private class HdrMedia3Session(
     fun release() {
         if (released) return
         released = true
+        bandwidthSamplingGate.setPlayWhenReady(false)
         handler.removeCallbacksAndMessages(null)
         if (hdrWindowModeEnabled) setHdrWindowMode(false)
         playerView?.let(::hideSurface)

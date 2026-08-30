@@ -139,7 +139,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 3));
 
     // 自动摘要刚开始渐隐时，点击仍应被摘要层接收。
     await tester.tapAt(const Offset(304, 62));

@@ -152,7 +152,6 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   List<PlaybackInsightRow> get overviewRows => _rows([
     PlaybackInsightRow('播放器', engine),
     PlaybackInsightRow('画质', quality),
-    PlaybackInsightRow('当前 Representation', representation),
     PlaybackInsightRow('分辨率', resolution),
     PlaybackInsightRow('视频 Codec', videoCodec),
     PlaybackInsightRow('HDR 类型', hdrType),

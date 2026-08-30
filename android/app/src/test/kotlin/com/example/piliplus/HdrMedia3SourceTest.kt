@@ -122,6 +122,24 @@ class HdrMedia3SourceTest {
     }
 
     @Test
+    fun bandwidthSamplingStopsWhenPlaybackIsPaused() {
+        val gate = BandwidthSamplingGate()
+
+        gate.setPlayWhenReady(true)
+        assertTrue(gate.enabled)
+
+        gate.setPlayWhenReady(false)
+        assertFalse(gate.enabled)
+    }
+
+    @Test
+    fun decoderTypeUsesActualCodecCapabilityFlags() {
+        assertEquals("硬解", decoderTypeFromFlags(true, false))
+        assertEquals("软解", decoderTypeFromFlags(false, true))
+        assertEquals("未知", decoderTypeFromFlags(false, false))
+    }
+
+    @Test
     fun opensTheNextUrlWhenThePrimaryUrlFails() {
         val source = MultiUriDataSource(
             FailingPrimaryFactory(),
