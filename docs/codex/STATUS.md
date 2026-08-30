@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 22:38 (+08:00)
+- 更新时间：2026-08-30 22:52 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：d17b7a8d9（v26.8.30.5 发布提交）
-- 发布提交：d13923597336c63c89b8160b6bc216d569b5f04e（已安全合并 PiliPlus 2.1.2.3；v26.8.30.6 正式发布提交待本地构建确认）
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐、更新和字体迁移等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本地 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，正式产物固定在 `dist/release/<tag>/`；当前准备发布 `v26.8.30.6`，应用版本为 `26.8.30+6`，Android `versionCode=12`。
+- 发布提交：8a81fd8980e56ddb10449a77299983cbafa3eec5（已安全合并 PiliPlus 2.1.2.3 并完成 v26.8.30.6 本地构建与双源发布）
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐、更新和字体迁移等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本地 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，正式产物固定在 `dist/release/<tag>/`；当前正式版本为 `v26.8.30.6`，应用版本为 `26.8.30+6`，Android `versionCode=12`。
 
 ## 已完成
 
@@ -629,4 +629,13 @@
 - 上游 `merge-base` 之后 14 个提交中 10 个已与本地补丁等价，实际保留并接入 4 个非等价提交：列表/保存面板等重构 `9624c3725`、评论底部面板回调修复 `adb659938`、字体默认字重修复 `932b95ccb` 和动态 URI 解析修复 `44680b8a4`。
 - 验证通过：Flutter 3.47.2 工具链校验、`flutter pub get`、全量 Flutter 测试 44/44、全量 Analyze 无 error（51 条既有 info）、Android `:app:testDebugUnitTest`；`git diff --check` 通过。
 - 已将 Flutter SDK 固化到 `D:\tools\flutter-3.47.2\flutter`，压缩包 SHA-256 为 `37934f2128a55d77a38baba12fd611157ed23a47bf7d2b7d17e9e84da118409d`；新增 `docs/本机发布工具链.md`，正式产物固定到 `dist/release/<releaseTag>/`，不使用 `tmp/`。
-- 已准备 `v26.8.30.6` 发布元数据：`pubspec.yaml` 为 `26.8.30+6`、Android 全局 `versionCode=12`，并新增 `version/release-notes-v26.8.30.6.md`；尚未构建或发布正式资产。
+- 已完成 `v26.8.30.6` 发布元数据：`pubspec.yaml` 为 `26.8.30+6`、Android 全局 `versionCode=12`，并新增 `version/release-notes-v26.8.30.6.md`；双 ABI 正式资产已构建并发布。
+
+## 2026-08-30 22:52
+
+- 按本地发布流程完成 `v26.8.30.6`，发布提交为 `8a81fd8980e56ddb10449a77299983cbafa3eec5`；`origin/main` 和 annotated tag 均已推送，tag 解引用到该提交。
+- Flutter 3.47.2 本地 Release 构建成功；`pili_release.json` 记录 `pili.hash=8a81fd8980e56ddb10449a77299983cbafa3eec5`、`pili.name=26.8.30`、`pili.releaseBuild=6`、`pili.code=12`。构建产物固定于 `dist/release/v26.8.30.6/`，未写入 `tmp/`。
+- 双 ABI 校验通过：包名 `com.maxzrb.piliexo`、`versionName=26.8.30`、`versionCode=12`、对应 ABI、`libffmpegJNI.so` 均正确；两个 APK 的 apksigner V2 正式签名均有效。
+- arm64-v8a：`31,663,357` bytes，SHA-256 `12f1d3f14a45da0a5aca4021224b851b04d86ce777f9164be75a51119a669b43`；armeabi-v7a：`31,544,192` bytes，SHA-256 `3c6464c170e991a58fbe213d10bbeecbb37bf653d58f357409f031cad3a22ef3`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.6>，正式版且两个资产均 `uploaded`；ModelScope 双 ABI 资产已同步至 `releases/v26.8.30.6/`，两个固定 URL 均 HTTP 200，远端长度和 `X-Linked-ETag` 与本地一致。
+- 未使用 GitHub Actions；发布过程使用本机 Flutter/Gradle、正式签名文件、GitHub CLI 和 ModelScope CLI 完成。构建目录、`pili_release.json`、`dist/` 和用户未跟踪目录 `tmp/` 均未纳入版本控制。
