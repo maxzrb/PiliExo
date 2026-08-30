@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 01:10 (+08:00)
+- 更新时间：2026-08-30 12:55 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：bee12ddbd（v26.8.30.2 版本号修复源代码提交）
 - 发布提交：bee12ddbdefca9527839629ba69f11ed932a0392
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.2；本轮修复 Android `versionCode` 随日期发布序号重置导致无法覆盖安装的问题，保留 `vYY.M.D.N` 标签格式并将 Android 安装版本号改为全局递增；README 和发布流程已同步更新。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.2；本轮修复 Android `versionCode` 随日期发布序号重置导致无法覆盖安装的问题，保留 `vYY.M.D.N` 标签格式并将 Android 安装版本号改为全局递增；README 和发布流程已同步更新；播放器当前补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry 和可选音频焦点接管，保留 Media3/FFmpeg 解码链路不变。
 
 ## 已完成
 
@@ -59,6 +59,9 @@
 - 将固定 Flutter 工具链、跨盘构建约束和标准发布检查命令写入 `docs/发布流程.md`，并在本次 `v26.8.29.3` 发布中按该流程执行。
 - 已发布正式版 `v26.8.29.3`，应用版本为 `26.8.29+3`，发布提交为 `4b3baa808180c40c6857b71f0701ee70e4bc3ec5`；GitHub 与 ModelScope 均已同步双 ABI 资产。
 - 修正播放时画质/音质切换行为：只更新当前播放器，不再回写默认画质、移动数据画质、默认音质和移动数据音质；设置页手动修改仍正常持久化。
+- PiliExo 应用层接管 Media3 明确视频解码/容器错误：同分辨率 Representation 优先按候选顺序切换 codec，全部失败后再降低清晰度；每个播放 session 记录失败候选，切换时恢复位置、播放意图和倍速，不对 DVH1 等轨道做设备能力预判，也不因黑屏主动降级。
+- Media3 与 mpv/media-kit 播放路径统一写入 `PlaybackTelemetry`；播放器洞察详情补充实际视频/音频 Codec、Codec String、Profile/Level、Dolby Vision Profile/Level、HDR、格式、分辨率/帧率、解码器硬软解、码率、声道、CDN、带宽、掉帧和 Representation fallback 历史。
+- 音频焦点接管设置默认开启；关闭时 `AudioSessionHandler` 忽略 interruption，不由 Media3 另行申请 Audio Focus，耳机/蓝牙音频断开仍沿用全局 `becomingNoisy` 自动暂停。
 - 新增独立的“Android 液态玻璃”开关，默认关闭，Android 13（API 33）以下显示禁用和版本提示，开关即时生效且与磨砂设置相互独立。
 - 通过 Kyant Backdrop 2.0.0 和 Android Compose PlatformView 接入三类紧凑控件：浮动/固定底栏、首页搜索胶囊和非播放器页面主悬浮按钮；导航交互、文字、语义和震动仍由 Flutter 保持。
 - 修复 `BiliDocumentsProvider` authority 硬编码导致 Debug 包 `com.maxzrb.piliexo.debug` 与已安装 Release 包冲突的问题，改为使用构建变体 `${applicationId}.MTDataFilesProvider`。
@@ -539,3 +542,20 @@
 - arm64-v8a APK：`31,630,867` bytes，SHA-256 `04C9B1AB3C078B8D585725333BD9C8E47575FF3BF2919FF987574037CE0448D5`；armeabi-v7a APK：`31,509,357` bytes，SHA-256 `39AB66AF59353FFA13DF4EAA7594D31211105C829B85306E447543CD11823A12`；两个包均包含对应 `libffmpegJNI.so`，正式签名 V2 校验通过。
 - ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.2/` 双 ABI 资产；两个地址 HTTP 200，Content-Length 和 X-Linked-ETag 与本地产物哈希一致。
 - 本轮未执行真机交互回归；用户未跟踪目录 `tmp/` 保留不变，未纳入版本控制。
+
+## 2026-08-30 10:18
+
+- 修复自动音轨选择：目标音质实际存在时继续优先使用目标；目标不存在时按 Hi-Res、Dolby Atmos（30250）、Dolby Audio（30255）、192K、132K、64K 的明确优先级选择可用音轨，不再按 audio ID 数值大小判断，也删除目标缺失时强制回退 192K 的分支。
+- 下载、视频播放和音频播放三条选轨路径统一使用 `AudioTrackSelector`；未识别音轨仅按服务端顺序兜底。Media3 原生 Dolby 优先和 FFmpeg 软件解码 fallback 未修改。
+- 新增 6 项选轨回归测试，覆盖目标命中、完整优先级、普通音质顺序、两种 Dolby 顺序、仅 Dolby 音轨以及未知音轨兜底；新增测试 `flutter test --no-pub test/utils/audio_track_selector_test.dart` 全部通过，相关 4 个 Dart 文件定向 `flutter analyze` 无问题。
+- 全量 `flutter test --no-pub --reporter compact` 和全量 `flutter analyze --no-pub --no-fatal-infos` 仍被仓库未改动的 Flutter API 兼容错误阻断（如 `DraggableScrollableSheetState`、`PageView` 参数和文本渲染扩展）；本轮未引入目标文件错误。未修改版本号、未构建或发布 Release。
+- `git diff --check` 通过；工作区保留用户未跟踪目录 `tmp/`，源码和本记录尚未提交。
+
+## 2026-08-30 12:55
+
+- 完成 Media3 Representation fallback 与统一播放 Telemetry：应用层仅在 Media3 明确报告视频解码器/容器格式错误后切换候选；候选失败列表按 session 维护，切换不重复尝试并尽量恢复播放位置、播放意图和倍速。
+- 完成播放器洞察详情数据扩展和展示：视频/音频实际格式、Codec String、Profile/Level、Dolby Vision 信息、HDR 类型、分辨率/帧率、解码器及硬软解、码率、声道、当前 CDN、带宽估计、累计/近 30 秒掉帧、状态和 fallback 历史均接入统一模型。
+- 完成“音频焦点接管”设置：默认开启；关闭时只忽略 Audio Focus interruption，耳机/蓝牙断开事件仍由全局 `AudioSessionHandler` 暂停；Media3 保持 `handleAudioFocus=false` 且关闭自身 becoming-noisy，未新增第二套焦点控制。
+- 新增/更新 Dart 与 Android 测试：Telemetry/洞察字段、Representation 候选不循环/同清晰度顺序/位置恢复、音轨回归和音频焦点设置持久化覆盖；Android `:app:compileDebugKotlin` 及 `HdrMedia3SourceTest`（6 项）通过，Telemetry 与音轨定向测试 9/9 通过。
+- 完整 Flutter 测试仍被仓库既有 Flutter API 与当前 SDK 不匹配阻断（`DraggableScrollableSheetState`、`PageView` 参数、`WidgetSpan.rawText` 等），未发现本轮目标文件新增 error；未构建或发布 Release。
+- 本轮未提交源码；用户未跟踪目录 `tmp/` 保留不变。

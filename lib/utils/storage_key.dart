@@ -15,6 +15,7 @@ abstract final class SettingBoxKey {
       enableHA = 'enableHA',
       enableMedia3Hdr = 'enableMedia3Hdr',
       playbackInsightMode = 'playbackInsightMode',
+      enableAudioFocus = 'enableAudioFocus',
       audioOutput = 'audioOutput',
       bufferSize = 'bufferSize',
       bufferSec = 'bufferSec',

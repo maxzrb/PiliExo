@@ -1,13 +1,13 @@
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
 import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
 import 'package:PiliPlus/models_new/download/bili_download_media_file_info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
@@ -105,20 +105,10 @@ abstract final class DownloadHttp {
         final List<AudioItem>? audioDashList = dash.audio;
         if (audioDashList != null && audioDashList.isNotEmpty) {
           final preferAudioQa = Pref.defaultAudioQa;
-          final List<int> audioIds = audioDashList
-              .map((map) => map.id!)
-              .toList();
-          int closestNumber = audioIds.findClosestTarget(
-            (e) => e <= preferAudioQa,
-            (a, b) => a > b ? a : b,
-          );
-          if (!audioIds.contains(preferAudioQa) &&
-              audioIds.any((e) => e > preferAudioQa)) {
-            closestNumber = AudioQuality.k192.code;
-          }
-          final AudioItem audioDash = audioDashList.firstWhere(
-            (e) => e.id == closestNumber,
-            orElse: () => audioDashList.first,
+          final AudioItem audioDash = AudioTrackSelector.select(
+            tracks: audioDashList,
+            preferredId: preferAudioQa,
+            idOf: (track) => track.id,
           );
           final audioUrl = VideoUtils.getCdnUrl(
             audioDash.playUrls,

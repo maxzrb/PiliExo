@@ -830,6 +830,9 @@ abstract final class Pref {
   static bool get enableMedia3Hdr =>
       _setting.get(SettingBoxKey.enableMedia3Hdr, defaultValue: true);
 
+  static bool get enableAudioFocus =>
+      _setting.get(SettingBoxKey.enableAudioFocus, defaultValue: true);
+
   static PlaybackInsightMode get playbackInsightMode {
     final value = _setting.get(
       SettingBoxKey.playbackInsightMode,

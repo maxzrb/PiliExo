@@ -600,6 +600,10 @@ class _PlaybackInsightExpandedContent extends StatelessWidget {
                     title: '事件',
                     rows: snapshot.eventRows,
                   ),
+                  _InsightOverlaySection(
+                    title: 'Codec 回退',
+                    rows: snapshot.fallbackRows,
+                  ),
                 ],
               ),
             ),
@@ -655,7 +659,7 @@ class _InsightOverlaySection extends StatelessWidget {
                     flex: 6,
                     child: Text(
                       row.value,
-                      maxLines: 2,
+                      maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.end,
                       style: const TextStyle(
@@ -765,6 +769,7 @@ class _PlaybackInsightBody extends StatelessWidget {
             _InsightSection(title: '音频', rows: snapshot.audioRows),
             _InsightSection(title: '播放', rows: snapshot.runtimeRows),
             _InsightSection(title: '事件', rows: snapshot.eventRows),
+            _InsightSection(title: 'Codec 回退', rows: snapshot.fallbackRows),
           ],
         ),
       ),
@@ -779,6 +784,7 @@ String _buildPlaybackInsightReport(PlaybackInsightSnapshot snapshot) {
     snapshot.audioRows,
     snapshot.runtimeRows,
     snapshot.eventRows,
+    snapshot.fallbackRows,
   ];
   return [
     'PiliExo 播放器洞察',

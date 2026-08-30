@@ -1,24 +1,43 @@
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:audio_session/audio_session.dart';
 
 class AudioSessionHandler {
-  late AudioSession session;
+  late final Future<AudioSession> _sessionReady;
+  AudioSession? _session;
   bool _playInterrupted = false;
+  bool _focusActive = false;
 
-  Future<bool> setActive(bool active) {
+  AudioSession get session => _session!;
+
+  Future<bool> setActive(bool active) async {
+    final session = await _sessionReady;
+    if (!Pref.enableAudioFocus) {
+      if (_focusActive) {
+        _focusActive = false;
+        return session.setActive(false);
+      }
+      return false;
+    }
+    _focusActive = active;
     return session.setActive(active);
   }
 
   AudioSessionHandler() {
-    initSession();
+    _sessionReady = initSession();
   }
 
-  Future<void> initSession() async {
-    session = await AudioSession.instance;
-    session.configure(const AudioSessionConfiguration.music());
+  Future<AudioSession> initSession() async {
+    final session = await AudioSession.instance;
+    _session = session;
+    await session.configure(const AudioSessionConfiguration.music());
 
     session.interruptionEventStream.listen((event) {
+      if (!Pref.enableAudioFocus) {
+        _playInterrupted = false;
+        return;
+      }
       final playerStatus = PlPlayerController.getPlayerStatusIfExists();
       // final player = PlPlayerController.getInstance();
       if (event.begin) {
@@ -71,5 +90,23 @@ class AudioSessionHandler {
       //   player.pause();
       // }
     });
+
+    return session;
+  }
+
+  Future<void> setFocusHandlingEnabled(bool enabled) async {
+    if (enabled) {
+      if (PlPlayerController.getPlayerStatusIfExists() ==
+          PlayerStatus.playing) {
+        await setActive(true);
+      }
+      return;
+    }
+    _playInterrupted = false;
+    final session = await _sessionReady;
+    if (_focusActive) {
+      _focusActive = false;
+      await session.setActive(false);
+    }
   }
 }

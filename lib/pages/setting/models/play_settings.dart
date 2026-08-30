@@ -113,6 +113,15 @@ List<SettingsModel> get playSettings => [
         setPlaybackInsightMode(value).whenComplete(setState),
   ),
   if (PlatformUtils.isMobile)
+    SwitchModel(
+      title: '音频焦点接管',
+      subtitle: '开启时响应其他应用打断并自动暂停/恢复；耳机或蓝牙音频断开仍会自动暂停',
+      leading: const Icon(Icons.headphones_outlined),
+      setKey: SettingBoxKey.enableAudioFocus,
+      defaultVal: true,
+      onChanged: (value) => audioSessionHandler?.setFocusHandlingEnabled(value),
+    ),
+  if (PlatformUtils.isMobile)
     NormalModel(
       title: '播放器音量',
       leading: const Icon(Icons.volume_up),

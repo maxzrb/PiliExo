@@ -118,9 +118,15 @@ class HdrMedia3Controller {
     _playWhenReady = playWhenReady;
     _isPlaying = playWhenReady;
     _speed = 1.0;
+    _width = source.video.width ?? 0;
+    _height = source.video.height ?? 0;
     await _invoke('load', {
       'qualityCode': source.qualityCode,
       'video': source.video.toJson(),
+      'videoRepresentations': [
+        for (final representation in source.videoRepresentations)
+          representation.toJson(),
+      ],
       if (source.audio != null) 'audio': source.audio!.toJson(),
       'headers': source.headers,
       if (duration != null) 'durationMs': duration.inMilliseconds,
@@ -266,6 +272,16 @@ class HdrMedia3Controller {
         _width = event.value<num>('width')?.toInt() ?? _width;
         _height = event.value<num>('height')?.toInt() ?? _height;
         break;
+      case 'loading':
+        _isBuffering = true;
+        _durationMs = event.value<num>('durationMs')?.toInt() ?? _durationMs;
+        _width = event.value<num>('representationWidth')?.toInt() ?? _width;
+        _height = event.value<num>('representationHeight')?.toInt() ?? _height;
+        break;
+      case 'state':
+        final state = event.value<String>('value');
+        _isBuffering = state == '缓冲中';
+        break;
       case 'buffering':
         _isBuffering = event.value<bool>('value') ?? _isBuffering;
         break;
@@ -280,6 +296,15 @@ class HdrMedia3Controller {
       case 'videoSize':
         _width = event.value<num>('width')?.toInt() ?? _width;
         _height = event.value<num>('height')?.toInt() ?? _height;
+        break;
+      case 'representationFallback':
+        _isBuffering = true;
+        _positionMs = event.value<num>('positionMs')?.toInt() ?? _positionMs;
+        _width = event.value<num>('representationWidth')?.toInt() ?? _width;
+        _height = event.value<num>('representationHeight')?.toInt() ?? _height;
+        break;
+      case 'representationFallbackExhausted':
+        _isBuffering = false;
         break;
       case 'firstFrame':
         _firstFrame = true;

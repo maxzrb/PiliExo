@@ -11,6 +11,8 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,6 +36,28 @@ class HdrMedia3SourceTest {
                     "width" to 3840,
                     "height" to 2160,
                     "frameRate" to "60",
+                    "bitrate" to 12000000,
+                ),
+                "videoRepresentations" to listOf(
+                    mapOf(
+                        "id" to "primary",
+                        "qualityCode" to 129,
+                        "urls" to listOf("https://video/main"),
+                        "mimeType" to "video/mp4",
+                        "codecs" to "hev1.2.4.L153",
+                        "width" to 3840,
+                        "height" to 2160,
+                        "bitrate" to 12000000,
+                    ),
+                    mapOf(
+                        "id" to "same-resolution-avc",
+                        "qualityCode" to 129,
+                        "urls" to listOf("https://video/avc"),
+                        "mimeType" to "video/mp4",
+                        "codecs" to "avc1.640028",
+                        "width" to 3840,
+                        "height" to 2160,
+                    ),
                 ),
                 "audio" to mapOf(
                     "urls" to listOf("https://audio/main"),
@@ -45,8 +69,56 @@ class HdrMedia3SourceTest {
         assertEquals(129, source.qualityCode)
         assertEquals(2, source.video.urls.size)
         assertEquals("hev1.2.4.L153", source.video.codecs)
+        assertEquals(12000000, source.video.bitrate)
+        assertEquals(2, source.videoRepresentations.size)
+        assertEquals("same-resolution-avc", source.videoRepresentations[1].id)
         assertEquals("https://www.bilibili.com", source.headers["Referer"])
         assertEquals("https://audio/main", source.audio?.urls?.first()?.toString())
+    }
+
+    @Test
+    fun fallbackPrefersTheNextSameResolutionRepresentationAndNeverLoops() {
+        fun representation(id: String, qualityCode: Int) =
+            HdrMedia3Representation(
+                id = id,
+                qualityCode = qualityCode,
+                track = HdrMedia3Track(
+                    urls = listOf(Uri.parse("https://video/$id")),
+                    mimeType = "video/mp4",
+                    codecs = id,
+                    width = if (qualityCode == 129) 3840 else 1920,
+                    height = if (qualityCode == 129) 2160 else 1080,
+                    frameRate = "60",
+                    bitrate = null,
+                ),
+            )
+
+        val state = RepresentationFallbackState(
+            listOf(
+                representation("hires-hevc", 129),
+                representation("hires-avc", 129),
+                representation("hires-dv", 129),
+                representation("lower-hevc", 80),
+            ),
+        )
+        state.reset("hires-hevc")
+
+        assertEquals("hires-avc", state.markCurrentFailedAndGetNext()?.id)
+        assertEquals("hires-dv", state.markCurrentFailedAndGetNext()?.id)
+        assertEquals("lower-hevc", state.markCurrentFailedAndGetNext()?.id)
+        assertNull(state.markCurrentFailedAndGetNext())
+        assertFalse(state.failedRepresentationIds.isEmpty())
+        assertEquals(4, state.failedRepresentationIds.size)
+
+        val plan = createRepresentationFallbackPlan(
+            representation = state.current!!,
+            positionMs = 12345L,
+            playWhenReady = true,
+            speed = 1.5f,
+        )
+        assertEquals(12345L, plan.positionMs)
+        assertTrue(plan.playWhenReady)
+        assertEquals(1.5f, plan.speed)
     }
 
     @Test

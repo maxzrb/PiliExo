@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Base64
 import android.util.TypedValue
 import android.view.LayoutInflater
@@ -21,14 +22,20 @@ import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.exoplayer.DecoderCounters
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -48,6 +55,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
 
 /** Android 原生 HDR 播放器的 Flutter 桥接层。 */
@@ -275,12 +283,79 @@ internal data class HdrMedia3Track(
     val width: Int,
     val height: Int,
     val frameRate: String?,
+    val bitrate: Int?,
+)
+
+@UnstableApi
+internal data class HdrMedia3Representation(
+    val id: String,
+    val qualityCode: Int,
+    val track: HdrMedia3Track,
+)
+
+/**
+ * Media3 明确报告视频解码/格式错误后使用的候选状态。
+ *
+ * 候选顺序由 Dart 按同分辨率 codec、再按较低清晰度准备；状态类只负责记忆
+ * 已失败的 Representation，任何候选都不会被重复尝试，从而避免错误回调造成循环。
+ */
+@UnstableApi
+internal class RepresentationFallbackState(
+    val representations: List<HdrMedia3Representation>,
+) {
+    var currentIndex: Int = 0
+        private set
+    private val failedIds = linkedSetOf<String>()
+
+    val current: HdrMedia3Representation?
+        get() = representations.getOrNull(currentIndex)
+
+    val failedRepresentationIds: Set<String>
+        get() = failedIds.toSet()
+
+    fun reset(currentId: String?) {
+        failedIds.clear()
+        currentIndex = representations.indexOfFirst { it.id == currentId }
+            .takeIf { it >= 0 } ?: 0
+    }
+
+    /** 标记当前候选失败，并返回下一个尚未尝试的候选。 */
+    fun markCurrentFailedAndGetNext(): HdrMedia3Representation? {
+        val failed = current ?: return null
+        if (!failedIds.add(failed.id)) return null
+        val nextIndex = (currentIndex + 1 until representations.size)
+            .firstOrNull { !failedIds.contains(representations[it].id) }
+            ?: return null
+        currentIndex = nextIndex
+        return representations[currentIndex]
+    }
+}
+
+/** Representation 切换时需要从当前播放器复制的运行状态。 */
+internal data class RepresentationFallbackPlan(
+    val representation: HdrMedia3Representation,
+    val positionMs: Long,
+    val playWhenReady: Boolean,
+    val speed: Float,
+)
+
+internal fun createRepresentationFallbackPlan(
+    representation: HdrMedia3Representation,
+    positionMs: Long,
+    playWhenReady: Boolean,
+    speed: Float,
+): RepresentationFallbackPlan = RepresentationFallbackPlan(
+    representation = representation,
+    positionMs = positionMs.coerceAtLeast(0L),
+    playWhenReady = playWhenReady,
+    speed = speed,
 )
 
 @UnstableApi
 internal data class HdrMedia3Source(
     val qualityCode: Int,
     val video: HdrMedia3Track,
+    val videoRepresentations: List<HdrMedia3Representation>,
     val audio: HdrMedia3Track?,
     val headers: Map<String, String>,
     val durationMs: Long?,
@@ -292,6 +367,27 @@ internal data class HdrMedia3Source(
         fun from(arguments: Any?): HdrMedia3Source {
             val map = arguments as? Map<*, *> ?: error("播放参数格式错误")
             val video = parseTrack(map["video"] as? Map<*, *> ?: error("缺少视频轨道"))
+            val qualityCode = (map["qualityCode"] as? Number)?.toInt()
+                ?: error("缺少 qualityCode")
+            val videoRepresentations = (map["videoRepresentations"] as? List<*>)
+                ?.mapNotNull { item ->
+                    val representation = item as? Map<*, *> ?: return@mapNotNull null
+                    val track = try {
+                        parseTrack(representation)
+                    } catch (_: Throwable) {
+                        return@mapNotNull null
+                    }
+                    HdrMedia3Representation(
+                        id = representation["id"] as? String
+                            ?: "representation-${track.codecs ?: track.mimeType ?: track.urls.first()}",
+                        qualityCode = (representation["qualityCode"] as? Number)?.toInt()
+                            ?: qualityCode,
+                        track = track,
+                    )
+                }
+                ?.distinctBy(HdrMedia3Representation::id)
+                ?.takeIf { it.isNotEmpty() }
+                ?: listOf(HdrMedia3Representation("primary", qualityCode, video))
             val audioMap = map["audio"] as? Map<*, *>
             val headers = (map["headers"] as? Map<*, *>)
                 ?.mapNotNull { (key, value) ->
@@ -300,9 +396,9 @@ internal data class HdrMedia3Source(
                 ?.toMap()
                 ?: emptyMap()
             return HdrMedia3Source(
-                qualityCode = (map["qualityCode"] as? Number)?.toInt()
-                    ?: error("缺少 qualityCode"),
+                qualityCode = qualityCode,
                 video = video,
+                videoRepresentations = videoRepresentations,
                 audio = audioMap?.let(::parseTrack),
                 headers = headers,
                 durationMs = (map["durationMs"] as? Number)?.toLong(),
@@ -326,6 +422,7 @@ internal data class HdrMedia3Source(
                 width = (map["width"] as? Number)?.toInt() ?: 0,
                 height = (map["height"] as? Number)?.toInt() ?: 0,
                 frameRate = map["frameRate"] as? String,
+                bitrate = (map["bitrate"] as? Number)?.toInt(),
             )
         }
     }
@@ -355,13 +452,18 @@ private class HdrMedia3Session(
                 .build(),
             false,
         )
+        // Audio Focus 和 becoming-noisy 统一由 Flutter 的 AudioSessionHandler 处理，
+        // Media3 只负责解码和输出，避免两套生命周期互相暂停/恢复。
+        exoPlayer.setHandleAudioBecomingNoisy(false)
         exoPlayer.addListener(this)
         exoPlayer.addAnalyticsListener(this)
     }
     private var playerView: PlayerView? = null
     private var source: HdrMedia3Source? = null
+    private var sourceFingerprint = ""
+    private var fallbackState = RepresentationFallbackState(emptyList())
+    private val fallbackHistory = mutableListOf<Map<String, Any?>>()
     private var released = false
-    private var hdrFormatValid = false
     private var errorSent = false
     private var subtitleFontScale = 1.0f
     private var subtitleBottomPadding = 24.0f
@@ -370,6 +472,20 @@ private class HdrMedia3Session(
     private var resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
     private var hdrWindowModeEnabled = false
     private var ambientCaptureInFlight = false
+    private var lastVideoFormat: Format? = null
+    private var lastAudioFormat: Format? = null
+    private var lastVideoCodecError = ""
+    private var lastAudioCodecError = ""
+    private var currentCdnUri = ""
+    private var lastLoadTrackType = C.TRACK_TYPE_UNKNOWN
+    private var bandwidthEstimate = -1L
+    private var cumulativeDroppedFrames = 0
+    private val droppedFrameSamples = ArrayDeque<DroppedFrameSample>()
+
+    private data class DroppedFrameSample(
+        val timestampMs: Long,
+        val count: Int,
+    )
 
     private val progressRunnable = object : Runnable {
         override fun run() {
@@ -490,29 +606,41 @@ private class HdrMedia3Session(
 
     fun load(newSource: HdrMedia3Source, startPositionMs: Long = 0L, playWhenReady: Boolean = false) {
         check(!released) { "播放器已经释放" }
-        if (!displaySupportsHdr()) {
-            fail("HDR_DISPLAY_UNSUPPORTED", "当前屏幕没有可用的 HDR 输出能力")
-            throw IllegalStateException("当前屏幕没有可用的 HDR 输出能力")
+        val fingerprint = fingerprintOf(newSource)
+        if (fingerprint != sourceFingerprint) {
+            sourceFingerprint = fingerprint
+            val representations = newSource.videoRepresentations.ifEmpty {
+                listOf(HdrMedia3Representation("primary", newSource.qualityCode, newSource.video))
+            }
+            fallbackState = RepresentationFallbackState(representations)
+            fallbackState.reset(representations.firstOrNull()?.id)
+            fallbackHistory.clear()
+            resetDiagnostics()
         }
         source = newSource
-        hdrFormatValid = false
         errorSent = false
         setHdrWindowMode(true)
-        val mediaSource = buildMediaSource(newSource)
+        val representation = fallbackState.current
+            ?: HdrMedia3Representation("primary", newSource.qualityCode, newSource.video)
+        val mediaSource = buildMediaSource(newSource, representation)
         player.setMediaSource(mediaSource, startPositionMs.coerceAtLeast(0L))
         player.playWhenReady = playWhenReady
         player.prepare()
         emitEvent(
             "loading",
             mapOf(
-                "qualityCode" to newSource.qualityCode,
+                // 这里展示当前实际尝试的 Representation；用户目标清晰度可能在
+                // 本次 session 中已经降级，不能继续使用源请求的 qualityCode。
+                "qualityCode" to representation.qualityCode,
                 "durationMs" to newSource.durationMs,
                 "hdrSupported" to true,
-                "videoMimeType" to newSource.video.mimeType,
-                "videoCodecs" to newSource.video.codecs,
-                "videoFrameRate" to newSource.video.frameRate,
+                "videoMimeType" to representation.track.mimeType,
+                "videoCodecs" to representation.track.codecs,
+                "videoFrameRate" to representation.track.frameRate,
                 "audioMimeType" to newSource.audio?.mimeType,
                 "audioCodecs" to newSource.audio?.codecs,
+            ) + representationData(representation) + mapOf(
+                "fallbackHistory" to fallbackHistory.toList(),
             ),
         )
         startTicker()
@@ -591,9 +719,12 @@ private class HdrMedia3Session(
         player.setPlaybackSpeed(speed)
     }
 
-    private fun buildMediaSource(source: HdrMedia3Source): MediaSource {
+    private fun buildMediaSource(
+        source: HdrMedia3Source,
+        representation: HdrMedia3Representation,
+    ): MediaSource {
         val candidateMap = linkedMapOf<String, List<Uri>>()
-        candidateMap[source.video.urls.first().toString()] = source.video.urls
+        candidateMap[representation.track.urls.first().toString()] = representation.track.urls
         source.audio?.let { candidateMap[it.urls.first().toString()] = it.urls }
 
         val httpFactory = OkHttpDataSource.Factory(httpClient)
@@ -603,9 +734,10 @@ private class HdrMedia3Session(
             MultiUriDataSource(defaultFactory, candidateMap)
         }
         val videoItemBuilder = MediaItem.Builder()
-            .setMediaId("$sessionId-video")
-            .setUri(source.video.urls.first())
-        source.video.mimeType?.takeIf(String::isNotBlank)?.let(videoItemBuilder::setMimeType)
+            .setMediaId("$sessionId-video-${representation.id}")
+            .setUri(representation.track.urls.first())
+        representation.track.mimeType?.takeIf(String::isNotBlank)
+            ?.let(videoItemBuilder::setMimeType)
         if (!source.subtitleVtt.isNullOrBlank()) {
             val encoded = Base64.encodeToString(
                 source.subtitleVtt.toByteArray(StandardCharsets.UTF_8),
@@ -640,11 +772,264 @@ private class HdrMedia3Session(
         return MergingMediaSource(true, true, videoSource, audioSource)
     }
 
-    private fun displaySupportsHdr(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
-        val activity = context as? Activity ?: return false
-        val display = activity.windowManager.defaultDisplay
-        return display.hdrCapabilities?.supportedHdrTypes?.isNotEmpty() == true
+    private fun fingerprintOf(source: HdrMedia3Source): String = buildString {
+        append(source.qualityCode)
+        source.videoRepresentations.forEach { representation ->
+            append('|')
+            append(representation.id)
+            append(':')
+            append(representation.qualityCode)
+            append(':')
+            append(representation.track.urls.joinToString(","))
+        }
+        append('|')
+        append(source.audio?.urls?.joinToString(","))
+    }
+
+    private fun resetDiagnostics() {
+        lastVideoFormat = null
+        lastAudioFormat = null
+        lastVideoCodecError = ""
+        lastAudioCodecError = ""
+        currentCdnUri = ""
+        lastLoadTrackType = C.TRACK_TYPE_UNKNOWN
+        bandwidthEstimate = -1L
+        cumulativeDroppedFrames = 0
+        droppedFrameSamples.clear()
+    }
+
+    private fun representationData(
+        representation: HdrMedia3Representation,
+    ): Map<String, Any?> {
+        val track = representation.track
+        val dimensions = if (track.width > 0 && track.height > 0) {
+            "${track.width}x${track.height}"
+        } else {
+            ""
+        }
+        val label = listOf(
+            representation.id,
+            "q=${representation.qualityCode}",
+            dimensions,
+            track.codecs ?: track.mimeType ?: "",
+        ).filter(String::isNotEmpty).joinToString(" · ")
+        return mapOf(
+            "representationId" to representation.id,
+            "representation" to label,
+            "representationQualityCode" to representation.qualityCode,
+            "representationWidth" to track.width,
+            "representationHeight" to track.height,
+            "representationCodecs" to track.codecs,
+            "representationBitrate" to track.bitrate,
+        )
+    }
+
+    private fun decoderType(decoderName: String, format: Format?): String {
+        val mimeType = format?.sampleMimeType ?: return "未知"
+        val decoderInfo = try {
+            MediaCodecUtil.getDecoderInfos(mimeType, false, false)
+                .firstOrNull { it.name == decoderName }
+        } catch (_: Throwable) {
+            null
+        }
+        return when {
+            decoderInfo?.hardwareAccelerated == true -> "硬解"
+            decoderInfo?.softwareOnly == true -> "软解"
+            decoderInfo != null -> "未知"
+            else -> "未知"
+        }
+    }
+
+    private fun actualCodec(mimeType: String?): String = when (mimeType) {
+        MimeTypes.VIDEO_H264 -> "AVC / H.264"
+        MimeTypes.VIDEO_H265 -> "HEVC / H.265"
+        MimeTypes.VIDEO_AV1 -> "AV1"
+        MimeTypes.VIDEO_DOLBY_VISION -> "Dolby Vision"
+        MimeTypes.AUDIO_AAC -> "AAC"
+        MimeTypes.AUDIO_AC3 -> "AC-3"
+        MimeTypes.AUDIO_E_AC3, MimeTypes.AUDIO_E_AC3_JOC -> "E-AC-3"
+        MimeTypes.AUDIO_TRUEHD -> "Dolby TrueHD"
+        MimeTypes.AUDIO_FLAC -> "FLAC"
+        MimeTypes.AUDIO_OPUS -> "Opus"
+        MimeTypes.AUDIO_VORBIS -> "Vorbis"
+        null -> ""
+        else -> mimeType
+    }
+
+    private fun codecProfileLevel(format: Format): android.util.Pair<Int, Int>? = try {
+        MediaCodecUtil.getCodecProfileAndLevel(format)
+            ?.takeIf { it.first > 0 && it.second > 0 }
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun dolbyVisionProfileLevel(codecs: String?): Pair<String, String>? {
+        val parts = codecs?.split('.') ?: return null
+        if (parts.size < 3 || !parts[0].startsWith("dv", ignoreCase = true)) {
+            return null
+        }
+        return parts[1] to parts[2]
+    }
+
+    private fun hdrType(format: Format): String {
+        if (format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION ||
+            format.codecs?.startsWith("dv", ignoreCase = true) == true
+        ) {
+            return "Dolby Vision"
+        }
+        return when (format.colorInfo?.colorTransfer) {
+            C.COLOR_TRANSFER_ST2084 -> if (format.colorInfo?.hdrStaticInfo != null) {
+                "HDR10"
+            } else {
+                "PQ"
+            }
+            C.COLOR_TRANSFER_HLG -> "HLG"
+            else -> ""
+        }
+    }
+
+    private fun videoFormatData(format: Format): Map<String, Any?> {
+        val profileLevel = codecProfileLevel(format)
+        val dolbyLevel = dolbyVisionProfileLevel(format.codecs)
+        val colorInfo = format.colorInfo
+        return mapOf(
+            "track" to "video",
+            "codec" to actualCodec(format.sampleMimeType),
+            "mimeType" to format.sampleMimeType,
+            "codecs" to format.codecs,
+            "profile" to profileLevel?.first,
+            "level" to profileLevel?.second,
+            "dolbyVisionProfile" to dolbyLevel?.first,
+            "dolbyVisionLevel" to dolbyLevel?.second,
+            "hdrType" to hdrType(format),
+            "width" to format.width,
+            "height" to format.height,
+            "bitrate" to format.bitrate,
+            "frameRate" to format.frameRate,
+            "colorSpace" to colorInfo?.colorSpace,
+            "colorRange" to colorInfo?.colorRange,
+            "colorTransfer" to colorInfo?.colorTransfer,
+            "colorBitDepth" to colorInfo?.lumaBitdepth,
+        )
+    }
+
+    private fun audioFormatData(format: Format): Map<String, Any?> {
+        val profileLevel = codecProfileLevel(format)
+        return mapOf(
+            "track" to "audio",
+            "codec" to actualCodec(format.sampleMimeType),
+            "mimeType" to format.sampleMimeType,
+            "codecs" to format.codecs,
+            "profile" to profileLevel?.first,
+            "level" to profileLevel?.second,
+            "bitrate" to format.bitrate,
+            "sampleRate" to format.sampleRate,
+            "channelCount" to format.channelCount,
+            "channelMask" to format.channelMask,
+            "pcmEncoding" to format.pcmEncoding,
+        )
+    }
+
+    private fun trimDroppedFrameSamples(nowMs: Long = SystemClock.elapsedRealtime()) {
+        val cutoff = nowMs - 30_000L
+        while (droppedFrameSamples.peekFirst()?.timestampMs ?: Long.MAX_VALUE < cutoff) {
+            droppedFrameSamples.pollFirst()
+        }
+    }
+
+    private fun recentDroppedFrames(): Int {
+        trimDroppedFrameSamples()
+        return droppedFrameSamples.sumOf(DroppedFrameSample::count)
+    }
+
+    private fun isVideoRepresentationError(error: PlaybackException): Boolean {
+        val eligibleCode = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+            error.errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ||
+            error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
+            error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
+            error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED ||
+            error.errorCode == PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED
+        if (!eligibleCode) return false
+
+        val exoError = error as? ExoPlaybackException ?: return false
+        if (exoError.type == ExoPlaybackException.TYPE_RENDERER) {
+            val rendererType = runCatching {
+                player.getRendererType(exoError.rendererIndex)
+            }.getOrNull()
+            return rendererType == C.TRACK_TYPE_VIDEO
+        }
+        if (exoError.rendererFormat?.sampleMimeType?.let(MimeTypes::isVideo) == true) {
+            return true
+        }
+        // Source parsing errors do not carry a renderer. The active media item is
+        // explicitly tagged with -video-, so audio parsing errors are not used to
+        // switch the video Representation.
+        return exoError.type == ExoPlaybackException.TYPE_SOURCE &&
+            (lastLoadTrackType == C.TRACK_TYPE_VIDEO ||
+                (lastLoadTrackType == C.TRACK_TYPE_UNKNOWN &&
+                    source?.audio == null &&
+                    player.currentMediaItem?.mediaId?.contains("-video-") == true))
+    }
+
+    private fun fallbackToNextRepresentation(error: PlaybackException): Boolean {
+        val current = fallbackState.current ?: return false
+        val next = fallbackState.markCurrentFailedAndGetNext()
+        val reason = error.errorCodeName
+        val message = error.message ?: lastVideoCodecError.ifEmpty { "Media3 视频解码失败" }
+        val record = linkedMapOf<String, Any?>(
+            "from" to current.id,
+            "to" to next?.id.orEmpty(),
+            "fromQualityCode" to current.qualityCode,
+            "toQualityCode" to next?.qualityCode,
+            "reason" to reason,
+            "errorCode" to error.errorCode,
+            "message" to message,
+        )
+        fallbackHistory += record
+        val activeSource = source
+        if (next == null || activeSource == null) {
+            emitEvent(
+                "representationFallbackExhausted",
+                representationData(current) + mapOf(
+                    "reason" to reason,
+                    "errorCode" to error.errorCode,
+                    "message" to message,
+                    "fallbackHistory" to fallbackHistory.toList(),
+                ),
+            )
+            return false
+        }
+
+        val plan = createRepresentationFallbackPlan(
+            representation = next,
+            positionMs = player.currentPosition,
+            playWhenReady = player.playWhenReady,
+            speed = player.playbackParameters.speed,
+        )
+        emitEvent(
+            "representationFallback",
+            representationData(plan.representation) + mapOf(
+                "fromRepresentation" to current.id,
+                "fromQualityCode" to current.qualityCode,
+                "reason" to reason,
+                "errorCode" to error.errorCode,
+                "message" to message,
+                "positionMs" to plan.positionMs,
+                "fallbackHistory" to fallbackHistory.toList(),
+            ),
+        )
+        lastVideoFormat = null
+        lastVideoCodecError = ""
+        player.setMediaSource(
+            buildMediaSource(activeSource, plan.representation),
+            plan.positionMs,
+        )
+        player.playWhenReady = plan.playWhenReady
+        player.prepare()
+        player.setPlaybackSpeed(plan.speed)
+        return true
     }
 
     private fun setHdrWindowMode(enabled: Boolean) {
@@ -717,6 +1102,11 @@ private class HdrMedia3Session(
                 "positionMs" to positionMs,
                 "bufferedPositionMs" to bufferedPositionMs,
                 "durationMs" to durationMs,
+                "bandwidthEstimate" to bandwidthEstimate,
+                "cdnUri" to currentCdnUri,
+                "droppedFrames" to cumulativeDroppedFrames,
+                "recentDroppedFrames" to recentDroppedFrames(),
+                "playerState" to playerState(player.playbackState),
             ),
         )
         emitEvent("buffered", mapOf("positionMs" to bufferedPositionMs))
@@ -728,13 +1118,45 @@ private class HdrMedia3Session(
         })
     }
 
-    private fun fail(code: String, message: String) {
+    private fun fail(
+        code: String,
+        message: String,
+        extra: Map<String, Any?> = emptyMap(),
+    ) {
         if (errorSent || released) return
         errorSent = true
-        emitEvent("error", mapOf("code" to code, "message" to message))
+        val current = fallbackState.current
+        emitEvent(
+            "error",
+            mapOf("code" to code, "message" to message) +
+                (current?.let(::representationData) ?: emptyMap()) +
+                mapOf("fallbackHistory" to fallbackHistory.toList()) +
+                extra,
+        )
+    }
+
+    private fun playerState(state: Int): String = when (state) {
+        Player.STATE_BUFFERING -> "缓冲中"
+        Player.STATE_READY -> "已就绪"
+        Player.STATE_ENDED -> "已结束"
+        else -> "空闲"
+    }
+
+    private fun decoderCountersData(
+        counters: DecoderCounters,
+    ): Map<String, Any?> {
+        counters.ensureUpdated()
+        return mapOf(
+            "renderedOutputBufferCount" to counters.renderedOutputBufferCount,
+            "droppedBufferCount" to counters.droppedBufferCount,
+            "skippedOutputBufferCount" to counters.skippedOutputBufferCount,
+            "maxConsecutiveDroppedBufferCount" to counters.maxConsecutiveDroppedBufferCount,
+            "droppedToKeyframeCount" to counters.droppedToKeyframeCount,
+        )
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
+        emitEvent("state", mapOf("value" to playerState(playbackState)))
         when (playbackState) {
             Player.STATE_BUFFERING -> emitEvent("buffering", mapOf("value" to true))
             Player.STATE_READY -> {
@@ -744,7 +1166,7 @@ private class HdrMedia3Session(
                         "durationMs" to (player.duration.takeIf { it != C.TIME_UNSET } ?: 0L),
                         "width" to player.videoSize.width,
                         "height" to player.videoSize.height,
-                    ),
+                    ) + (fallbackState.current?.let(::representationData) ?: emptyMap()),
                 )
                 emitEvent("buffering", mapOf("value" to false))
             }
@@ -765,14 +1187,13 @@ private class HdrMedia3Session(
     }
 
     override fun onRenderedFirstFrame() {
-        if (!hdrFormatValid) {
-            fail("HDR_FORMAT_UNSUPPORTED", "解码器没有确认 HDR 色彩输出")
-            return
-        }
         emitEvent("firstFrame")
     }
 
-    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+    override fun onPlayerError(error: PlaybackException) {
+        if (isVideoRepresentationError(error) && fallbackToNextRepresentation(error)) {
+            return
+        }
         fail(error.errorCodeName, error.message ?: "Media3 播放失败")
     }
 
@@ -781,30 +1202,17 @@ private class HdrMedia3Session(
         format: Format,
         decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
     ) {
-        val colorInfo = format.colorInfo
-        val isDolbyVision = format.sampleMimeType == MimeTypes.VIDEO_DOLBY_VISION ||
-            format.codecs?.startsWith("dvh", ignoreCase = true) == true
-        val isHdrColor = colorInfo != null &&
-            colorInfo.colorSpace == C.COLOR_SPACE_BT2020 &&
-            (colorInfo.colorTransfer == C.COLOR_TRANSFER_ST2084 ||
-                colorInfo.colorTransfer == C.COLOR_TRANSFER_HLG)
-        val qualityCode = source?.qualityCode
-        hdrFormatValid = isDolbyVision || isHdrColor ||
-            (qualityCode == 129 && format.sampleMimeType == MimeTypes.VIDEO_H265)
-        emitEvent(
-            "inputFormat",
-            mapOf(
-                "mimeType" to format.sampleMimeType,
-                "codecs" to format.codecs,
-                "width" to format.width,
-                "height" to format.height,
-                "bitrate" to format.bitrate,
-                "frameRate" to format.frameRate,
-                "colorSpace" to colorInfo?.colorSpace,
-                "colorTransfer" to colorInfo?.colorTransfer,
-                "hdr" to hdrFormatValid,
-            ),
-        )
+        lastVideoFormat = format
+        emitEvent("inputFormat", videoFormatData(format))
+    }
+
+    override fun onAudioInputFormatChanged(
+        eventTime: AnalyticsListener.EventTime,
+        format: Format,
+        decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+    ) {
+        lastAudioFormat = format
+        emitEvent("inputFormat", audioFormatData(format))
     }
 
     override fun onVideoDecoderInitialized(
@@ -813,7 +1221,14 @@ private class HdrMedia3Session(
         initializedTimestampMs: Long,
         initializationDurationMs: Long,
     ) {
-        emitEvent("decoder", mapOf("name" to decoderName))
+        emitEvent(
+            "decoder",
+            mapOf(
+                "track" to "video",
+                "name" to decoderName,
+                "decoderType" to decoderType(decoderName, lastVideoFormat),
+            ),
+        )
     }
 
     override fun onAudioDecoderInitialized(
@@ -822,7 +1237,14 @@ private class HdrMedia3Session(
         initializedTimestampMs: Long,
         initializationDurationMs: Long,
     ) {
-        emitEvent("decoder", mapOf("track" to "audio", "name" to decoderName))
+        emitEvent(
+            "decoder",
+            mapOf(
+                "track" to "audio",
+                "name" to decoderName,
+                "decoderType" to decoderType(decoderName, lastAudioFormat),
+            ),
+        )
     }
 
     override fun onDroppedVideoFrames(
@@ -830,9 +1252,133 @@ private class HdrMedia3Session(
         droppedFrames: Int,
         elapsedMs: Long,
     ) {
+        cumulativeDroppedFrames += droppedFrames.coerceAtLeast(0)
+        if (droppedFrames > 0) {
+            droppedFrameSamples.addLast(
+                DroppedFrameSample(SystemClock.elapsedRealtime(), droppedFrames),
+            )
+        }
+        val recent = recentDroppedFrames()
         emitEvent(
             "droppedFrames",
-            mapOf("count" to droppedFrames, "elapsedMs" to elapsedMs),
+            mapOf(
+                "count" to droppedFrames,
+                "elapsedMs" to elapsedMs,
+                "cumulative" to cumulativeDroppedFrames,
+                "recent" to recent,
+            ),
+        )
+    }
+
+    override fun onLoadStarted(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData,
+    ) {
+        lastLoadTrackType = mediaLoadData.trackType
+        currentCdnUri = loadEventInfo.uri.toString()
+        emitEvent(
+            "loadStarted",
+            mapOf(
+                "uri" to currentCdnUri,
+                "dataType" to mediaLoadData.dataType,
+            ),
+        )
+    }
+
+    override fun onLoadCompleted(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData,
+    ) {
+        currentCdnUri = loadEventInfo.uri.toString()
+        emitEvent(
+            "loadCompleted",
+            mapOf(
+                "uri" to currentCdnUri,
+                "dataType" to mediaLoadData.dataType,
+                "bytesLoaded" to loadEventInfo.bytesLoaded,
+            ),
+        )
+    }
+
+    override fun onLoadError(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData,
+        error: IOException,
+        wasCanceled: Boolean,
+    ) {
+        lastLoadTrackType = mediaLoadData.trackType
+        currentCdnUri = loadEventInfo.uri.toString()
+        emitEvent(
+            "loadError",
+            mapOf(
+                "uri" to currentCdnUri,
+                "dataType" to mediaLoadData.dataType,
+                "trackType" to mediaLoadData.trackType,
+                "message" to (error.message ?: "媒体加载失败"),
+                "wasCanceled" to wasCanceled,
+            ),
+        )
+    }
+
+    override fun onBandwidthEstimate(
+        eventTime: AnalyticsListener.EventTime,
+        totalLoadTimeMs: Int,
+        totalBytesLoaded: Long,
+        bitrateEstimate: Long,
+    ) {
+        bandwidthEstimate = bitrateEstimate
+        emitEvent(
+            "bandwidthEstimate",
+            mapOf(
+                "totalLoadTimeMs" to totalLoadTimeMs,
+                "totalBytesLoaded" to totalBytesLoaded,
+                "bitrateEstimate" to bitrateEstimate,
+            ),
+        )
+    }
+
+    override fun onVideoCodecError(
+        eventTime: AnalyticsListener.EventTime,
+        videoCodecError: Exception,
+    ) {
+        lastVideoCodecError = videoCodecError.message ?: "视频 Codec 错误"
+        emitEvent(
+            "videoCodecError",
+            mapOf("message" to lastVideoCodecError),
+        )
+    }
+
+    override fun onAudioCodecError(
+        eventTime: AnalyticsListener.EventTime,
+        audioCodecError: Exception,
+    ) {
+        lastAudioCodecError = audioCodecError.message ?: "音频 Codec 错误"
+        emitEvent(
+            "audioCodecError",
+            mapOf("message" to lastAudioCodecError),
+        )
+    }
+
+    override fun onVideoDisabled(
+        eventTime: AnalyticsListener.EventTime,
+        decoderCounters: DecoderCounters,
+    ) {
+        emitEvent(
+            "decoderCounters",
+            mapOf("track" to "video") + decoderCountersData(decoderCounters),
+        )
+    }
+
+    override fun onAudioDisabled(
+        eventTime: AnalyticsListener.EventTime,
+        decoderCounters: DecoderCounters,
+    ) {
+        emitEvent(
+            "decoderCounters",
+            mapOf("track" to "audio") + decoderCountersData(decoderCounters),
         )
     }
 

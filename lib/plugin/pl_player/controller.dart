@@ -30,6 +30,7 @@ import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
+import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/services/service_locator.dart';
@@ -85,20 +86,7 @@ class PlPlayerController with BlockConfigMixin {
   final ValueNotifier<PlaybackInsightSnapshot> playbackInsight = ValueNotifier(
     const PlaybackInsightSnapshot(),
   );
-  String _hdrVideoMimeType = '';
-  String _hdrVideoCodecs = '';
-  String _hdrVideoColor = '';
-  String _hdrFrameRate = '';
-  String _hdrVideoDecoder = '';
-  String _hdrVideoBitrate = '';
-  String _hdrAudioMimeType = '';
-  String _hdrAudioCodecs = '';
-  String _hdrAudioDecoder = '';
-  String _hdrAudioBitrate = '';
-  int _hdrDroppedFrames = 0;
-  bool _hdrFirstFrame = false;
-  String _hdrLastError = '';
-  String _hdrLastEvent = '';
+  PlaybackTelemetry _playbackTelemetry = const PlaybackTelemetry();
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
   VoidCallback? _onInitCallback;
@@ -163,20 +151,7 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   void _resetPlaybackInsight() {
-    _hdrVideoMimeType = '';
-    _hdrVideoCodecs = '';
-    _hdrVideoColor = '';
-    _hdrFrameRate = '';
-    _hdrVideoDecoder = '';
-    _hdrVideoBitrate = '';
-    _hdrAudioMimeType = '';
-    _hdrAudioCodecs = '';
-    _hdrAudioDecoder = '';
-    _hdrAudioBitrate = '';
-    _hdrDroppedFrames = 0;
-    _hdrFirstFrame = false;
-    _hdrLastError = '';
-    _hdrLastEvent = '';
+    _playbackTelemetry = const PlaybackTelemetry();
     _notifyPlaybackInsight();
   }
 
@@ -185,27 +160,33 @@ class PlPlayerController with BlockConfigMixin {
     if (hdr != null) {
       final bufferedMs = (hdr.bufferedPosition - hdr.position).inMilliseconds
           .clamp(0, 1 << 62);
-      return PlaybackInsightSnapshot(
-        engine: 'Media3 原生 HDR',
-        quality: dataSource is HdrNetworkSource
-            ? '${(dataSource as HdrNetworkSource).qualityCode}'
-            : '',
-        resolution: _formatResolution(hdr.width, hdr.height),
-        videoCodec: _hdrVideoCodecs,
-        videoMimeType: _hdrVideoMimeType,
-        videoColor: _hdrVideoColor,
-        frameRate: _hdrFrameRate,
-        videoDecoder: _hdrVideoDecoder,
-        videoBitrate: _hdrVideoBitrate.isNotEmpty
-            ? _hdrVideoBitrate
-            : _formatBitrate(dataSource.videoBitrate),
-        audioCodec: _hdrAudioCodecs,
-        audioMimeType: _hdrAudioMimeType,
-        audioDecoder: _hdrAudioDecoder,
-        audioBitrate: _hdrAudioBitrate.isNotEmpty
-            ? _hdrAudioBitrate
-            : _formatBitrate(dataSource.audioBitrate),
-        cdnHost: _mediaHost(dataSource.videoSource),
+      final source = dataSource;
+      final telemetry = _playbackTelemetry.copyWith(
+        engine: _playbackTelemetry.engine.isEmpty ? 'Media3 原生 HDR' : null,
+        quality:
+            _playbackTelemetry.quality.isEmpty && source is HdrNetworkSource
+            ? '${source.qualityCode}'
+            : null,
+        resolution: _playbackTelemetry.resolution.isEmpty
+            ? _formatResolution(hdr.width, hdr.height)
+            : null,
+        videoBitrate:
+            _playbackTelemetry.videoBitrate.isEmpty &&
+                source.videoBitrate != null
+            ? _formatBitrate(source.videoBitrate)
+            : null,
+        audioBitrate:
+            _playbackTelemetry.audioBitrate.isEmpty &&
+                source.audioBitrate != null
+            ? _formatBitrate(source.audioBitrate)
+            : null,
+        cdnHost: _playbackTelemetry.cdnHost.isEmpty
+            ? _mediaHost(source.videoSource)
+            : null,
+        cdnUri: _playbackTelemetry.cdnUri.isEmpty ? source.videoSource : null,
+      );
+      return PlaybackInsightSnapshot.fromTelemetry(
+        telemetry,
         positionMs: hdr.position.inMilliseconds,
         durationMs: hdr.duration.inMilliseconds,
         forwardBufferMs: bufferedMs,
@@ -213,10 +194,7 @@ class PlPlayerController with BlockConfigMixin {
         isPlaying: hdr.isPlaying,
         playWhenReady: hdr.playWhenReady,
         isBuffering: hdr.isBuffering,
-        firstFrame: hdr.firstFrameRendered || _hdrFirstFrame,
-        droppedFrames: _hdrDroppedFrames,
-        lastError: _hdrLastError,
-        lastEvent: _hdrLastEvent,
+        firstFrame: hdr.firstFrameRendered,
       );
     }
 
@@ -233,24 +211,34 @@ class PlPlayerController with BlockConfigMixin {
       videoParams.gamma,
       videoParams.pixelformat,
     ].whereType<String>().where((value) => value.isNotEmpty).toList();
-    return PlaybackInsightSnapshot(
+    final telemetry = PlaybackTelemetry(
       engine: 'mpv 兼容播放器',
       resolution: _formatResolution(state.width, state.height),
       videoCodec: videoTrack.codec ?? '',
       videoColor: colorParts.join(' / '),
-      frameRate: videoTrack.fps == null
-          ? ''
-          : '${videoTrack.fps!.toStringAsFixed(2)} fps',
+      frameRate: _formatFrameRate(videoTrack.fps),
       videoDecoder: videoTrack.decoder ?? '',
       videoBitrate: videoBitrate.isNotEmpty
           ? videoBitrate
           : _formatBitrate(dataSource.videoBitrate),
       audioCodec: audioTrack.codec ?? '',
+      audioSampleRate: _formatSampleRate(audioTrack.samplerate),
+      audioChannelCount: _formatChannelCount(audioTrack.channelscount),
+      audioChannelLayout: audioTrack.channels ?? '',
       audioDecoder: audioTrack.decoder ?? '',
       audioBitrate: audioBitrate.isNotEmpty
           ? audioBitrate
           : _formatBitrate(dataSource.audioBitrate),
       cdnHost: _mediaHost(dataSource.videoSource),
+      cdnUri: dataSource.videoSource,
+      playerState: state.buffering
+          ? '缓冲中'
+          : state.playing
+          ? '播放中'
+          : '已暂停',
+    );
+    return PlaybackInsightSnapshot.fromTelemetry(
+      telemetry,
       positionMs: state.position.inMilliseconds,
       durationMs: state.duration.inMilliseconds,
       forwardBufferMs: state.buffer.inMilliseconds,
@@ -259,9 +247,6 @@ class PlPlayerController with BlockConfigMixin {
       playWhenReady: state.playing,
       isBuffering: state.buffering,
       firstFrame: state.width > 0 && state.height > 0,
-      droppedFrames: 0,
-      lastError: '',
-      lastEvent: state.playlist.medias.isEmpty ? '' : '媒体已加载',
     );
   }
 
@@ -285,6 +270,57 @@ class PlPlayerController with BlockConfigMixin {
   static String _formatFrameRate(num? frameRate, {String fallback = ''}) {
     if (frameRate == null || frameRate <= 0) return fallback;
     return '${frameRate.toStringAsFixed(2)} fps';
+  }
+
+  static String _formatSampleRate(num? sampleRate) {
+    if (sampleRate == null || sampleRate <= 0) return '';
+    return '${sampleRate.toStringAsFixed(0)} Hz';
+  }
+
+  static String _formatChannelCount(num? channelCount) {
+    if (channelCount == null || channelCount <= 0) return '';
+    return '${channelCount.toStringAsFixed(0)}';
+  }
+
+  static String _formatRawValue(num? value) {
+    if (value == null || value <= 0) return '';
+    return value.toString();
+  }
+
+  static String _formatChannelLayout(num? channelMask) {
+    if (channelMask != null && channelMask > 0) {
+      return '0x${channelMask.toInt().toRadixString(16).toUpperCase()}';
+    }
+    return '';
+  }
+
+  static List<PlaybackFallbackRecord> _parseFallbackHistory(dynamic value) {
+    if (value is! List) return const <PlaybackFallbackRecord>[];
+    return [
+      for (final item in value)
+        if (item is Map)
+          PlaybackFallbackRecord(
+            from: item['from']?.toString() ?? '',
+            to: item['to']?.toString() ?? '',
+            reason: item['reason']?.toString() ?? '',
+            errorCode: item['errorCode']?.toString() ?? '',
+            message: item['message']?.toString() ?? '',
+          ),
+    ];
+  }
+
+  static String _formatFallbackReason(HdrMedia3Event event) {
+    final errorCode =
+        event.value<num>('errorCode')?.toString() ??
+        event.value<String>('errorCode') ??
+        '';
+    final reason = event.value<String>('reason') ?? '';
+    final message = event.value<String>('message') ?? '';
+    return [
+      if (reason.isNotEmpty) reason,
+      if (errorCode.isNotEmpty) 'code=$errorCode',
+      if (message.isNotEmpty) message,
+    ].join(' · ');
   }
 
   static String _formatHdrColor(num? colorSpace, num? colorTransfer) {
@@ -1321,14 +1357,38 @@ class PlPlayerController with BlockConfigMixin {
     if (!identical(controller, _hdrMedia3Controller)) return;
     switch (event.type) {
       case 'loading':
-        _hdrVideoMimeType =
-            event.value<String>('videoMimeType') ?? _hdrVideoMimeType;
-        _hdrVideoCodecs = event.value<String>('videoCodecs') ?? _hdrVideoCodecs;
-        _hdrFrameRate = event.value<String>('videoFrameRate') ?? _hdrFrameRate;
-        _hdrAudioMimeType =
-            event.value<String>('audioMimeType') ?? _hdrAudioMimeType;
-        _hdrAudioCodecs = event.value<String>('audioCodecs') ?? _hdrAudioCodecs;
-        _hdrLastEvent = '正在加载媒体';
+        final source = dataSource;
+        final qualityCode = event.value<num>('qualityCode')?.toInt();
+        final representationWidth =
+            event.value<num>('representationWidth')?.toInt() ?? 0;
+        final representationHeight =
+            event.value<num>('representationHeight')?.toInt() ?? 0;
+        final resolution = _formatResolution(
+          representationWidth,
+          representationHeight,
+        );
+        final representationBitrate = _formatBitrate(
+          event.value<num>('representationBitrate'),
+        );
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          engine: 'Media3 原生 HDR',
+          quality: qualityCode?.toString(),
+          representation: event.value<String>('representation'),
+          representationId: event.value<String>('representationId'),
+          resolution: resolution.isNotEmpty ? resolution : null,
+          videoMimeType: event.value<String>('videoMimeType'),
+          videoCodecString: event.value<String>('videoCodecs'),
+          frameRate: event.value<String>('videoFrameRate'),
+          videoBitrate: representationBitrate.isNotEmpty
+              ? representationBitrate
+              : null,
+          audioMimeType: event.value<String>('audioMimeType'),
+          audioCodecString: event.value<String>('audioCodecs'),
+          cdnUri: source.videoSource,
+          cdnHost: _mediaHost(source.videoSource),
+          playerState: '缓冲中',
+          lastEvent: '正在加载媒体',
+        );
         _onBufferingChanged(true);
         break;
       case 'ready':
@@ -1336,12 +1396,31 @@ class PlPlayerController with BlockConfigMixin {
         if (durationMs > 0) updateDuration(Duration(milliseconds: durationMs));
         width = event.value<num>('width')?.toInt() ?? width;
         height = event.value<num>('height')?.toInt() ?? height;
-        _hdrLastEvent = '媒体已就绪';
+        final readyWidth = event.value<num>('width')?.toInt() ?? 0;
+        final readyHeight = event.value<num>('height')?.toInt() ?? 0;
+        final resolution = _formatResolution(readyWidth, readyHeight);
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          representation: event.value<String>('representation'),
+          representationId: event.value<String>('representationId'),
+          resolution: resolution.isNotEmpty ? resolution : null,
+          playerState: '已就绪',
+          lastEvent: '媒体已就绪',
+        );
         _onBufferingChanged(false);
+        break;
+      case 'state':
+        final value = event.value<String>('value');
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          playerState: value,
+          lastEvent: value,
+        );
         break;
       case 'buffering':
         final buffering = event.value<bool>('value') ?? false;
-        _hdrLastEvent = buffering ? '开始缓冲' : '缓冲完成';
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          playerState: buffering ? '缓冲中' : '已就绪',
+          lastEvent: buffering ? '开始缓冲' : '缓冲完成',
+        );
         _onBufferingChanged(buffering);
         break;
       case 'position':
@@ -1354,53 +1433,199 @@ class PlPlayerController with BlockConfigMixin {
         if (durationInMilliseconds > 0) {
           buffered.value = (bufferedMs ~/ 1000).clamp(0, duration.value);
         }
+        final bandwidth = _formatBitrate(event.value<num>('bandwidthEstimate'));
+        final uri = event.value<String>('cdnUri');
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          bandwidthEstimate: bandwidth.isNotEmpty ? bandwidth : null,
+          droppedFrames: event.value<num>('droppedFrames')?.toInt(),
+          recentDroppedFrames: event.value<num>('recentDroppedFrames')?.toInt(),
+          cdnUri: uri,
+          cdnHost: uri == null ? null : _mediaHost(uri),
+          playerState: event.value<String>('playerState'),
+        );
         _onPositionChanged(Duration(milliseconds: positionMs));
         break;
       case 'playing':
         final playing = event.value<bool>('value') ?? false;
-        _hdrLastEvent = playing ? '开始播放' : '已暂停';
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          playerState: playing ? '播放中' : '已暂停',
+          lastEvent: playing ? '开始播放' : '已暂停',
+        );
         _onPlayingChanged(playing);
         break;
       case 'completed':
-        _hdrLastEvent = '播放完成';
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          playerState: '已结束',
+          lastEvent: '播放完成',
+        );
         _onCompleted();
         break;
       case 'inputFormat':
-        _hdrVideoMimeType =
-            event.value<String>('mimeType') ?? _hdrVideoMimeType;
-        _hdrVideoCodecs = event.value<String>('codecs') ?? _hdrVideoCodecs;
-        _hdrFrameRate = _formatFrameRate(
-          event.value<num>('frameRate'),
-          fallback: _hdrFrameRate,
-        );
-        _hdrVideoBitrate = _formatBitrate(event.value<num>('bitrate'));
-        _hdrVideoColor = _formatHdrColor(
-          event.value<num>('colorSpace'),
-          event.value<num>('colorTransfer'),
-        );
-        _hdrLastEvent = '已确认视频格式';
+        if (event.value<String>('track') == 'audio') {
+          final bitrate = _formatBitrate(event.value<num>('bitrate'));
+          _playbackTelemetry = _playbackTelemetry.copyWith(
+            audioCodec: event.value<String>('codec'),
+            audioCodecString: event.value<String>('codecs'),
+            audioMimeType: event.value<String>('mimeType'),
+            audioSampleRate: _formatSampleRate(
+              event.value<num>('sampleRate'),
+            ),
+            audioChannelCount: _formatChannelCount(
+              event.value<num>('channelCount'),
+            ),
+            audioChannelLayout: _formatChannelLayout(
+              event.value<num>('channelMask'),
+            ),
+            audioBitrate: bitrate.isNotEmpty ? bitrate : null,
+            lastEvent: '已确认音频格式',
+          );
+        } else {
+          final bitrate = _formatBitrate(event.value<num>('bitrate'));
+          final frameRate = _formatFrameRate(event.value<num>('frameRate'));
+          final videoWidth = event.value<num>('width')?.toInt() ?? 0;
+          final videoHeight = event.value<num>('height')?.toInt() ?? 0;
+          final resolution = _formatResolution(videoWidth, videoHeight);
+          _playbackTelemetry = _playbackTelemetry.copyWith(
+            videoCodec: event.value<String>('codec'),
+            videoCodecString: event.value<String>('codecs'),
+            videoMimeType: event.value<String>('mimeType'),
+            videoProfile: _formatRawValue(event.value<num>('profile')),
+            videoLevel: _formatRawValue(event.value<num>('level')),
+            dolbyVisionProfile: event.value<String>('dolbyVisionProfile'),
+            dolbyVisionLevel: event.value<String>('dolbyVisionLevel'),
+            hdrType: event.value<String>('hdrType'),
+            resolution: resolution.isNotEmpty ? resolution : null,
+            frameRate: frameRate.isNotEmpty ? frameRate : null,
+            videoBitrate: bitrate.isNotEmpty ? bitrate : null,
+            videoColor: _formatHdrColor(
+              event.value<num>('colorSpace'),
+              event.value<num>('colorTransfer'),
+            ),
+            lastEvent: '已确认视频格式',
+          );
+        }
         break;
       case 'decoder':
         final decoder = event.value<String>('name') ?? '';
         if (event.value<String>('track') == 'audio') {
-          _hdrAudioDecoder = decoder;
-          _hdrLastEvent = '音频解码器已初始化';
+          _playbackTelemetry = _playbackTelemetry.copyWith(
+            audioDecoder: decoder,
+            audioDecoderType: event.value<String>('decoderType'),
+            lastEvent: '音频解码器已初始化',
+          );
         } else {
-          _hdrVideoDecoder = decoder;
-          _hdrLastEvent = '视频解码器已初始化';
+          _playbackTelemetry = _playbackTelemetry.copyWith(
+            videoDecoder: decoder,
+            videoDecoderType: event.value<String>('decoderType'),
+            lastEvent: '视频解码器已初始化',
+          );
         }
         break;
       case 'firstFrame':
-        _hdrFirstFrame = true;
-        _hdrLastEvent = '首帧已渲染';
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          lastEvent: '首帧已渲染',
+        );
         break;
       case 'droppedFrames':
-        _hdrDroppedFrames += event.value<num>('count')?.toInt() ?? 0;
-        _hdrLastEvent = '记录掉帧';
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          droppedFrames:
+              event.value<num>('cumulative')?.toInt() ??
+              (_playbackTelemetry.droppedFrames +
+                  (event.value<num>('count')?.toInt() ?? 0)),
+          recentDroppedFrames: event.value<num>('recent')?.toInt(),
+          lastEvent: '记录掉帧',
+        );
+        break;
+      case 'loadStarted':
+      case 'loadCompleted':
+        final uri = event.value<String>('uri');
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          cdnUri: uri,
+          cdnHost: uri == null ? null : _mediaHost(uri),
+          lastEvent: event.type == 'loadStarted' ? '开始加载媒体' : '媒体加载完成',
+        );
+        break;
+      case 'loadError':
+        final uri = event.value<String>('uri');
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          cdnUri: uri,
+          cdnHost: uri == null ? null : _mediaHost(uri),
+          lastError: event.value<String>('message'),
+          lastEvent: '媒体加载失败',
+        );
+        break;
+      case 'bandwidthEstimate':
+        final bandwidth = _formatBitrate(event.value<num>('bitrateEstimate'));
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          bandwidthEstimate: bandwidth.isNotEmpty ? bandwidth : null,
+          lastEvent: '带宽估计已更新',
+        );
+        break;
+      case 'decoderCounters':
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          lastEvent: event.value<String>('track') == 'audio'
+              ? '音频解码器统计已更新'
+              : '视频解码器统计已更新',
+        );
+        break;
+      case 'representationFallback':
+        final history = _parseFallbackHistory(event.data['fallbackHistory']);
+        final representationWidth =
+            event.value<num>('representationWidth')?.toInt() ?? 0;
+        final representationHeight =
+            event.value<num>('representationHeight')?.toInt() ?? 0;
+        final qualityCode = event
+            .value<num>('representationQualityCode')
+            ?.toInt();
+        final resolution = _formatResolution(
+          representationWidth,
+          representationHeight,
+        );
+        final representationBitrate = _formatBitrate(
+          event.value<num>('representationBitrate'),
+        );
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          representation: event.value<String>('representation'),
+          representationId: event.value<String>('representationId'),
+          quality: qualityCode?.toString(),
+          resolution: resolution.isNotEmpty ? resolution : null,
+          videoBitrate: representationBitrate.isNotEmpty
+              ? representationBitrate
+              : null,
+          fallbackReason: _formatFallbackReason(event),
+          fallbackHistory: history.isEmpty ? null : history,
+          lastError: '',
+          playerState: '缓冲中',
+          lastEvent: '已切换 Representation',
+        );
+        _onBufferingChanged(true);
+        break;
+      case 'representationFallbackExhausted':
+        final history = _parseFallbackHistory(event.data['fallbackHistory']);
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          fallbackReason: _formatFallbackReason(event),
+          fallbackHistory: history.isEmpty ? null : history,
+          playerState: '播放错误',
+          lastEvent: 'Representation 已全部失败',
+        );
+        break;
+      case 'videoCodecError':
+      case 'audioCodecError':
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          lastError: event.value<String>('message'),
+          lastEvent: event.type == 'videoCodecError'
+              ? '视频 Codec 错误'
+              : '音频 Codec 错误',
+        );
         break;
       case 'error':
-        _hdrLastError = event.value<String>('message') ?? 'Media3 播放失败';
-        _hdrLastEvent = '播放错误';
+        final history = _parseFallbackHistory(event.data['fallbackHistory']);
+        _playbackTelemetry = _playbackTelemetry.copyWith(
+          lastError: event.value<String>('message') ?? 'Media3 播放失败',
+          fallbackHistory: history.isEmpty ? null : history,
+          playerState: '播放错误',
+          lastEvent: '播放错误',
+        );
         unawaited(_fallbackHdrToMpv());
         break;
     }

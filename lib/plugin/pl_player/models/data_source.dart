@@ -62,6 +62,28 @@ class HdrTrackSource {
   };
 }
 
+/// Media3 应用层 fallback 使用的视频 Representation。
+///
+/// 列表由 Dart 侧按“当前清晰度同分辨率 codec → 更低分辨率”排序，原生会在
+/// Media3 明确报告视频解码/格式错误后按顺序尝试，不能把设备能力预判混入这里。
+class HdrVideoRepresentation {
+  HdrVideoRepresentation({
+    required this.id,
+    required this.qualityCode,
+    required this.track,
+  });
+
+  final String id;
+  final int qualityCode;
+  final HdrTrackSource track;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'qualityCode': qualityCode,
+    ...track.toJson(),
+  };
+}
+
 /// 在线 HDR 视频的完整播放源。
 ///
 /// 该类型只由在线 UGC/PGC 播放页创建；直播、下载文件和普通 SDR 仍然使用
@@ -71,13 +93,26 @@ class HdrNetworkSource extends NetworkSource {
   final HdrTrackSource video;
   final HdrTrackSource? audio;
   final Map<String, String> headers;
+  final List<HdrVideoRepresentation> videoRepresentations;
 
   HdrNetworkSource({
     required this.qualityCode,
     required this.video,
     this.audio,
     this.headers = const {},
-  }) : super(
+    Iterable<HdrVideoRepresentation>? videoRepresentations,
+  }) : videoRepresentations = List.unmodifiable(
+         (videoRepresentations == null || videoRepresentations.isEmpty)
+             ? [
+                 HdrVideoRepresentation(
+                   id: 'primary',
+                   qualityCode: qualityCode,
+                   track: video,
+                 ),
+               ]
+             : videoRepresentations,
+       ),
+       super(
          videoSource: video.urls.first,
          audioSource: audio?.urls.first,
          videoBitrate: video.bitrate,

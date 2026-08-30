@@ -55,6 +55,7 @@ import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
@@ -544,17 +545,15 @@ class VideoDetailController extends GetxController
   int get currPosInMilliseconds =>
       defaultST?.inMilliseconds ?? plPlayerController.positionInMilliseconds;
   @override
-  Stream<Duration>? get positionStream =>
-      plPlayerController.isMedia3Hdr
-          ? plPlayerController.positionStream
-          : plPlayerController.videoPlayerController?.stream.position;
+  Stream<Duration>? get positionStream => plPlayerController.isMedia3Hdr
+      ? plPlayerController.positionStream
+      : plPlayerController.videoPlayerController?.stream.position;
   @override
-  Stream<bool>? get playingStream =>
-      plPlayerController.isMedia3Hdr
-          ? plPlayerController.playerStatus.map(
-              (status) => status?.isPlaying ?? false,
-            )
-          : plPlayerController.videoPlayerController?.stream.playing;
+  Stream<bool>? get playingStream => plPlayerController.isMedia3Hdr
+      ? plPlayerController.playerStatus.map(
+          (status) => status?.isPlaying ?? false,
+        )
+      : plPlayerController.videoPlayerController?.stream.playing;
   @override
   bool get isPlaying => plPlayerController.isPlaying;
   @override
@@ -693,6 +692,73 @@ class VideoDetailController extends GetxController
     return bestVideo ?? videoList.first;
   }
 
+  /// 为 Media3 准备应用层 Representation fallback 候选。
+  ///
+  /// 当前清晰度的同分辨率 codec 始终排在前面，全部失败后才按分辨率从高
+  /// 到低尝试候选。这里不查询设备解码能力，避免在真正播放前过滤 DVH1 等轨道。
+  List<HdrVideoRepresentation> _buildHdrRepresentations() {
+    final videos = data.dash?.video ?? const <VideoItem>[];
+    if (videos.isEmpty) return const <HdrVideoRepresentation>[];
+
+    final currentIndex = videos.indexOf(firstVideo);
+    if (currentIndex < 0) return const <HdrVideoRepresentation>[];
+    final current = videos[currentIndex];
+    final currentWidth = current.width ?? 0;
+    final currentHeight = current.height ?? 0;
+    final currentArea = currentWidth * currentHeight;
+
+    bool isSameResolution(VideoItem item) {
+      if (currentWidth > 0 && currentHeight > 0) {
+        return item.width == currentWidth && item.height == currentHeight;
+      }
+      return item.quality.code == current.quality.code;
+    }
+
+    bool isLowerResolution(VideoItem item) {
+      final area = (item.width ?? 0) * (item.height ?? 0);
+      if (currentArea > 0 && area > 0) return area < currentArea;
+      return item.quality.index > current.quality.index;
+    }
+
+    final indices = <int>[currentIndex];
+    for (var index = 0; index < videos.length; index++) {
+      if (index != currentIndex && isSameResolution(videos[index])) {
+        indices.add(index);
+      }
+    }
+    final lowerIndices = [
+      for (var index = 0; index < videos.length; index++)
+        if (index != currentIndex &&
+            !indices.contains(index) &&
+            isLowerResolution(videos[index]))
+          index,
+    ];
+    lowerIndices.sort((a, b) {
+      final aArea = (videos[a].width ?? 0) * (videos[a].height ?? 0);
+      final bArea = (videos[b].width ?? 0) * (videos[b].height ?? 0);
+      return bArea.compareTo(aArea);
+    });
+    indices.addAll(lowerIndices);
+
+    return [
+      for (final index in indices)
+        if (videos[index].playUrls.isNotEmpty)
+          HdrVideoRepresentation(
+            id: 'video-$index',
+            qualityCode: videos[index].quality.code,
+            track: HdrTrackSource(
+              urls: VideoUtils.getCdnUrls(videos[index].playUrls),
+              mimeType: videos[index].mimeType,
+              codecs: videos[index].codecs,
+              width: videos[index].width,
+              height: videos[index].height,
+              frameRate: videos[index].frameRate,
+              bitrate: videos[index].bandWidth,
+            ),
+          ),
+    ];
+  }
+
   /// 更新画质、音质
   void updatePlayer() {
     final currentVideoQa = this.currentVideoQa.value;
@@ -753,13 +819,13 @@ class VideoDetailController extends GetxController
         hasDashAudio: entry.hasDashAudio,
       );
     } else if (HdrPlaybackPolicy.shouldUseMedia3(
-        isAndroid: Platform.isAndroid,
-        isLive: false,
-        isFile: isFileSource,
-        enabled: Pref.enableMedia3Hdr,
-        qualityCode: currentVideoQa.value?.code ?? 0,
-      ) &&
-      data.dash != null) {
+          isAndroid: Platform.isAndroid,
+          isLive: false,
+          isFile: isFileSource,
+          enabled: Pref.enableMedia3Hdr,
+          qualityCode: currentVideoQa.value?.code ?? 0,
+        ) &&
+        data.dash != null) {
       final videoUrls = VideoUtils.getCdnUrls(firstVideo.playUrls);
       final audioUrls = firstAudio == null
           ? const <String>[]
@@ -776,6 +842,7 @@ class VideoDetailController extends GetxController
             frameRate: firstVideo.frameRate,
             bitrate: firstVideo.bandWidth,
           ),
+          videoRepresentations: _buildHdrRepresentations(),
           audio: audioUrls.isEmpty
               ? null
               : HdrTrackSource(
@@ -1029,18 +1096,10 @@ class VideoDetailController extends GetxController
       /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
       final audioList = data.dash?.audio;
       if (audioList != null && audioList.isNotEmpty) {
-        final List<int> audioIds = audioList.map((map) => map.id!).toList();
-        int closestNumber = audioIds.findClosestTarget(
-          (e) => e <= plPlayerController.cacheAudioQa,
-          (a, b) => a > b ? a : b,
-        );
-        if (!audioIds.contains(plPlayerController.cacheAudioQa) &&
-            audioIds.any((e) => e > plPlayerController.cacheAudioQa)) {
-          closestNumber = AudioQuality.k192.code;
-        }
-        firstAudio = audioList.firstWhere(
-          (e) => e.id == closestNumber,
-          orElse: () => audioList.first,
+        firstAudio = AudioTrackSelector.select<AudioItem>(
+          tracks: audioList,
+          preferredId: plPlayerController.cacheAudioQa,
+          idOf: (track) => track.id,
         );
         audioUrl = VideoUtils.getCdnUrl(firstAudio!.playUrls, isAudio: true);
         if (firstAudio!.id case final int id?) {
