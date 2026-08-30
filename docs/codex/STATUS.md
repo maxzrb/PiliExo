@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 18:22 (+08:00)
+- 更新时间：2026-08-30 22:38 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：fd56cd6a6（v26.8.30.5 发布提交）
-- 发布提交：fd56cd6a6e2f8c5fe8f36ba919ef2dfefbb47e77
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.5；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器已补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry、可选音频焦点接管、洞察实时刷新/硬软解判定和可配置音量/亮度侧滑震动；侧滑音量节流已改为累计位移并在手势结束补提交，更新下载回退状态显示实际 ModelScope/GitHub 源；普通 mpv 视频洞察已接入 cache-speed 带宽估计及参数变化刷新；当前正式版本为 `v26.8.30.5`，Android `versionCode=11`。
+- 分析基线：d17b7a8d9（v26.8.30.5 发布提交）
+- 发布提交：d13923597336c63c89b8160b6bc216d569b5f04e（已安全合并 PiliPlus 2.1.2.3；v26.8.30.6 正式发布提交待本地构建确认）
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐、更新和字体迁移等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本地 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，正式产物固定在 `dist/release/<tag>/`；当前准备发布 `v26.8.30.6`，应用版本为 `26.8.30+6`，Android `versionCode=12`。
 
 ## 已完成
 
@@ -622,3 +622,11 @@
 - arm64-v8a：`31,663,821` bytes，SHA-256 `3d029bb144147f0de86e26918ab124c37edbaffc882df0644bb271e7d7434d9b`；armeabi-v7a：`31,546,308` bytes，SHA-256 `2e2f8f7289327e69e340d7696616cbccaf68641c5a15f34c2117839146dae4ad`。
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.5>，两个资产均为 `uploaded`；ModelScope 资产为 <https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.5/PiliExo_android_v26.8.30.5_arm64-v8a.apk> 和 <https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.5/PiliExo_android_v26.8.30.5_armeabi-v7a.apk>，均 HTTP 200，长度及 `X-Linked-ETag` 与本地产物一致。
 - 本轮未执行真机交互回归；普通 mpv/media-kit 仍仅展示其公开且可靠的带宽/参数数据，Media3 专属 Representation、Profile/Level、Dolby Vision 结构化字段和完整硬/软解信息不伪造。构建目录、`pili_release.json` 和 `dist/` 未纳入版本控制，用户未跟踪目录 `tmp/` 保留不变。
+
+## 2026-08-30 22:38
+
+- 已获取并安全合并 PiliPlus `upstream/main` 至 `2.1.2.3`，合并提交为 `d13923597336c63c89b8160b6bc216d569b5f04e`；合并前创建备份分支 `backup/pre-upstream-2.1.2.3-20260830`，冲突已逐项保留 PiliExo 的 HDR/Media3、字体迁移和播放控制器定制。
+- 上游 `merge-base` 之后 14 个提交中 10 个已与本地补丁等价，实际保留并接入 4 个非等价提交：列表/保存面板等重构 `9624c3725`、评论底部面板回调修复 `adb659938`、字体默认字重修复 `932b95ccb` 和动态 URI 解析修复 `44680b8a4`。
+- 验证通过：Flutter 3.47.2 工具链校验、`flutter pub get`、全量 Flutter 测试 44/44、全量 Analyze 无 error（51 条既有 info）、Android `:app:testDebugUnitTest`；`git diff --check` 通过。
+- 已将 Flutter SDK 固化到 `D:\tools\flutter-3.47.2\flutter`，压缩包 SHA-256 为 `37934f2128a55d77a38baba12fd611157ed23a47bf7d2b7d17e9e84da118409d`；新增 `docs/本机发布工具链.md`，正式产物固定到 `dist/release/<releaseTag>/`，不使用 `tmp/`。
+- 已准备 `v26.8.30.6` 发布元数据：`pubspec.yaml` 为 `26.8.30+6`、Android 全局 `versionCode=12`，并新增 `version/release-notes-v26.8.30.6.md`；尚未构建或发布正式资产。
