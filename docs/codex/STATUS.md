@@ -1,10 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 12:55 (+08:00)
+- 更新时间：2026-08-30 13:38 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：bee12ddbd（v26.8.30.2 版本号修复源代码提交）
-- 发布提交：bee12ddbdefca9527839629ba69f11ed932a0392
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.2；本轮修复 Android `versionCode` 随日期发布序号重置导致无法覆盖安装的问题，保留 `vYY.M.D.N` 标签格式并将 Android 安装版本号改为全局递增；README 和发布流程已同步更新；播放器当前补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry 和可选音频焦点接管，保留 Media3/FFmpeg 解码链路不变。
+- 分析基线：840f195bc（v26.8.30.3 发布提交）
+- 发布提交：840f195bc83b3f45b43d9c494659b134c712b8da
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全引入上游字体页面重构、字体存储修复、选择区域补丁和依赖升级，并发布 v26.8.30.3；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；README 和发布流程已同步更新；播放器当前补充自动音轨语义优先级、Media3 Representation fallback、统一播放 Telemetry 和可选音频焦点接管，保留 Media3/FFmpeg 解码链路不变。
 
 ## 已完成
 
@@ -559,3 +559,12 @@
 - 新增/更新 Dart 与 Android 测试：Telemetry/洞察字段、Representation 候选不循环/同清晰度顺序/位置恢复、音轨回归和音频焦点设置持久化覆盖；Android `:app:compileDebugKotlin` 及 `HdrMedia3SourceTest`（6 项）通过，Telemetry 与音轨定向测试 9/9 通过。
 - 完整 Flutter 测试仍被仓库既有 Flutter API 与当前 SDK 不匹配阻断（`DraggableScrollableSheetState`、`PageView` 参数、`WidgetSpan.rawText` 等），未发现本轮目标文件新增 error；未构建或发布 Release。
 - 本轮未提交源码；用户未跟踪目录 `tmp/` 保留不变。
+
+## 2026-08-30 13:38
+
+- 发布提交 `840f195bc83b3f45b43d9c494659b134c712b8da` 已推送到 `maxzrb/PiliExo` 的 `main`，并创建正式标签 `v26.8.30.3`；应用版本为 `26.8.30+3`，Android `versionCode=9`。
+- 验证通过：Flutter 3.47.2 工具链、`flutter test --no-pub --reporter compact` 31/31、全量 `flutter analyze --no-pub --no-fatal-infos` 无 error（46 条既有 info）、Android `HdrMedia3SourceTest` 6 项、双 ABI Release 构建、`aapt2` 包名/版本/ABI/FFmpeg 资源校验、`apksigner` V2 正式签名校验和 `git diff --check`。
+- arm64-v8a APK：`31,656,238` bytes，SHA-256 `D5E4EA6B6608574BEA728ADA44146D2F5BAC91A7CBAD253CCE0279C32B034CD3`；armeabi-v7a APK：`31,535,439` bytes，SHA-256 `6A068DD422CDE32B2036F3A3E2CF3EB4F4CC34DEB424183B3B9EB8CFAEE865D2`；两个包均包含对应 `libffmpegJNI.so`，使用 `CN=PiliExo, O=AerithDream, C=CN` 的正式 V2 签名。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.3>；双 ABI 资产状态均为 `uploaded`，GitHub digest 与本地 SHA-256 一致。
+- ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.3/` 双 ABI 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.3/PiliExo_android_v26.8.30.3_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.3/PiliExo_android_v26.8.30.3_armeabi-v7a.apk>；两个地址 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地产物哈希一致。
+- 为兼容项目现有 Flutter 私有 API，按发布流程安全应用 Flutter 3.47.2 本地补丁并保留其工作区修改；本项目源码与发布记录已提交，用户未跟踪目录 `tmp/` 保留不变且未纳入版本控制。本轮未执行真机交互回归。
