@@ -40,7 +40,7 @@ abstract final class FontUtils {
   }
 
   static AppFont _initAppFont() {
-    final appFont = GStorage.setting.get(SettingBoxKey.appFont);
+    final String? appFont = GStorage.setting.get(SettingBoxKey.appFont);
     if (_isCutsomFont(appFont)) {
       if (!fontFile.existsSync()) {
         _migrateLegacyFont(appFont);
@@ -49,7 +49,7 @@ abstract final class FontUtils {
         return (fontFamily: appFont, isCustom: true);
       } else {
         GStorage.setting.delete(SettingBoxKey.appFont);
-        return (fontFamily: null, isCustom: false);
+        return const (fontFamily: null, isCustom: false);
       }
     } else {
       return (fontFamily: appFont, isCustom: false);
@@ -96,9 +96,8 @@ abstract final class FontUtils {
   }
 
   static void removeFontIfExists() {
-    final file = fontFile;
-    if (file.existsSync()) {
-      file.delete();
+    if (fontFile.existsSync()) {
+      fontFile.delete();
     }
   }
 
