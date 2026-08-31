@@ -29,12 +29,12 @@ enum AudioNormalization {
     _ => config,
   };
 
-  static final _loudnormRegExp = RegExp('loudnorm=([^,]+)');
+  static final loudnormRegExp = RegExp('loudnorm=([^,]+)');
 
   static String parse(Volume? volume, String param) {
     if (volume != null && volume.isNotEmpty) {
       return param.replaceFirstMapped(
-        _loudnormRegExp,
+        loudnormRegExp,
         (i) =>
             'loudnorm=${volume.format(
               Map.fromEntries(
@@ -47,7 +47,7 @@ enum AudioNormalization {
       );
     } else {
       return param.replaceFirst(
-        _loudnormRegExp,
+        loudnormRegExp,
         AudioNormalization.getParamFromConfig(Pref.fallbackNormalization),
       );
     }
