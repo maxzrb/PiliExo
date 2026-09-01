@@ -89,6 +89,9 @@ class PlPlayerController with BlockConfigMixin {
   );
   PlaybackTelemetry _playbackTelemetry = const PlaybackTelemetry();
   MpvBandwidthSampler? _mpvBandwidthSampler;
+  final _media3BandwidthSampler = BandwidthEstimateSampler();
+  num? _latestMedia3BandwidthBitsPerSecond;
+  Timer? _bandwidthRefreshTimer;
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
   VoidCallback? _onInitCallback;
@@ -153,9 +156,12 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   void _resetPlaybackInsight() {
+    _stopBandwidthRefresh();
     _playbackTelemetry = const PlaybackTelemetry();
     _mpvBandwidthSampler?.reset();
     _mpvBandwidthSampler = null;
+    _media3BandwidthSampler.reset();
+    _latestMedia3BandwidthBitsPerSecond = null;
     _notifyPlaybackInsight();
   }
 
@@ -220,11 +226,6 @@ class PlPlayerController with BlockConfigMixin {
           (value) => value?.isNotEmpty == true,
           orElse: () => null,
         );
-    final bandwidthEstimate = _formatBitrate(
-      (_mpvBandwidthSampler ??= MpvBandwidthSampler(player.getProperty)).sample(
-        isPlaying: state.playing,
-      ),
-    );
     final colorParts = [
       videoParams.primaries,
       videoParams.gamma,
@@ -257,7 +258,7 @@ class PlPlayerController with BlockConfigMixin {
           : _formatBitrate(dataSource.audioBitrate),
       cdnHost: _mediaHost(dataSource.videoSource),
       cdnUri: dataSource.videoSource,
-      bandwidthEstimate: bandwidthEstimate,
+      bandwidthEstimate: _playbackTelemetry.bandwidthEstimate,
       playerState: state.buffering
           ? '缓冲中'
           : state.playing
@@ -275,6 +276,47 @@ class PlPlayerController with BlockConfigMixin {
       isBuffering: state.buffering,
       firstFrame: state.width > 0 && state.height > 0,
     );
+  }
+
+  /// 两种播放器统一通过此定时器刷新带宽；其它洞察字段仍可随播放器事件即时更新。
+  void _startBandwidthRefresh() {
+    if (_bandwidthRefreshTimer != null) return;
+    _bandwidthRefreshTimer = Timer.periodic(
+      const Duration(milliseconds: BandwidthEstimateSampler.sampleIntervalMs),
+      (_) => _refreshBandwidthEstimate(),
+    );
+    _refreshBandwidthEstimate();
+  }
+
+  void _stopBandwidthRefresh() {
+    _bandwidthRefreshTimer?.cancel();
+    _bandwidthRefreshTimer = null;
+  }
+
+  void _refreshBandwidthEstimate() {
+    if (_bandwidthRefreshTimer == null) return;
+
+    if (_hdrMedia3Controller case final hdr?) {
+      final estimate = _media3BandwidthSampler.sample(
+        bitsPerSecond: _latestMedia3BandwidthBitsPerSecond,
+        isPlaying: hdr.playWhenReady,
+      );
+      _playbackTelemetry = _playbackTelemetry.copyWith(
+        bandwidthEstimate: _formatBitrate(estimate),
+      );
+      _notifyPlaybackInsight();
+      return;
+    }
+
+    final player = _videoPlayerController;
+    if (player == null) return;
+    final estimate = (_mpvBandwidthSampler ??= MpvBandwidthSampler(
+      player.getProperty,
+    )).sample(isPlaying: true);
+    _playbackTelemetry = _playbackTelemetry.copyWith(
+      bandwidthEstimate: _formatBitrate(estimate),
+    );
+    _notifyPlaybackInsight();
   }
 
   void _notifyPlaybackInsight([Object? _]) {
@@ -993,6 +1035,7 @@ class PlPlayerController with BlockConfigMixin {
       }
 
       await _initializePlayer();
+      if (_autoPlay) _startBandwidthRefresh();
       onInit?.call();
     } catch (err, stackTrace) {
       if (dataSource is HdrNetworkSource) {
@@ -1345,6 +1388,7 @@ class PlPlayerController with BlockConfigMixin {
   }
 
   void _onCompleted() {
+    _stopBandwidthRefresh();
     playerStatus.value = .completed;
     for (final element in _statusListeners) {
       element(.completed);
@@ -1393,6 +1437,8 @@ class PlPlayerController with BlockConfigMixin {
     if (!identical(controller, _hdrMedia3Controller)) return;
     switch (event.type) {
       case 'loading':
+        _media3BandwidthSampler.reset();
+        _latestMedia3BandwidthBitsPerSecond = null;
         final source = dataSource;
         final qualityCode = event.value<num>('qualityCode')?.toInt();
         final representationWidth =
@@ -1422,6 +1468,7 @@ class PlPlayerController with BlockConfigMixin {
           audioCodecString: event.value<String>('audioCodecs'),
           cdnUri: source.videoSource,
           cdnHost: _mediaHost(source.videoSource),
+          bandwidthEstimate: '',
           playerState: '缓冲中',
           lastEvent: '正在加载媒体',
         );
@@ -1469,10 +1516,12 @@ class PlPlayerController with BlockConfigMixin {
         if (durationInMilliseconds > 0) {
           buffered.value = (bufferedMs ~/ 1000).clamp(0, duration.value);
         }
-        final bandwidth = _formatBitrate(event.value<num>('bandwidthEstimate'));
+        final bandwidth = event.value<num>('bandwidthEstimate');
+        if (bandwidth != null && bandwidth > 0) {
+          _latestMedia3BandwidthBitsPerSecond = bandwidth;
+        }
         final uri = event.value<String>('cdnUri');
         _playbackTelemetry = _playbackTelemetry.copyWith(
-          bandwidthEstimate: bandwidth.isNotEmpty ? bandwidth : null,
           droppedFrames: event.value<num>('droppedFrames')?.toInt(),
           recentDroppedFrames: event.value<num>('recentDroppedFrames')?.toInt(),
           cdnUri: uri,
@@ -1591,9 +1640,10 @@ class PlPlayerController with BlockConfigMixin {
         );
         break;
       case 'bandwidthEstimate':
-        final bandwidth = _formatBitrate(event.value<num>('bitrateEstimate'));
+        _latestMedia3BandwidthBitsPerSecond = event.value<num>(
+          'bitrateEstimate',
+        );
         _playbackTelemetry = _playbackTelemetry.copyWith(
-          bandwidthEstimate: bandwidth.isNotEmpty ? bandwidth : null,
           lastEvent: '带宽估计已更新',
         );
         break;
@@ -1925,6 +1975,7 @@ class PlPlayerController with BlockConfigMixin {
     } else {
       await _videoPlayerController?.play();
     }
+    _startBandwidthRefresh();
 
     audioSessionHandler?.setActive(true);
 
@@ -1934,6 +1985,7 @@ class PlPlayerController with BlockConfigMixin {
 
   /// 暂停播放
   Future<void> pause({bool notify = true, bool isInterrupt = false}) async {
+    _stopBandwidthRefresh();
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.pause();
     } else {
@@ -2350,6 +2402,7 @@ class PlPlayerController with BlockConfigMixin {
     }
 
     _playerCount = 0;
+    _stopBandwidthRefresh();
     if (removeSafeArea) {
       showSystemBar();
     }

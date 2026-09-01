@@ -2,6 +2,23 @@ import 'package:PiliPlus/plugin/pl_player/utils/mpv_bandwidth.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Media3 比特/秒输入复用相同的刷新节拍并直接显示原值', () {
+    final sampler = BandwidthEstimateSampler();
+
+    expect(
+      sampler.sample(bitsPerSecond: 300000000, isPlaying: true, nowMs: 0),
+      300000000,
+    );
+    expect(
+      sampler.sample(bitsPerSecond: 100000000, isPlaying: true, nowMs: 500),
+      300000000,
+    );
+    expect(
+      sampler.sample(bitsPerSecond: 100000000, isPlaying: true, nowMs: 1000),
+      100000000,
+    );
+  });
+
   test('播放时按节流间隔读取 cache-speed', () {
     var reads = 0;
     final sampler = MpvBandwidthSampler((_) {
@@ -10,9 +27,9 @@ void main() {
     });
 
     expect(sampler.sample(isPlaying: true, nowMs: 0), 10000000);
-    expect(sampler.sample(isPlaying: true, nowMs: 100), 10000000);
+    expect(sampler.sample(isPlaying: true, nowMs: 500), 10000000);
     expect(reads, 1);
-    expect(sampler.sample(isPlaying: true, nowMs: 250), 10000000);
+    expect(sampler.sample(isPlaying: true, nowMs: 1000), 10000000);
     expect(reads, 2);
   });
 
@@ -24,21 +41,30 @@ void main() {
     });
 
     expect(sampler.sample(isPlaying: true, nowMs: 0), 16000000);
-    expect(sampler.sample(isPlaying: false, nowMs: 1000), 16000000);
+    expect(sampler.sample(isPlaying: false, nowMs: 2000), 16000000);
     expect(reads, 1);
   });
 
-  test('无效或零值不会覆盖已有估计，切换媒体后可重置', () {
+  test('无效值不会覆盖已有估计，零值会直接清除当前估计', () {
     var value = '3000000';
     final sampler = MpvBandwidthSampler((_) => value);
 
     expect(sampler.sample(isPlaying: true, nowMs: 0), 24000000);
     value = '0';
-    expect(sampler.sample(isPlaying: true, nowMs: 250), 24000000);
+    expect(sampler.sample(isPlaying: true, nowMs: 1000), 0);
     value = 'not-a-number';
-    expect(sampler.sample(isPlaying: true, nowMs: 500), 24000000);
+    expect(sampler.sample(isPlaying: true, nowMs: 2000), 0);
+
+    value = 'not-a-number';
+    expect(sampler.sample(isPlaying: true, nowMs: 3000), 0);
+  });
+
+  test('切换媒体后清空历史样本', () {
+    final sampler = MpvBandwidthSampler((_) => '3000000');
+
+    expect(sampler.sample(isPlaying: true, nowMs: 0), 24000000);
 
     sampler.reset();
-    expect(sampler.sample(isPlaying: false, nowMs: 750), isNull);
+    expect(sampler.sample(isPlaying: false, nowMs: 1000), isNull);
   });
 }

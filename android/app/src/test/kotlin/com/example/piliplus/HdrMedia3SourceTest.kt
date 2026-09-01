@@ -1,11 +1,13 @@
 package com.maxzrb.piliexo
 
 import android.net.Uri
+import android.os.Handler
 import androidx.media3.common.C
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.upstream.BandwidthMeter
 import java.io.IOException
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -130,6 +132,33 @@ class HdrMedia3SourceTest {
 
         gate.setPlayWhenReady(false)
         assertFalse(gate.enabled)
+    }
+
+    @Test
+    fun gatedBandwidthMeterForwardsOnlyOnePlayingTransferSample() {
+        var enabled = true
+        val delegate = RecordingBandwidthMeter()
+        val meter = GatedBandwidthMeter(delegate) { enabled }
+        val listener = meter.getTransferListener()
+        val source = FakeDataSource()
+        val dataSpec = DataSpec.Builder().setUri("https://video").build()
+
+        listener.onTransferInitializing(source, dataSpec, true)
+        listener.onTransferStart(source, dataSpec, true)
+        listener.onBytesTransferred(source, dataSpec, true, 100)
+        enabled = false
+        listener.onBytesTransferred(source, dataSpec, true, 50)
+        listener.onTransferEnd(source, dataSpec, true)
+
+        enabled = true
+        listener.onTransferStart(source, dataSpec, true)
+        listener.onBytesTransferred(source, dataSpec, true, 25)
+        listener.onTransferEnd(source, dataSpec, true)
+
+        assertEquals(
+            listOf("initializing", "start", "bytes:100", "end", "start", "bytes:25", "end"),
+            delegate.events,
+        )
     }
 
     @Test
@@ -293,6 +322,55 @@ class HdrMedia3SourceTest {
         override fun close() {
             uri = null
         }
+    }
+
+    private class RecordingBandwidthMeter : BandwidthMeter {
+        val events = mutableListOf<String>()
+        private val listener = object : TransferListener {
+            override fun onTransferInitializing(
+                source: DataSource,
+                dataSpec: DataSpec,
+                isNetwork: Boolean,
+            ) {
+                events += "initializing"
+            }
+
+            override fun onTransferStart(
+                source: DataSource,
+                dataSpec: DataSpec,
+                isNetwork: Boolean,
+            ) {
+                events += "start"
+            }
+
+            override fun onBytesTransferred(
+                source: DataSource,
+                dataSpec: DataSpec,
+                isNetwork: Boolean,
+                bytesTransferred: Int,
+            ) {
+                events += "bytes:$bytesTransferred"
+            }
+
+            override fun onTransferEnd(
+                source: DataSource,
+                dataSpec: DataSpec,
+                isNetwork: Boolean,
+            ) {
+                events += "end"
+            }
+        }
+
+        override fun getBitrateEstimate(): Long = 0L
+
+        override fun getTransferListener(): TransferListener = listener
+
+        override fun addEventListener(
+            eventHandler: Handler,
+            eventListener: BandwidthMeter.EventListener,
+        ) = Unit
+
+        override fun removeEventListener(eventListener: BandwidthMeter.EventListener) = Unit
     }
 
     private class FakeDataSource : DataSource {

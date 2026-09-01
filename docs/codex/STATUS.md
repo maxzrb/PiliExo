@@ -1,9 +1,11 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-08-30 22:52 (+08:00)
+- 更新时间：2026-09-01 22:27 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：d17b7a8d9（v26.8.30.5 发布提交）
+- 分析基线：7bc2da029（v26.8.30.6 发布后文档提交）
 - 发布提交：8a81fd8980e56ddb10449a77299983cbafa3eec5（已安全合并 PiliPlus 2.1.2.3 并完成 v26.8.30.6 本地构建与双源发布）
+- 当前工作：已修复 Media3 带宽重复回调和普通 mpv `cache-speed` 预取峰值长期偏高；两个后端统一约 1 秒刷新并直接展示最新原始估计，不做 5 秒平滑；未修改版本号，未发布新 Release。
+- 当前验证：Android 单元测试、Flutter 全量测试 46/46、Flutter Analyze 无 error、Debug APK 打包均通过；未连接 Android 真机。
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐、更新和字体迁移等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本地 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，正式产物固定在 `dist/release/<tag>/`；当前正式版本为 `v26.8.30.6`，应用版本为 `26.8.30+6`，Android `versionCode=12`。
 
 ## 已完成
@@ -597,6 +599,29 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.8.30.4>，状态为正式版、两个资产均 `uploaded`。arm64 APK `31,660,715` bytes，SHA-256 `7A4A6386D23A16B712D31131FB0CB9B160ECC3B7D47CF476180BCCBAECA23238`；armeabi-v7a APK `31,542,511` bytes，SHA-256 `A64EA15F64DA21FFE1D70F400BEA4AC71B1E994E0A5B8D5A7744EB610A900E8B`。
 - ModelScope `AerithDream/PiliExo` 已同步 `releases/v26.8.30.4/` 双 ABI 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.4/PiliExo_android_v26.8.30.4_arm64-v8a.apk>、<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.8.30.4/PiliExo_android_v26.8.30.4_armeabi-v7a.apk>；均返回 HTTP 200，长度和 `X-Linked-ETag` 与本地产物 SHA-256 一致。
 - 发布后工作区仅保留用户未跟踪目录 `tmp/`；`pili_release.json`、构建目录和本机 Flutter SDK 均未纳入版本控制。本轮未执行真机交互回归，后续需按发布流程验收音量/亮度震动默认值及播放器功能。
+
+## 2026-09-01 21:07
+
+- 完成播放器洞察“带宽估计偏高”静态诊断：HDR/Media3 路径的 `DefaultBandwidthMeter` 同时通过 Media3 自动注入和项目自定义 `bandwidthTransferListener` 计入同一网络传输；自定义监听又把字节回调转发给同一个 meter，播放期间会造成字节数近似重复累计，约 150 Mbps 的实际吞吐可能显示为约 300 Mbps。
+- Media3 的估计本身按传输字节/耗时并用滑动百分位更新，300 Mbps 不是项目中的硬编码；当前 HDR 代码的采样门控只包住自定义监听，自动注入的 meter 仍会在暂停期间接收回调，因此门控也没有完全生效。
+- 普通 mpv 路径读取 `cache-speed`（缓存与下层网络之间的 I/O 读取速度），按字节/秒乘 8 后显示为比特/秒；该指标是预取/缓存吞吐，不等于视频实际码率或稳定链路容量，出现高值属于另一种口径问题。
+- 本轮仅诊断未修改源码、版本号或发布资产；已核对 Media3 1.11.0 依赖、相关提交和官方 Media3/mpv 实现。未连接 Android 真机，暂未采集运行时原始回调/数值。工作区仍只有用户未跟踪目录 `tmp/`。
+
+## 2026-09-01 21:50
+
+- 修复 HDR/Media3 带宽统计重复计数：新增 `GatedBandwidthMeter`，让 Media3 自动注入的唯一 `TransferListener` 统一经过播放状态门控；移除 OkHttp 工厂上的第二个自定义监听器，避免同一传输的字节回调被 `DefaultBandwidthMeter` 近似计算两次。
+- 修复普通 mpv 带宽估计偏高：`cache-speed` 改为按 1 秒采样并计算 5 个样本的滚动平均，缓存空闲的 `0` 纳入平均，非法值仍保留当前平滑结果；预取峰值不再长期占据显示值。
+- 新增/更新 Android 与 Dart 回归测试；Android `:app:testDebugUnitTest` 通过，Flutter 全量 `flutter test --no-pub` 45/45 通过，`flutter analyze --no-pub` 无 error（51 条既有 info），`flutter build apk --debug --no-pub` 通过。
+- 本轮未修改版本号、未生成正式 Release、未使用 GitHub Actions，也未连接 Android 真机；正式版本仍为 `v26.8.30.6`。`tmp/` 保持原样。
+- 工作区仍为 dirty：源码、测试及 HandShake 记录有改动，用户未跟踪目录 `tmp/` 保留；提交前请先复核后执行 `git add` / `git commit`。
+
+## 2026-09-01 22:27
+
+- 按用户决定取消 5 秒/5 样本平滑：新增 `BandwidthEstimateSampler` 作为 Media3 与 mpv 共用的刷新节拍，统一每约 1 秒取值并直接展示最新有效原始估计。
+- Media3 原生事件只更新最新比特/秒输入，由公共定时器刷新洞察；mpv 由同一定时器每约 1 秒读取一次 `cache-speed`，避免两个后端因事件频率不同导致界面刷新时快时慢。
+- 播放、暂停、结束、切换媒体和释放时统一启停/清空刷新状态；暂停不再读取 mpv 属性，非法值保留最近有效值，零值直接显示为 0。
+- 验证通过：Android `:app:testDebugUnitTest`；Flutter 全量测试 46/46；`flutter analyze --no-pub` 无 error（51 条既有 info）；`flutter build apk --debug --no-pub`；`git diff --check`。
+- 本轮未改版本号、未发布新 Release、未使用 GitHub Actions；正式版本仍为 `v26.8.30.6`，未连接 Android 真机。`tmp/` 未修改、未纳入提交。
 
 ## 2026-08-30 16:39
 

@@ -40,6 +40,7 @@ import androidx.media3.exoplayer.source.LoadEventInfo
 import androidx.media3.exoplayer.source.MediaLoadData
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.upstream.BandwidthMeter
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
@@ -365,6 +366,129 @@ internal class BandwidthSamplingGate {
     }
 }
 
+/**
+ * 将播放状态门控放在 Media3 注入的唯一 TransferListener 上，避免同一传输被重复统计。
+ *
+ * ExoPlayer 会通过 BandwidthMeter.getTransferListener() 自动把监听器加入 MediaSource 的
+ * DataSource，因此调用方不应再把另一个转发监听器直接挂到 HTTP 工厂。
+ */
+@UnstableApi
+internal class GatedBandwidthMeter(
+    private val delegate: BandwidthMeter,
+    private val isSamplingEnabled: () -> Boolean,
+) : BandwidthMeter {
+    private data class TransferKey(
+        val source: DataSource,
+        val uri: Uri,
+        val position: Long,
+        val length: Long,
+        val key: String?,
+    )
+
+    private val delegateTransferListener = checkNotNull(delegate.getTransferListener())
+    private val activeTransfers = mutableMapOf<TransferKey, Int>()
+    private val transferListener = object : TransferListener {
+        override fun onTransferInitializing(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+        ) {
+            if (isSamplingEnabled()) {
+                delegateTransferListener.onTransferInitializing(source, dataSpec, isNetwork)
+            }
+        }
+
+        override fun onTransferStart(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+        ) {
+            if (!markTransferStarted(source, dataSpec)) return
+            delegateTransferListener.onTransferStart(source, dataSpec, isNetwork)
+        }
+
+        override fun onBytesTransferred(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+            bytesTransferred: Int,
+        ) {
+            // 暂停期间不计入新字节，但仍需结束暂停前已开始的传输，避免 meter
+            // 永久保留未闭合的样本；恢复播放后新传输会重新开始计量。
+            if (isSamplingEnabled() && hasActiveTransfer(source, dataSpec)) {
+                delegateTransferListener.onBytesTransferred(
+                    source,
+                    dataSpec,
+                    isNetwork,
+                    bytesTransferred,
+                )
+            }
+        }
+
+        override fun onTransferEnd(
+            source: DataSource,
+            dataSpec: DataSpec,
+            isNetwork: Boolean,
+        ) {
+            if (!markTransferEnded(source, dataSpec)) return
+            delegateTransferListener.onTransferEnd(source, dataSpec, isNetwork)
+        }
+    }
+
+    override fun getBitrateEstimate(): Long = delegate.getBitrateEstimate()
+
+    override fun getTimeToFirstByteEstimateUs(): Long =
+        delegate.getTimeToFirstByteEstimateUs()
+
+    override fun getTransferListener(): TransferListener = transferListener
+
+    override fun addEventListener(
+        eventHandler: Handler,
+        eventListener: BandwidthMeter.EventListener,
+    ) {
+        delegate.addEventListener(eventHandler, eventListener)
+    }
+
+    override fun removeEventListener(eventListener: BandwidthMeter.EventListener) {
+        delegate.removeEventListener(eventListener)
+    }
+
+    private fun transferKey(source: DataSource, dataSpec: DataSpec) = TransferKey(
+        source = source,
+        uri = dataSpec.uri,
+        position = dataSpec.position,
+        length = dataSpec.length,
+        key = dataSpec.key,
+    )
+
+    private fun markTransferStarted(source: DataSource, dataSpec: DataSpec): Boolean {
+        if (!isSamplingEnabled()) return false
+        val key = transferKey(source, dataSpec)
+        synchronized(activeTransfers) {
+            activeTransfers[key] = (activeTransfers[key] ?: 0) + 1
+        }
+        return true
+    }
+
+    private fun hasActiveTransfer(source: DataSource, dataSpec: DataSpec): Boolean =
+        synchronized(activeTransfers) {
+            activeTransfers[transferKey(source, dataSpec)]?.let { it > 0 } == true
+        }
+
+    private fun markTransferEnded(source: DataSource, dataSpec: DataSpec): Boolean {
+        val key = transferKey(source, dataSpec)
+        synchronized(activeTransfers) {
+            val count = activeTransfers[key] ?: return false
+            if (count <= 1) {
+                activeTransfers.remove(key)
+            } else {
+                activeTransfers[key] = count - 1
+            }
+        }
+        return true
+    }
+}
+
 /** 使用可靠的 Android/Media3 codec 能力标记生成洞察中的硬软解文案。 */
 internal fun decoderTypeFromFlags(
     hardwareAccelerated: Boolean,
@@ -464,122 +588,17 @@ private class HdrMedia3Session(
         .build()
     private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
     private val bandwidthSamplingGate = BandwidthSamplingGate()
-    private data class BandwidthTransferKey(
-        val source: DataSource,
-        val uri: Uri,
-        val position: Long,
-        val length: Long,
-        val key: String?,
+    private val gatedBandwidthMeter = GatedBandwidthMeter(
+        delegate = bandwidthMeter,
+        isSamplingEnabled = { bandwidthSamplingGate.enabled },
     )
-
-    private val activeBandwidthTransfers = mutableMapOf<BandwidthTransferKey, Int>()
-
-    private fun bandwidthTransferKey(
-        source: DataSource,
-        dataSpec: DataSpec,
-    ) = BandwidthTransferKey(
-        source = source,
-        uri = dataSpec.uri,
-        position = dataSpec.position,
-        length = dataSpec.length,
-        key = dataSpec.key,
-    )
-
-    private fun markBandwidthTransferStarted(
-        source: DataSource,
-        dataSpec: DataSpec,
-    ): Boolean {
-        if (!bandwidthSamplingGate.enabled) return false
-        val key = bandwidthTransferKey(source, dataSpec)
-        synchronized(activeBandwidthTransfers) {
-            activeBandwidthTransfers[key] =
-                (activeBandwidthTransfers[key] ?: 0) + 1
-        }
-        return true
-    }
-
-    private fun hasActiveBandwidthTransfer(
-        source: DataSource,
-        dataSpec: DataSpec,
-    ): Boolean = synchronized(activeBandwidthTransfers) {
-        activeBandwidthTransfers[bandwidthTransferKey(source, dataSpec)]
-            ?.let { it > 0 } == true
-    }
-
-    private fun markBandwidthTransferEnded(
-        source: DataSource,
-        dataSpec: DataSpec,
-    ): Boolean {
-        val key = bandwidthTransferKey(source, dataSpec)
-        synchronized(activeBandwidthTransfers) {
-            val count = activeBandwidthTransfers[key] ?: return false
-            if (count <= 1) {
-                activeBandwidthTransfers.remove(key)
-            } else {
-                activeBandwidthTransfers[key] = count - 1
-            }
-        }
-        return true
-    }
-
-    private val bandwidthTransferListener = object : TransferListener {
-        override fun onTransferInitializing(
-            source: DataSource,
-            dataSpec: DataSpec,
-            isNetwork: Boolean,
-        ) {
-            if (bandwidthSamplingGate.enabled) {
-                bandwidthMeter.onTransferInitializing(source, dataSpec, isNetwork)
-            }
-        }
-
-        override fun onTransferStart(
-            source: DataSource,
-            dataSpec: DataSpec,
-            isNetwork: Boolean,
-        ) {
-            if (markBandwidthTransferStarted(source, dataSpec)) {
-                bandwidthMeter.onTransferStart(source, dataSpec, isNetwork)
-            }
-        }
-
-        override fun onBytesTransferred(
-            source: DataSource,
-            dataSpec: DataSpec,
-            isNetwork: Boolean,
-            bytesTransferred: Int,
-        ) {
-            // 暂停期间不计入新字节，但仍需结束暂停前已开始的传输，避免 meter
-            // 永久保留未闭合的样本；恢复播放后新传输会重新开始计量。
-            if (hasActiveBandwidthTransfer(source, dataSpec) &&
-                bandwidthSamplingGate.enabled
-            ) {
-                bandwidthMeter.onBytesTransferred(
-                    source,
-                    dataSpec,
-                    isNetwork,
-                    bytesTransferred,
-                )
-            }
-        }
-
-        override fun onTransferEnd(
-            source: DataSource,
-            dataSpec: DataSpec,
-            isNetwork: Boolean,
-        ) {
-            if (markBandwidthTransferEnded(source, dataSpec)) {
-                bandwidthMeter.onTransferEnd(source, dataSpec, isNetwork)
-            }
-        }
-    }
     private val player: ExoPlayer = ExoPlayer.Builder(
         context,
         DefaultRenderersFactory(context)
             // 先使用设备硬解；设备没有可用 AC-3/E-AC-3 解码器时再使用 FFmpeg 软件解码。
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true),
-    ).setBandwidthMeter(bandwidthMeter).build().also { exoPlayer ->
+    ).setBandwidthMeter(gatedBandwidthMeter).build().also { exoPlayer ->
         exoPlayer.setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -876,7 +895,6 @@ private class HdrMedia3Session(
 
         val httpFactory = OkHttpDataSource.Factory(httpClient)
             .setDefaultRequestProperties(source.headers)
-            .setTransferListener(bandwidthTransferListener)
         val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
         val fallbackFactory = DataSource.Factory {
             MultiUriDataSource(defaultFactory, candidateMap)
