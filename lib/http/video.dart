@@ -23,7 +23,6 @@ import 'package:PiliPlus/models_new/triple/pgc_triple.dart';
 import 'package:PiliPlus/models_new/triple/ugc_triple.dart';
 import 'package:PiliPlus/models_new/video/video_ai_conclusion/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/data.dart';
-import 'package:PiliPlus/models_new/video/video_detail/video_detail_response.dart';
 import 'package:PiliPlus/models_new/video/video_note_list/data.dart';
 import 'package:PiliPlus/models_new/video/video_play_info/data.dart';
 import 'package:PiliPlus/models_new/video/video_relation/data.dart';
@@ -354,13 +353,12 @@ abstract final class VideoHttp {
   }) async {
     final res = await Request().get(
       Api.videoIntro,
-      queryParameters: {'bvid': bvid},
+      queryParameters: await WbiSign.makSign({'bvid': bvid}),
     );
-    VideoDetailResponse data = VideoDetailResponse.fromJson(res.data);
-    if (data.code == 0) {
-      return Success(data.data!);
+    if (res.data['code'] == 0) {
+      return Success(VideoDetailData.fromJson(res.data['data']));
     } else {
-      return Error(data.message);
+      return Error(res.data['message']);
     }
   }
 
