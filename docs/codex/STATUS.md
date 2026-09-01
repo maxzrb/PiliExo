@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-01 22:27 (+08:00)
+- 更新时间：2026-09-01 22:47 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：7bc2da029（v26.8.30.6 发布后文档提交）
-- 发布提交：8a81fd8980e56ddb10449a77299983cbafa3eec5（已安全合并 PiliPlus 2.1.2.3 并完成 v26.8.30.6 本地构建与双源发布）
-- 当前工作：已修复 Media3 带宽重复回调和普通 mpv `cache-speed` 预取峰值长期偏高；两个后端统一约 1 秒刷新并直接展示最新原始估计，不做 5 秒平滑；未修改版本号，未发布新 Release。
-- 当前验证：Android 单元测试、Flutter 全量测试 46/46、Flutter Analyze 无 error、Debug APK 打包均通过；未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐、更新和字体迁移等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本地 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，正式产物固定在 `dist/release/<tag>/`；当前正式版本为 `v26.8.30.6`，应用版本为 `26.8.30+6`，Android `versionCode=12`。
+- 发布提交：ec91663ca97ca1c34900c90c6d5b6ec0df0d2363（已发布 `v26.9.1.1`，包含带宽估计修复）
+- 当前工作：已修复 Media3 带宽重复回调和普通 mpv `cache-speed` 预取峰值长期偏高；两个后端统一约 1 秒刷新并直接展示最新原始估计，不做 5 秒平滑；`v26.9.1.1` 已完成 GitHub/ModelScope 双源发布。
+- 当前验证：Flutter `pub get`、全量测试 46/46、Flutter Analyze 无 error（51 条既有 info）、Android 单元测试、双 ABI Release 构建、aapt2 包体校验、apksigner V2 签名校验和 ModelScope 回读均通过；未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐、更新和字体迁移等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本地 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，正式产物固定在 `dist/release/<tag>/`；当前正式版本为 `v26.9.1.1`，应用版本为 `26.9.1+1`，Android `versionCode=13`。
 
 ## 已完成
 
@@ -622,6 +622,17 @@
 - 播放、暂停、结束、切换媒体和释放时统一启停/清空刷新状态；暂停不再读取 mpv 属性，非法值保留最近有效值，零值直接显示为 0。
 - 验证通过：Android `:app:testDebugUnitTest`；Flutter 全量测试 46/46；`flutter analyze --no-pub` 无 error（51 条既有 info）；`flutter build apk --debug --no-pub`；`git diff --check`。
 - 本轮未改版本号、未发布新 Release、未使用 GitHub Actions；正式版本仍为 `v26.8.30.6`，未连接 Android 真机。`tmp/` 未修改、未纳入提交。
+
+## 2026-09-01 22:47
+
+- 按本机发布流程完成 `v26.9.1.1`；应用版本 `26.9.1+1`，Android 全局 `versionCode=13`，发布提交为 `ec91663ca97ca1c34900c90c6d5b6ec0df0d2363`，origin/main 和 annotated tag 均已推送。
+- Flutter 3.47.2 本地双 ABI Release 构建成功；`pili_release.json` 的 `pili.hash`、`pili.name=26.9.1`、`pili.releaseBuild=1` 和 `pili.code=13` 与发布提交/版本元数据一致。产物固定在 `dist/release/v26.9.1.1/`，未写入 `tmp/`。
+- 双 ABI 校验通过：包名 `com.maxzrb.piliexo`、`versionName=26.9.1`、`versionCode=13`、对应 ABI、`libffmpegJNI.so` 均正确；两个 APK 的 apksigner V2 正式签名有效，Release mapping 保留 `FfmpegAudioRenderer`。
+- arm64-v8a：`31,665,039` bytes，SHA-256 `9fb96ba982c5424f53d4c803cd39b19e8f755d4d24beba4b1691d212ab775ba5`；armeabi-v7a：`31,548,164` bytes，SHA-256 `b15b55c4ce6c7b7c22c09a10c9616aefc7cd26b0c683ad95311f2b27c9cc7936`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.1.1>，正式版且两个资产均为 `uploaded`，GitHub digest 与本地 SHA-256 一致。
+- ModelScope 资产：<https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.9.1.1/PiliExo_android_v26.9.1.1_arm64-v8a.apk> 和 <https://modelscope.cn/datasets/AerithDream/PiliExo/resolve/master/releases/v26.9.1.1/PiliExo_android_v26.9.1.1_armeabi-v7a.apk>，均 HTTP 200，Content-Length 与 `X-Linked-ETag` 和本地产物一致。
+- 发布前验证通过：Flutter 工具链 3.47.2、`flutter pub get`、Flutter 全量测试 46/46、Analyze 无 error（51 条既有 info）、Android `:app:testDebugUnitTest`、`git diff --check`；未使用 GitHub Actions，未连接 Android 真机。
+- 已 fetch 到 PiliPlus `upstream/main` 的后续提交未混入本次 Release；工作区仅保留用户未跟踪目录 `tmp/`，未纳入提交。
 
 ## 2026-08-30 16:39
 
