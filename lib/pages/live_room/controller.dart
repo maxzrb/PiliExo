@@ -704,7 +704,7 @@ class LiveRoomController extends GetxController {
             ? const Duration(milliseconds: 400)
             : PlatformUtils.isDesktop
             ? const Duration(milliseconds: 350)
-            : const Duration(milliseconds: 500),
+            : const Duration(milliseconds: 400),
       ),
     );
   }

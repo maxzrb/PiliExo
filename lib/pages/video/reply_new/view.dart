@@ -14,7 +14,6 @@ import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart'
     show ReplyInfo;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
-import 'package:PiliPlus/models/common/publish_panel_type.dart';
 import 'package:PiliPlus/models/dynamics/result.dart' show FilePicModel;
 import 'package:PiliPlus/pages/common/publish/common_rich_text_pub_page.dart';
 import 'package:PiliPlus/pages/dynamics_mention/controller.dart';
@@ -73,14 +72,12 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    themeData = darkVideoPage ? ThemeUtils.darkTheme : Theme.of(context);
+  void initTheme() {
+    theme = darkVideoPage ? ThemeUtils.darkTheme : Theme.of(context);
   }
 
   late final darkVideoPage =
       Get.currentRoute == '/videoV' && Pref.darkVideoPage;
-  late ThemeData themeData;
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +88,7 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
           constraints: const BoxConstraints(maxWidth: 640),
           decoration: BoxDecoration(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            color: themeData.colorScheme.surface,
+            color: theme.colorScheme.surface,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -99,15 +96,13 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
             children: [
               ...buildInputView(),
               buildImagePreview(),
-              Flexible(
-                child: buildPanelContainer(themeData, Colors.transparent),
-              ),
+              Flexible(child: buildPanelContainer(Colors.transparent)),
             ],
           ),
         ),
       ),
     );
-    return darkVideoPage ? Theme(data: themeData, child: child) : child;
+    return darkVideoPage ? Theme(data: theme, child: child) : child;
   }
 
   @override
@@ -143,36 +138,29 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
           left: 15,
           bottom: 10,
         ),
-        child: Listener(
-          onPointerUp: (event) {
-            if (readOnly.value) {
-              updatePanelType(PanelType.keyboard);
-            }
-          },
-          child: Obx(
-            () => RichTextField(
-              key: key,
-              controller: editController,
-              minLines: 4,
-              maxLines: 8,
-              autofocus: false,
-              readOnly: readOnly.value,
-              onChanged: onChanged,
-              onSubmitted: onSubmitted,
-              focusNode: focusNode,
-              decoration: InputDecoration(
-                hintText: widget.hint ?? "输入回复内容",
-                border: InputBorder.none,
-                hintStyle: const TextStyle(fontSize: 14),
-              ),
-              style: themeData.textTheme.bodyLarge,
+        child: Obx(
+          () => RichTextField(
+            key: key,
+            controller: editController,
+            minLines: 4,
+            maxLines: 8,
+            autofocus: false,
+            readOnly: readOnly.value,
+            onChanged: onChanged,
+            onSubmitted: onSubmitted,
+            focusNode: focusNode,
+            decoration: InputDecoration(
+              hintText: widget.hint ?? "输入回复内容",
+              border: InputBorder.none,
+              hintStyle: const TextStyle(fontSize: 14),
             ),
+            style: theme.textTheme.bodyLarge,
           ),
         ),
       ),
       Divider(
         height: 1,
-        color: themeData.dividerColor.withValues(alpha: 0.1),
+        color: theme.dividerColor.withValues(alpha: 0.1),
       ),
       Container(
         height: 52,
@@ -231,7 +219,7 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
   }
 
   @override
-  Widget buildMorePanel(ThemeData theme) {
+  Widget buildMorePanel() {
     double height = context.isTablet ? 300 : 170;
     final keyboardHeight = controller.keyboardHeight;
     if (keyboardHeight != 0) {
@@ -254,7 +242,7 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
               aspectRatio: 1,
               child: Container(
                 decoration: BoxDecoration(
-                  color: themeData.colorScheme.onInverseSurface,
+                  color: theme.colorScheme.onInverseSurface,
                   borderRadius: const BorderRadius.all(Radius.circular(6)),
                 ),
                 alignment: Alignment.center,
@@ -275,7 +263,7 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
     }
 
     final isRoot = widget.root == 0;
-    final color = themeData.colorScheme.onSurfaceVariant;
+    final color = theme.colorScheme.onSurfaceVariant;
     late final gridDelegate = SliverGridDelegateWithExtentAndRatio(
       maxCrossAxisExtent: 65,
       mainAxisSpacing: 12,
