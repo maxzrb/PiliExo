@@ -1,5 +1,4 @@
 // edit from package:dio_cookie_manager
-import 'dart:async';
 import 'dart:io';
 
 import 'package:PiliPlus/http/api.dart';
@@ -23,7 +22,7 @@ final _setCookieReg = RegExp('(?<=)(,)(?=[^;]+?=)');
 class AccountManager extends Interceptor {
   AccountManager();
 
-  String blockServer = Pref.blockServer;
+  static String blockServer = Pref.blockServer;
 
   static String getCookies(List<Cookie> cookies) {
     // Sort cookies by path (longer path first).
@@ -45,7 +44,7 @@ class AccountManager extends Interceptor {
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final path = options.path;
 
-    late final Account account = options.extra['account'] ?? _findAccount(path);
+    final account = bindRequestAccount(options);
 
     if (account is NoAccount || _skipCookie(path)) return handler.next(options);
 
@@ -186,10 +185,11 @@ class AccountManager extends Interceptor {
     }
   }
 
-  Future<void> _saveCookies(Response response) async {
-    final Account account =
-        response.requestOptions.extra['account'] ??
-        _findAccount(response.requestOptions.path);
+  static Future<void> _saveCookies(Response response) async {
+    final account = boundRequestAccount(response.requestOptions);
+    if (account == null || account is NoAccount) {
+      return;
+    }
     final setCookies = response.headers[HttpHeaders.setCookieHeader];
     if (setCookies == null || setCookies.isEmpty) {
       return;
@@ -221,13 +221,13 @@ class AccountManager extends Interceptor {
     await account.onChange();
   }
 
-  bool _skipCookie(String path) {
+  static bool _skipCookie(String path) {
     return path.startsWith(blockServer) ||
         path.contains('hdslb.com') ||
         path.contains('biliimg.com');
   }
 
-  Account _findAccount(String path) => ApiType.loginApi.contains(path)
+  static Account _findAccount(String path) => ApiType.loginApi.contains(path)
       ? AnonymousAccount()
       : Accounts.get(
           AccountType.values.firstWhere(
@@ -235,6 +235,21 @@ class AccountManager extends Interceptor {
             orElse: () => AccountType.main,
           ),
         );
+
+  static Account bindRequestAccount(RequestOptions options) {
+    final explicitAccount = options.extra['account'];
+    if (explicitAccount is Account) {
+      return explicitAccount;
+    }
+    final resolvedAccount = _findAccount(options.path);
+    options.extra['account'] = resolvedAccount;
+    return resolvedAccount;
+  }
+
+  static Account? boundRequestAccount(RequestOptions options) {
+    final account = options.extra['account'];
+    return account is Account ? account : null;
+  }
 
   static Future<String> dioError(DioException error) async {
     switch (error.type) {
