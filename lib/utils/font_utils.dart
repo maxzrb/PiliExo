@@ -41,12 +41,12 @@ abstract final class FontUtils {
 
   static AppFont _initAppFont() {
     final String? appFont = GStorage.setting.get(SettingBoxKey.appFont);
-    if (_isCutsomFont(appFont)) {
+    if (appFont case final fontFamily? when _isCutsomFont(fontFamily)) {
       if (!fontFile.existsSync()) {
-        _migrateLegacyFont(appFont);
+        _migrateLegacyFont(fontFamily);
       }
       if (fontFile.existsSync()) {
-        return (fontFamily: appFont, isCustom: true);
+        return (fontFamily: fontFamily, isCustom: true);
       } else {
         GStorage.setting.delete(SettingBoxKey.appFont);
         return const (fontFamily: null, isCustom: false);

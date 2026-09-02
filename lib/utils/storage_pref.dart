@@ -634,16 +634,22 @@ abstract final class Pref {
       if (valV1 == -1) {
         return .normal;
       } else {
-        _setting.put(SettingBoxKey.appFontWeightV2, valV1);
-        return .values[valV1];
+        final fontWeight = _fontWeightFromIndex(valV1);
+        _setting.put(
+          SettingBoxKey.appFontWeightV2,
+          FontWeight.values.indexOf(fontWeight),
+        );
+        return fontWeight;
       }
     }
 
     final int? val = _setting.get(SettingBoxKey.appFontWeightV2);
-    if (val == null) {
-      return .normal;
-    }
-    return .values[val];
+    return _fontWeightFromIndex(val ?? FontWeight.normal.index);
+  }
+
+  static FontWeight _fontWeightFromIndex(int index) {
+    final safeIndex = index.clamp(0, FontWeight.values.length - 1);
+    return FontWeight.values[safeIndex];
   }
 
   static bool get enableDragSubtitle =>
