@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-02 14:53 (+08:00)
+- 更新时间：2026-09-02 15:11 (+08:00)
 - 工作分支：`main`
-- 分析基线：463dbd419（已合入并适配 PiliPlus `828de30e9`、`66d1f7d62`；当前准备发布 `v26.9.2.1`）
-- 发布提交：ec91663ca97ca1c34900c90c6d5b6ec0df0d2363（已发布 `v26.9.1.1`）；`v26.9.2.1` 发布提交待创建
-- 当前工作：已从 `origin/main` 拉取 PiliExo 并在本机建立 Android 开发环境；因旧正式密钥缺失已生成新的本地 release 密钥；已修复播放器洞察带宽估计被零值清空的问题；已 fetch PiliPlus 上游并选择性合入 9 个经审查的提交；已安全适配并合入字体字重 v2 与发布/评论面板改进；正在按发布流程准备 `v26.9.2.1`，并为旧签名升级路径加入卸载重装警告。
-- 当前验证：Flutter 全量测试 57/57、Flutter Analyze 无 error（51 条既有 info）、`git diff --check` 均通过；双 ABI Release 构建尚未开始，未连接 Android 真机。新证书 SHA-256 为 `B9:6D:CD:DF:19:E4:46:C3:91:C2:50:02:AC:1D:30:98:FB:FA:D0:24:8E:BE:6F:7A:23:84:B4:F6:7D:BB:8F:51`。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，并选择性接入音频均衡、账户一致性/WBI、弹幕并发、关注排序、字体字重 v2（含本地迁移适配）和发布/评论面板焦点优化，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `C:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.1.1`，候选应用版本为 `26.9.2+1`，候选 Android `versionCode=14`。
+- 分析基线：9036dab1f（`v26.9.2.1` 发布提交，已合入并适配 PiliPlus `828de30e9`、`66d1f7d62`）
+- 发布提交：9036dab1f8127f9475e46d24a3087af2e99ca10b（已发布 `v26.9.2.1`）
+- 当前工作：已从 `origin/main` 拉取 PiliExo 并在本机建立 Android 开发环境；因旧正式密钥缺失已生成新的本地 release 密钥；已修复播放器洞察带宽估计被零值清空的问题；已 fetch PiliPlus 上游并选择性合入 9 个经审查的提交；已安全适配并合入字体字重 v2 与发布/评论面板改进；已按发布流程完成 `v26.9.2.1`，并为旧签名升级路径加入卸载重装警告。
+- 当前验证：Flutter 全量测试 57/57、Flutter Analyze 无 error（51 条既有 info）、`git diff --check`、双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名校验均通过；GitHub Release 和 ModelScope 双源资产均已回读校验，未连接 Android 真机。新证书 SHA-256 为 `B9:6D:CD:DF:19:E4:46:C3:91:C2:50:02:AC:1D:30:98:FB:FA:D0:24:8E:BE:6F:7A:23:84:B4:F6:7D:BB:8F:51`。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，并选择性接入音频均衡、账户一致性/WBI、弹幕并发、关注排序、字体字重 v2（含本地迁移适配）和发布/评论面板焦点优化，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `C:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.2.1`，应用版本为 `26.9.2+1`，Android `versionCode=14`。
 
 ## 已完成
 
@@ -714,3 +714,12 @@
 - 发布面板改动保持为上游原 10 个 UI 文件，统一了主题初始化、FocusNode 生命周期、键盘/表情/更多面板切换及回调签名；未把字体代码混入发布面板提交。中间 amend 过程已修正，另留 `backup/after-font-publish-amend-20260902` 作为回退参考。
 - 最终工作区验证通过：Flutter 全量测试 52/52，Analyze 无 error（51 条既有 info），`git diff --check` 通过；stash 已安全恢复并删除。本轮未重新构建 APK，既有 Gradle HTTPS 依赖下载无响应问题仍需在网络正常时重试；未连接 Android 真机。
 - 当前 `main` 比 `origin/main` 超前 13 个提交，工作区保留 4 个未提交文件（带宽修复/测试及两份记录）；未改版本号、未自动 commit/push。下一步应真机回归自定义字体迁移/字重滑块、动态发布、评论回复、弹幕输入和私信输入的键盘与面板切换。
+
+## 2026-09-02 15:11
+
+- 发布准备、版本递增和签名迁移提示已提交为 `9036dab1f8127f9475e46d24a3087af2e99ca10b`，并推送 `main` 与 annotated tag `v26.9.2.1`；发布前回退分支为 `backup/pre-release-v26.9.2.1-20260902`。
+- 变更文件包括 `pubspec.yaml`、`android/version.properties`、`lib/utils/update.dart`、更新提示测试、播放器洞察带宽修复/测试、Release notes、版本记录和发布流程；密钥文件未进入提交。
+- 发布命令使用用户范围 Microsoft OpenJDK 17.0.10.7、Flutter 3.47.2、`lib/scripts/build.ps1` 和本地正式签名；`pili_release.json` 的版本/Android code/提交哈希为 26.9.2/14/9036dab1f，完全对应发布提交。
+- 双 ABI APK 已通过 aapt2 包名/版本/ABI/FFmpeg 检查和 apksigner V2 校验；GitHub Release 资产 digest、ModelScope HEAD 长度和 ETag 均与本地 SHA-256 一致。Flutter 全量测试 57/57、Analyze 无 error（51 条既有 info）、`git diff --check` 通过。
+- 持久风险：新签名不能覆盖旧签名版本，应用更新弹窗和 Release notes 已明确要求备份、卸载旧版后重新安装；未完成 Android 真机交互回归。后续继续保管 `android/piliexo-release.jks`、`android/key.properties` 和密码，避免再次遗失。
+- Git 状态：发布 tag 指向 `9036dab1f`，`origin/main` 已同步；本条收尾记录将在发布提交之后单独提交并推送，发布 APK 的构建元数据保持不变。
