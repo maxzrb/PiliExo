@@ -45,18 +45,24 @@ void main() {
     expect(reads, 1);
   });
 
-  test('无效值不会覆盖已有估计，零值会直接清除当前估计', () {
+  test('无效值和零值不会覆盖已有估计', () {
     var value = '3000000';
     final sampler = MpvBandwidthSampler((_) => value);
 
     expect(sampler.sample(isPlaying: true, nowMs: 0), 24000000);
     value = '0';
-    expect(sampler.sample(isPlaying: true, nowMs: 1000), 0);
+    expect(sampler.sample(isPlaying: true, nowMs: 1000), 24000000);
     value = 'not-a-number';
-    expect(sampler.sample(isPlaying: true, nowMs: 2000), 0);
+    expect(sampler.sample(isPlaying: true, nowMs: 2000), 24000000);
 
     value = 'not-a-number';
-    expect(sampler.sample(isPlaying: true, nowMs: 3000), 0);
+    expect(sampler.sample(isPlaying: true, nowMs: 3000), 24000000);
+  });
+
+  test('首次只有零值时仍保持未测量状态', () {
+    final sampler = MpvBandwidthSampler((_) => '0');
+
+    expect(sampler.sample(isPlaying: true, nowMs: 0), isNull);
   });
 
   test('切换媒体后清空历史样本', () {

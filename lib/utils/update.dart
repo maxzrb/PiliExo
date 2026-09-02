@@ -50,6 +50,27 @@ String updateDownloadSourceLabel(String url) {
   return '备用下载源';
 }
 
+// 新密钥首次发布时，旧签名版本必须卸载后重新安装；后续版本沿用新密钥即可覆盖更新。
+const updateSigningKeyMigrationTag = 'v26.9.2.1';
+const updateSigningKeyMigrationNotice =
+    '重要：因更换 Android 签名密钥，本版本无法覆盖更新旧版，也无法直接覆盖安装。请先备份应用数据，卸载旧版后再安装；卸载可能清除本地数据。安装本版本后，后续同签名版本可直接覆盖更新。';
+
+String? updateSigningKeyMigrationNoticeFor({
+  required String currentTag,
+  required String latestTag,
+}) {
+  final current = ReleaseVersion.tryParse(currentTag);
+  final latest = ReleaseVersion.tryParse(latestTag);
+  final migration = ReleaseVersion.tryParse(updateSigningKeyMigrationTag);
+  if (current == null || latest == null || migration == null) {
+    return null;
+  }
+  if (current.compareTo(migration) < 0 && latest.compareTo(migration) >= 0) {
+    return updateSigningKeyMigrationNotice;
+  }
+  return null;
+}
+
 abstract final class Update {
   static const _androidUpdateChannel = MethodChannel(
     'com.maxzrb.piliexo/update',
@@ -597,10 +618,24 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = ColorScheme.of(context);
+    final signingKeyNotice = updateSigningKeyMigrationNoticeFor(
+      currentTag: ReleaseVersion.current?.tag ?? '',
+      latestTag: widget.tag,
+    );
     return AlertDialog(
-      title: Text(_isDownloading ? '正在下载更新' : '🎉 发现新版本'),
+      title: Text(
+        _isDownloading
+            ? '正在下载更新'
+            : signingKeyNotice == null
+            ? '🎉 发现新版本'
+            : '⚠️ 发现新版本（无法覆盖更新）',
+      ),
       content: SizedBox(
-        height: _isDownloading ? 320 : 280,
+        height: _isDownloading
+            ? 320
+            : signingKeyNotice == null
+            ? 280
+            : 350,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -609,6 +644,36 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (signingKeyNotice != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: colorScheme.onErrorContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                signingKeyNotice,
+                                style: TextStyle(
+                                  color: colorScheme.onErrorContainer,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     Text(widget.tag, style: const TextStyle(fontSize: 20)),
                     const SizedBox(height: 8),
                     Text('${widget.data['body'] ?? '暂无更新说明'}'),

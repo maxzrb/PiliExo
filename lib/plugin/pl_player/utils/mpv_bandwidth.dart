@@ -1,6 +1,7 @@
 /// 两种播放器共用的带宽估计刷新器。
 ///
-/// 输入和输出都使用比特/秒；不做跨样本平滑，只限制读取/展示节奏，并保留最近值。
+/// 输入和输出都使用比特/秒；不做跨样本平滑，只限制读取/展示节奏，并保留最近有效值。
+/// 播放器返回 0 时表示当前窗口没有可用传输数据，不应覆盖上一条有效估计。
 class BandwidthEstimateSampler {
   static const sampleIntervalMs = 1000;
 
@@ -23,7 +24,7 @@ class BandwidthEstimateSampler {
     _lastSampleAtMs = timestamp;
 
     bitsPerSecond ??= readBitsPerSecond?.call();
-    if (bitsPerSecond != null && bitsPerSecond >= 0 && bitsPerSecond.isFinite) {
+    if (bitsPerSecond != null && bitsPerSecond > 0 && bitsPerSecond.isFinite) {
       _lastBitsPerSecond = bitsPerSecond;
     }
     return _lastBitsPerSecond;
@@ -55,7 +56,7 @@ class MpvBandwidthSampler {
       readBitsPerSecond: () {
         try {
           final value = num.tryParse(_readProperty(_property).trim());
-          if (value != null && value >= 0 && value.isFinite) {
+          if (value != null && value > 0 && value.isFinite) {
             return value * 8;
           }
         } catch (_) {
