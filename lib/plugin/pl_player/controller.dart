@@ -33,7 +33,7 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
-import 'package:PiliPlus/plugin/pl_player/utils/mpv_bandwidth.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/media_bitrate.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
@@ -88,9 +88,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     const PlaybackInsightSnapshot(),
   );
   PlaybackTelemetry _playbackTelemetry = const PlaybackTelemetry();
-  MpvBandwidthSampler? _mpvBandwidthSampler;
-  final _media3BandwidthSampler = BandwidthEstimateSampler();
-  num? _latestMedia3BandwidthBitsPerSecond;
+  num? _media3VideoBitrateBitsPerSecond;
+  num? _media3AudioBitrateBitsPerSecond;
+  num? _media3MediaBitrateBitsPerSecond;
+  MpvMediaBitrateSampler? _mpvMediaBitrateSampler;
   Timer? _bandwidthRefreshTimer;
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
@@ -158,10 +159,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   void _resetPlaybackInsight() {
     _stopBandwidthRefresh();
     _playbackTelemetry = const PlaybackTelemetry();
-    _mpvBandwidthSampler?.reset();
-    _mpvBandwidthSampler = null;
-    _media3BandwidthSampler.reset();
-    _latestMedia3BandwidthBitsPerSecond = null;
+    _media3VideoBitrateBitsPerSecond = null;
+    _media3AudioBitrateBitsPerSecond = null;
+    _media3MediaBitrateBitsPerSecond = null;
+    _mpvMediaBitrateSampler?.reset();
+    _mpvMediaBitrateSampler = null;
     _notifyPlaybackInsight();
   }
 
@@ -190,6 +192,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
                 source.audioBitrate != null
             ? _formatBitrate(source.audioBitrate)
             : null,
+        bandwidthEstimate: _formatBitrate(_currentMediaBitrate()),
         cdnHost: _playbackTelemetry.cdnHost.isEmpty
             ? _mediaHost(source.videoSource)
             : null,
@@ -258,7 +261,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
           : _formatBitrate(dataSource.audioBitrate),
       cdnHost: _mediaHost(dataSource.videoSource),
       cdnUri: dataSource.videoSource,
-      bandwidthEstimate: _playbackTelemetry.bandwidthEstimate,
+      bandwidthEstimate: _formatBitrate(_currentMediaBitrate()),
       playerState: state.buffering
           ? '缓冲中'
           : state.playing
@@ -278,11 +281,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     );
   }
 
-  /// 两种播放器统一通过此定时器刷新带宽；其它洞察字段仍可随播放器事件即时更新。
+  /// 播放期间定期刷新媒体消耗带宽；优先使用当前媒体缓存窗口的实际消耗。
   void _startBandwidthRefresh() {
     if (_bandwidthRefreshTimer != null) return;
     _bandwidthRefreshTimer = Timer.periodic(
-      const Duration(milliseconds: BandwidthEstimateSampler.sampleIntervalMs),
+      const Duration(seconds: 1),
       (_) => _refreshBandwidthEstimate(),
     );
     _refreshBandwidthEstimate();
@@ -295,26 +298,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _refreshBandwidthEstimate() {
     if (_bandwidthRefreshTimer == null) return;
-
-    if (_hdrMedia3Controller case final hdr?) {
-      final estimate = _media3BandwidthSampler.sample(
-        bitsPerSecond: _latestMedia3BandwidthBitsPerSecond,
-        isPlaying: hdr.playWhenReady,
-      );
-      _playbackTelemetry = _playbackTelemetry.copyWith(
-        bandwidthEstimate: _formatBitrate(estimate),
-      );
-      _notifyPlaybackInsight();
-      return;
-    }
-
-    final player = _videoPlayerController;
-    if (player == null) return;
-    final estimate = (_mpvBandwidthSampler ??= MpvBandwidthSampler(
-      player.getProperty,
-    )).sample(isPlaying: true);
     _playbackTelemetry = _playbackTelemetry.copyWith(
-      bandwidthEstimate: _formatBitrate(estimate),
+      bandwidthEstimate: _formatBitrate(_currentMediaBitrate()),
     );
     _notifyPlaybackInsight();
   }
@@ -327,13 +312,52 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       width > 0 && height > 0 ? '$width×$height' : '';
 
   static String _formatBitrate(num? bitrate) {
-    if (bitrate == null || bitrate <= 0) {
+    if (bitrate == null || bitrate <= 0 || !bitrate.isFinite) {
       return '';
     }
     if (bitrate >= 1000000) {
       return '${(bitrate / 1000000).toStringAsFixed(2)} Mbps';
     }
     return '${(bitrate / 1000).toStringAsFixed(0)} kbps';
+  }
+
+  num? _currentMediaBitrate() {
+    if (_hdrMedia3Controller != null) {
+      final measured = _validBitrate(_media3MediaBitrateBitsPerSecond);
+      if (measured != null) return measured;
+      return MediaBitrate.sum(
+        _validBitrate(_media3VideoBitrateBitsPerSecond) ??
+            _validBitrate(dataSource.videoBitrate),
+        _validBitrate(_media3AudioBitrateBitsPerSecond) ??
+            _validBitrate(dataSource.audioBitrate),
+      );
+    }
+
+    final player = _videoPlayerController;
+    if (player == null) {
+      return MediaBitrate.sum(
+        dataSource.videoBitrate,
+        dataSource.audioBitrate,
+      );
+    }
+    final state = player.state;
+    final fallback = MediaBitrate.sum(
+      _validBitrate(state.track.video.bitrate) ??
+          _validBitrate(dataSource.videoBitrate),
+      _validBitrate(state.track.audio.bitrate) ??
+          _validBitrate(dataSource.audioBitrate),
+    );
+    return (_mpvMediaBitrateSampler ??= MpvMediaBitrateSampler(
+      player.getProperty,
+    )).sample(
+      isPlaying: state.playing,
+      fallbackBitsPerSecond: fallback,
+    );
+  }
+
+  static num? _validBitrate(num? bitrate) {
+    if (bitrate == null || bitrate <= 0 || !bitrate.isFinite) return null;
+    return bitrate;
   }
 
   static String _formatFrameRate(num? frameRate, {String fallback = ''}) {
@@ -1405,9 +1429,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (!identical(controller, _hdrMedia3Controller)) return;
     switch (event.type) {
       case 'loading':
-        _media3BandwidthSampler.reset();
-        _latestMedia3BandwidthBitsPerSecond = null;
         final source = dataSource;
+        _media3MediaBitrateBitsPerSecond = null;
+        _media3VideoBitrateBitsPerSecond = _validBitrate(
+          event.value<num>('representationBitrate'),
+        );
+        _media3AudioBitrateBitsPerSecond = _validBitrate(
+          source.audioBitrate,
+        );
         final qualityCode = event.value<num>('qualityCode')?.toInt();
         final representationWidth =
             event.value<num>('representationWidth')?.toInt() ?? 0;
@@ -1436,7 +1465,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
           audioCodecString: event.value<String>('audioCodecs'),
           cdnUri: source.videoSource,
           cdnHost: _mediaHost(source.videoSource),
-          bandwidthEstimate: '',
+          bandwidthEstimate: _formatBitrate(_currentMediaBitrate()),
           playerState: '缓冲中',
           lastEvent: '正在加载媒体',
         );
@@ -1484,10 +1513,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         if (durationInMilliseconds > 0) {
           buffered.value = (bufferedMs ~/ 1000).clamp(0, duration.value);
         }
-        final bandwidth = event.value<num>('bandwidthEstimate');
-        if (bandwidth != null && bandwidth > 0) {
-          _latestMedia3BandwidthBitsPerSecond = bandwidth;
-        }
+        _media3MediaBitrateBitsPerSecond =
+            _validBitrate(event.value<num>('mediaBitrateEstimate')) ??
+            _media3MediaBitrateBitsPerSecond;
         final uri = event.value<String>('cdnUri');
         _playbackTelemetry = _playbackTelemetry.copyWith(
           droppedFrames: event.value<num>('droppedFrames')?.toInt(),
@@ -1515,6 +1543,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         break;
       case 'inputFormat':
         if (event.value<String>('track') == 'audio') {
+          _media3AudioBitrateBitsPerSecond =
+              _validBitrate(event.value<num>('bitrate')) ??
+              _media3AudioBitrateBitsPerSecond;
           final bitrate = _formatBitrate(event.value<num>('bitrate'));
           _playbackTelemetry = _playbackTelemetry.copyWith(
             audioCodec: event.value<String>('codec'),
@@ -1533,6 +1564,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
             lastEvent: '已确认音频格式',
           );
         } else {
+          _media3VideoBitrateBitsPerSecond =
+              _validBitrate(event.value<num>('bitrate')) ??
+              _media3VideoBitrateBitsPerSecond;
           final bitrate = _formatBitrate(event.value<num>('bitrate'));
           final frameRate = _formatFrameRate(event.value<num>('frameRate'));
           final videoWidth = event.value<num>('width')?.toInt() ?? 0;
@@ -1608,12 +1642,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         );
         break;
       case 'bandwidthEstimate':
-        _latestMedia3BandwidthBitsPerSecond = event.value<num>(
-          'bitrateEstimate',
-        );
-        _playbackTelemetry = _playbackTelemetry.copyWith(
-          lastEvent: '带宽估计已更新',
-        );
+        // 原生事件是网络下载吞吐，只用于播放器内部诊断，不作为媒体消耗带宽展示。
         break;
       case 'decoderCounters':
         _playbackTelemetry = _playbackTelemetry.copyWith(
@@ -1623,6 +1652,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         );
         break;
       case 'representationFallback':
+        _media3MediaBitrateBitsPerSecond = null;
+        _media3VideoBitrateBitsPerSecond = _validBitrate(
+          event.value<num>('representationBitrate'),
+        );
         final history = _parseFallbackHistory(event.data['fallbackHistory']);
         final representationWidth =
             event.value<num>('representationWidth')?.toInt() ?? 0;
@@ -1861,6 +1894,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
       return;
     }
+
+    _mpvMediaBitrateSampler?.reset();
 
     Future<void> seek() async {
       if (isSeek) {

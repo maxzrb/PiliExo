@@ -723,3 +723,10 @@
 - 双 ABI APK 已通过 aapt2 包名/版本/ABI/FFmpeg 检查和 apksigner V2 校验；GitHub Release 资产 digest、ModelScope HEAD 长度和 ETag 均与本地 SHA-256 一致。Flutter 全量测试 57/57、Analyze 无 error（51 条既有 info）、`git diff --check` 通过。
 - 持久风险：新签名不能覆盖旧签名版本，应用更新弹窗和 Release notes 已明确要求备份、卸载旧版后重新安装；未完成 Android 真机交互回归。后续继续保管 `android/piliexo-release.jks`、`android/key.properties` 和密码，避免再次遗失。
 - Git 状态：发布 tag 指向 `9036dab1f`，`origin/main` 已同步；本条收尾记录将在发布提交之后单独提交并推送，发布 APK 的构建元数据保持不变。
+
+## 2026-09-02 22:24
+
+- 按用户对 VBR 实时变化的要求，播放器洞察不再把 `cache-speed` 或 Media3 原生下载吞吐当作“带宽估计”展示；概览标签改为“媒体消耗带宽”。
+- 普通 mpv 路径使用当前 `demuxer-cache-state/fw-bytes` 与 `cache-duration` 的媒体缓存窗口估算码率；Media3 路径统计实际媒体数据读取字节，并按缓冲媒体时长增量计算短窗口媒体消耗码率；视频/音频轨道标称码率之和只作为动态数据尚未形成时的回退值。
+- 新增 Dart 与 Kotlin 回归测试，覆盖轨道码率求和、mpv 缓存窗口变化、Media3 媒体字节/缓冲时长计算和 seek 基线重置。Flutter 全量测试 54/54、Analyze 无 error（51 条既有 info）；`app:compileReleaseKotlin` 离线编译成功。
+- Android debug 单测因本机未缓存 Flutter `armeabi_v7a_debug`/`arm64_v8a_debug` 依赖而无法离线解析；在线任务因 Google Maven 下载长时间无响应中止，未发现源码编译错误。未改版本号、未发布 Release、未连接 Android 真机。

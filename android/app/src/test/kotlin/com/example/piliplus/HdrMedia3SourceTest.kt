@@ -135,6 +135,37 @@ class HdrMedia3SourceTest {
     }
 
     @Test
+    fun mediaBufferBitrateUsesMediaBytesAndBufferedDuration() {
+        val estimator = MediaBufferBitrateEstimator()
+
+        assertEquals(-1L, estimator.sample(totalBytes = 1000L, bufferedPositionMs = 1000L))
+        assertEquals(
+            800000L,
+            estimator.sample(totalBytes = 101000L, bufferedPositionMs = 2000L),
+        )
+        assertEquals(
+            2400000L,
+            estimator.sample(totalBytes = 401000L, bufferedPositionMs = 3000L),
+        )
+    }
+
+    @Test
+    fun mediaBufferBitrateDiscardsPendingBytesWhenBufferMovesBackwards() {
+        val estimator = MediaBufferBitrateEstimator()
+
+        estimator.sample(totalBytes = 1000L, bufferedPositionMs = 5000L)
+        estimator.sample(totalBytes = 101000L, bufferedPositionMs = 6000L)
+        assertEquals(
+            800000L,
+            estimator.sample(totalBytes = 2000L, bufferedPositionMs = 1000L),
+        )
+        assertEquals(
+            800000L,
+            estimator.sample(totalBytes = 102000L, bufferedPositionMs = 2000L),
+        )
+    }
+
+    @Test
     fun gatedBandwidthMeterForwardsOnlyOnePlayingTransferSample() {
         var enabled = true
         val delegate = RecordingBandwidthMeter()

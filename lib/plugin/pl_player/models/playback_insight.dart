@@ -159,7 +159,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     PlaybackInsightRow('音频码率', audioBitrate),
     PlaybackInsightRow('CDN / Host', cdnHost),
     PlaybackInsightRow('前向缓冲', _formatMilliseconds(forwardBufferMs)),
-    PlaybackInsightRow('带宽估计', bandwidthEstimate),
+    PlaybackInsightRow('媒体消耗带宽', bandwidthEstimate),
   ]);
 
   List<PlaybackInsightRow> get videoRows => _rows([

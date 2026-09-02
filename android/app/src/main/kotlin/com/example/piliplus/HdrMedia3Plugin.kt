@@ -61,6 +61,7 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicLong
 
 /** Android 原生 HDR 播放器的 Flutter 桥接层。 */
 @UnstableApi
@@ -366,6 +367,56 @@ internal class BandwidthSamplingGate {
     }
 }
 
+/** 根据媒体缓存窗口的实际字节数和时长计算媒体内容码率。 */
+internal class MediaBufferBitrateEstimator {
+    private var previousBytes = -1L
+    private var previousBufferedPositionMs = Long.MIN_VALUE
+    private var pendingBytes = 0L
+    private var lastEstimate = -1L
+
+    fun sample(totalBytes: Long, bufferedPositionMs: Long): Long {
+        if (totalBytes < 0L || bufferedPositionMs < 0L ||
+            bufferedPositionMs >= Long.MAX_VALUE / 2
+        ) {
+            return lastEstimate
+        }
+
+        if (previousBytes < 0L || previousBufferedPositionMs == Long.MIN_VALUE) {
+            previousBytes = totalBytes
+            previousBufferedPositionMs = bufferedPositionMs
+            return lastEstimate
+        }
+
+        if (totalBytes < previousBytes ||
+            bufferedPositionMs < previousBufferedPositionMs
+        ) {
+            // 发生 seek、切换媒体或重新建立 Range 请求时重新建立基线。
+            previousBytes = totalBytes
+            previousBufferedPositionMs = bufferedPositionMs
+            pendingBytes = 0L
+            return lastEstimate
+        }
+
+        pendingBytes += totalBytes - previousBytes
+        val durationDeltaMs = bufferedPositionMs - previousBufferedPositionMs
+        previousBytes = totalBytes
+        previousBufferedPositionMs = bufferedPositionMs
+        if (durationDeltaMs < 250L || pendingBytes <= 0L) return lastEstimate
+
+        val estimate = (pendingBytes.toDouble() * 8_000.0 / durationDeltaMs).toLong()
+        pendingBytes = 0L
+        if (estimate > 0L) lastEstimate = estimate
+        return lastEstimate
+    }
+
+    fun reset() {
+        previousBytes = -1L
+        previousBufferedPositionMs = Long.MIN_VALUE
+        pendingBytes = 0L
+        lastEstimate = -1L
+    }
+}
+
 /**
  * 将播放状态门控放在 Media3 注入的唯一 TransferListener 上，避免同一传输被重复统计。
  *
@@ -588,6 +639,8 @@ private class HdrMedia3Session(
         .build()
     private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
     private val bandwidthSamplingGate = BandwidthSamplingGate()
+    private val mediaBytesRead = AtomicLong(0L)
+    private val mediaBufferBitrateEstimator = MediaBufferBitrateEstimator()
     private val gatedBandwidthMeter = GatedBandwidthMeter(
         delegate = bandwidthMeter,
         isSamplingEnabled = { bandwidthSamplingGate.enabled },
@@ -772,6 +825,8 @@ private class HdrMedia3Session(
             fallbackState.reset(representations.firstOrNull()?.id)
             fallbackHistory.clear()
             resetDiagnostics()
+        } else {
+            resetMediaConsumptionStats()
         }
         source = newSource
         errorSent = false
@@ -822,6 +877,7 @@ private class HdrMedia3Session(
 
     fun seekTo(positionMs: Long) {
         if (!released) {
+            resetMediaConsumptionStats()
             player.seekTo(positionMs.coerceAtLeast(0L))
             emitProgress()
         }
@@ -897,7 +953,11 @@ private class HdrMedia3Session(
             .setDefaultRequestProperties(source.headers)
         val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
         val fallbackFactory = DataSource.Factory {
-            MultiUriDataSource(defaultFactory, candidateMap)
+            MultiUriDataSource(defaultFactory, candidateMap) { bytes ->
+                // 媒体窗口统计包含暂停期间已经缓存的内容；它与只统计播放时段的
+                // 网络吞吐 meter 是两套独立指标。
+                mediaBytesRead.addAndGet(bytes)
+            }
         }
         val videoItemBuilder = MediaItem.Builder()
             .setMediaId("$sessionId-video-${representation.id}")
@@ -960,6 +1020,7 @@ private class HdrMedia3Session(
         currentCdnUri = ""
         lastLoadTrackType = C.TRACK_TYPE_UNKNOWN
         bandwidthEstimate = -1L
+        resetMediaConsumptionStats()
         cumulativeDroppedFrames = 0
         droppedFrameSamples.clear()
     }
@@ -1211,6 +1272,7 @@ private class HdrMedia3Session(
         )
         lastVideoFormat = null
         lastVideoCodecError = ""
+        resetMediaConsumptionStats()
         player.setMediaSource(
             buildMediaSource(activeSource, plan.representation),
             plan.positionMs,
@@ -1288,13 +1350,17 @@ private class HdrMedia3Session(
 
     private fun emitProgress() {
         bandwidthSamplingGate.setPlayWhenReady(shouldSampleBandwidth())
+        val bufferedPositionMs = player.bufferedPosition
+        val mediaBitrateEstimate = mediaBufferBitrateEstimator.sample(
+            totalBytes = mediaBytesRead.get(),
+            bufferedPositionMs = bufferedPositionMs,
+        )
         if (bandwidthSamplingGate.enabled) {
             bandwidthMeter.getBitrateEstimate()
                 .takeIf { it > 0L }
                 ?.let { bandwidthEstimate = it }
         }
         val positionMs = player.currentPosition
-        val bufferedPositionMs = player.bufferedPosition
         val durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
         emitEvent(
             "position",
@@ -1302,6 +1368,7 @@ private class HdrMedia3Session(
                 "positionMs" to positionMs,
                 "bufferedPositionMs" to bufferedPositionMs,
                 "durationMs" to durationMs,
+                "mediaBitrateEstimate" to mediaBitrateEstimate,
                 "bandwidthEstimate" to bandwidthEstimate,
                 "cdnUri" to currentCdnUri,
                 "droppedFrames" to cumulativeDroppedFrames,
@@ -1316,6 +1383,11 @@ private class HdrMedia3Session(
         emit(linkedMapOf<String, Any?>("sessionId" to sessionId, "type" to type).apply {
             putAll(data)
         })
+    }
+
+    private fun resetMediaConsumptionStats() {
+        mediaBytesRead.set(0L)
+        mediaBufferBitrateEstimator.reset()
     }
 
     private fun fail(
@@ -1614,6 +1686,7 @@ private class HdrMedia3Session(
 internal class MultiUriDataSource(
     private val factory: DataSource.Factory,
     private val candidateMap: Map<String, List<Uri>>,
+    private val onBytesRead: (Long) -> Unit = {},
 ) : DataSource {
     private val listeners = CopyOnWriteArrayList<androidx.media3.datasource.TransferListener>()
     private var current: DataSource? = null
@@ -1668,7 +1741,10 @@ internal class MultiUriDataSource(
             val delegate = current ?: throw IOException("DataSource 尚未打开")
             try {
                 val count = delegate.read(buffer, offset, length)
-                if (count > 0) bytesRead += count
+                if (count > 0) {
+                    bytesRead += count
+                    onBytesRead(count.toLong())
+                }
                 return count
             } catch (error: IOException) {
                 try {
