@@ -644,7 +644,9 @@ abstract final class Pref {
     }
 
     final int? val = _setting.get(SettingBoxKey.appFontWeightV2);
-    return _fontWeightFromIndex(val ?? FontWeight.normal.index);
+    return _fontWeightFromIndex(
+      val ?? FontWeight.values.indexOf(FontWeight.normal),
+    );
   }
 
   static FontWeight _fontWeightFromIndex(int index) {
