@@ -203,7 +203,7 @@ class _WhisperDetailPageState
             onTap: () => _whisperDetailController.sendMsg(
               message: '${item.msgKey}',
               onClearText: editController.clear,
-              msgType: 5,
+              msgType: .EN_MSG_TYPE_DRAW_BACK,
               index: index,
             ),
             child: const Text('撤回', style: TextStyle(fontSize: 14)),
@@ -245,7 +245,7 @@ class _WhisperDetailPageState
                   _whisperDetailController.sendMsg(
                     message: '${item.msgKey}',
                     onClearText: editController.clear,
-                    msgType: 5,
+                    msgType: .EN_MSG_TYPE_DRAW_BACK,
                     index: index,
                   );
                 },
