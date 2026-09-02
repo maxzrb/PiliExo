@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-02 15:11 (+08:00)
+- 更新时间：2026-09-02 22:57 (+08:00)
 - 工作分支：`main`
-- 分析基线：9036dab1f（`v26.9.2.1` 发布提交，已合入并适配 PiliPlus `828de30e9`、`66d1f7d62`）
-- 发布提交：9036dab1f8127f9475e46d24a3087af2e99ca10b（已发布 `v26.9.2.1`）
-- 当前工作：已从 `origin/main` 拉取 PiliExo 并在本机建立 Android 开发环境；因旧正式密钥缺失已生成新的本地 release 密钥；已修复播放器洞察带宽估计被零值清空的问题；已 fetch PiliPlus 上游并选择性合入 9 个经审查的提交；已安全适配并合入字体字重 v2 与发布/评论面板改进；已按发布流程完成 `v26.9.2.1`，并为旧签名升级路径加入卸载重装警告。
-- 当前验证：Flutter 全量测试 57/57、Flutter Analyze 无 error（51 条既有 info）、`git diff --check`、双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名校验均通过；GitHub Release 和 ModelScope 双源资产均已回读校验，未连接 Android 真机。新证书 SHA-256 为 `B9:6D:CD:DF:19:E4:46:C3:91:C2:50:02:AC:1D:30:98:FB:FA:D0:24:8E:BE:6F:7A:23:84:B4:F6:7D:BB:8F:51`。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，并选择性接入音频均衡、账户一致性/WBI、弹幕并发、关注排序、字体字重 v2（含本地迁移适配）和发布/评论面板焦点优化，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `C:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.2.1`，应用版本为 `26.9.2+1`，Android `versionCode=14`。
+- 分析基线：76f38372a（`v26.9.2.2` 发布提交，已合入并适配 PiliPlus `828de30e9`、`66d1f7d62`）
+- 发布提交：76f38372a9b925ab742b2b307305cff926c935bd（已发布 `v26.9.2.2`）
+- 当前工作：已从 `origin/main` 拉取 PiliExo 并在本机建立 Android 开发环境；因旧正式密钥缺失已生成新的本地 release 密钥；播放器洞察已改用短窗口实际媒体消耗码率；已安全合并和适配 PiliPlus 改动；已按发布流程完成 `v26.9.2.2`，并保留旧签名版本的卸载重装警告。
+- 当前验证：Flutter 全量测试 54/54、Flutter Analyze 无 error（51 条既有 info）、`git diff --check`、双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名校验均通过；GitHub Release 和 ModelScope 双源资产均已回读校验，未连接 Android 真机。新证书 SHA-256 为 `B9:6D:CD:DF:19:E4:46:C3:91:C2:50:02:AC:1D:30:98:FB:FA:D0:24:8E:BE:6F:7A:23:84:B4:F6:7D:BB:8F:51`。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，并选择性接入音频均衡、账户一致性/WBI、弹幕并发、关注排序、字体字重 v2（含本地迁移适配）和发布/评论面板焦点优化，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `C:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.2.2`，应用版本为 `26.9.2+2`，Android `versionCode=15`。
 
 ## 已完成
 
@@ -730,3 +730,14 @@
 - 普通 mpv 路径使用当前 `demuxer-cache-state/fw-bytes` 与 `cache-duration` 的媒体缓存窗口估算码率；Media3 路径统计实际媒体数据读取字节，并按缓冲媒体时长增量计算短窗口媒体消耗码率；视频/音频轨道标称码率之和只作为动态数据尚未形成时的回退值。
 - 新增 Dart 与 Kotlin 回归测试，覆盖轨道码率求和、mpv 缓存窗口变化、Media3 媒体字节/缓冲时长计算和 seek 基线重置。Flutter 全量测试 54/54、Analyze 无 error（51 条既有 info）；`app:compileReleaseKotlin` 离线编译成功。
 - Android debug 单测因本机未缓存 Flutter `armeabi_v7a_debug`/`arm64_v8a_debug` 依赖而无法离线解析；在线任务因 Google Maven 下载长时间无响应中止，未发现源码编译错误。未改版本号、未发布 Release、未连接 Android 真机。
+
+## 2026-09-02 22:57
+
+- 按发布流程完成 `v26.9.2.2`，发布提交为 `76f38372a9b925ab742b2b307305cff926c935bd`；`main`、annotated tag `v26.9.2.2` 和 GitHub Release 均已同步。
+- 应用版本为 `26.9.2+2`，Android 全局 `versionCode=15`；`pili_release.json` 生成值为 `pili.name=26.9.2`、`pili.releaseBuild=2`、`pili.code=15`，提交哈希与发布提交一致。
+- 正式产物保留在 `dist/release/v26.9.2.2/`：arm64-v8a `31,671,998` bytes / SHA-256 `7342998a1ce374eab15e48c8e55544dfba0e31808cd125b10ffe00b5132071c0`；armeabi-v7a `31,548,912` bytes / SHA-256 `832bb381338af4ad4b3c84fc6bdd78c901786f9c15573b1f504f2f625112b51f`。
+- 两包均核验包名 `com.maxzrb.piliexo`、`versionName=26.9.2`、`versionCode=15`、唯一目标 ABI、`libffmpegJNI.so` 和 apksigner V2 正式签名；签名证书为新 JKS 的 SHA-256 `B9:6D:CD:DF:19:E4:46:C3:91:C2:50:02:AC:1D:30:98:FB:FA:D0:24:8E:BE:6F:7A:23:84:B4:F6:7D:BB:8F:51`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.2.2>；两个 APK digest 与本地 SHA-256 一致，`SHA256SUMS.txt` 已上传，Release 为非 draft、非 prerelease。
+- ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.2.2/`；两个固定 APK 地址均 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地哈希一致。
+- 发布前 Flutter 3.47.2 工具链校验、`pub get --offline`、Flutter 全量测试 54/54、Analyze 无 error（51 条既有 info）和 `git diff --check` 均通过；`pub get` 首次在线尝试因依赖下载长时间无输出中止，补齐锁定版 `fl_chart-1.2.0` 缓存后离线解析成功。未连接 Android 真机，暂缺真实播放回归。
+- Git 状态：`main` 与 `origin/main` 已同步；tag `v26.9.2.2` 指向发布提交。`android/piliexo-release.jks`、`android/key.properties`、`dist/`、`pili_release.json` 继续保持 Git 忽略，需将密钥和密码上传至网盘私人空间或加密备份。
