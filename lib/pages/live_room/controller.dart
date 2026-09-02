@@ -32,6 +32,7 @@ import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/danmaku_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
+import 'package:PiliPlus/utils/extension/rx_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -161,7 +162,7 @@ class LiveRoomController extends GetxController {
       final endIndex = messages.length - _kMaxChatCount;
       final canTrim = (chatSimpleIndex - endIndex) > _kSafeTrimIndex;
       if (canTrim) {
-        messages.fillRange(_trimDmIndex, endIndex);
+        messages.fillRangeOnly(_trimDmIndex, endIndex);
         _trimDmIndex = endIndex;
       }
     }
