@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-04 21:11 (+08:00)
+- 更新时间：2026-09-04 21:46 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：6f2685183（已从 `origin/main` 快进到 `ca83dc868`，并同步检查 `upstream/main` `3e6ac82e0`）
-- 发布提交：76f38372a9b925ab742b2b307305cff926c935bd（已发布 `v26.9.2.2`）
-- 当前工作：已将项目内 Android 签名配置迁移为用户提供的新密钥，`android/key.properties` 与 `android/piliexo-release.jks` 均保持 Git 忽略；已修复默认/移动数据画质按列表顺序降级的问题；已按依赖顺序安全合入 PiliPlus 后续功能和修复，并保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力。
-- 当前验证：Flutter 全量测试 59/59；`flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；`flutter pub get --offline`、`git diff --check` 和 Android `:app:signingReport` 均通过。签名报告的 release/debug/profile 变体均使用项目内 JKS；本轮未改版本号、未构建/发布新 APK、未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.2.2`，应用版本为 `26.9.2+2`，Android `versionCode=15`。
+- 分析基线：bbf12d5ee（发布提交；已从 `origin/main` 快进并同步检查 `upstream/main` `3e6ac82e0`）
+- 发布提交：bbf12d5eeb78dfa1f2e7eb71448ae233e5e44a08（已发布 `v26.9.4.1`）
+- 当前工作：已将项目内 Android 签名配置迁移为用户提供的新密钥，`android/key.properties` 与 `android/piliexo-release.jks` 均保持 Git 忽略；已修复默认/移动数据画质按列表顺序降级的问题；已按依赖顺序安全合入 PiliPlus 后续功能和修复，并将兼容的 `material_ui` 固定为 `1.1.0`。
+- 当前验证：Flutter 3.47.2 全量测试 59/59；`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条既有 info）；Android 原生单测、双 ABI Release 构建、aapt2 包元数据/ABI/FFmpeg 校验、apksigner V2 正式签名、`git diff --check` 和 GitHub/ModelScope 资产哈希回读均通过。未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.4.1`，应用版本为 `26.9.4+1`，Android `versionCode=16`。
 
 ## 已完成
 
@@ -741,3 +741,13 @@
 - ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.2.2/`；两个固定 APK 地址均 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地哈希一致。
 - 发布前 Flutter 3.47.2 工具链校验、`pub get --offline`、Flutter 全量测试 54/54、Analyze 无 error（51 条既有 info）和 `git diff --check` 均通过；`pub get` 首次在线尝试因依赖下载长时间无输出中止，补齐锁定版 `fl_chart-1.2.0` 缓存后离线解析成功。未连接 Android 真机，暂缺真实播放回归。
 - Git 状态：`main` 与 `origin/main` 已同步；tag `v26.9.2.2` 指向发布提交。`android/piliexo-release.jks`、`android/key.properties`、`dist/`、`pili_release.json` 继续保持 Git 忽略，需将密钥和密码上传至网盘私人空间或加密备份。
+
+## 2026-09-04 21:46
+
+- 按发布流程将当前上游同步、画质选择修复和 `material_ui 1.1.0` 兼容固定发布为 `v26.9.4.1`；应用版本为 `26.9.4+1`，Android 全局 `versionCode=16`。
+- 发布提交 `bbf12d5eeb78dfa1f2e7eb71448ae233e5e44a08` 已推送至 `maxzrb/PiliExo` 的 `main`；annotated tag `v26.9.4.1` 已创建并推送，tag 解引用指向该发布提交。
+- 发布前验证通过：Flutter 3.47.2 工具链、`flutter pub get`、Flutter 全量测试 59/59、全量 Analyze 无 error（55 条既有 info）、Android 原生单测、双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名和 `git diff --check`。
+- 正式 APK 保存在 `dist/release/v26.9.4.1/`：arm64-v8a `31,692,091` bytes / SHA-256 `f08d23e3d7a491c4d366312183dd14f21a5d87b36e3968383f32d22ac5aa2d36`；armeabi-v7a `31,577,055` bytes / SHA-256 `0a25090691ef1798ac43104d7eb20001929df69c15508192d2543d7526a830d3`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.4.1>；两个 APK 与 `SHA256SUMS.txt` 均为 uploaded，GitHub digest 与本地 SHA-256 一致，Release 为正式版。
+- ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.4.1/`；两个固定 APK 地址均 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地产物哈希一致。
+- 本轮未连接 Android 真机；`android/piliexo-release.jks`、`android/key.properties`、`dist/` 和 `pili_release.json` 继续保持 Git 忽略；用户未跟踪目录 `tmp/` 保留不变，未纳入发布提交。
