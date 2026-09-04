@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-02 22:57 (+08:00)
-- 工作分支：`main`
-- 分析基线：76f38372a（`v26.9.2.2` 发布提交，已合入并适配 PiliPlus `828de30e9`、`66d1f7d62`）
+- 更新时间：2026-09-04 21:11 (+08:00)
+- 工作分支：`feature/android-media3-hdr`
+- 分析基线：9ec0b62ec（已从 `origin/main` 快进到 `ca83dc868`，并同步检查 `upstream/main` `3e6ac82e0`）
 - 发布提交：76f38372a9b925ab742b2b307305cff926c935bd（已发布 `v26.9.2.2`）
-- 当前工作：已从 `origin/main` 拉取 PiliExo 并在本机建立 Android 开发环境；因旧正式密钥缺失已生成新的本地 release 密钥；播放器洞察已改用短窗口实际媒体消耗码率；已安全合并和适配 PiliPlus 改动；已按发布流程完成 `v26.9.2.2`，并保留旧签名版本的卸载重装警告。
-- 当前验证：Flutter 全量测试 54/54、Flutter Analyze 无 error（51 条既有 info）、`git diff --check`、双 ABI Release 构建、aapt2 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名校验均通过；GitHub Release 和 ModelScope 双源资产均已回读校验，未连接 Android 真机。新证书 SHA-256 为 `B9:6D:CD:DF:19:E4:46:C3:91:C2:50:02:AC:1D:30:98:FB:FA:D0:24:8E:BE:6F:7A:23:84:B4:F6:7D:BB:8F:51`。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。已安全合并 PiliPlus 2.1.2.3，并选择性接入音频均衡、账户一致性/WBI、弹幕并发、关注排序、字体字重 v2（含本地迁移适配）和发布/评论面板焦点优化，保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力；Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `C:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.2.2`，应用版本为 `26.9.2+2`，Android `versionCode=15`。
+- 当前工作：已将项目内 Android 签名配置迁移为用户提供的新密钥，`android/key.properties` 与 `android/piliexo-release.jks` 均保持 Git 忽略；已修复默认/移动数据画质按列表顺序降级的问题；已按依赖顺序安全合入 PiliPlus 后续功能和修复，并保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力。
+- 当前验证：Flutter 全量测试 59/59；`flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；`flutter pub get --offline`、`git diff --check` 和 Android `:app:signingReport` 均通过。签名报告的 release/debug/profile 变体均使用项目内 JKS；本轮未改版本号、未构建/发布新 APK、未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`，Android SDK 固定在 `C:\Android\Sdk`；当前正式版本为 `v26.9.2.2`，应用版本为 `26.9.2+2`，Android `versionCode=15`。
 
 ## 已完成
 
