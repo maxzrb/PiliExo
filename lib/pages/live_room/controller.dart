@@ -156,6 +156,7 @@ class LiveRoomController extends GetxController {
 
   int chatSimpleIndex = 0;
   int _trimDmIndex = 0;
+  int get trimDmIndex => _trimDmIndex;
   void _trimDm() {
     final trimCount = messages.length - _trimDmIndex;
     if (trimCount > _kTrimCount) {

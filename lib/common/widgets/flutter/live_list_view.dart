@@ -38,26 +38,46 @@ class LiveListView extends ListView {
     super.restorationId,
     super.clipBehavior,
     super.hitTestBehavior,
+    this.initialIndex = 0,
   }) : super.separated();
+
+  final int initialIndex;
 
   @override
   Widget buildChildLayout(BuildContext context) {
-    return LiveSliverList(delegate: childrenDelegate);
+    return LiveSliverList(
+      delegate: childrenDelegate,
+      initialIndex: initialIndex,
+    );
   }
 }
 
 class LiveSliverList extends SliverList {
-  const LiveSliverList({super.key, required super.delegate});
+  const LiveSliverList({
+    super.key,
+    required super.delegate,
+    this.initialIndex = 0,
+  });
+
+  final int initialIndex;
 
   @override
   RenderSliverList createRenderObject(BuildContext context) {
     final element = context as SliverMultiBoxAdaptorElement;
-    return RenderLiveSliverList(childManager: element);
+    return RenderLiveSliverList(
+      childManager: element,
+      initialIndex: initialIndex,
+    );
   }
 }
 
 class RenderLiveSliverList extends RenderSliverList {
-  RenderLiveSliverList({required super.childManager});
+  RenderLiveSliverList({
+    required super.childManager,
+    this.initialIndex = 0,
+  });
+
+  final int initialIndex;
 
   @override
   void performLayout() {
@@ -78,7 +98,7 @@ class RenderLiveSliverList extends RenderSliverList {
     var reachedEnd = false;
 
     if (firstChild == null) {
-      if (!addInitialChild()) {
+      if (!addInitialChild(index: initialIndex)) {
         geometry = SliverGeometry.zero;
         childManager.didFinishLayout();
         return;
@@ -100,7 +120,7 @@ class RenderLiveSliverList extends RenderSliverList {
       collectGarbage(leadingChildrenWithoutLayoutOffset, 0);
 
       if (firstChild == null) {
-        if (!addInitialChild()) {
+        if (!addInitialChild(index: initialIndex)) {
           geometry = SliverGeometry.zero;
           childManager.didFinishLayout();
           return;
