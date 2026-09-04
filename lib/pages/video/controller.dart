@@ -58,7 +58,6 @@ import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/extension/nested_scroll_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
@@ -937,6 +936,29 @@ class VideoDetailController extends GetxController
 
   // 视频链接
   /// TODO: merge [DownloadHttp.getVideoUrl].
+  Future<LoadingState<PlayUrlModel>> _getVideoUrl(int quality) {
+    return VideoHttp.videoUrl(
+      cid: cid.value,
+      bvid: bvid,
+      qn: quality,
+      epid: epId,
+      seasonId: seasonId,
+      tryLook: plPlayerController.tryLook,
+      videoType: _actualVideoType ?? videoType,
+      language: currLang.value,
+      voiceBalance: plPlayerController.enableAudioNormalization,
+    );
+  }
+
+  Future<void> _supplementVideoQualities() async {
+    final quality = data.missingVideoQualityBelowHighest;
+    if (quality == -1) return;
+    final result = await _getVideoUrl(quality);
+    if (result case Success(:final response)) {
+      data.dash?.video?.merge(response.dash?.video);
+    }
+  }
+
   Future<void> queryVideoUrl({
     bool fromReset = false,
     bool autoFullScreenFlag = false,
@@ -963,19 +985,12 @@ class VideoDetailController extends GetxController
       preferCodecs = isWiFi ? Pref.preferCodecs : Pref.preferCodecsCellular;
     }
 
-    final result = await VideoHttp.videoUrl(
-      cid: cid.value,
-      bvid: bvid,
-      epid: epId,
-      seasonId: seasonId,
-      tryLook: plPlayerController.tryLook,
-      videoType: _actualVideoType ?? videoType,
-      language: currLang.value,
-      voiceBalance: plPlayerController.enableAudioNormalization,
-    );
+    // 用 HDR Vivid 请求完整的高画质集合，再根据用户偏好选择实际轨道。
+    final result = await _getVideoUrl(VideoQuality.hdrVivid.code);
 
     if (result case Success(:final response)) {
       data = response;
+      await _supplementVideoQualities();
 
       languages.value = data.language?.items;
       currLang.value = data.curLanguage;
@@ -1050,19 +1065,8 @@ class VideoDetailController extends GetxController
 
       final List<VideoItem> videoList = data.dash!.video!;
       // if (kDebugMode) debugPrint("allVideosList:${allVideosList}");
-      // 当前可播放的最高质量视频
-      final curHighestVideoQa = videoList.first.quality.code;
-      // 预设的画质为null，则当前可用的最高质量
-      int targetVideoQa = curHighestVideoQa;
       final cacheVideoQa = plPlayerController.cacheVideoQa!;
-      if (data.acceptQuality?.isNotEmpty == true &&
-          cacheVideoQa <= curHighestVideoQa) {
-        // 如果预设的画质低于当前最高
-        targetVideoQa = data.acceptQuality!.findClosestTarget(
-          (e) => e <= cacheVideoQa,
-          (a, b) => a > b ? a : b,
-        );
-      }
+      final targetVideoQa = data.findAvailableVideoQuality(cacheVideoQa);
       currentVideoQa.value = VideoQuality.fromCode(targetVideoQa);
 
       /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式

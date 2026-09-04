@@ -58,6 +58,56 @@ class PlayUrlModel {
   Language? language;
   List<SegmentItemModel>? clipInfoList;
 
+  /// 按设置页的画质顺序选择不高于用户偏好的可用画质。
+  ///
+  /// 画质码并非展示顺序（例如 8K=127、HDR Vivid=129），不能直接比较数值。
+  int findAvailableVideoQuality(int preferredQuality) {
+    final videos = dash?.video;
+    if (videos == null || videos.isEmpty) return preferredQuality;
+
+    final available = videos.availableVideoQualities;
+    const qualities = VideoQuality.values;
+    final preferredIndex = qualities.indexWhere(
+      (item) => item.code == preferredQuality,
+    );
+
+    if (preferredIndex >= 0) {
+      for (var index = preferredIndex; index < qualities.length; index++) {
+        final code = qualities[index].code;
+        if (available.contains(code)) return code;
+      }
+    }
+
+    // 偏好画质没有对应的更低画质时，退回当前可用列表中的最高画质，保证可播放。
+    for (final item in qualities) {
+      if (available.contains(item.code)) return item.code;
+    }
+    return videos.first.quality.code;
+  }
+
+  /// 找出最高画质以下、接口尚未返回的一个画质，用于补拉缺失的低画质流。
+  int get missingVideoQualityBelowHighest {
+    final videos = dash?.video;
+    final formats = supportFormats;
+    if (videos == null || videos.isEmpty || formats == null) return -1;
+
+    final available = videos.availableVideoQualities;
+    final highest = videos
+        .map((item) => item.id ?? item.quality.code)
+        .reduce((a, b) => a > b ? a : b);
+    var best = -1;
+    for (final item in formats) {
+      final quality = item.quality;
+      if (quality != null &&
+          quality < highest &&
+          quality > best &&
+          !available.contains(quality)) {
+        best = quality;
+      }
+    }
+    return best;
+  }
+
   PlayUrlModel.fromJson(Map<String, dynamic> json) {
     from = json['from'];
     result = json['result'];
@@ -309,6 +359,20 @@ class AudioItem extends BaseItem {
   AudioItem.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     quality = AudioQuality.fromCode(json['id']).desc;
   }
+}
+
+extension BaseItemExt<T extends BaseItem> on List<T> {
+  /// 合并不同画质请求返回的轨道，避免相同画质和编码重复加入。
+  void merge(List<T>? other) {
+    if (other == null) return;
+    final keys = {for (final item in this) (item.id, item.codecid)};
+    for (final item in other) {
+      if (keys.add((item.id, item.codecid))) add(item);
+    }
+  }
+
+  Set<int> get availableVideoQualities =>
+      map((item) => item.id).whereType<int>().toSet();
 }
 
 class FormatItem {

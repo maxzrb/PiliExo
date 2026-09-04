@@ -8,7 +8,6 @@ import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
 import 'package:PiliPlus/models_new/download/bili_download_media_file_info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
-import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:collection/collection.dart';
@@ -42,17 +41,10 @@ abstract final class DownloadHttp {
       final dash = response.dash;
       if (dash != null) {
         final videoList = dash.video!;
-        final curHighestVideoQa = videoList.first.quality.code;
         final preferVideoQa = entry.preferedVideoQuality;
-        int targetVideoQa = curHighestVideoQa;
-        if (response.acceptQuality?.isNotEmpty == true &&
-            preferVideoQa <= curHighestVideoQa) {
-          // 如果预设的画质低于当前最高
-          targetVideoQa = response.acceptQuality!.findClosestTarget(
-            (e) => e <= preferVideoQa,
-            (a, b) => a > b ? a : b,
-          );
-        }
+        final targetVideoQa = response.findAvailableVideoQuality(
+          preferVideoQa,
+        );
 
         /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
         final supportFormats = response.supportFormats!;
