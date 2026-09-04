@@ -2,7 +2,7 @@
 
 - 更新时间：2026-09-04 21:11 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：9ec0b62ec（已从 `origin/main` 快进到 `ca83dc868`，并同步检查 `upstream/main` `3e6ac82e0`）
+- 分析基线：6f2685183（已从 `origin/main` 快进到 `ca83dc868`，并同步检查 `upstream/main` `3e6ac82e0`）
 - 发布提交：76f38372a9b925ab742b2b307305cff926c935bd（已发布 `v26.9.2.2`）
 - 当前工作：已将项目内 Android 签名配置迁移为用户提供的新密钥，`android/key.properties` 与 `android/piliexo-release.jks` 均保持 Git 忽略；已修复默认/移动数据画质按列表顺序降级的问题；已按依赖顺序安全合入 PiliPlus 后续功能和修复，并保留 PiliExo 的 HDR/Media3、播放器洞察、推荐和更新等定制能力。
 - 当前验证：Flutter 全量测试 59/59；`flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；`flutter pub get --offline`、`git diff --check` 和 Android `:app:signingReport` 均通过。签名报告的 release/debug/profile 变体均使用项目内 JKS；本轮未改版本号、未构建/发布新 APK、未连接 Android 真机。
