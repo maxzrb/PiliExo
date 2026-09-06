@@ -814,3 +814,8 @@
 - ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.6.1/`；两份 APK 和清单均 HTTP 200，远端 Content-Length 与 `X-Linked-ETag` 与本地产物一致。
 - 上游等价/本地适配提交排除映射已随发布提交持久化在本文件顶部；本轮只安全同步 `edf0bf2038`、`3c07a28d02`，后续不再重复合并已记录的原提交。
 - 构建期间 Java 无法直接下载 media-kit GitHub 资产，已通过 HTTPS 下载并按插件声明 MD5 放入生成缓存后完成构建；该缓存不属于仓库源文件。未连接 Android 真机；`android/piliexo-release.jks`、`android/key.properties`、`dist/` 和 `pili_release.json` 继续保持 Git 忽略，`tmp/` 保留不变。
+
+## 2026-09-06 17:29
+
+- 根据用户约定，将本次发布说明中的自定义 `[流程]` 标签改为已有的 `[修改]`；历史版本记录中的旧 `[流程]` 不改写。
+- 后续发布要点继续使用已有标签；如需要新增标签，先征询用户意见。
