@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-06 17:06 (+08:00)
+- 更新时间：2026-09-06 17:24 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`be0794152`（已安全同步 PiliPlus 后续修复和依赖锁文件；发布准备基线）
-- 发布状态：准备发布 `v26.9.6.1`，应用版本将更新为 `26.9.6+1`，Android `versionCode` 将更新为 `17`。
+- 分析基线：`409205974`（`v26.9.6.1` 发布提交；已推送 `origin/main`）
+- 发布状态：`v26.9.6.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.6+1`，Android `versionCode=17`。
 - 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；已完成上游选择性同步并建立持久化排除清单。
-- 当前验证：Flutter 全量测试串行通过 60/60；`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条 info）；目标 Dart HDR 路由测试 3/3、画质选择测试 5/5、播放洞察测试 5/5、媒体码率测试 4/4、账户测试 2/2 均通过。Android 冷缓存编译目前受 Windows Flutter 插件 symlink 支持未启用影响，尚待恢复插件链接后重新构建；未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.4.1`，本次目标版本为 `v26.9.6.1`。
+- 当前验证：Flutter 全量测试串行通过 60/60；`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条 info）；目标 Dart HDR 路由测试 3/3、画质选择测试 5/5、播放洞察测试 5/5、媒体码率测试 4/4、账户测试 2/2 均通过。双 ABI Release 构建、aapt 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名、GitHub/ModelScope 资产长度和哈希校验均通过；未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.6.1`，应用版本为 `26.9.6+1`，Android `versionCode=17`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -804,3 +804,13 @@
 - 新增 Dart 画面模式映射测试和 Android Media3 resize mode 映射测试；最终定向测试 3/3、Analyze 无 error（55 条 info），Android `:app:compileDebugKotlin` 通过，`git diff --check` 通过。
 - 全量 Flutter 测试曾在主修复版本通过 60/60；最后同步细节后的冷缓存重跑受 Flutter `test_cache` 同名目标文件冲突影响，未据此判定源码失败。`flutter clean` 后 `pub get` 能生成依赖索引但返回 Windows symlink 支持提示；Android 单测重跑因 media-kit GitHub 依赖证书 `PKIX path building failed` 未完成。
 - 未改版本号、未提交/推送、未连接 Android 真机；建议在真机上验证 HDR/SDR 互切、暂停状态保持、当前位置续播及“拉伸/裁剪/等宽/等高/自动”五个选项。首次 `git pull` 因当前分支无 tracking，显式从 `origin/main` 拉取又因 `.git/FETCH_HEAD` 权限被拒绝，未强行修改 Git 元数据。
+
+## 2026-09-06 17:24
+
+- 按发布流程完成 `v26.9.6.1`：应用版本 `26.9.6+1`，Android 全局 `versionCode=17`；发布提交 `409205974dd350fa6f1e9b57352a7cb1b273a470` 已推送到 `maxzrb/PiliExo/main`，annotated tag 已推送并指向该提交。
+- 发布前验证通过：Flutter 3.47.2、全量 Flutter 测试 60/60、Analyze 无 error（55 条 info）、双 ABI Release 构建、aapt 包名/版本/ABI/FFmpeg 校验、apksigner V2 正式签名和 `git diff --check`。
+- 正式 APK：arm64-v8a `31,739,500` bytes，SHA-256 `64cc11c317bfc1ef441ad308118a47db03a41967efeeb1014678050ab31ca3b4`；armeabi-v7a `31,622,272` bytes，SHA-256 `d72f49bf8e290867036455373143ec6b203018d19c9d734dc130eb4b389c38c0`；清单位于 `dist/release/v26.9.6.1/SHA256SUMS.txt`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.6.1>；两份 APK 与 `SHA256SUMS.txt` 均为 uploaded，GitHub digest 与本地 SHA-256 一致。
+- ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.6.1/`；两份 APK 和清单均 HTTP 200，远端 Content-Length 与 `X-Linked-ETag` 与本地产物一致。
+- 上游等价/本地适配提交排除映射已随发布提交持久化在本文件顶部；本轮只安全同步 `edf0bf2038`、`3c07a28d02`，后续不再重复合并已记录的原提交。
+- 构建期间 Java 无法直接下载 media-kit GitHub 资产，已通过 HTTPS 下载并按插件声明 MD5 放入生成缓存后完成构建；该缓存不属于仓库源文件。未连接 Android 真机；`android/piliexo-release.jks`、`android/key.properties`、`dist/` 和 `pili_release.json` 继续保持 Git 忽略，`tmp/` 保留不变。
