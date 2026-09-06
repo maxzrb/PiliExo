@@ -100,10 +100,10 @@ void main() {
     expect(VideoFitType.contain.hdrResizeMode, 'fit');
   });
 
-  test('HDR 固定画幅模式保留 4:3 和 16:9 约束', () {
-    expect(VideoFitType.ratio_4x3.hdrResizeMode, 'fit');
+  test('HDR 固定画幅模式填充 4:3 和 16:9 视口', () {
+    expect(VideoFitType.ratio_4x3.hdrResizeMode, 'fill');
     expect(VideoFitType.ratio_4x3.aspectRatio, closeTo(4 / 3, 0.000001));
-    expect(VideoFitType.ratio_16x9.hdrResizeMode, 'fit');
+    expect(VideoFitType.ratio_16x9.hdrResizeMode, 'fill');
     expect(
       VideoFitType.ratio_16x9.aspectRatio,
       closeTo(16 / 9, 0.000001),
