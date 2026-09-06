@@ -1,12 +1,56 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-06 16:09 (+08:00)
+- 更新时间：2026-09-06 17:06 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：bbf12d5ee（发布提交；已从 `origin/main` 快进并同步检查 `upstream/main` `3e6ac82e0`）
-- 发布提交：bbf12d5eeb78dfa1f2e7eb71448ae233e5e44a08（已发布 `v26.9.4.1`）
-- 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；未改版本号或发布产物。
-- 当前验证：最终 Dart HDR 路由/画面模式定向测试 3/3、`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条 info）、Android `:app:compileDebugKotlin` 通过；原生 resize mode 映射单测在依赖可用时通过。全量 Flutter 测试在主修复阶段通过 60/60，后续冷缓存重跑遇 Flutter `test_cache` 目标文件冲突；清理后 Android 单测重跑因 media-kit GitHub 依赖证书 PKIX 失败未完成。未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.4.1`，应用版本为 `26.9.4+1`，Android `versionCode=16`。
+- 分析基线：`be0794152`（已安全同步 PiliPlus 后续修复和依赖锁文件；发布准备基线）
+- 发布状态：准备发布 `v26.9.6.1`，应用版本将更新为 `26.9.6+1`，Android `versionCode` 将更新为 `17`。
+- 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；已完成上游选择性同步并建立持久化排除清单。
+- 当前验证：Flutter 全量测试串行通过 60/60；`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条 info）；目标 Dart HDR 路由测试 3/3、画质选择测试 5/5、播放洞察测试 5/5、媒体码率测试 4/4、账户测试 2/2 均通过。Android 冷缓存编译目前受 Windows Flutter 插件 symlink 支持未启用影响，尚待恢复插件链接后重新构建；未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.4.1`，本次目标版本为 `v26.9.6.1`。
+
+## 上游同步持久化排除清单（2026-09-06）
+
+以下提交已经在当前分支存在等价提交或 PiliExo 本地适配版，后续默认不再合并对应上游原提交；映射用于后续审计和避免重复检查。
+
+| PiliPlus 上游提交 | 当前分支等价/适配提交 | 结论 |
+| --- | --- | --- |
+| `828de30e9e` | `51d744d16` | 不合并：字体字重迁移已有本地适配 |
+| `5f9aa9ecf8` | `9ec0b62ec` | 不合并：已有等价提交 |
+| `03dcaa746b` | `8eb143748` | 不合并：音频归一化已有本地适配 |
+| `4b91b40012` | `db50d3e7f` | 不合并：已有等价提交 |
+| `6d3541dcdc` | `df4ed3dc7` | 不合并：已有等价提交 |
+| `628031d4da` | `82d299232` | 不合并：已有等价提交 |
+| `adbf6f3f57` | `ae6c0fcc2` | 不合并：Provider authority 已在本地修复 |
+| `f3f59775f1` | `4cf6f35c2` | 不合并：已有等价提交 |
+| `95d299d302` | `fcbc0eb04` | 不合并：已有等价提交 |
+| `315068bbea` | `3d64900e3` | 不合并：已有等价提交 |
+| `c7458b1f3b` | `8ed0efe9a` | 不合并：已有等价提交 |
+| `66d1f7d627` | `9573e5dcc` | 不合并：已有等价提交 |
+| `adc9a4b94a` | `412fa733d` | 不合并：已有等价提交 |
+| `42b6d59335` | `1afaa2909` | 不合并：已有等价提交 |
+| `ea10b4559d` | `baca036cd` | 不合并：已有等价提交 |
+| `99bf57b640` | `e7e7f44fc` | 不合并：已有等价提交 |
+| `5a6f3feaea` | `7ac085960` | 不合并：已有等价提交 |
+| `05cfb595dd` | `52d998d4c` | 不合并：已有等价提交 |
+| `5c7cb99b68` | `f227938c4` | 不合并：关机倒计时已有本地适配 |
+| `294aa71611` | `820d081a7` | 不合并：画质选择已有更稳健的本地适配 |
+| `77dcc826cc` | `38ce113ba` | 不合并：已有等价提交 |
+| `25ec0faa7f` | `ccdc722f2` | 不合并：已有等价提交 |
+| `b181b6fe10` | `9d94979d4` | 不合并：已有等价提交 |
+| `8a282c85e2` | `54cb2c66e` | 不合并：依赖/JNI 已按 PiliExo 包名和工具链适配 |
+| `9cc3bb2c80` | `d0f3676ce` | 不合并：已有等价提交 |
+| `837ef862fe` | `729ef2933` | 不合并：已有等价提交 |
+| `4cc337b479` | `0c326a5af` | 不合并：已有等价提交 |
+| `3e6ac82e06` | `6209b1380` | 不合并：已有等价提交 |
+
+以下候选明确跳过并持久化原因：
+
+- `f0e92f2ba6`：仅关闭 `pull_request` CI 触发；当前 fork 保留该触发约定，不合并。
+- `4d66b7b638`：缺失画质修复已由本地 `820d081a7` 覆盖，当前空安全补拉逻辑更完整，不合并。
+- `75c83af892`：Linux WebView/Cookie 支持不属于当前 Android 发布范围，暂不合并。
+- `edf8c55e2e`：上游版本号 `2.1.3` 与 PiliExo 自定义 `vYY.M.D.N` 发布及全局 Android versionCode 规则冲突，不合并。
+
+本轮安全同步并已落地的上游提交：`edf0bf2038` → 本地 `4b8689ea7`，`3c07a28d02` → 本地 `be0794152`。
 
 ## 已完成
 
