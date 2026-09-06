@@ -136,7 +136,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       videoPlayerController?.state.playing ??
       false;
 
-  bool get playWhenReady => _hdrMedia3Controller?.playWhenReady ?? isPlaying;
+  /// 用户最后一次选择的播放意图。
+  ///
+  /// 后端在缓冲、切换 Surface 或重新打开媒体时可能暂时报告未出帧，
+  /// 不能用瞬时 `isPlaying` 代替这个状态，否则画质切换会误进入封面暂停态。
+  bool get playWhenReady => _playWhenReady;
 
   bool get isMedia3Hdr => _hdrMedia3Controller != null;
 
@@ -476,6 +480,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       Pref.continuePlayInBackground.obs;
 
   bool _autoPlay = false;
+  bool _playWhenReady = false;
 
   // 记录历史记录
   int? _aid;
@@ -1027,6 +1032,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       if (isPlaying) {
         await pause(notify: false);
       }
+      // pause() 会清除旧后端的意图；在新后端创建前恢复本次请求的目标状态。
+      _playWhenReady = autoplay;
 
       if (_playerCount == 0) {
         return;
@@ -1197,6 +1204,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     isBuffering.value = true;
     _heartDuration = 0;
     danmakuController?.clear();
+    _initVideoFit();
 
     // HDR 与 mpv 切换时，先释放 mpv 的 Surface，避免两个解码器同时占用硬件。
     if (_videoPlayerController != null) {
@@ -1213,6 +1221,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _hdrSubscription = controller.events.listen(
         (event) => _onHdrEvent(controller, event),
       );
+    }
+    final resizeMode = videoFit.value.hdrResizeMode;
+    if (controller.resizeMode != resizeMode) {
+      await controller.setResizeMode(resizeMode);
     }
     await controller.load(
       source,
@@ -1335,8 +1347,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     // 自动播放
     if (_autoPlay) {
-      playIfExists();
-      // await play(duration: duration);
+      // 直接启动当前后端，不能依赖页面层的全局回调，否则 HDR/SDR
+      // 切换期间回调可能仍指向旧页面或尚未重新挂载的播放器。
+      await play();
     }
   }
 
@@ -1380,6 +1393,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void _onCompleted() {
+    _playWhenReady = false;
     _stopBandwidthRefresh();
     playerStatus.value = .completed;
     for (final element in _statusListeners) {
@@ -1723,9 +1737,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (_hdrFallbackInProgress || dataSource is! HdrNetworkSource) return;
     _hdrFallbackInProgress = true;
     final hdrSource = dataSource as HdrNetworkSource;
-    final hdrController = _hdrMedia3Controller;
     final seekTo = currentPosition;
-    final autoplay = hdrController?.playWhenReady ?? playerStatus.isPlaying;
+    final autoplay = playWhenReady;
     final speed = playbackSpeed;
     final sourceDuration = currentDuration;
     final width = this.width;
@@ -1965,6 +1978,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   /// 播放视频
   Future<void> play({bool repeat = false, bool hideControls = true}) async {
     if (_playerCount == 0) return;
+    _playWhenReady = true;
     // 播放时自动隐藏控制条
     controls = !hideControls;
     // repeat为true，将从头播放
@@ -1988,6 +2002,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 暂停播放
   Future<void> pause({bool notify = true, bool isInterrupt = false}) async {
+    _playWhenReady = false;
     _stopBandwidthRefresh();
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.pause();
@@ -2064,6 +2079,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   void toggleVideoFit(VideoFitType value) {
     _prefFit = videoFit.value = value;
     video.put(VideoBoxKey.cacheVideoFit, value.index);
+    if (_hdrMedia3Controller case final hdr?) {
+      unawaited(hdr.setResizeMode(value.hdrResizeMode));
+    }
   }
 
   /// 读取fit

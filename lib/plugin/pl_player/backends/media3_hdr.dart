@@ -68,6 +68,7 @@ class HdrMedia3Controller {
   int _width = 0;
   int _height = 0;
   double _speed = 1.0;
+  String _resizeMode = 'fit';
 
   bool get isPlaying => _isPlaying;
   bool get playWhenReady => _playWhenReady;
@@ -80,6 +81,7 @@ class HdrMedia3Controller {
   int get width => _width;
   int get height => _height;
   double get speed => _speed;
+  String get resizeMode => _resizeMode;
   Stream<HdrMedia3Event> get events => _eventController.stream;
 
   Future<void> initialize() async {
@@ -132,6 +134,7 @@ class HdrMedia3Controller {
       if (duration != null) 'durationMs': duration.inMilliseconds,
       'startPositionMs': startPosition.inMilliseconds,
       'playWhenReady': playWhenReady,
+      'resizeMode': _resizeMode,
       if (subtitleVtt != null) 'subtitleVtt': subtitleVtt,
       if (subtitleLanguage != null) 'subtitleLanguage': subtitleLanguage,
       if (subtitleLabel != null) 'subtitleLabel': subtitleLabel,
@@ -164,8 +167,13 @@ class HdrMedia3Controller {
   Future<void> setVolume(double volume) =>
       _invoke('setVolume', {'volume': volume.clamp(0.0, 1.0)});
 
-  Future<void> setResizeMode(String mode) =>
-      _invoke('setResizeMode', {'mode': mode});
+  Future<void> setResizeMode(String mode) {
+    _resizeMode = switch (mode) {
+      'fill' || 'cover' || 'fitWidth' || 'fitHeight' => mode,
+      _ => 'fit',
+    };
+    return _invoke('setResizeMode', {'mode': _resizeMode});
+  }
 
   Future<void> hideSurface() async {
     if (!_created) return;

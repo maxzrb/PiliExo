@@ -21,4 +21,16 @@ enum VideoFitType {
     this.boxFit = BoxFit.contain,
     this.aspectRatio,
   });
+
+  /// Media3 原生播放器支持的画面模式名称。
+  ///
+  /// `none`、`scaleDown` 和固定比例模式是 Flutter FittedBox 的能力，
+  /// 原生 `PlayerView` 没有一一对应的 resize mode，因此退回等比例适配。
+  String get hdrResizeMode => switch (this) {
+    .fill => 'fill',
+    .cover => 'cover',
+    .fitWidth => 'fitWidth',
+    .fitHeight => 'fitHeight',
+    _ => 'fit',
+  };
 }

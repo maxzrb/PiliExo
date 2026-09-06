@@ -1,5 +1,6 @@
 import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
+import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -89,5 +90,13 @@ void main() {
     expect(source.videoSource, 'video-main');
     expect(source.audioSource, 'audio-main');
     expect(source.qualityCode, 129);
+  });
+
+  test('HDR 画面模式映射到 Media3 支持的 resize mode', () {
+    expect(VideoFitType.fill.hdrResizeMode, 'fill');
+    expect(VideoFitType.cover.hdrResizeMode, 'cover');
+    expect(VideoFitType.fitWidth.hdrResizeMode, 'fitWidth');
+    expect(VideoFitType.fitHeight.hdrResizeMode, 'fitHeight');
+    expect(VideoFitType.contain.hdrResizeMode, 'fit');
   });
 }

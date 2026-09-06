@@ -1,11 +1,11 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-04 21:46 (+08:00)
+- 更新时间：2026-09-06 16:09 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
 - 分析基线：bbf12d5ee（发布提交；已从 `origin/main` 快进并同步检查 `upstream/main` `3e6ac82e0`）
 - 发布提交：bbf12d5eeb78dfa1f2e7eb71448ae233e5e44a08（已发布 `v26.9.4.1`）
-- 当前工作：已将项目内 Android 签名配置迁移为用户提供的新密钥，`android/key.properties` 与 `android/piliexo-release.jks` 均保持 Git 忽略；已修复默认/移动数据画质按列表顺序降级的问题；已按依赖顺序安全合入 PiliPlus 后续功能和修复，并将兼容的 `material_ui` 固定为 `1.1.0`。
-- 当前验证：Flutter 3.47.2 全量测试 59/59；`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条既有 info）；Android 原生单测、双 ABI Release 构建、aapt2 包元数据/ABI/FFmpeg 校验、apksigner V2 正式签名、`git diff --check` 和 GitHub/ModelScope 资产哈希回读均通过。未连接 Android 真机。
+- 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；未改版本号或发布产物。
+- 当前验证：最终 Dart HDR 路由/画面模式定向测试 3/3、`flutter analyze --no-pub --no-fatal-infos` 无 error（55 条 info）、Android `:app:compileDebugKotlin` 通过；原生 resize mode 映射单测在依赖可用时通过。全量 Flutter 测试在主修复阶段通过 60/60，后续冷缓存重跑遇 Flutter `test_cache` 目标文件冲突；清理后 Android 单测重跑因 media-kit GitHub 依赖证书 PKIX 失败未完成。未连接 Android 真机。
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.4.1`，应用版本为 `26.9.4+1`，Android `versionCode=16`。
 
 ## 已完成
@@ -751,3 +751,12 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.4.1>；两个 APK 与 `SHA256SUMS.txt` 均为 uploaded，GitHub digest 与本地 SHA-256 一致，Release 为正式版。
 - ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.4.1/`；两个固定 APK 地址均 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地产物哈希一致。
 - 本轮未连接 Android 真机；`android/piliexo-release.jks`、`android/key.properties`、`dist/` 和 `pili_release.json` 继续保持 Git 忽略；用户未跟踪目录 `tmp/` 保留不变，未纳入发布提交。
+
+## 2026-09-06 16:09
+
+- 接手 `feature/android-media3-hdr` 分支并定位两个问题：HDR 只在 Flutter 侧做一次性 `setResizeMode`，原生 `PlayerView` 在挂载/首帧/视频尺寸变化后可能回到默认 `fit`；画质切换用瞬时 `isPlaying` 推导播放状态，缓冲或切换 Surface 时会误判为暂停。
+- Dart 端新增 `VideoFitType.hdrResizeMode` 映射；HDR 控制器保存并传递 resize mode，画面模式切换时立即同步原生端，HDR Session 在加载、挂载、首帧和视频尺寸变化后重复应用 `PlayerView.resizeMode`。
+- 播放控制器新增独立的 `_playWhenReady` 用户播放意图，在 `play`、`pause`、完成、换源和 HDR 回退时维护；新后端初始化完成后直接 `await play()`，HDR/非 HDR 切换保持当前位置并自动续播。
+- 新增 Dart 画面模式映射测试和 Android Media3 resize mode 映射测试；最终定向测试 3/3、Analyze 无 error（55 条 info），Android `:app:compileDebugKotlin` 通过，`git diff --check` 通过。
+- 全量 Flutter 测试曾在主修复版本通过 60/60；最后同步细节后的冷缓存重跑受 Flutter `test_cache` 同名目标文件冲突影响，未据此判定源码失败。`flutter clean` 后 `pub get` 能生成依赖索引但返回 Windows symlink 支持提示；Android 单测重跑因 media-kit GitHub 依赖证书 `PKIX path building failed` 未完成。
+- 未改版本号、未提交/推送、未连接 Android 真机；建议在真机上验证 HDR/SDR 互切、暂停状态保持、当前位置续播及“拉伸/裁剪/等宽/等高/自动”五个选项。首次 `git pull` 因当前分支无 tracking，显式从 `origin/main` 拉取又因 `.git/FETCH_HEAD` 权限被拒绝，未强行修改 Git 元数据。

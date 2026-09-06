@@ -8,6 +8,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.upstream.BandwidthMeter
+import androidx.media3.ui.AspectRatioFrameLayout
 import java.io.IOException
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -25,6 +26,21 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class HdrMedia3SourceTest {
+    @Test
+    fun mapsResizeModesToMedia3PlayerViewModes() {
+        assertEquals(AspectRatioFrameLayout.RESIZE_MODE_FILL, media3ResizeMode("fill"))
+        assertEquals(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, media3ResizeMode("cover"))
+        assertEquals(
+            AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH,
+            media3ResizeMode("fitWidth"),
+        )
+        assertEquals(
+            AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT,
+            media3ResizeMode("fitHeight"),
+        )
+        assertEquals(AspectRatioFrameLayout.RESIZE_MODE_FIT, media3ResizeMode("unknown"))
+    }
+
     @Test
     fun parsesTracksAndHeaders() {
         val source = HdrMedia3Source.from(

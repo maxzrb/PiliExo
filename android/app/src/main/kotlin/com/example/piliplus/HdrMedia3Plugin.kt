@@ -109,6 +109,7 @@ class HdrMedia3Plugin(
                         HdrMedia3Source.from(call.arguments),
                         call.argument<Number>("startPositionMs")?.toLong() ?: 0L,
                         call.argument<Boolean>("playWhenReady") ?: false,
+                        call.argument<String>("resizeMode") ?: "fit",
                     )
                     result.success(null)
                 }
@@ -297,6 +298,15 @@ internal data class HdrMedia3Representation(
     val qualityCode: Int,
     val track: HdrMedia3Track,
 )
+
+/** 将 Dart 画面模式转换为 Media3 PlayerView 的 resize mode。 */
+internal fun media3ResizeMode(mode: String): Int = when (mode) {
+    "fill" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+    "cover" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+    "fitWidth" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
+    "fitHeight" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT
+    else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+}
 
 /**
  * Media3 明确报告视频解码/格式错误后使用的候选状态。
@@ -715,8 +725,8 @@ private class HdrMedia3Session(
         playerView = view
         view.useController = false
         view.setKeepContentOnPlayerReset(true)
-        view.resizeMode = resizeMode
         view.player = player
+        applyResizeMode(view)
         view.alpha = 1f
         view.videoSurfaceView?.visibility = View.VISIBLE
         view.videoSurfaceView?.alpha = 1f
@@ -813,8 +823,14 @@ private class HdrMedia3Session(
         view.player = null
     }
 
-    fun load(newSource: HdrMedia3Source, startPositionMs: Long = 0L, playWhenReady: Boolean = false) {
+    fun load(
+        newSource: HdrMedia3Source,
+        startPositionMs: Long = 0L,
+        playWhenReady: Boolean = false,
+        requestedResizeMode: String? = null,
+    ) {
         check(!released) { "播放器已经释放" }
+        requestedResizeMode?.let(::setResizeMode)
         val fingerprint = fingerprintOf(newSource)
         if (fingerprint != sourceFingerprint) {
             sourceFingerprint = fingerprint
@@ -892,14 +908,26 @@ private class HdrMedia3Session(
     }
 
     fun setResizeMode(mode: String) {
-        resizeMode = when (mode) {
-            "fill" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-            "cover" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            "fitWidth" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
-            "fitHeight" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT
-            else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+        resizeMode = media3ResizeMode(mode)
+        applyResizeMode()
+    }
+
+    /**
+     * PlayerView 会在首帧和视频尺寸变化时重新测量内容层，重复设置模式并请求布局，
+     * 确保 SurfaceView 重新挂载或尺寸刚更新时不会回到 XML 的默认 fit。
+     */
+    private fun applyResizeMode(view: PlayerView? = playerView) {
+        view ?: return
+        view.resizeMode = resizeMode
+        view.requestLayout()
+    }
+
+    private fun scheduleResizeModeApply() {
+        val view = playerView ?: return
+        applyResizeMode(view)
+        view.post {
+            if (!released && playerView === view) applyResizeMode(view)
         }
-        playerView?.resizeMode = resizeMode
     }
 
     fun setSubtitle(vtt: String?, language: String?, label: String?) {
@@ -1432,6 +1460,7 @@ private class HdrMedia3Session(
         when (playbackState) {
             Player.STATE_BUFFERING -> emitEvent("buffering", mapOf("value" to true))
             Player.STATE_READY -> {
+                scheduleResizeModeApply()
                 emitEvent(
                     "ready",
                     mapOf(
@@ -1457,6 +1486,7 @@ private class HdrMedia3Session(
     }
 
     override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+        scheduleResizeModeApply()
         emitEvent(
             "videoSize",
             mapOf("width" to videoSize.width, "height" to videoSize.height),

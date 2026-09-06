@@ -2281,13 +2281,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           }
           if (!isHdr) _hdrResizeMode = null;
           if (isHdr && hdrController != null) {
-            final resizeMode = switch (videoFit) {
-              .fill => 'fill',
-              .cover => 'cover',
-              .fitWidth => 'fitWidth',
-              .fitHeight => 'fitHeight',
-              _ => 'fit',
-            };
+            final resizeMode = videoFit.hdrResizeMode;
             if (_hdrResizeMode != resizeMode) {
               _scheduleHdrResizeMode(hdrController, resizeMode);
             }
