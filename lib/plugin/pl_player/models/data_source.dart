@@ -138,6 +138,16 @@ abstract final class HdrPlaybackPolicy {
       supportedQualityCodes.contains(qualityCode);
 }
 
+/// 播放页是否可以挂载统一播放器视图的判断。
+abstract final class VideoOutputPolicy {
+  static bool shouldBuildPlayer({
+    required bool videoState,
+    required bool autoPlay,
+    required bool outputReady,
+    required bool isMedia3Hdr,
+  }) => videoState && autoPlay && (outputReady || isMedia3Hdr);
+}
+
 class FileSource extends DataSource {
   final String dir;
   final bool isMp4;

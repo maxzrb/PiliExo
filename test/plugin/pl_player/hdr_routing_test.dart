@@ -99,4 +99,44 @@ void main() {
     expect(VideoFitType.fitHeight.hdrResizeMode, 'fitHeight');
     expect(VideoFitType.contain.hdrResizeMode, 'fit');
   });
+
+  test('HDR 固定画幅模式保留 4:3 和 16:9 约束', () {
+    expect(VideoFitType.ratio_4x3.hdrResizeMode, 'fit');
+    expect(VideoFitType.ratio_4x3.aspectRatio, closeTo(4 / 3, 0.000001));
+    expect(VideoFitType.ratio_16x9.hdrResizeMode, 'fit');
+    expect(
+      VideoFitType.ratio_16x9.aspectRatio,
+      closeTo(16 / 9, 0.000001),
+    );
+  });
+
+  test('mpv 输出未就绪时不挂载播放器，HDR 输出可独立挂载', () {
+    expect(
+      VideoOutputPolicy.shouldBuildPlayer(
+        videoState: true,
+        autoPlay: true,
+        outputReady: false,
+        isMedia3Hdr: false,
+      ),
+      isFalse,
+    );
+    expect(
+      VideoOutputPolicy.shouldBuildPlayer(
+        videoState: true,
+        autoPlay: true,
+        outputReady: true,
+        isMedia3Hdr: false,
+      ),
+      isTrue,
+    );
+    expect(
+      VideoOutputPolicy.shouldBuildPlayer(
+        videoState: true,
+        autoPlay: true,
+        outputReady: false,
+        isMedia3Hdr: true,
+      ),
+      isTrue,
+    );
+  });
 }

@@ -48,6 +48,7 @@ import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/pages/video/widgets/intro_layout.dart';
 import 'package:PiliPlus/pages/video/widgets/player_focus.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
+import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
@@ -1220,41 +1221,48 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       onPopInvokedWithResult:
           videoDetailController.plPlayerController.onPopInvokedWithResult,
       child: Obx(
-        () =>
-            !videoDetailController.videoState.value ||
-                !videoDetailController.autoPlay ||
-                (plPlayerController?.videoController == null &&
-                    !(plPlayerController?.isMedia3Hdr ?? false))
-            ? const SizedBox.shrink()
-            : PLVideoPlayer(
-                maxWidth: width,
-                maxHeight: height,
-                plPlayerController: plPlayerController!,
-                videoDetailController: videoDetailController,
-                introController: introController,
-                headerControl: HeaderControl(
-                  key: videoDetailController.headerCtrKey,
-                  isPortrait: isPortrait,
-                  controller: videoDetailController.plPlayerController,
-                  videoDetailCtr: videoDetailController,
-                  heroTag: heroTag,
-                ),
-                danmuWidget: isPipMode && pipNoDanmaku
-                    ? null
-                    : Obx(
-                        () => PlDanmaku(
-                          key: ValueKey(videoDetailController.cid.value),
-                          isPipMode: isPipMode,
-                          cid: videoDetailController.cid.value,
-                          playerController: plPlayerController!,
-                          isFullScreen: plPlayerController!.isFullScreen.value,
-                          isFileSource: videoDetailController.isFileSource,
-                          size: Size(width, height),
+        () {
+          final controller = plPlayerController;
+          final isHdr = controller?.media3HdrActive.value ?? false;
+          final outputReady = controller?.videoOutputReady.value ?? false;
+          final shouldBuild = VideoOutputPolicy.shouldBuildPlayer(
+            videoState: videoDetailController.videoState.value,
+            autoPlay: videoDetailController.autoPlay,
+            outputReady: outputReady,
+            isMedia3Hdr: isHdr,
+          );
+          return !shouldBuild
+              ? const SizedBox.shrink()
+              : PLVideoPlayer(
+                  maxWidth: width,
+                  maxHeight: height,
+                  plPlayerController: controller!,
+                  videoDetailController: videoDetailController,
+                  introController: introController,
+                  headerControl: HeaderControl(
+                    key: videoDetailController.headerCtrKey,
+                    isPortrait: isPortrait,
+                    controller: videoDetailController.plPlayerController,
+                    videoDetailCtr: videoDetailController,
+                    heroTag: heroTag,
+                  ),
+                  danmuWidget: isPipMode && pipNoDanmaku
+                      ? null
+                      : Obx(
+                          () => PlDanmaku(
+                            key: ValueKey(videoDetailController.cid.value),
+                            isPipMode: isPipMode,
+                            cid: videoDetailController.cid.value,
+                            playerController: controller,
+                            isFullScreen: controller.isFullScreen.value,
+                            isFileSource: videoDetailController.isFileSource,
+                            size: Size(width, height),
+                          ),
                         ),
-                      ),
-                showEpisodes: showEpisodes,
-                showViewPoints: showViewPoints,
-              ),
+                  showEpisodes: showEpisodes,
+                  showViewPoints: showViewPoints,
+                );
+        },
       ),
     ),
   );

@@ -2286,8 +2286,51 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               _scheduleHdrResizeMode(hdrController, resizeMode);
             }
           }
+          final Widget videoChild;
+          if (isHdr) {
+            final Widget hdrView;
+            if (hdrController case final controller?) {
+              // 不与 mpv 的 RepaintBoundary 共用 GlobalKey，避免后端切换
+              // 时 Flutter 复用旧的纹理/PlatformView 元素。
+              hdrView = controller.buildView(
+                key: ValueKey(controller.sessionId),
+              );
+            } else {
+              hdrView = const SizedBox.shrink();
+            }
+            final ratio = videoFit.aspectRatio;
+            final constrainedView = ratio == null
+                ? hdrView
+                : Center(
+                    child: AspectRatio(
+                      aspectRatio: ratio,
+                      child: hdrView,
+                    ),
+                  );
+            videoChild = KeyedSubtree(
+              key: _videoKey,
+              child: constrainedView,
+            );
+          } else {
+            videoChild = RepaintBoundary(
+              key: _videoKey,
+              child: Transform.flip(
+                flipX: plPlayerController.flipX.value,
+                flipY: plPlayerController.flipY.value,
+                child: FittedBox(
+                  fit: videoFit.boxFit,
+                  alignment: widget.alignment,
+                  child: SimpleVideo(
+                    controller: plPlayerController.videoController!,
+                    fill: widget.fill,
+                    aspectRatio: videoFit.aspectRatio,
+                  ),
+                ),
+              ),
+            );
+          }
           return MouseInteractiveViewer(
-            // HDR 只保留原生适配、裁剪、拉伸和等宽/等高模式。
+            // HDR 由原生播放器处理适配，固定比例模式由 Flutter 外层约束。
             scaleEnabled: !isHdr && !plPlayerController.controlsLock.value,
             pointerSignalFallback: _onPointerSignal,
             onPointerPanZoomUpdate: _onPointerPanZoomUpdate,
@@ -2309,25 +2352,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             panAxis: .aligned,
             transformationController: _transformationController,
             childKey: _videoKey,
-            child: isHdr
-                ? (hdrController?.buildView(key: _videoKey) ??
-                      const SizedBox.shrink())
-                : RepaintBoundary(
-                    key: _videoKey,
-                    child: Transform.flip(
-                      flipX: plPlayerController.flipX.value,
-                      flipY: plPlayerController.flipY.value,
-                      child: FittedBox(
-                        fit: videoFit.boxFit,
-                        alignment: widget.alignment,
-                        child: SimpleVideo(
-                          controller: plPlayerController.videoController!,
-                          fill: widget.fill,
-                          aspectRatio: videoFit.aspectRatio,
-                        ),
-                      ),
-                    ),
-                  ),
+            child: videoChild,
           );
         },
       ),

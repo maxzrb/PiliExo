@@ -80,6 +80,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   StreamSubscription<HdrMedia3Event>? _hdrSubscription;
   final RxBool media3HdrActive = false.obs;
 
+  /// 播放页视频输出已经可以挂载；mpv 控制器创建完成后单独通知页面。
+  final RxBool videoOutputReady = false.obs;
+
   /// 播放页顶部系统状态栏使用的低分辨率视频环境帧。
   final ValueNotifier<ui.Image?> statusBarAmbientFrame = ValueNotifier(null);
 
@@ -1181,6 +1184,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       source is HdrNetworkSource;
 
   Future<void> _disposeHdrController() async {
+    videoOutputReady.value = false;
     final subscription = _hdrSubscription;
     _hdrSubscription = null;
     await subscription?.cancel();
@@ -1202,6 +1206,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     Duration? seekTo,
   ) async {
     isBuffering.value = true;
+    videoOutputReady.value = false;
     _heartDuration = 0;
     danmakuController?.clear();
     _initVideoFit();
@@ -1231,6 +1236,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       startPosition: seekTo ?? Duration.zero,
       playWhenReady: _autoPlay,
     );
+    videoOutputReady.value = true;
     updateSubtitleStyle();
   }
 
@@ -1305,6 +1311,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       ),
       play: false,
     );
+    videoOutputReady.value = true;
     _notifyPlaybackInsight();
   }
 
@@ -2468,6 +2475,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (kDebugMode) {
       debugPrint('dispose player');
     }
+    videoOutputReady.value = false;
     unawaited(_disposeHdrController());
     _videoPlayerController?.dispose();
     _videoPlayerController = null;
