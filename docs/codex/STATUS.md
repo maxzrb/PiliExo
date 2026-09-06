@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-06 17:52 (+08:00)
+- 更新时间：2026-09-06 18:48 (+08:00)
 - 工作分支：`feature/android-media3-hdr`
-- 分析基线：`409205974`（`v26.9.6.1` 发布提交；已推送 `origin/main`）
-- 发布状态：`v26.9.6.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.6+1`，Android `versionCode=17`。
-- 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；已补修 HDR 切回 mpv 时黑屏只剩声音的视图重挂载回归，并让 HDR 固定 4:3/16:9 受外层比例约束；已完成上游选择性同步并建立持久化排除清单。
-- 当前验证：Flutter 全量测试串行通过 62/62；`flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；Android `:app:compileDebugKotlin` 和 `flutter build apk --debug --no-pub` 均成功；`git diff --check` 通过。新修复尚未发布 Release，未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.6.1`，应用版本为 `26.9.6+1`，Android `versionCode=17`。
+- 分析基线：`eb5b4d06a`（`v26.9.6.3` 发布提交；已推送 `origin/main`）
+- 发布状态：`v26.9.6.3` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.6+3`，Android `versionCode=19`。
+- 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；已补修 HDR 切回 mpv 时黑屏只剩声音的视图重挂载回归，并修正 HDR 固定 4:3/16:9 仅缩小显示区域的问题；已完成上游选择性同步并建立持久化排除清单。
+- 当前验证：Flutter 全量测试串行通过 62/62；`flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；双 ABI Release APK 构建、aapt 包信息/ABI/FFmpeg 校验、apksigner V2 正式签名校验，以及 GitHub/ModelScope 资产长度和 SHA-256 校验均通过；未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.6.3`，应用版本为 `26.9.6+3`，Android `versionCode=19`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -824,5 +824,16 @@
 
 - `[修复]` 修复 HDR 后端切回 mpv 后端时播放器视图未重新挂载导致黑屏只剩声音的问题：新增视频输出就绪状态，mpv `open` 完成后通知播放页重新挂载视图；切换期间保留原有播放意图和位置恢复逻辑。
 - `[修改]` HDR 播放器的 4:3、16:9 模式由 Flutter 外层 `AspectRatio` 约束；HDR PlatformView 使用独立 session key，避免与 mpv 纹理元素复用。
-- `[新增]` 新增视频输出挂载策略和 HDR 固定比例/后端切换回归测试。
+- 补充视频输出挂载策略及 HDR 固定比例/后端切换回归覆盖。
 - Flutter 全量测试 62/62、Analyze 无 error/warning（55 条 info）、Android `:app:compileDebugKotlin`、Debug APK 构建和 `git diff --check` 均通过；未发布新 Release，未连接 Android 真机。
+
+## 2026-09-06 18:48
+
+- `[修复]` 修复 HDR 的 4:3、16:9 模式只把画面缩小到目标区域的问题：保留外层 `AspectRatio` 目标视口，并让 Media3 原生画面用 `fill` 填满该视口，实际应用目标显示比例。
+- `[修改]` 更新 HDR 固定比例模式的原生 resize mode 映射，避免 16:9 视频在 4:3 视口中继续按源比例缩小显示。
+- 已按正式发布流程完成 `v26.9.6.3`，发布提交 `eb5b4d06afb983dd56c390b621516dc25309ab0b` 已推送至 `maxzrb/PiliExo/main`，annotated tag 已推送。
+- Flutter 全量测试 62/62、Analyze 无 error/warning（55 条 info）、双 ABI Release 构建、包信息/ABI/FFmpeg、apksigner V2 正式签名及 `git diff --check` 均通过。
+- arm64-v8a APK 为 `31,695,249` bytes，SHA-256 `7af8a452ad17dbf42ee3abb0c40cf91988eb1779f60a78ecd0b72117fd4fae42`；armeabi-v7a APK 为 `31,575,261` bytes，SHA-256 `160992521f0cc0cd689cc540c8358f675b7271ce0e9d18c58b44fad53c60a24f`；清单位于 `dist/release/v26.9.6.3/SHA256SUMS.txt`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.6.3>；两份 APK 与 `SHA256SUMS.txt` 均为 uploaded，Release notes 仅保留 `[修复]` 要点。
+- ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.6.3/`；三份资产均 HTTP 200，远端长度和 `X-Linked-ETag` 与本地产物一致。
+- 未连接 Android 真机；正式签名文件继续保持 Git 忽略，`tmp/` 未纳入提交。
