@@ -116,6 +116,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   Stream<Duration> get positionStream => _positionEventController.stream;
 
+  final RxInt seekPosition = RxInt(0);
+  int get progress => isSeeking.value ? seekPosition.value : position.value;
+
   int get positionInMilliseconds =>
       _hdrMedia3Controller?.position.inMilliseconds ??
       videoPlayerController?.state.position.inMilliseconds ??
@@ -1416,7 +1419,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
     final posInSeconds = value.inSeconds;
     if (posInSeconds != position.value) {
-      if (!isSeeking.value) position.value = posInSeconds;
+      position.value = posInSeconds;
       videoPlayerServiceHandler?.onPositionChange(value);
       makeHeartBeat(posInSeconds);
     }
@@ -2035,6 +2038,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
       _timer = null;
     });
+  }
+
+  void onSeekStart(int seekFrom) {
+    seekPosition.value = seekFrom;
+    isSeeking.value = true;
   }
 
   void onSeekEnd() {
