@@ -39,6 +39,7 @@ class BottomControl extends StatelessWidget {
 
   void onSeek(int milliseconds) {
     controller
+      ..position.value = milliseconds ~/ 1000
       ..onSeekEnd()
       ..seekTo(Duration(milliseconds: milliseconds), isSeek: false);
   }
