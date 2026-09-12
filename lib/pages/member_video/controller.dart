@@ -1,3 +1,5 @@
+import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart'
+    show RefreshIndicatorState;
 import 'package:PiliPlus/common/widgets/scroll_physics.dart' show ReloadMixin;
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/member.dart';
@@ -14,6 +16,7 @@ import 'package:PiliPlus/utils/extension/dimension_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
+import 'package:flutter/widgets.dart' show GlobalKey;
 import 'package:get/get.dart';
 
 class MemberVideoCtr
@@ -48,22 +51,17 @@ class MemberVideoCtr
   bool isLoadPrevious = false;
   bool? hasPrev;
 
+  GlobalKey<RefreshIndicatorState>? refreshKey;
+
   @override
   Future<void> onRefresh() async {
-    if (isLocating.value) {
-      if (hasPrev == true) {
-        isLoadPrevious = true;
-        await queryData();
-      }
-    } else {
-      isLoadPrevious = false;
-      firstAid = null;
-      lastAid = null;
-      next = null;
-      isEnd = false;
-      page = 0;
-      await queryData();
-    }
+    isLoadPrevious = false;
+    firstAid = null;
+    lastAid = null;
+    next = null;
+    isEnd = false;
+    page = 0;
+    await queryData();
   }
 
   @override
@@ -71,6 +69,9 @@ class MemberVideoCtr
     super.onInit();
     if (isVideo) {
       fromViewAid = Get.parameters['from_view_aid'];
+      if (fromViewAid?.isNotEmpty ?? false) {
+        refreshKey = GlobalKey();
+      }
     }
     page = 0;
     queryData();

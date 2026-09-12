@@ -14,7 +14,6 @@ import 'package:PiliPlus/pages/member_video/controller.dart';
 import 'package:PiliPlus/pages/member_video/widgets/video_card_h_member_video.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -87,38 +86,70 @@ class _MemberVideoState extends State<MemberVideo>
     );
   }
 
+  Future<void> _loadPrevAndKeepPos() async {
+    assert(_controller.hasPrev! && _controller.isLoadPrevious);
+    final lastCount = _controller.loadingState.value.dataOrNull?.length;
+    await _controller.queryData();
+    if (mounted) {
+      final newCount = _controller.loadingState.value.dataOrNull?.length;
+      if (lastCount != null && newCount != null && newCount > lastCount) {
+        _jumpToIndex(newCount - lastCount);
+      }
+    }
+  }
+
+  Future<void> _onRefresh() {
+    if (_controller.isLoadPrevious) {
+      return _loadPrevAndKeepPos();
+    }
+    return _controller.onRefresh();
+  }
+
+  @override
+  Widget fabAnimWrapper({required Widget child}) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: onNotification,
+      child: child,
+    );
+  }
+
+  @override
+  bool onNotification(ScrollNotification notification) {
+    if (notification is UserScrollNotification) {
+      return super.onNotification(notification);
+    }
+    if (_controller.isLocating.value) {
+      if (notification is ScrollEndNotification &&
+          notification.metrics.pixels == 0) {
+        if (_controller.hasPrev == true && !_controller.isLoading) {
+          _controller
+            ..isLoadPrevious = true
+            ..refreshKey!.currentState?.show();
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final theme = Theme.of(context);
     final padding = MediaQuery.viewPaddingOf(context);
-    final child = refreshIndicator(
-      onRefresh: () async {
-        final count = _controller.loadingState.value.dataOrNull?.length;
-        await _controller.onRefresh();
-        if (_controller.isLocating.value && mounted) {
-          final newCount = _controller.loadingState.value.dataOrNull?.length;
-          if (count != null && newCount != null && newCount > count) {
-            SchedulerBinding.instance.addPostFrameCallback((_) {
-              _jumpToIndex(newCount - count);
-            });
-          }
-        }
-      },
-      child: CustomScrollView(
-        physics: ReloadScrollPhysics(controller: _controller),
-        slivers: [
-          SliverPadding(
-            padding: EdgeInsets.only(bottom: padding.bottom + 100),
-            sliver: Obx(
-              () => _buildBody(theme, _controller.loadingState.value),
-            ),
+    Widget child = CustomScrollView(
+      physics: ReloadScrollPhysics(controller: _controller),
+      slivers: [
+        SliverPadding(
+          padding: EdgeInsets.only(bottom: padding.bottom + 100),
+          sliver: Obx(
+            () => _buildBody(theme, _controller.loadingState.value),
           ),
-        ],
-      ),
+        ),
+      ],
     );
     if (_controller.isVideo && _controller.fromViewAid?.isNotEmpty == true) {
-      return ScaffoldLayout(
+      child = ScaffoldLayout(
         body: fabAnimWrapper(child: child),
         fab: Obx(
           () => !_controller.isLocating.value
@@ -158,7 +189,12 @@ class _MemberVideoState extends State<MemberVideo>
         ),
       );
     }
-    return child;
+    return refreshIndicator(
+      key: _controller.refreshKey,
+      isClampingScrollPhysics: true,
+      onRefresh: _onRefresh,
+      child: child,
+    );
   }
 
   @override
