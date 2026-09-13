@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-06 18:48 (+08:00)
-- 工作分支：`feature/android-media3-hdr`
-- 分析基线：`eb5b4d06a`（`v26.9.6.3` 发布提交；已推送 `origin/main`）
-- 发布状态：`v26.9.6.3` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.6+3`，Android `versionCode=19`。
-- 当前工作：已修复 Android Media3 HDR 播放器不遵循拉伸、裁剪、等宽、等高画面模式，以及 HDR/非 HDR 画质切换时播放意图丢失、回到封面暂停的问题；已补修 HDR 切回 mpv 时黑屏只剩声音的视图重挂载回归，并修正 HDR 固定 4:3/16:9 仅缩小显示区域的问题；已完成上游选择性同步并建立持久化排除清单。
-- 当前验证：Flutter 全量测试串行通过 62/62；`flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；双 ABI Release APK 构建、aapt 包信息/ABI/FFmpeg 校验、apksigner V2 正式签名校验，以及 GitHub/ModelScope 资产长度和 SHA-256 校验均通过；未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.2 SDK 固定在 `D:\tools\flutter-3.47.2\flutter`；当前正式版本为 `v26.9.6.3`，应用版本为 `26.9.6+3`，Android `versionCode=19`。
+- 更新时间：2026-09-13 18:40 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`（自 `feature/android-media3-hdr` 切出，待真机回归后合回）
+- 分析基线：`1d8487df6`（上游选择性同步第 2.1.3/2.1.3.1/2.1.4 轮完成）
+- 发布状态：`v26.9.6.3` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.6+3`，Android `versionCode=19`；本轮未改版本号、未发布。
+- 当前工作：已在合并分支完成上游 2.1.3/2.1.3.1/2.1.4 轮选择性同步：Flutter 工具链升至 3.47.4、media_kit 依赖源切换至 `My-Responsitories/media-kit@native`（含 mpv args 与 native event loop 优化）、gRPC proto 全量重生成，并合入 21 个功能/修复提交（评论主列表 cursor API 迁移、search all、页面顺序、seek 位置体验、上一集加载重构、动态转发/点赞列表重构及 5 个 issue 修复等）；seek 位置提交与本地 Media3 改造的冲突已手工适配（`positionStream` 与 `seekPosition` 并存，`_onPositionChanged` 解除 seek 期冻结）。
+- 当前验证：Flutter 3.47.4 SDK 本地部署并按 `lib/scripts/patch.ps1` 等价流程打齐 24 个 framework 补丁；material_ui `1.1.0` 打齐 9 个 material 补丁（含上游新 `tabs.patch`，其失败根因是补丁文件 CRLF 行尾而非版本不兼容，pin 保持 1.1.0 有效）；`flutter pub get` 通过；打补丁后 `flutter analyze` 无 error/warning（55 条 info）；未构建 APK、未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4\flutter`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.6.3`，应用版本为 `26.9.6+3`，Android `versionCode=19`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -51,6 +51,55 @@
 - `edf8c55e2e`：上游版本号 `2.1.3` 与 PiliExo 自定义 `vYY.M.D.N` 发布及全局 Android versionCode 规则冲突，不合并。
 
 本轮安全同步并已落地的上游提交：`edf0bf2038` → 本地 `4b8689ea7`，`3c07a28d02` → 本地 `be0794152`。
+
+## 上游同步轮次记录（2026-09-13，2.1.3/2.1.3.1/2.1.4）
+
+本轮在合并分支 `merge/upstream-2.1.4-20260913` 上处理上游 `44680b8a4..ce17223a8` 共 67 个提交：30 个已有等价实现继续跳过（沿用上表），25 个已落地，其余 12 个按下方原因持久化跳过。
+
+### 本轮已落地（上游 → 本地提交）
+
+| PiliPlus 上游提交 | 本地提交 | 内容 |
+| --- | --- | --- |
+| `cd096d337d` | `0d191c97f` | flutter 3.47.3 |
+| `d07da9861b` | `fbde62928` | flutter 3.47.4 |
+| `d7fb17b91c` | `da4fa37b5` | media_kit 源切换至 `My-Responsitories/media-kit@native` + mpv args 与 native event loop |
+| `47e94b33b1` | `0c19b1dd4` | gRPC proto 全量重生成（33 个 pb.dart） |
+| `5aa7b02e35` | `fbf3df73e` | feat: page order |
+| `879679fc63` | `83c16ad97` | add seek position（进度条 seekPosition/progress） |
+| `9c9076a4c9` | `62cca0753` | refa dyn reaction（含 dyn_tab_bar 与 material tabs.patch） |
+| `d7c6263c87` | `30435a140` | update position on seek |
+| `9730d29a84` | `6f30cc285` | fix #2892 空降助手忽略最短片段 |
+| `5b1e909d6c` | `1ac6eb236` | opt dyn repost item |
+| `74203a89f8` | `5e27e67be` | pass uidOffset to dyn like list |
+| `7a86daba85` | `cf86f83ce` | 评论区主列表 gRPC 迁回 cursor 模式 |
+| `32538c4d7a` | `03ee3f3b1` | opt block segment edit panel |
+| `1f1ac0fbea` | `6ff89cebd` | fix #2909 分享打开链接冲突（AndroidHelper.isDomainVerified/openUrl） |
+| `b8eeeb78c4` | `f26420831` | improve emote tooltip |
+| `3e030b202a` | `1d8487df6` | 收藏夹复制/剪切保持顺序 |
+| `1a4bb7ba91` | `0fbdeb855` | feat: search all |
+| `1525479416` | `1620e38f1` | refa load previous video |
+| `21a0fc0693` | `a05446398` | 搜索热搜显示 showName |
+| `2ddf574aa8` | `eb7b6c3a5` | fix #2956 侧边栏模式设置入口被挤出 |
+| `04fe7be29d` | `1907bf256` | 仅定位视频时内部滚动 |
+| `2b9fc8bf1d` | `81e6f9ee8` | fix #2950 直播二倍速耗尽缓冲 |
+| `7c717237e0` | `0544471ce` | fix #2949 关闭收到的赞后仍有气泡 |
+| `7f1792f647` | `abe63092d` | show search esports |
+| `51a041a5bb` | `c7d252513` | opt search esports |
+
+### 本轮新增持久化跳过（下次直接略过）
+
+- `861ab3f91b`、`8795d06285`：上游 `opt ui` 界面微调，落在 PiliExo 已定制区域（磨砂/液态玻璃/底栏），收益低、冲突风险高，不合并。
+- `444898e4f2`：`tweaks (#2889)` 上游杂项重构，与本地定制重叠，不合并。
+- `68fb0e396b`、`827ee5d665`、`84a3b5ff23`：仅 `pubspec.lock` 层面的依赖升级，`flutter pub get` 会自然跟随，不手工搬运。
+- `ce17223a83`：上游 `Release 2.1.4` 版本号提交，与 PiliExo `vYY.M.D.N` 规则冲突，不合并（同 `edf8c55e2e` 先例）。
+- `78d266ae74`：Linux single instance 修复，不在 Android 发布范围，不合并。
+
+### 本轮适配与验证要点（下次同步参考）
+
+- `879679fc63` + `d7c6263c87` 与本地 Media3 改造冲突：保留 `positionStream` 并新增 `seekPosition`/`progress`，`_onPositionChanged` 移除 seek 期冻结 `position` 的守卫；`1f1ac0fbea` 的 import 冲突保留本地 `audio_track_selector` 与上游 `android_helper` 并存。
+- material_ui 仍 pin `1.1.0`（本地 `96dde07ad`）；上游 `9c9076a4c9` 更新的 `lib/scripts/material/tabs.patch` 对 1.1.0 兼容，`git apply` 失败的根因是补丁文件被 autocrlf 检出为 CRLF，应用前需转 LF（CI 的 patch.ps1 已内置该归一化）。
+- 本机 Flutter 3.47.4 SDK 位于 `D:\tools\flutter-3.47.4\flutter`，framework 24 个补丁已应用；`zip SHA-256 = 31173300481bd06e377fd55ee84214689648b1817563efd7b450b7b78bdf351a`（flutter-io.cn 镜像下载）。该分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2。
+- 验证：打补丁 SDK 下 `flutter analyze` 无 error/warning（55 条 info）；`flutter pub get` 通过。本轮未跑全量 `flutter test`、未构建 APK、未连接真机，合回 `feature/android-media3-hdr` 前建议补做。
 
 ## 已完成
 
