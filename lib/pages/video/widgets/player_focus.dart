@@ -150,18 +150,6 @@ class PlayerFocus extends StatelessWidget {
     }
 
     if (event is KeyDownEvent) {
-      final isDigit1 = key == LogicalKeyboardKey.digit1;
-      if (isDigit1 || key == LogicalKeyboardKey.digit2) {
-        if (HardwareKeyboard.instance.isShiftPressed && hasPlayer) {
-          final speed = isDigit1 ? 1.0 : 2.0;
-          if (speed != plPlayerController.playbackSpeed) {
-            plPlayerController.setPlaybackSpeed(speed);
-          }
-          SmartDialog.showToast('${speed}x播放');
-        }
-        return true;
-      }
-
       switch (key) {
         case LogicalKeyboardKey.space:
           if (plPlayerController.isLive || canPlay!()) {
@@ -240,6 +228,18 @@ class PlayerFocus extends StatelessWidget {
       }
 
       if (!plPlayerController.isLive) {
+        final isDigit1 = key == LogicalKeyboardKey.digit1;
+        if (isDigit1 || key == LogicalKeyboardKey.digit2) {
+          if (HardwareKeyboard.instance.isShiftPressed && hasPlayer) {
+            final speed = isDigit1 ? 1.0 : 2.0;
+            if (speed != plPlayerController.playbackSpeed) {
+              plPlayerController.setPlaybackSpeed(speed);
+            }
+            SmartDialog.showToast('${speed}x播放');
+          }
+          return true;
+        }
+
         switch (key) {
           case LogicalKeyboardKey.arrowLeft:
             if (hasPlayer) {
