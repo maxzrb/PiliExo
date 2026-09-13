@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-13 18:40 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`（自 `feature/android-media3-hdr` 切出，待真机回归后合回）
-- 分析基线：`1d8487df6`（上游选择性同步第 2.1.3/2.1.3.1/2.1.4 轮完成）
-- 发布状态：`v26.9.6.3` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.6+3`，Android `versionCode=19`；本轮未改版本号、未发布。
-- 当前工作：已在合并分支完成上游 2.1.3/2.1.3.1/2.1.4 轮选择性同步：Flutter 工具链升至 3.47.4、media_kit 依赖源切换至 `My-Responsitories/media-kit@native`（含 mpv args 与 native event loop 优化）、gRPC proto 全量重生成，并合入 21 个功能/修复提交（评论主列表 cursor API 迁移、search all、页面顺序、seek 位置体验、上一集加载重构、动态转发/点赞列表重构及 5 个 issue 修复等）；seek 位置提交与本地 Media3 改造的冲突已手工适配（`positionStream` 与 `seekPosition` 并存，`_onPositionChanged` 解除 seek 期冻结）。
-- 当前验证：Flutter 3.47.4 SDK 本地部署并按 `lib/scripts/patch.ps1` 等价流程打齐 24 个 framework 补丁；material_ui `1.1.0` 打齐 9 个 material 补丁（含上游新 `tabs.patch`，其失败根因是补丁文件 CRLF 行尾而非版本不兼容，pin 保持 1.1.0 有效）；`flutter pub get` 通过；打补丁后 `flutter analyze` 无 error/warning（55 条 info）；未构建 APK、未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4\flutter`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.6.3`，应用版本为 `26.9.6+3`，Android `versionCode=19`。
+- 更新时间：2026-09-13 20:05 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`（自 `feature/android-media3-hdr` 切出，发布后待真机回归合回）
+- 分析基线：`c9347f62c`（`v26.9.13.1` 发布提交，tag 已推送）
+- 发布状态：`v26.9.13.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.13+1`，Android `versionCode=20`。
+- 当前工作：已在合并分支完成上游 2.1.3/2.1.3.1/2.1.4 轮选择性同步：Flutter 工具链升至 3.47.4、media_kit 依赖源切换至 `My-Responsitories/media-kit@native`（含 mpv args 与 native event loop 优化）、gRPC proto 全量重生成，并合入 21 个功能/修复提交（评论主列表 cursor API 迁移、search all、页面顺序、seek 位置体验、上一集加载重构、动态转发/点赞列表重构及 5 个 issue 修复等）；seek 位置提交与本地 Media3 改造的冲突已手工适配（`positionStream` 与 `seekPosition` 并存，`_onPositionChanged` 解除 seek 期冻结）。已完成 `v26.9.13.1` 双源发布。
+- 当前验证：Flutter 3.47.4 SDK 本地部署并按 `lib/scripts/patch.ps1` 等价流程打齐 24 个 framework 补丁；material_ui `1.1.0` 打齐 9 个 material 补丁（含上游新 `tabs.patch`，其失败根因是补丁文件 CRLF 行尾而非版本不兼容，pin 保持 1.1.0 有效）；`flutter pub get` 通过；`flutter test --no-pub` 62/62 通过；`flutter analyze` 无 error/warning（55 条 info）；双 ABI Release APK 构建成功，aapt 包信息/ABI/FFmpeg、apksigner V2 正式签名、GitHub/ModelScope 资产长度与 SHA-256 校验均通过；未连接 Android 真机。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4\flutter`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.13.1`，应用版本为 `26.9.13+1`，Android `versionCode=20`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
