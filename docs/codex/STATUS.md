@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-13 20:05 (+08:00)
+- 更新时间：2026-09-14 22:39 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（自 `feature/android-media3-hdr` 切出，发布后待真机回归合回）
 - 分析基线：`c9347f62c`（`v26.9.13.1` 发布提交，tag 已推送）
 - 发布状态：`v26.9.13.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.13+1`，Android `versionCode=20`。
-- 当前工作：已在合并分支完成上游 2.1.3/2.1.3.1/2.1.4 轮选择性同步：Flutter 工具链升至 3.47.4、media_kit 依赖源切换至 `My-Responsitories/media-kit@native`（含 mpv args 与 native event loop 优化）、gRPC proto 全量重生成，并合入 21 个功能/修复提交（评论主列表 cursor API 迁移、search all、页面顺序、seek 位置体验、上一集加载重构、动态转发/点赞列表重构及 5 个 issue 修复等）；seek 位置提交与本地 Media3 改造的冲突已手工适配（`positionStream` 与 `seekPosition` 并存，`_onPositionChanged` 解除 seek 期冻结）。已完成 `v26.9.13.1` 双源发布。
-- 当前验证：Flutter 3.47.4 SDK 本地部署并按 `lib/scripts/patch.ps1` 等价流程打齐 24 个 framework 补丁；material_ui `1.1.0` 打齐 9 个 material 补丁（含上游新 `tabs.patch`，其失败根因是补丁文件 CRLF 行尾而非版本不兼容，pin 保持 1.1.0 有效）；`flutter pub get` 通过；`flutter test --no-pub` 62/62 通过；`flutter analyze` 无 error/warning（55 条 info）；双 ABI Release APK 构建成功，aapt 包信息/ABI/FFmpeg、apksigner V2 正式签名、GitHub/ModelScope 资产长度与 SHA-256 校验均通过；未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4\flutter`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.13.1`，应用版本为 `26.9.13+1`，Android `versionCode=20`。
+- 当前工作：正在准备 `v26.9.14.1` 正式发布；已修复影视/番剧播放页首次打开时评论标签不显示数量的问题，并更新应用版本为 `26.9.14+1`、Android `versionCode=21`。
+- 当前验证：补齐 `protobuf 6.1.0` 锁定版本并恢复 material_ui/Flutter 补丁后，Flutter 3.47.4 全量测试 62/62 通过；待完成完整 Analyze、双 ABI Release 构建和资产校验。未连接 Android 真机，待真机确认影视/番剧首屏评论数量。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.13.1`，应用版本为 `26.9.13+1`，Android `versionCode=20`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -886,3 +886,12 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.6.3>；两份 APK 与 `SHA256SUMS.txt` 均为 uploaded，Release notes 仅保留 `[修复]` 要点。
 - ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.6.3/`；三份资产均 HTTP 200，远端长度和 `X-Linked-ETag` 与本地产物一致。
 - 未连接 Android 真机；正式签名文件继续保持 Git 忽略，`tmp/` 未纳入提交。
+
+## 2026-09-14 22:39
+
+- 从 `origin/merge/upstream-2.1.4-20260913` 执行 `git pull --ff-only`，结果为 Already up to date；开始和结束时均保留用户未跟踪目录 `tmp/`，未作修改。
+- `[修复]` 定位到普通 UGC 播放页会在详情接口返回后预填 `VideoReplyController.count`，而影视/番剧的 PGC 初始化路径缺少同类逻辑，导致评论标签保持 `-1`，只有首次进入评论页并完成评论列表请求后才出现数量。
+- 在 `lib/pages/video/introduction/pgc/controller.dart` 的 `onInit()` 中，复用 PGC 接口已返回的 `pgcItem.stat.reply` 初始化评论数量；评论关闭时不执行，统计缺失时与 UGC 逻辑一致回退为 0，不额外增加网络请求。
+- 验证：目标文件 `flutter analyze ... --no-pub` 为 No issues found；完整 `flutter analyze --no-pub` 无 error/warning（55 条既有 info）；`git diff --check` 通过。`flutter test --no-pub` 并发运行在 8 个用例后长时间无输出而中止；改用 `--concurrency=1` 后前 2 个文件 9/9 通过，随后在第 3 个文件加载阶段再次卡顿并中止，属于当前 Windows Flutter 测试缓存/加载问题，未观察到测试失败。
+- 环境更正：本机 Flutter 3.47.4 实际 SDK 根目录为 `D:\tools\flutter-3.47.4`，可执行文件位于其 `bin` 下；旧快照多写了一层 `\flutter`。
+- Git 状态：分支仍为 `merge/upstream-2.1.4-20260913`；未提交改动包含本次控制器修复及 HandShake 记录，另有用户原有未跟踪 `tmp/`。建议真机确认影视/番剧首屏评论数量后提交。

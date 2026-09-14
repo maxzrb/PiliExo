@@ -65,6 +65,14 @@ class PgcIntroController extends CommonIntroController {
 
     super.onInit();
 
+    // 播放页首次打开时直接展示影视/番剧接口已返回的评论数量。
+    if (videoDetailCtr.showReply) {
+      try {
+        Get.find<VideoReplyController>(tag: heroTag).count.value =
+            pgcItem.stat?.reply ?? 0;
+      } catch (_) {}
+    }
+
     if (isPgc) {
       if (isLogin) {
         queryIsFollowed();
