@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-14 22:39 (+08:00)
+- 更新时间：2026-09-14 23:49 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（自 `feature/android-media3-hdr` 切出，发布后待真机回归合回）
-- 分析基线：`c9347f62c`（`v26.9.13.1` 发布提交，tag 已推送）
-- 发布状态：`v26.9.13.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.13+1`，Android `versionCode=20`。
-- 当前工作：正在准备 `v26.9.14.1` 正式发布；已修复影视/番剧播放页首次打开时评论标签不显示数量的问题，并更新应用版本为 `26.9.14+1`、Android `versionCode=21`。
-- 当前验证：补齐 `protobuf 6.1.0` 锁定版本并恢复 material_ui/Flutter 补丁后，Flutter 3.47.4 全量测试 62/62 通过；待完成完整 Analyze、双 ABI Release 构建和资产校验。未连接 Android 真机，待真机确认影视/番剧首屏评论数量。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.13.1`，应用版本为 `26.9.13+1`，Android `versionCode=20`。
+- 分析基线：`3883f36d2`（`v26.9.14.1` 发布提交，annotated tag 已推送）
+- 发布状态：`v26.9.14.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.14+1`，Android `versionCode=21`。
+- 当前工作：影视/番剧播放页首屏评论数量修复已完成并发布；发布提交、标签、双 ABI APK、SHA256 清单及双源镜像均已同步。
+- 当前验证：Flutter 3.47.4 全量测试 62/62 通过；Analyze 无 error/warning（55 条既有 info）；双 ABI Release 构建、包名/版本/ABI/FFmpeg、R8 映射、V2 正式签名、GitHub digest 和 ModelScope 长度/哈希均通过。未连接 Android 真机，待真机确认影视/番剧首屏评论数量。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.14.1`，应用版本为 `26.9.14+1`，Android `versionCode=21`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -895,3 +895,14 @@
 - 验证：目标文件 `flutter analyze ... --no-pub` 为 No issues found；完整 `flutter analyze --no-pub` 无 error/warning（55 条既有 info）；`git diff --check` 通过。`flutter test --no-pub` 并发运行在 8 个用例后长时间无输出而中止；改用 `--concurrency=1` 后前 2 个文件 9/9 通过，随后在第 3 个文件加载阶段再次卡顿并中止，属于当前 Windows Flutter 测试缓存/加载问题，未观察到测试失败。
 - 环境更正：本机 Flutter 3.47.4 实际 SDK 根目录为 `D:\tools\flutter-3.47.4`，可执行文件位于其 `bin` 下；旧快照多写了一层 `\flutter`。
 - Git 状态：分支仍为 `merge/upstream-2.1.4-20260913`；未提交改动包含本次控制器修复及 HandShake 记录，另有用户原有未跟踪 `tmp/`。建议真机确认影视/番剧首屏评论数量后提交。
+
+## 2026-09-14 23:49
+
+- 按正式发布流程完成 `v26.9.14.1`：应用版本 `26.9.14+1`，Android 全局递增 `versionCode=21`；发布提交 `3883f36d282c639ed2b5d1467cedbd9c2d76b829` 已推送至 `origin/merge/upstream-2.1.4-20260913`，annotated tag `v26.9.14.1` 已推送并指向该提交。
+- 本版修复影视/番剧播放页首次打开时评论标签不显示数量的问题，并补齐与当前 gRPC 生成代码匹配的 `protobuf 6.1.0` 锁定版本；评论数量直接取详情接口统计，不新增请求。
+- 依赖准备阶段 `flutter pub get` 已完成依赖解析，但 Windows 未开启开发者模式导致 symlink 检查返回非零；随后使用既有发布缓存并补齐锁定的 protobuf 包完成测试与构建。在线 Gradle 构建因 Google Storage 下载 ARM 引擎依赖长时间无响应，最终将本机已有、版本完全一致的引擎 JAR 放入忽略目录下的临时本地 Maven 仓库，以 `--offline --no-daemon` 和独立项目缓存完成构建；未修改发布源码。
+- 发布验证：Flutter 全量测试 62/62；Analyze 无 error/warning（55 条既有 info）；`git diff --check` 通过；双 ABI Release 构建成功。aapt 确认包名 `com.maxzrb.piliexo`、`versionName=26.9.14`、`versionCode=21`、单 ABI 内容，两个 APK 均包含 `libffmpegJNI.so`；R8 mapping 保留 `androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer`；apksigner V2 验证通过，证书 SHA-256 为 `b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51`。
+- 产物位于 `dist/release/v26.9.14.1/`：arm64-v8a `31,548,971` bytes，SHA-256 `16116281ed38196092af0e27ca79b42e85f6492ec8480408e9a3df39c37eda60`；armeabi-v7a `31,467,686` bytes，SHA-256 `7c9fc50228d26872c3e43d6ab3b095a6c78a2ec8b129bcb7970865134fc6ec4c`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.14.1>；两个 APK 与 `SHA256SUMS.txt` 均为 uploaded，GitHub digest/大小与本地一致。
+- ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.14.1/`；三份资产均 HTTP 200，两个 APK 的远端 `Content-Length` 和 `X-Linked-ETag` 与本地大小及 SHA-256 一致。
+- 未连接 Android 真机；仍需在电影、电视剧和番剧播放页分别确认评论数量首屏显示。正式签名文件、`dist/`、构建临时文件继续保持 Git 忽略，用户原有未跟踪目录 `tmp/` 未作修改。
