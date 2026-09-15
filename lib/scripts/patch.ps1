@@ -210,7 +210,15 @@ $patches_material = @($ModalBarrierPatchMaterial, $NavigationDrawerPatchMaterial
                     $FABPatchMaterial, $TextFieldPatchMaterial, $ScaffoldPatchMaterial, $RefreshIndicatorPatchMaterial,
                     $TabsPatchMaterial)
 
-$PubCacheDir = "~/.pub-cache"
+# Pub 缓存位置取决于执行脚本的宿主系统，而不是目标构建平台。
+# Android 构建也可能运行在 Windows 上，不能把 android 误当成 Unix 主机。
+if ($env:PUB_CACHE) {
+    $PubCacheDir = $env:PUB_CACHE
+} elseif ($env:OS -eq "Windows_NT") {
+    $PubCacheDir = "$env:LOCALAPPDATA/Pub/Cache"
+} else {
+    $PubCacheDir = "~/.pub-cache"
+}
 
 switch ($platform.ToLower()) {
     "android" {
@@ -224,7 +232,6 @@ switch ($platform.ToLower()) {
     "macos" {
     }
     "windows" {
-        $PubCacheDir = "$env:LOCALAPPDATA/Pub/Cache"
     }
     default {}
 }

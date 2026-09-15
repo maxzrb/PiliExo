@@ -76,9 +76,20 @@ class HdrMedia3Plugin(
     }
 
     private var eventSink: EventChannel.EventSink? = null
+    private val pendingEvents = BoundedPendingEvents<Map<String, Any?>>(256)
     // 会话需要使用 Activity 上下文读取当前显示器的 HDR 能力，同时由会话生命周期控制播放器。
-    private val manager = HdrMedia3Manager(context) { event ->
-        eventSink?.success(event)
+    private val manager = HdrMedia3Manager(context, ::dispatchEvent)
+
+    @Synchronized
+    private fun dispatchEvent(event: Map<String, Any?>) {
+        val sink = eventSink
+        if (sink == null) {
+            // EventChannel 的 onListen 与 Dart 的方法调用并不保证严格先后。
+            // 首次进入播放器时先到的格式事件需要暂存，不能静默丢弃。
+            pendingEvents.add(event)
+        } else {
+            sink.success(event)
+        }
     }
     private val methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
     private val eventChannel = EventChannel(messenger, EVENT_CHANNEL)
@@ -205,10 +216,15 @@ class HdrMedia3Plugin(
         }
     }
 
+    @Synchronized
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
+        if (events != null) {
+            pendingEvents.drain().forEach(events::success)
+        }
     }
 
+    @Synchronized
     override fun onCancel(arguments: Any?) {
         eventSink = null
     }
@@ -218,7 +234,31 @@ class HdrMedia3Plugin(
         eventChannel.setStreamHandler(null)
         manager.releaseAll()
         eventSink = null
+        pendingEvents.clear()
     }
+}
+
+/** EventChannel 尚未连接时使用的有界 FIFO，避免首次播放的诊断事件丢失。 */
+internal class BoundedPendingEvents<T>(private val capacity: Int) {
+    private val values = ArrayDeque<T>()
+
+    init {
+        require(capacity > 0) { "capacity 必须大于 0" }
+    }
+
+    @Synchronized
+    fun add(value: T) {
+        if (values.size == capacity) values.removeFirst()
+        values.addLast(value)
+    }
+
+    @Synchronized
+    fun drain(): List<T> = buildList(values.size) {
+        while (values.isNotEmpty()) add(values.removeFirst())
+    }
+
+    @Synchronized
+    fun clear() = values.clear()
 }
 
 @UnstableApi

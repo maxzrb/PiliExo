@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-14 23:49 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`（自 `feature/android-media3-hdr` 切出，发布后待真机回归合回）
-- 分析基线：`3883f36d2`（`v26.9.14.1` 发布提交，annotated tag 已推送）
+- 更新时间：2026-09-15 10:39 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
+- 分析基线：`381bf87f8`（`v26.9.14.1` 发布后的记录提交；正在准备 `v26.9.15.1`）
 - 发布状态：`v26.9.14.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.14+1`，Android `versionCode=21`。
-- 当前工作：影视/番剧播放页首屏评论数量修复已完成并发布；发布提交、标签、双 ABI APK、SHA256 清单及双源镜像均已同步。
-- 当前验证：Flutter 3.47.4 全量测试 62/62 通过；Analyze 无 error/warning（55 条既有 info）；双 ABI Release 构建、包名/版本/ABI/FFmpeg、R8 映射、V2 正式签名、GitHub digest 和 ModelScope 长度/哈希均通过。未连接 Android 真机，待真机确认影视/番剧首屏评论数量。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；本机 Flutter 3.47.4 SDK 固定在 `D:\tools\flutter-3.47.4`（framework 已打好补丁），本分支本地构建/验证一律使用 3.47.4，不再使用 3.47.2；当前正式版本为 `v26.9.14.1`，应用版本为 `26.9.14+1`，Android `versionCode=21`。
+- 当前工作：`v26.9.15.1` 发布准备中；统一 Media3/mpv 常见音视频编码显示，并修复首次进入 HDR 时 EventChannel 订阅空窗可能丢失格式/解码器事件、导致洞察偶发只显示分辨率的问题。
+- 当前验证：Flutter 3.47.4 全量测试 64/64 通过；Analyze 无 error/warning（54 条既有 info）；播放器洞察模型测试与 `git diff --check` 通过。Android 原生单测在首次冷缓存编译期间按用户要求停止，改为直接执行正式双 ABI Release 构建；三份 media_kit JAR 已按插件内置 SHA-256 校验通过。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；项目锁定 Flutter 3.47.4；当前正式版本为 `v26.9.14.1`，正在准备 `v26.9.15.1`。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -906,3 +906,11 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.14.1>；两个 APK 与 `SHA256SUMS.txt` 均为 uploaded，GitHub digest/大小与本地一致。
 - ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.14.1/`；三份资产均 HTTP 200，两个 APK 的远端 `Content-Length` 和 `X-Linked-ETag` 与本地大小及 SHA-256 一致。
 - 未连接 Android 真机；仍需在电影、电视剧和番剧播放页分别确认评论数量首屏显示。正式签名文件、`dist/`、构建临时文件继续保持 Git 忽略，用户原有未跟踪目录 `tmp/` 未作修改。
+
+## 2026-09-15 09:12
+
+- 本轮最初误在仍停留于 `v26.9.6.3` 的 `main` 上执行排查；经核对确认昨天成功构建双 ABI 的正确基线为 `origin/merge/upstream-2.1.4-20260913`，发布提交 `3883f36d2`、发布后记录提交 `381bf87f8`。已用可恢复 stash 保存补丁并迁移到该正确分支，stash 暂保留作为回退。
+- 新增统一编码展示：HEVC、AVC、AV1、VP9、VP8 以及 AAC、AC-3、E-AC-3、Dolby TrueHD、Opus、Vorbis、FLAC、MP3 使用一致名称；原始 Codec String 不改写，仍在详情中展示。
+- 定位偶发只显示分辨率的低概率原因：首次建立 Media3 EventChannel 时，Dart 广播订阅和原生 `onListen` 之间存在短暂空窗，原生端此前会静默丢弃先到的格式/解码器事件，而分辨率还能由媒体源初值补齐。Dart 改为先订阅会话事件再初始化，Android 端增加线程安全、容量 256 的有界 FIFO，在 EventChannel 连接后按序补发。
+- 新增 Dart 编码归一化回归测试和 Kotlin FIFO 顺序/容量测试。先前在错误基线上的纯模型测试 6/6 与相关静态分析通过，不作为最新分支最终验证结论。
+- 补丁迁移后使用当前可用工具完成播放器洞察模型测试 6/6，`git diff --check` 通过。当前设备没有项目锁定的 Flutter 3.47.4（记录路径 `D:\tools\flutter-3.47.4` 不存在，仅有 C 盘 3.47.2），因此完整测试/构建尚未执行；这不影响昨天已经完成并校验的 `v26.9.14.1` 双 ABI 产物。未改版本号、未发布、未连接真机。

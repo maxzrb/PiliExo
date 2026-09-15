@@ -4,6 +4,46 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('不同后端的视频编码名称统一显示', () {
+    final cases = <PlaybackInsightSnapshot, String>{
+      const PlaybackInsightSnapshot(videoCodec: 'hevc'): 'HEVC',
+      const PlaybackInsightSnapshot(videoCodec: 'HEVC / H.265'): 'HEVC',
+      const PlaybackInsightSnapshot(videoCodecString: 'hvc1.2.4.L153.B0'):
+          'HEVC',
+      const PlaybackInsightSnapshot(videoCodecString: 'hev1.1.6.L120.90'):
+          'HEVC',
+      const PlaybackInsightSnapshot(videoCodec: 'h264'): 'AVC',
+      const PlaybackInsightSnapshot(videoCodecString: 'avc1.640032'): 'AVC',
+      const PlaybackInsightSnapshot(videoCodecString: 'av01.0.13M.10'): 'AV1',
+    };
+
+    for (final entry in cases.entries) {
+      expect(entry.key.displayVideoCodec, entry.value);
+      expect(
+        entry.key.videoRows.singleWhere((row) => row.label == '视频 Codec').value,
+        entry.value,
+      );
+    }
+  });
+
+  test('原始 Codec String 保留诊断值且音频名称统一', () {
+    const snapshot = PlaybackInsightSnapshot(
+      videoCodec: 'hevc',
+      videoCodecString: 'hvc1.2.4.L153.B0',
+      audioCodec: 'eac3',
+      audioCodecString: 'ec-3',
+    );
+
+    expect(snapshot.summary, 'HEVC');
+    expect(
+      snapshot.videoRows
+          .singleWhere((row) => row.label == 'Codec String')
+          .value,
+      'hvc1.2.4.L153.B0',
+    );
+    expect(snapshot.displayAudioCodec, 'E-AC-3');
+  });
+
   test('洞察详情展示 Media3 实际视频与音频诊断数据', () {
     final snapshot = PlaybackInsightSnapshot.fromTelemetry(
       PlaybackTelemetry(

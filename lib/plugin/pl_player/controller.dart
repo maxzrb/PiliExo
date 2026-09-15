@@ -1225,10 +1225,18 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     final controller = _hdrMedia3Controller ??= HdrMedia3Controller();
     media3HdrActive.value = true;
     if (_hdrSubscription == null) {
-      await controller.initialize();
       _hdrSubscription = controller.events.listen(
         (event) => _onHdrEvent(controller, event),
       );
+      try {
+        // 先订阅会话事件再初始化原生通道，避免首次进入时初始化阶段的
+        // 格式/解码器事件落在两个 broadcast stream 的订阅间隙中。
+        await controller.initialize();
+      } catch (_) {
+        await _hdrSubscription?.cancel();
+        _hdrSubscription = null;
+        rethrow;
+      }
     }
     final resizeMode = videoFit.value.hdrResizeMode;
     if (controller.resizeMode != resizeMode) {
