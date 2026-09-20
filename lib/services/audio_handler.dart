@@ -99,7 +99,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
       processingState = AudioProcessingState.ready;
     }
 
-    final playing = status.isPlaying;
+    final playing = status.isPlaying || isBuffering;
     playbackState.add(
       playbackState.value.copyWith(
         processingState: isBuffering
@@ -148,7 +148,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  void onStatusChange(PlayerStatus status, bool isBuffering, isLive) {
+  void onStatusChange(PlayerStatus status, bool isBuffering, bool isLive) {
     if (!enableBackgroundPlay) return;
 
     if (_item.isEmpty) return;
@@ -260,7 +260,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
     if (_item.isNotEmpty) {
       playbackState.add(
         playbackState.value.copyWith(
-          processingState: AudioProcessingState.idle,
+          processingState: AudioProcessingState.ready,
           playing: false,
         ),
       );
@@ -279,20 +279,19 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
           await AudioService._stop();
         }
      */
-    if (playbackState.value.processingState == AudioProcessingState.idle) {
-      playbackState.add(
+    playbackState
+      ..add(
         PlaybackState(
           processingState: AudioProcessingState.completed,
           playing: false,
         ),
+      )
+      ..add(
+        PlaybackState(
+          processingState: AudioProcessingState.idle,
+          playing: false,
+        ),
       );
-    }
-    playbackState.add(
-      PlaybackState(
-        processingState: AudioProcessingState.idle,
-        playing: false,
-      ),
-    );
   }
 
   void onPositionChange(Duration position) {

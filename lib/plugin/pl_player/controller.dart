@@ -1375,9 +1375,26 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   final Set<ValueChanged<Duration>> _positionListeners = {};
   final Set<ValueChanged<PlayerStatus>> _statusListeners = {};
 
+  Timer? _wakeLockTimer;
+
+  void _stopWakeLockTimer() {
+    _wakeLockTimer?.cancel();
+    _wakeLockTimer = null;
+  }
+
+  void _stopWakeLock() {
+    WakelockPlus.disable();
+    videoPlayerServiceHandler?.onStatusChange(
+      playerStatus.value,
+      isBuffering.value,
+      isLive,
+    );
+  }
+
   void _onPlayingChanged(bool playing) {
-    WakelockPlus.toggle(enable: playing);
     if (playing) {
+      _stopWakeLockTimer();
+      WakelockPlus.enable();
       if (_isAutoEnterPip) {
         if (_isCurrVideoPage) {
           enterPip(autoEnter: true);
@@ -1387,17 +1404,21 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
       playerStatus.value = .playing;
       audioSessionHandler?.setActive(true);
+      videoPlayerServiceHandler?.onStatusChange(
+        .playing,
+        isBuffering.value,
+        isLive,
+      );
     } else {
       _disableAutoEnterPip();
       playerStatus.value = .paused;
       audioSessionHandler?.setActive(false);
+      _wakeLockTimer?.cancel();
+      _wakeLockTimer = Timer(
+        const Duration(milliseconds: 500),
+        _stopWakeLock,
+      );
     }
-
-    videoPlayerServiceHandler?.onStatusChange(
-      playerStatus.value,
-      isBuffering.value,
-      isLive,
-    );
 
     for (final element in _statusListeners) {
       element(playing ? .playing : .paused);
@@ -1418,6 +1439,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       element(.completed);
     }
     makeHeartBeat(-1, type: .completed);
+    _wakeLockTimer?.cancel();
+    _wakeLockTimer = Timer(
+      const Duration(milliseconds: 500),
+      _stopWakeLock,
+    );
     _notifyPlaybackInsight();
   }
 
@@ -1439,11 +1465,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _onBufferingChanged(bool buffering) {
     isBuffering.value = buffering;
-    videoPlayerServiceHandler?.onStatusChange(
-      playerStatus.value,
-      buffering,
-      isLive,
-    );
+    final status = playerStatus.value;
+    if (!status.isCompleted) {
+      _stopWakeLockTimer();
+      videoPlayerServiceHandler?.onStatusChange(status, buffering, isLive);
+    }
     _notifyPlaybackInsight();
   }
 
@@ -2054,9 +2080,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void onSeekEnd() {
-    if (seekToPos != null) {
-      feedBack();
-    }
     if (showSeekPreview) {
       showPreview.value = false;
     }
@@ -2485,7 +2508,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _positionListeners.clear();
     _statusListeners.clear();
     unawaited(_positionEventController.close());
-    if (playerStatus.isPlaying) {
+    final shouldDisableWakeLock =
+        playerStatus.isPlaying || _wakeLockTimer != null;
+    _stopWakeLockTimer();
+    if (shouldDisableWakeLock) {
       WakelockPlus.disable();
     }
     if (kDebugMode) {

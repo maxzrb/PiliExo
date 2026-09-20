@@ -1236,6 +1236,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   void _onHorizontalDragEnd() {
     if (plPlayerController.seekToPos case final seekToPos?) {
+      feedBack();
       plPlayerController
         ..position.value = seekToPos.inSeconds
         ..seekTo(seekToPos, isSeek: false)
