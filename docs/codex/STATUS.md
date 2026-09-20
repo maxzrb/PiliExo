@@ -1,12 +1,21 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-15 11:08 (+08:00)
+- 更新时间：2026-09-20 15:22 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
 - 分析基线：`43d7bde9d`（`v26.9.15.1` 发布提交，annotated tag 已推送）
 - 发布状态：`v26.9.15.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.15+1`，Android `versionCode=22`。
-- 当前工作：播放器洞察编码名称统一与首次 HDR 事件补发修复已完成发布；发布提交、标签、双 ABI APK、SHA256 清单及双源镜像均已同步。
+- 当前工作：已审查 PiliPlus 自 2.1.4 同步边界 `ce17223a8` 至 `upstream/main@48f075758` 的 40 个新增提交；尚未合并代码，已形成分级候选与暂缓清单。
 - 当前验证：Flutter 3.47.4 全量测试 64/64 通过；Analyze 无 error/warning（54 条既有 info）；双 ABI Release 构建、包名/版本/ABI/FFmpeg、R8 映射、V2 正式签名、GitHub digest 和 ModelScope 长度/哈希均通过。Android 原生单测在首次冷缓存编译期间按用户要求停止，未连接 Android 真机。
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；项目锁定 Flutter 3.47.4；当前正式版本为 `v26.9.15.1`。
+
+## 待同步候选（审查至 2026-09-20）
+
+- 上游审查边界：`ce17223a8..48f075758`，共 40 个提交；远端 `upstream/main` 与 `git ls-remote` 一致。当前仅审查，未执行 cherry-pick、版本变更或构建。
+- 第一优先级（服务端/API 兼容）：`7399f3507` + `08a9f5509`（App 推荐请求参数与新卡片解析）、`c876e5d8b`（热门/每周必看 API 请求头）、`20b1cb5c0`（搜索建议迁移到 WBI 新接口，依赖 `11e02b866` 的搜索控制器上下文）。
+- 第二优先级（低风险修复/体验）：`11e02b866`（搜索框直开链接、Android 外部应用选择器、patch 文件固定 LF、历史分页空结果处理等）、`f1a41ed0f`（多 P 视频分享保留分 P 与播放进度）、`faf49b355`（直播接口账户选择修复）、`8b6abc07d` + `89fe1755f`（电竞比分与标题字段适配）、`92c455be7`（自定义主题种子色）、`2408a7f4d`（搜索历史单行省略）。
+- 可选但建议人工适配：`df86de3ec`（画中画中收到 SC 时避免全屏 SC 层处理）、`41ccd5801` + `94e413ac0` + `1cf440ed9`（后台播放/系统媒体状态与 wakelock 时序修复，和 PiliExo 播放器定制重叠）、`7afc32cf8` + `92f53a997`（SC 保存为图片，依赖前序直播/截图重构）、`41fe78223`（不再提前传分 P 标题，和本地已修改的入口重叠）。
+- 暂缓：Linux/Windows 专属提交；`00cb572cc`/`ee148aa64` media-kit 升级与部分回退、`9d3e8b626` 依赖升级；`c61777333`/`5d02a625d` 选择文本搜索与图片弹窗链路（最终代码会忽略调用方传入的自定义 `contextMenuBuilder`）；`b6908e515`/`b0e7e4eb1` 图片批量保存重构（同时改变取消下载、缓存文件移动与保存路径语义）；`2b0ffa12f`/`48f075758` tooltip 重构和 `d1d5c323c` 大型杂项重构，均与本地定制重叠且不宜整提交搬运。
+- 可移植性预检：`11e02b866`、`8b6abc07d`、`f1a41ed0f`、`7399f3507`、`08a9f5509`、`faf49b355`、`df86de3ec`、`92c455be7`、`c876e5d8b`、`2408a7f4d` 可直接通过 `git apply --check`；`20b1cb5c0`、`7afc32cf8`、`6755d0942` 需要前序提交或人工适配。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -923,3 +932,12 @@
 - arm64-v8a APK：31,550,568 bytes，SHA-256 `3c51cc401c3a094dd3b026096b99d9fb254dbb535b2abb7f10795e02a4c81070`；armeabi-v7a APK：31,472,333 bytes，SHA-256 `433ab2f8169460844cfef545e02ff5851f4a89d7788b03251d8bdc1c77f746ef`。
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.15.1>；三个资产均为 uploaded，GitHub digest/大小与本地一致。ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.15.1/`，远端 HTTP 200、长度与 `X-Linked-ETag` 均校验通过。
 - 对外 Release notes 与版本迭代记录未写 `versionCode`、ABI 数量等发布元数据；该约定已写入发布流程。未连接 Android 真机。
+
+## 2026-09-20 15:22
+
+- 从干净的 `merge/upstream-2.1.4-20260913` 分支执行 `git pull --ff-only`，结果为 Already up to date；抓取并核对 PiliPlus `upstream/main@48f075758`，自上次 2.1.4 边界 `ce17223a8` 后共有 40 个提交。
+- 逐提交检查标题、受影响文件和关键 diff，并与 PiliExo 上次同步后的本地改动交叉比对；40 个提交涉及 90 个文件，其中 13 个文件与本地发布后定制重叠。
+- 建议优先同步 App 推荐参数/解析、热门 API 请求头和搜索建议 WBI 新接口；其次同步外链选择器/搜索路由、多 P 分享、直播账户、电竞字段、自定义主题色和搜索历史布局。
+- media-kit 升级后已被上游部分回退，播放器状态链路又与 PiliExo 的 Media3、洞察、震动和 wakelock 定制重叠，本轮不建议整批合并；Linux/Windows 专属提交不纳入 Android 发布范围。
+- 对第一、第二优先级候选做无写入 `git apply --check` 预检：除需要前序上下文的搜索建议提交外，其余主要候选可直接应用；本轮没有合并源码、修改版本号、运行测试或构建 APK。
+- 本次只更新 HandShake 审查记录和中文工作进度；工作树因此包含两份文档改动，建议若准备实施同步，先以独立文档提交保存本轮审查结论。
