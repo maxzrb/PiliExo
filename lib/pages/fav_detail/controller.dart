@@ -128,6 +128,9 @@ class FavDetailController
     } else if (response.hasMore == false) {
       isEnd = true;
     }
+    if (pageDesc) {
+      return response.medias?.reversed.toList();
+    }
     return response.medias;
   }
 
@@ -241,7 +244,7 @@ class FavDetailController
               'oid': item.id,
               'favTitle': folder.title,
               'count': folder.mediaCount,
-              'desc': true,
+              'desc': !pageDesc,
               if (index != null) 'isContinuePlaying': index != 0,
               'isOwner': isOwner,
             }
