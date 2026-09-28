@@ -1,12 +1,12 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-28 13:35 (+08:00)
+- 更新时间：2026-09-28 14:57 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
-- 分析基线：`9356ceb22`（`v26.9.28.1` 发布提交，annotated tag 已推送）。
-- 发布状态：`v26.9.28.1` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.1/` 镜像；两份正式 APK 和校验清单均已上传并核验。应用版本 `26.9.28+1`，Android `versionCode=24`。
-- 当前工作：已逐项处理 PiliPlus `48f075758..a30fcc310` 的全部 22 个提交：5 个直接 cherry-pick、8 个由本地 `b74689840` 逐项适配、9 个记录理由暂不合并；发布提交 `9356ceb22` 已推送。
-- 当前验证：Flutter 3.47.4 全量测试 64/64、另新增播放状态定向测试 1/1、Android `:app:testDebugUnitTest`、双 ABI Release 构建及签名/包体/GitHub 资产哈希验证通过；Analyze 无 error/warning。ModelScope 三个下载地址均 HTTP 200，APK 远端长度与哈希、本地校验清单内容一致；未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；项目锁定 Flutter 3.47.4；当前正式版本为 `v26.9.28.1`。
+- 分析基线：`9356ceb22`（`v26.9.28.1` 发布提交）；当前开发提交 `0b0717212` 升级工具链与依赖，不属于既有 Release。
+- 发布状态：`v26.9.28.1` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.1/` 镜像；两份正式 APK 和校验清单均已上传并核验。当前开发分支已升 Flutter 3.47.5 与依赖，但尚未发布新 Release；应用版本仍为 `26.9.28+1`，Android `versionCode=24`。
+- 当前工作：此前处理的 22 个 PiliPlus 提交中，`3d8711cb3`、`5f68384c4`、`e49209f82` 的适用部分现由 `0b0717212` 落地：Flutter 3.47.5、`material_ui 1.4.0`、其补丁及定向依赖升级。`483a423be` 已重新评估，仍未合入，原因与后续移植边界见下方记录。
+- 当前验证：Flutter 3.47.5 全量测试 65/65、Analyze 无 error/warning（55 条 info）、Android arm64 debug APK 构建及 `:app:testDebugUnitTest` 通过；SDK/依赖缓存已迁至项目内 `tools/`，新路径 `pub get`、工具链校验和播放状态定向测试再次通过。尚未用 3.47.5 构建正式 Release 或进行真机回归；上版 3.47.4 正式包不受影响。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；开发分支锁定 Flutter 3.47.5，当前正式版本仍为 `v26.9.28.1`。
 
 ## 上游同步状态（已处理至 2026-09-28）
 
@@ -14,7 +14,8 @@
 - 本轮边界：`48f075758..a30fcc310`，22 个新增提交；`git fetch upstream main` 与 `git ls-remote upstream refs/heads/main` 均确认 `a30fcc310`。`git pull --ff-only` 显示本地发布分支已与 origin 同步。
 - 已落地：逐提交映射见下方“2026-09-28（2.1.5）”；截图、搜索黑名单、旧版 WebView 登录、点赞消息、分 P、主页标签、收藏夹、初始倍速、画中画和播放通知状态均已纳入本版。
 - 重新评估：此前 `c61777333` 因忽略自定义文本菜单而暂缓；上游新增 `483a423be` 已修复该问题。若需要默认站内搜索按钮，应组合审查并移植这两项，不能只搬前者。
-- 继续暂缓：播放通知三笔提交的适用逻辑已移植，但 `df86852f3` 附带的 audio_service/audio_session 开发分支及 AGP/Kotlin 升级不合入；`5f68384c4`、`e49209f82` 依赖批量升级与 `3d8711cb3` Flutter 3.47.5 需独立升级验证；`682ada6c4`、`2f4a50200` 为 iOS/Linux，`a0e6148e9` 为 iOS；`acff988f1` 仅移除本地已无的 `openDevTools()`；`a30fcc310` 上游版本号与 PiliExo 规则不符。上轮暂缓的图片保存、SC 图片、tooltip、桌面端提交继续按既有理由暂缓。
+- 继续暂缓：播放通知三笔提交的适用逻辑已移植，但 `df86852f3` 附带的 audio_service/audio_session 开发分支及 AGP/Kotlin 升级不合入；`682ada6c4`、`2f4a50200` 为 iOS/Linux，`a0e6148e9` 为 iOS；`acff988f1` 仅移除本地已无的 `openDevTools()`；`a30fcc310` 上游版本号与 PiliExo 规则不符。上轮暂缓的图片保存、SC 图片、tooltip、桌面端提交继续按既有理由暂缓。
+- 发布后复审：`3d8711cb3`、`5f68384c4`、`e49209f82` 的适用依赖及补丁由本地 `0b0717212` 落地；`483a423be` 的上下文菜单修复已证实可解决原先覆盖自定义菜单的问题，但仍需与 `c61777333` 中的默认站内搜索按钮一起做独立行为变更，不宜在工具链升级中夹带。
 
 ## 上游同步轮次记录（2026-09-28，2.1.5）
 
@@ -46,6 +47,13 @@
 | `a30fcc310` | — | 不合并：上游版本 2.1.5 与 PiliExo 发布编号规则不同 |
 
 本轮共 5 个直接合并、8 个定向适配、9 个未合并。`483a423be` 的修复消除了上轮阻碍，但不能脱离前置提交单独应用；后续如需要默认站内搜索按钮，再组合评估。未连接 Android 真机，尤其需回归播放通知、画中画与旧版 WebView 验证码登录。
+
+### 发布后升级复审（2026-09-28）
+
+- `3d8711cb3`：Flutter SDK/`.fvmrc`/`pubspec.yaml`/`pubspec.lock` 已定向升级至 3.47.5；官方 Windows 包 SHA-256 `0ccd71931f49c2fbe394b1eeb6d79af3d624058a043ea0d03d34160581624fb8`，24 个 framework 补丁逐项应用成功，旧 3.47.4 SDK 原样保留。
+- `5f68384c4`：升级 `material_ui 1.1.0→1.4.0`、`cupertino_ui 1.0.2→1.1.1`、`vector_math 2.4.2→2.4.3`；上游 `tabs.patch` 原样对齐，另把 `scaffold.patch` 的 BottomSheet 默认值别名移到 1.4.0 文件末尾，九个 material Android 补丁全部应用。上游目标 `file_picker_darwin` 需随整个 `file_picker` 插件族升级，不能孤立升级。
+- `e49209f82`：`image_picker_ios 0.8.13+8`、`octo_image 2.1.1` 已落地；`file_picker_darwin 2.1.2` 随 `file_picker 13.1.0`、Android 插件 `2.0.0` 及平台接口升级一并落地，Android 编译和现有调用静态分析通过。
+- `483a423be`：现有 `SelectionText` 的默认 `_defaultContextMenuBuilder` 会保留普通工具栏；上游前置 `c61777333` 强制使用 `openUrlMenuBuilder`，会覆盖调用者自定义 builder，`483a423be` 改为默认参数使用它、`build()` 尊重传入 builder，修复该问题。可在未来把前置提交中的菜单逻辑与此修复成对窄范围移植；前置提交还包含无关的图片保存弹窗路由改造，不应整提交搬入。本轮只评估、不改变全部 `SelectionText` 的默认菜单行为。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -993,3 +1001,14 @@
 - 执行 `modelscope upload AerithDream/PiliExo dist/release/v26.9.28.1 releases/v26.9.28.1 --repo-type dataset`，报告 3 个文件全部 committed、0 failed；两个 APK 经 LFS PUT 上传，校验清单正常提交，未启用删除同步。
 - ModelScope 三个 `resolve/master/releases/v26.9.28.1/` 地址均 HEAD HTTP 200；arm64-v8a 的远端长度 `31,550,646`、`X-Linked-ETag=fe8d94c39ab6c6b13d5be4259ef2c565b7c6569d02f266d937918f1db4bcf6be`，armeabi-v7a 的远端长度 `31,473,902`、`X-Linked-ETag=e03ef02d0ac3b72f0ad5dbd7ebf09555faacef4c970185c303244fddabf92f1d`，均与本地大小和 SHA-256 一致；`SHA256SUMS.txt` 远端长度 216 bytes，GET 内容与本地完全一致。
 - `v26.9.28.1` 的 GitHub 与 ModelScope 双源发布现已齐全，无需重建或改版本号；剩余风险仍为尚未进行 Android 真机回归。仅更新 HandShake 发布记录和中文进度，不修改发布标签或 APK。
+
+## 2026-09-28 14:59
+
+- 接续已发布分支，`git pull --ff-only` 为 Already up to date，起始工作树干净。用户要求安全升级 Flutter 3.47.5、批量依赖与 `material_ui` 补丁，并复审 `483a423be`/`e49209f82`；明确不自动发布新 Release。
+- 从 Flutter 发布清单确认 3.47.5 Windows archive 的 SHA-256 `0ccd71931f49c2fbe394b1eeb6d79af3d624058a043ea0d03d34160581624fb8`，项目内下载校验后解压。SDK 24 个 Android framework 补丁逐项预检并应用；`material_ui 1.4.0` 的九个 Android 补丁逐项应用，其中 `tabs.patch` 采用上游 1.4.0 版本，`scaffold.patch` 为生成代码搬迁做本地适配。旧 3.47.4 SDK 未改动。
+- 依赖定向更新为 `material_ui 1.4.0`、`cupertino_ui 1.1.1`、`vector_math 2.4.3`、`file_picker 13.1.0` 及其 Android/Darwin/Linux/Web/接口插件族、`image_picker_ios 0.8.13+8`、`octo_image 2.1.1`。`file_picker_darwin 2.1.2` 不能在本地旧 `file_picker 12.2.0` 约束下孤立升级，因此整体升级并用代码分析、Android 编译确认。
+- `483a423be` 经源码对照可修复上轮 `c61777333` 覆盖自定义文本菜单的缺陷；建议未来将前置提交的默认站内搜索菜单部分与本修复成对窄范围移植，不带入其中无关的图片保存路由变更。本轮只复审，没有改变菜单行为；需用户另行决定是否增加默认搜索按钮。
+- 验证：新 SDK `flutter --version` 为 3.47.5 / Dart 3.13.4；`verify_flutter.ps1` 通过；全量 `flutter analyze --no-pub --no-fatal-infos` 无 error/warning（55 条 info）；`flutter test --no-pub` 65/65 通过；Android arm64 `flutter build apk --debug --target-platform android-arm64 --no-pub` 成功；新持久路径下 `flutter pub get`、工具链校验、播放状态定向测试 1/1，以及 `:app:testDebugUnitTest --offline -Ptarget-platform=android-arm64` 均通过。`git diff --check` 通过。
+- 环境注意：项目绝对路径含空格，`objective_c` 原生 hook 会截断命令，使用 `subst P:` 映射项目目录后验证成功。初次 Gradle 在线构建在 Google Storage 引擎构件下载停滞；通过 `FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn` 重试成功。直接离线单测未指定目标架构时缺少 v7a/x86_64 debug 引擎缓存，指定 arm64 后通过。用户索要的 Flutter 3.47.5 SDK 与三个 engine JAR 的 Google Storage 直链已在对话中提供；本轮不需要用户手动下载。
+- SDK、压缩包和 Pub 缓存现在位于被 Git 忽略的项目内 `tools/`，避免 `flutter clean` 删除；`docs/本机发布工具链.md` 与 `docs/发布流程.md` 已更新。构建仅出现既有插件 compileSdk 覆盖及 `flutter_volume_controller` 未来 Built-in Kotlin 兼容提醒。未改应用版本号、未构建正式签名 Release、未做 Android 真机回归。
+- 源码与流程提交 `0b0717212 build: upgrade Flutter 3.47.5 and material_ui 1.4.0`；本次 HandShake 记录另行提交。当前分支 `merge/upstream-2.1.4-20260913`，完成记录提交后推送 origin；`v26.9.28.1` 标签和既有产物保持不变。
