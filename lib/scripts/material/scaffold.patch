@@ -66,15 +66,12 @@ index 0fba5686f28..f6243932c9e 100644
              child: bottomSheet,
            );
    }
-@@ -1472,6 +1475,8 @@ class _BottomSheetGestureDetector extends StatelessWidget {
+@@ -1495,3 +1498,5 @@ class _BottomSheetGestureDetector extends StatelessWidget {
+     );
    }
  }
- 
-+typedef BottomSheetDefaultsM3 = _BottomSheetDefaultsM3;
 +
- // BEGIN GENERATED TOKEN PROPERTIES - BottomSheet
- 
- // Do not edit by hand. The code between the "BEGIN GENERATED" and
++typedef BottomSheetDefaultsM3 = _BottomSheetDefaultsM3;
 diff --git a/lib/src/scaffold.dart b/lib/src/scaffold.dart
 index 6f4fc67ff84..9b306c84094 100644
 --- a/lib/src/scaffold.dart
