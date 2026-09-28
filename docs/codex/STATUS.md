@@ -1,21 +1,51 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-28 12:19 (+08:00)
+- 更新时间：2026-09-28 12:57 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
-- 分析基线：`e7cd043e6`（`v26.9.20.1` 发布提交，annotated tag 已推送）。
-- 发布状态：`v26.9.20.1` 已发布到 GitHub Release 和 ModelScope，应用版本 `26.9.20+1`，Android `versionCode=23`。
-- 当前工作：2026-09-20 已合入上游 `ce17223a8..48f075758` 中 12 个独立提交，播放器状态修复由 `1aede42d6` 人工适配；2026-09-28 审查新上游 `48f075758..a30fcc310` 的 22 个提交，尚未合入本轮新增代码。
-- 当前验证：`v26.9.20.1` 发布时 Flutter 3.47.4 全量测试 64/64、Android `:app:testDebugUnitTest`、双 ABI Release 构建及签名/包体/远端资产哈希验证均通过；Analyze 无 error/warning（54 条既有 info）。本次上游审查仅作 Git/源码检查，未重新测试或构建，未连接 Android 真机。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；项目锁定 Flutter 3.47.4；当前正式版本为 `v26.9.20.1`。
+- 分析基线：`9356ceb22`（`v26.9.28.1` 发布提交，annotated tag 已推送）。
+- 发布状态：`v26.9.28.1` 已发布 GitHub Release 与双 ABI 正式 APK；ModelScope 镜像因本机缺少 API 登录凭据尚未同步，待用户在本机执行 `modelscope login` 后补传。应用版本 `26.9.28+1`，Android `versionCode=24`。
+- 当前工作：已逐项处理 PiliPlus `48f075758..a30fcc310` 的全部 22 个提交：5 个直接 cherry-pick、8 个由本地 `b74689840` 逐项适配、9 个记录理由暂不合并；发布提交 `9356ceb22` 已推送。
+- 当前验证：Flutter 3.47.4 全量测试 64/64、另新增播放状态定向测试 1/1、Android `:app:testDebugUnitTest`、双 ABI Release 构建及签名/包体/GitHub 资产哈希验证通过；Analyze 无 error/warning，未连接 Android 真机。ModelScope 远端验证待上传后进行。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；项目锁定 Flutter 3.47.4；当前正式版本为 `v26.9.28.1`。
 
-## 上游同步状态（审查至 2026-09-28）
+## 上游同步状态（已处理至 2026-09-28）
 
 - 上轮已合入：`11e02b866`、`8b6abc07d`、`f1a41ed0f`、`7399f3507`、`08a9f5509`、`faf49b355`、`20b1cb5c0`、`df86de3ec`、`92c455be7`、`c876e5d8b`、`2408a7f4d`、`89fe1755f`；`e9008c8eb`、`41ccd5801`、`94e413ac0`、`1cf440ed9` 的相关播放状态/震动改动由本地 `1aede42d6` 人工适配，不应再整提交 cherry-pick。
 - 本轮边界：`48f075758..a30fcc310`，22 个新增提交；`git fetch upstream main` 与 `git ls-remote upstream refs/heads/main` 均确认 `a30fcc310`。`git pull --ff-only` 显示本地发布分支已与 origin 同步。
-- 优先候选：`5c4693600`（截图弹窗重复点击可能连续退出页面；本地仍在 `whenComplete(image.dispose)` 才释放图像，需按本地截图实现人工适配）、`66a1225d3`（综合搜索用户结果过滤黑名单，本地视频结果已有类似规则）、`6a884d604`（Geetest 旧版 Android WebView 的 JS 桥接兼容；本地仍使用直接 `flutter_inappwebview.callHandler`，需定向适配并在受影响设备验证）。
-- 第二批候选：`38f851e03`（点赞消息单用户头像可进入主页）、`f4e598ab0`（首次打开分 P 面板时索引最小为 0）、`47ea33adf`（用户主页标签长标题防溢出）、`9d84da715`（收藏夹倒序显示/批量操作顺序修复，需一起审查）、`473507187`（手动进入画中画后同步参数）。`7abf4e7be`（初始倍速）和 `f5118f4ac`（画中画动作 PendingIntent）与 Media3/mpv 双后端及 Android 通知交互重叠，建议单独复核后人工移植。
+- 已落地：逐提交映射见下方“2026-09-28（2.1.5）”；截图、搜索黑名单、旧版 WebView 登录、点赞消息、分 P、主页标签、收藏夹、初始倍速、画中画和播放通知状态均已纳入本版。
 - 重新评估：此前 `c61777333` 因忽略自定义文本菜单而暂缓；上游新增 `483a423be` 已修复该问题。若需要默认站内搜索按钮，应组合审查并移植这两项，不能只搬前者。
-- 继续暂缓：`e4185e5b1`、`6ef5111c2`、`df86852f3` 是大范围播放通知/AudioService 重构，包含更换 audio_service/audio_session Git dev 分支与 Gradle 升级，和本地 Media3/后台播放适配重叠；`5f68384c4`、`e49209f82` 依赖批量升级与 `3d8711cb3` Flutter 3.47.5 需独立升级验证；`682ada6c4`、`2f4a50200` 为 iOS/Linux，`a0e6148e9` 为 iOS；`acff988f1` 仅移除本地已无的 `openDevTools()`；`a30fcc310` 上游版本号与 PiliExo 规则不符。上轮暂缓的图片保存、SC 图片、tooltip、桌面端提交继续按既有理由暂缓。
+- 继续暂缓：播放通知三笔提交的适用逻辑已移植，但 `df86852f3` 附带的 audio_service/audio_session 开发分支及 AGP/Kotlin 升级不合入；`5f68384c4`、`e49209f82` 依赖批量升级与 `3d8711cb3` Flutter 3.47.5 需独立升级验证；`682ada6c4`、`2f4a50200` 为 iOS/Linux，`a0e6148e9` 为 iOS；`acff988f1` 仅移除本地已无的 `openDevTools()`；`a30fcc310` 上游版本号与 PiliExo 规则不符。上轮暂缓的图片保存、SC 图片、tooltip、桌面端提交继续按既有理由暂缓。
+
+## 上游同步轮次记录（2026-09-28，2.1.5）
+
+边界 `48f075758..a30fcc310` 共 22 个提交，以下逐项记录落地情况。人工适配均在 `b74689840`，保留 PiliExo 的 Media3/mpv 双后端、既有播放状态 UI 与 Android 工具链。
+
+| 上游提交 | 本地落地 | 结论 |
+| --- | --- | --- |
+| `682ada6c4` | — | 不合并：仅 iOS Geetest 补丁 |
+| `e4185e5b1` | `b74689840` | 适配播放通知状态同步，不整搬 AudioService 重构 |
+| `7abf4e7be` | `b74689840` | 适配视频/直播初始倍速与 Media3/mpv 状态 |
+| `5c4693600` | `b74689840` | 适配截图弹窗重复点击修复 |
+| `6ef5111c2` | `b74689840` | 适配播放状态改进与 Activity 销毁时不强停后台服务 |
+| `38f851e03` | `2778e8c5f` | 直接合并点赞消息头像跳转 |
+| `66a1225d3` | `c06e16712` | 直接合并综合搜索黑名单过滤 |
+| `5f68384c4` | — | 暂缓依赖/material 补丁批量升级，需独立工具链验证 |
+| `3d8711cb3` | — | 暂缓 Flutter 3.47.5；项目锁定已打补丁的 3.47.4 |
+| `a0e6148e9` | — | 不合并：仅 iOS 音频类别 |
+| `483a423be` | — | 暂缓：依赖上轮未合并的 `c61777333` 文本菜单改动，需成对评估 |
+| `2f4a50200` | — | 不合并：Linux WebView 调整 |
+| `acff988f1` | — | 无需合并：本地已无 `openDevTools()` |
+| `f5118f4ac` | `b74689840` | 适配画中画按钮的 MediaButtonReceiver PendingIntent |
+| `9d84da715` | `0fac2cd45` | 直接合并收藏夹倒序显示和批量操作顺序 |
+| `473507187` | `b74689840` | 适配手动进入画中画后的参数同步 |
+| `f4e598ab0` | `62fceead0` | 直接合并首次打开分 P 面板的索引修复 |
+| `df86852f3` | `b74689840` | 适配播放通知状态收尾；不合并附带开发版依赖和 AGP/Kotlin 升级 |
+| `e49209f82` | — | 暂缓锁文件依赖升级，随独立工具链升级评估 |
+| `47ea33adf` | `006c4139a` | 直接合并用户主页标签防溢出 |
+| `6a884d604` | `b74689840` | 适配旧版 Android WebView 的 Geetest JS 桥接 |
+| `a30fcc310` | — | 不合并：上游版本 2.1.5 与 PiliExo 发布编号规则不同 |
+
+本轮共 5 个直接合并、8 个定向适配、9 个未合并。`483a423be` 的修复消除了上轮阻碍，但不能脱离前置提交单独应用；后续如需要默认站内搜索按钮，再组合评估。未连接 Android 真机，尤其需回归播放通知、画中画与旧版 WebView 验证码登录。
 
 ## 上游同步持久化排除清单（2026-09-06）
 
@@ -948,3 +978,11 @@
 - 本次先执行 `git pull --ff-only`，结果 Already up to date，工作树起初干净；`git fetch upstream main` 与 `git ls-remote upstream refs/heads/main` 确认 PiliPlus `main@a30fcc310`（2.1.5），相对上次审查点 `48f075758` 新增 22 个提交。逐项查看提交文件和关键差异，并与当前登录、播放器、搜索、收藏夹、画中画实现对照；GitHub 2.1.5 Release 说明与提交主题相符。
 - 候选和暂缓原因已更新于顶部“上游同步状态”。优先处理截图重复点击 `5c4693600`、综合搜索黑名单 `66a1225d3` 和旧版 Android WebView 登录 `6a884d604`；播放通知重构、开发版依赖和 Flutter 升级需要独立兼容性验证。原先选择文本菜单的暂缓理由因 `483a423be` 修复而需要重新评估。
 - 本次只更新 `docs/codex/STATUS.md` 与 `version/工作进度.md`，未合并新增上游代码、未改版本、未运行构建或测试。完成记录后这两份文档为未提交改动；分支 `merge/upstream-2.1.4-20260913` 跟踪 origin，源代码仍为 `v26.9.20.1` 发布状态。下一步若用户要求同步，可先实施三项优先候选并做定向验证。
+
+## 2026-09-28 12:57
+
+- 响应用户要求，将审查范围明确扩展为 `48f075758..a30fcc310` 的全部 22 个上游提交，逐项对照后落地 5 个 cherry-pick 与 8 个本地适配，另 9 个按本文件顶部逐项记录为暂不合并。播放通知三笔提交只移植适合本地双播放器的状态、位置、倍速、音频恢复和后台服务生命周期逻辑，不升级开发版音频依赖及 AGP/Kotlin。
+- 本版发布提交 `9356ceb222048e98cbe7935552cabc15f4f80b9d` 已推送到 `origin/merge/upstream-2.1.4-20260913`，annotated tag `v26.9.28.1` 已推送且指向该提交；应用版本 `26.9.28+1`、Android `versionCode=24`。GitHub Release <https://github.com/maxzrb/PiliExo/releases/tag/v26.9.28.1> 已公开，三份资产均为 uploaded，远端大小及 digest 与本地一致。
+- arm64-v8a APK：31,550,646 bytes，SHA-256 `fe8d94c39ab6c6b13d5be4259ef2c565b7c6569d02f266d937918f1db4bcf6be`；armeabi-v7a APK：31,473,902 bytes，SHA-256 `e03ef02d0ac3b72f0ad5dbd7ebf09555faacef4c970185c303244fddabf92f1d`。产物在 `dist/release/v26.9.28.1/`；两包均为正式 V2 签名，证书与上一版一致，包名/版本/ABI/FFmpeg/R8 映射检查通过。
+- Flutter 3.47.4 全量测试 64/64、新增播放状态定向测试 1/1、Android `:app:testDebugUnitTest`、Analyze 无 error/warning、双 ABI Release 构建和 `git diff --check` 均通过。未连接真机；仍需验证播放通知、后台恢复、画中画和旧版 WebView 验证码登录。
+- ModelScope `AerithDream/PiliExo` 镜像上传因 `[E3021] User not logged in` 未执行成功，`modelscope whoami` 确认缺少 API token；已向用户请求在本机运行 `modelscope login`，不需发送 token。待登录后上传并校验 `releases/v26.9.28.1/` 三份文件。GitHub Release 已可独立下载，应用更新器有 GitHub 回退路径。
