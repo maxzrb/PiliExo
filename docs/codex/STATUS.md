@@ -1,11 +1,11 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-28 12:57 (+08:00)
+- 更新时间：2026-09-28 13:35 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
 - 分析基线：`9356ceb22`（`v26.9.28.1` 发布提交，annotated tag 已推送）。
-- 发布状态：`v26.9.28.1` 已发布 GitHub Release 与双 ABI 正式 APK；ModelScope 镜像因本机缺少 API 登录凭据尚未同步，待用户在本机执行 `modelscope login` 后补传。应用版本 `26.9.28+1`，Android `versionCode=24`。
+- 发布状态：`v26.9.28.1` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.1/` 镜像；两份正式 APK 和校验清单均已上传并核验。应用版本 `26.9.28+1`，Android `versionCode=24`。
 - 当前工作：已逐项处理 PiliPlus `48f075758..a30fcc310` 的全部 22 个提交：5 个直接 cherry-pick、8 个由本地 `b74689840` 逐项适配、9 个记录理由暂不合并；发布提交 `9356ceb22` 已推送。
-- 当前验证：Flutter 3.47.4 全量测试 64/64、另新增播放状态定向测试 1/1、Android `:app:testDebugUnitTest`、双 ABI Release 构建及签名/包体/GitHub 资产哈希验证通过；Analyze 无 error/warning，未连接 Android 真机。ModelScope 远端验证待上传后进行。
+- 当前验证：Flutter 3.47.4 全量测试 64/64、另新增播放状态定向测试 1/1、Android `:app:testDebugUnitTest`、双 ABI Release 构建及签名/包体/GitHub 资产哈希验证通过；Analyze 无 error/warning。ModelScope 三个下载地址均 HTTP 200，APK 远端长度与哈希、本地校验清单内容一致；未连接 Android 真机。
 - 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；项目锁定 Flutter 3.47.4；当前正式版本为 `v26.9.28.1`。
 
 ## 上游同步状态（已处理至 2026-09-28）
@@ -986,3 +986,10 @@
 - arm64-v8a APK：31,550,646 bytes，SHA-256 `fe8d94c39ab6c6b13d5be4259ef2c565b7c6569d02f266d937918f1db4bcf6be`；armeabi-v7a APK：31,473,902 bytes，SHA-256 `e03ef02d0ac3b72f0ad5dbd7ebf09555faacef4c970185c303244fddabf92f1d`。产物在 `dist/release/v26.9.28.1/`；两包均为正式 V2 签名，证书与上一版一致，包名/版本/ABI/FFmpeg/R8 映射检查通过。
 - Flutter 3.47.4 全量测试 64/64、新增播放状态定向测试 1/1、Android `:app:testDebugUnitTest`、Analyze 无 error/warning、双 ABI Release 构建和 `git diff --check` 均通过。未连接真机；仍需验证播放通知、后台恢复、画中画和旧版 WebView 验证码登录。
 - ModelScope `AerithDream/PiliExo` 镜像上传因 `[E3021] User not logged in` 未执行成功，`modelscope whoami` 确认缺少 API token；已向用户请求在本机运行 `modelscope login`，不需发送 token。待登录后上传并校验 `releases/v26.9.28.1/` 三份文件。GitHub Release 已可独立下载，应用更新器有 GitHub 回退路径。
+
+## 2026-09-28 13:35
+
+- 用户确认在 pwsh 完成 ModelScope 登录后，`modelscope whoami` 确认账号 `AerithDream`；本轮开始前 `git pull --ff-only` 为 Already up to date，工作树干净。
+- 执行 `modelscope upload AerithDream/PiliExo dist/release/v26.9.28.1 releases/v26.9.28.1 --repo-type dataset`，报告 3 个文件全部 committed、0 failed；两个 APK 经 LFS PUT 上传，校验清单正常提交，未启用删除同步。
+- ModelScope 三个 `resolve/master/releases/v26.9.28.1/` 地址均 HEAD HTTP 200；arm64-v8a 的远端长度 `31,550,646`、`X-Linked-ETag=fe8d94c39ab6c6b13d5be4259ef2c565b7c6569d02f266d937918f1db4bcf6be`，armeabi-v7a 的远端长度 `31,473,902`、`X-Linked-ETag=e03ef02d0ac3b72f0ad5dbd7ebf09555faacef4c970185c303244fddabf92f1d`，均与本地大小和 SHA-256 一致；`SHA256SUMS.txt` 远端长度 216 bytes，GET 内容与本地完全一致。
+- `v26.9.28.1` 的 GitHub 与 ModelScope 双源发布现已齐全，无需重建或改版本号；剩余风险仍为尚未进行 Android 真机回归。仅更新 HandShake 发布记录和中文进度，不修改发布标签或 APK。
