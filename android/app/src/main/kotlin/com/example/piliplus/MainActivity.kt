@@ -1,6 +1,5 @@
 package com.maxzrb.piliexo
 
-import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -46,11 +45,6 @@ class MainActivity : AudioServiceActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
-    }
-
-    override fun onDestroy() {
-        stopService(Intent(this, com.ryanheise.audioservice.AudioService::class.java))
-        super.onDestroy()
     }
 
     override fun onUserLeaveHint() {

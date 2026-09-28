@@ -1346,12 +1346,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Future<void> _initializePlayer() async {
     if (_instance == null) return;
     // 设置倍速
-    if (isLive) {
-      await setPlaybackSpeed(1.0);
-    } else {
-      if (currentRate != _playbackSpeed.value) {
-        await setPlaybackSpeed(_playbackSpeed.value);
-      }
+    final targetSpeed = isLive ? 1.0 : playbackSpeed;
+    if (currentRate != targetSpeed) {
+      await setPlaybackSpeed(targetSpeed);
     }
     _initVideoFit();
     // if (_looping) {
@@ -1384,10 +1381,22 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _stopWakeLock() {
     WakelockPlus.disable();
-    videoPlayerServiceHandler?.onStatusChange(
+    _updatePlaybackState(fromVideoPause: true);
+  }
+
+  void _updatePlaybackState({
+    Duration? position,
+    bool force = false,
+    bool fromVideoPause = false,
+  }) {
+    videoPlayerServiceHandler?.onUpdateState(
       playerStatus.value,
       isBuffering.value,
       isLive,
+      position: position ?? currentPosition,
+      speed: currentRate,
+      force: force,
+      fromVideoPause: fromVideoPause,
     );
   }
 
@@ -1404,11 +1413,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
       playerStatus.value = .playing;
       audioSessionHandler?.setActive(true);
-      videoPlayerServiceHandler?.onStatusChange(
-        .playing,
-        isBuffering.value,
-        isLive,
-      );
+      _updatePlaybackState();
     } else {
       _disableAutoEnterPip();
       playerStatus.value = .paused;
@@ -1454,7 +1459,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     final posInSeconds = value.inSeconds;
     if (posInSeconds != position.value) {
       position.value = posInSeconds;
-      videoPlayerServiceHandler?.onPositionChange(value);
+      _updatePlaybackState(position: value);
       makeHeartBeat(posInSeconds);
     }
     for (final element in _positionListeners) {
@@ -1468,7 +1473,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     final status = playerStatus.value;
     if (!status.isCompleted) {
       _stopWakeLockTimer();
-      videoPlayerServiceHandler?.onStatusChange(status, buffering, isLive);
+      _updatePlaybackState();
     }
     _notifyPlaybackInsight();
   }
@@ -1941,6 +1946,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       position = Duration.zero;
     }
     _heartDuration = position.inSeconds;
+    _updatePlaybackState(position: position, force: true);
 
     if (_hdrMedia3Controller case final hdr?) {
       danmakuController?.clear();
@@ -1993,6 +1999,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       await _videoPlayerController?.setRate(speed);
     }
     _playbackSpeed.value = speed;
+    _updatePlaybackState();
     if (danmakuController != null) {
       try {
         DanmakuOption currentOption = danmakuController!.option;
@@ -2017,6 +2024,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       await _videoPlayerController?.setRate(playSpeedDefault);
     }
     _playbackSpeed.value = playSpeedDefault;
+    _updatePlaybackState();
   }
 
   /// 播放视频
@@ -2591,11 +2599,13 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     final image = await videoPlayerController?.screenshot();
     if (image != null) {
       SmartDialog.showToast('点击弹窗保存截图');
-      showDialog(
+      final dispose = await showDialog<bool>(
         context: Get.context!,
         builder: (context) => GestureDetector(
           onTap: () async {
+            Get.back(result: false);
             final bytes = await image.toByteData(format: .png);
+            image.dispose();
             if (bytes != null) {
               ImageUtils.saveByteImg(
                 bytes: bytes.buffer.asUint8List(),
@@ -2604,7 +2614,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
             } else {
               SmartDialog.showToast('保存失败');
             }
-            Get.back();
           },
           child: Align(
             alignment: Alignment.centerRight,
@@ -2630,7 +2639,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
             ),
           ),
         ),
-      ).whenComplete(image.dispose);
+      );
+      if (dispose ?? true) image.dispose();
     } else {
       SmartDialog.showToast('截图失败');
     }

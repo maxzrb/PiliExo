@@ -30,6 +30,7 @@ import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/triple_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
+import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -89,6 +90,20 @@ class AudioController extends GetxController
   List<DetailItem>? playlist;
 
   late double speed = 1.0;
+  PlayerStatus _playerStatus = .paused;
+
+  void _updatePlaybackState({Duration? position, bool force = false}) {
+    if (player case final player?) {
+      videoPlayerServiceHandler?.onUpdateState(
+        _playerStatus,
+        player.state.buffering,
+        false,
+        position: position ?? player.state.position,
+        speed: speed,
+        force: force,
+      );
+    }
+  }
 
   late final Rx<PlayRepeat> playMode = Pref.audioPlayMode.obs;
 
@@ -112,6 +127,14 @@ class AudioController extends GetxController
   void _stopStatusTimer() {
     _statusTimer?.cancel();
     _statusTimer = null;
+  }
+
+  void _startStatusTimer() {
+    _stopStatusTimer();
+    _statusTimer = Timer(
+      const Duration(milliseconds: 500),
+      _updatePlaybackState,
+    );
   }
 
   void toggleVolume() {
@@ -210,6 +233,7 @@ class AudioController extends GetxController
   }
 
   Future<void>? onSeek(Duration duration) {
+    _updatePlaybackState(position: duration, force: true);
     return player?.seek(duration);
   }
 
@@ -388,7 +412,7 @@ class AudioController extends GetxController
         if (seconds != this.position.value) {
           this.position.value = seconds;
           _videoDetailController?.playedTime = position;
-          videoPlayerServiceHandler?.onPositionChange(position);
+          _updatePlaybackState(position: position);
         }
       }),
       stream.duration.listen((duration) {
@@ -397,38 +421,26 @@ class AudioController extends GetxController
       stream.playing.listen((playing) {
         if (playing) {
           animController.forward();
+          _playerStatus = .playing;
           _stopStatusTimer();
-          videoPlayerServiceHandler?.onStatusChange(.playing, false, false);
+          _updatePlaybackState();
         } else {
           animController.reverse();
-          _statusTimer?.cancel();
-          _statusTimer = Timer(
-            const Duration(milliseconds: 500),
-            () => videoPlayerServiceHandler?.onStatusChange(
-              .paused,
-              false,
-              false,
-            ),
-          );
+          _playerStatus = .paused;
+          _startStatusTimer();
         }
       }),
       stream.buffering.listen((buffering) {
-        if (buffering && !player!.state.completed) {
+        if (!_playerStatus.isCompleted) {
           _stopStatusTimer();
+          _updatePlaybackState();
         }
       }),
       stream.completed.listen((completed) {
         _videoDetailController?.playedTime = player!.state.duration;
         if (completed) {
-          _statusTimer?.cancel();
-          _statusTimer = Timer(
-            const Duration(milliseconds: 500),
-            () => videoPlayerServiceHandler?.onStatusChange(
-              .completed,
-              false,
-              false,
-            ),
-          );
+          _playerStatus = .completed;
+          _startStatusTimer();
           if (shutdownTimerService.isWaiting) {
             shutdownTimerService.handleWaiting();
           } else {
@@ -749,6 +761,7 @@ class AudioController extends GetxController
     if (player case final player?) {
       this.speed = speed;
       player.setRate(speed);
+      _updatePlaybackState();
     }
   }
 
@@ -820,7 +833,8 @@ class AudioController extends GetxController
       ?..onPlay = null
       ..onPause = null
       ..onSeek = null
-      ..onVideoDetailDispose(hashCode.toString());
+      ..onVideoDetailDispose(hashCode.toString())
+      ..clearIfNeeded();
     _subscriptions?.forEach((e) => e.cancel());
     _subscriptions?.clear();
     _subscriptions = null;
