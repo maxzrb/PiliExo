@@ -44,6 +44,7 @@ import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/extension/box_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -558,6 +559,53 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       (PlatformUtils.isDesktop && isDesktopPip);
   late bool isDesktopPip = false;
   late Rect _lastWindowBounds;
+  static Rect? _lastPipBounds;
+
+  Rect _adjustPipBounds(Rect lastRect, Size size, double aspectRatio) {
+    final lastSize = lastRect.size;
+    final lastOrientation = lastSize.orientation;
+    final orientation = size.orientation;
+
+    if (lastOrientation != orientation) {
+      final double width, height;
+      switch (orientation) {
+        case .portrait:
+          if (lastSize.width > size.height) {
+            height = min(lastSize.width, _lastWindowBounds.size.height);
+            width = height / aspectRatio;
+          } else {
+            height = size.height;
+            width = size.width;
+          }
+        case .landscape:
+          if (lastSize.height > size.width) {
+            width = lastSize.height;
+            height = width / aspectRatio;
+          } else {
+            height = size.height;
+            width = size.width;
+          }
+      }
+
+      return _lastPipBounds = Rect.fromLTWH(
+        lastRect.left,
+        lastRect.top,
+        width,
+        height,
+      );
+    }
+    return lastRect;
+  }
+
+  bool updatePipBounds() {
+    if (isDesktopPip) {
+      windowManager.getBounds().then((rect) {
+        if (isDesktopPip) _lastPipBounds = rect;
+      });
+      return true;
+    }
+    return false;
+  }
 
   late final showWindowTitleBar = Pref.showWindowTitleBar;
   late final RxBool isAlwaysOnTop = false.obs;
@@ -593,23 +641,29 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     final state = videoPlayerController!.state;
     int width = state.width;
     int height = state.height;
-    if (width == 0) {
-      width = this.width ?? 16;
-    }
-    if (height == 0) {
-      height = this.height ?? 9;
-    }
+    if (width == 0) width = this.width ?? 16;
+    if (height == 0) height = this.height ?? 9;
+    final double aspectRatio;
     if (height > width) {
-      size = Size(280.0, 280.0 * height / width);
+      aspectRatio = height / width;
+      size = Size(shortSide, shortSide * aspectRatio);
+      minimumSize = Size(minShortSide, minShortSide * aspectRatio);
     } else {
-      size = Size(280.0 * width / height, 280.0);
+      aspectRatio = width / height;
+      size = Size(shortSide * aspectRatio, shortSide);
+      minimumSize = Size(minShortSide * aspectRatio, minShortSide);
     }
 
     await windowManager.setMinimumSize(size);
     setAlwaysOnTop(true);
-    windowManager
-      ..setSize(size)
-      ..setAspectRatio(width / height);
+    if (_lastPipBounds != null) {
+      windowManager.setBounds(
+        _adjustPipBounds(_lastPipBounds!, size, aspectRatio),
+      );
+    } else {
+      windowManager.setSize(size);
+    }
+    windowManager.setAspectRatio(width / height);
   }
 
   void toggleDesktopPip() {
