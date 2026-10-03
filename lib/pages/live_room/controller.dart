@@ -774,7 +774,6 @@ class LiveRoomController extends GetxController {
     }
     autoWrapReportDialog(
       Get.context!,
-      ban: false,
       ReportOptions.liveDanmakuReport,
       withContent: ReportOptions.liveDanmakuReportCheck,
       contentRequired: ReportOptions.liveDanmakuReportCheck,
