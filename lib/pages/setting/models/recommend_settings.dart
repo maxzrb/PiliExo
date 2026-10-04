@@ -93,20 +93,23 @@ List<SettingsModel> get recommendSettings {
       title: '点赞率',
       suffix: '%',
       key: SettingBoxKey.minLikeRatioForRecommend,
+      filterScope: 'Web推荐、热门、分区',
       values: [0, 1, 2, 3, 4],
       onChanged: (value) => RecommendFilter.minLikeRatioForRecommend = value,
     ),
     getBanWordModel(
       title: '标题关键词过滤',
       key: SettingBoxKey.banWordForRecommend,
+      banScope: '推荐、热门、分区、相关视频',
       onChanged: (value) {
         RecommendFilter.rcmdRegExp = value;
         RecommendFilter.enableFilter = value.pattern.isNotEmpty;
       },
     ),
     getBanWordModel(
-      title: 'App推荐/热门/排行榜: 视频分区关键词过滤',
+      title: '分区关键词过滤',
       key: SettingBoxKey.banWordForZone,
+      banScope: 'App推荐、热门、分区',
       onChanged: (value) {
         VideoHttp.zoneRegExp = value;
         VideoHttp.enableFilter = value.pattern.isNotEmpty;
@@ -116,12 +119,14 @@ List<SettingsModel> get recommendSettings {
       title: '视频时长',
       suffix: 's',
       key: SettingBoxKey.minDurationForRcmd,
+      filterScope: '推荐、相关视频',
       values: [0, 30, 60, 90, 120],
       onChanged: (value) => RecommendFilter.minDurationForRcmd = value,
     ),
     getVideoFilterSelectModel(
       title: '播放量',
       key: SettingBoxKey.minPlayForRcmd,
+      filterScope: '推荐、热门、分区、相关视频',
       values: [0, 50, 100, 500, 1000],
       onChanged: (value) => RecommendFilter.minPlayForRcmd = value,
     ),
