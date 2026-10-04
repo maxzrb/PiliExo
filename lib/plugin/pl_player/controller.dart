@@ -47,6 +47,7 @@ import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
+import 'package:PiliPlus/utils/ios/pip_helper.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -705,6 +706,18 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       return;
     }
     if (videoPlayerController case NativePlayer(:final state)) {
+      if (Platform.isIOS) {
+        if (videoController?.id.value case final textureId?) {
+          IOSPipHelper.enter(
+            textureId,
+            width: state.width == 0 ? width : state.width,
+            height: state.height == 0 ? height : state.height,
+            autoEnter: autoEnter,
+            state: _iosPipState(state),
+          );
+        }
+        return;
+      }
       PageUtils.enterPip(
         autoEnter: autoEnter,
         width: state.width == 0 ? width : state.width,
@@ -717,7 +730,30 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _disableAutoEnterPip() {
     if (_isAutoEnterPip) {
-      PiliAndroidHelper.disableAutoEnterPip();
+      if (Platform.isIOS) {
+        IOSPipHelper.disableAutoEnter();
+      } else {
+        PiliAndroidHelper.disableAutoEnterPip();
+      }
+    }
+  }
+
+  Map<String, Object> _iosPipState(PlayerState state, [Duration? position]) {
+    return {
+      'isPlaying': playerStatus.isPlaying,
+      'isBuffering': isBuffering.value,
+      'isLive': isLive,
+      'position': (position ?? state.position).inMilliseconds,
+      'duration': durationInMilliseconds,
+      'speed': state.rate,
+    };
+  }
+
+  void _updateIOSPip([Duration? position]) {
+    if (Platform.isIOS && IOSPipHelper.needsUpdate) {
+      if (_videoPlayerController case final player?) {
+        IOSPipHelper.update(_iosPipState(player.state, position));
+      }
     }
   }
 
@@ -1017,6 +1053,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       } else {
         _isAutoEnterPip = true;
       }
+    } else if (Platform.isIOS && autoPiP && IOSPipHelper.isAvailable) {
+      _isAutoEnterPip = true;
     }
   }
 
@@ -1463,6 +1501,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       force: force,
       fromVideoPause: fromVideoPause,
     );
+    _updateIOSPip(position);
   }
 
   void _onPlayingChanged(bool playing) {
@@ -1482,6 +1521,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     } else {
       _disableAutoEnterPip();
       playerStatus.value = .paused;
+      _updateIOSPip();
       audioSessionHandler?.setActive(false);
       _wakeLockTimer?.cancel();
       _wakeLockTimer = Timer(
@@ -1550,6 +1590,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _onDurationChanged(Duration value) {
     updateDuration(value);
+    _updateIOSPip();
     _notifyPlaybackInsight();
   }
 
@@ -2553,6 +2594,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (Platform.isAndroid) {
       AndroidHelper$ToDart.onUserLeaveHint?.release();
       AndroidHelper$ToDart.onUserLeaveHint = null;
+    } else if (Platform.isIOS) {
+      IOSPipHelper.dispose();
     }
     _timer?.cancel();
     // _position.close();

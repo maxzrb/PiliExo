@@ -15,6 +15,7 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_insight_settings.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
+import 'package:PiliPlus/utils/ios/pip_helper.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -233,7 +234,7 @@ List<SettingsModel> get playSettings => [
       setKey: SettingBoxKey.continuePlayInBackground,
       defaultVal: false,
     ),
-  if (Platform.isAndroid) ...[
+  if (Platform.isAndroid || IOSPipHelper.isAvailable)
     SwitchModel(
       title: '后台画中画',
       subtitle: '进入后台时以小窗形式（PiP）播放',
@@ -241,11 +242,15 @@ List<SettingsModel> get playSettings => [
       setKey: SettingBoxKey.autoPiP,
       defaultVal: false,
       onChanged: (val) {
-        if (val && !videoPlayerServiceHandler!.enableBackgroundPlay) {
+        if (val &&
+            Platform.isAndroid &&
+            !videoPlayerServiceHandler!.enableBackgroundPlay) {
           SmartDialog.showToast('建议开启后台音频服务');
         }
       },
     ),
+  // PiP on iOS only shows the video frames, without danmaku.
+  if (Platform.isAndroid)
     const SwitchModel(
       title: '画中画不加载弹幕',
       subtitle: '当弹幕开关开启时，小窗屏蔽弹幕以获得较好的体验',
@@ -253,7 +258,6 @@ List<SettingsModel> get playSettings => [
       setKey: SettingBoxKey.pipNoDanmaku,
       defaultVal: false,
     ),
-  ],
   const SwitchModel(
     title: '全屏手势反向',
     subtitle: '默认播放器中部向上滑动进入全屏，向下退出\n开启后向下全屏，向上退出',
