@@ -104,6 +104,7 @@ class VideoDetailController extends GetxController
   late bool isPlayAll;
   late SourceType sourceType;
   late BiliDownloadEntryInfo entry;
+  @override
   late bool isFileSource;
   late bool _mediaDesc = false;
   late final RxList<MediaListItemModel> mediaList = <MediaListItemModel>[].obs;
@@ -335,8 +336,18 @@ class VideoDetailController extends GetxController
     }
   }
 
-  void initFileSource(BiliDownloadEntryInfo entry, {bool isInit = true}) {
+  void _initLocalSkipIfNeeded() {
+    if (plPlayerController.enableBlock) {
+      resetBlock();
+      if (entry.segments case final list? when list.isNotEmpty) {
+        handleSBData(list);
+      }
+    }
+  }
+
+  void initFileSource(BiliDownloadEntryInfo entry) {
     this.entry = entry;
+    _initLocalSkipIfNeeded();
     firstVideo = VideoItem(
       quality: VideoQuality.fromCode(entry.preferedVideoQuality),
       width: entry.ep?.width ?? entry.pageData?.width ?? 1,
@@ -786,7 +797,7 @@ class VideoDetailController extends GetxController
     playerInit();
   }
 
-  Future<void>? _initPlayerIfNeeded(bool autoFullScreenFlag) {
+  Future<void>? initPlayerIfNeeded(bool autoFullScreenFlag) {
     if (_autoPlay.value ||
         (plPlayerController.preInitPlayer && !plPlayerController.processing) &&
             (isFileSource
@@ -899,11 +910,11 @@ class VideoDetailController extends GetxController
 
     if (isClosed) return;
 
-    if (!isFileSource) {
-      if (plPlayerController.enableBlock) {
-        initSkip();
-      }
+    if (plPlayerController.enableBlock) {
+      initSkip();
+    }
 
+    if (!isFileSource) {
       if (vttSubtitlesIndex.value == -1) {
         _queryPlayInfo();
       }
@@ -962,7 +973,7 @@ class VideoDetailController extends GetxController
     bool autoFullScreenFlag = false,
   }) async {
     if (isFileSource) {
-      return _initPlayerIfNeeded(autoFullScreenFlag);
+      return initPlayerIfNeeded(autoFullScreenFlag);
     }
     if (isQuerying) {
       return;
@@ -1046,7 +1057,7 @@ class VideoDetailController extends GetxController
           _setVideoHeight();
           currentDecodeFormats = VideoDecodeFormatType.AVC;
           currentVideoQa.value = videoQuality;
-          await _initPlayerIfNeeded(autoFullScreenFlag);
+          await initPlayerIfNeeded(autoFullScreenFlag);
           isQuerying = false;
           return;
         } else {
@@ -1111,7 +1122,7 @@ class VideoDetailController extends GetxController
         firstAudio = null;
         audioUrl = '';
       }
-      await _initPlayerIfNeeded(autoFullScreenFlag);
+      await initPlayerIfNeeded(autoFullScreenFlag);
     } else {
       _autoPlay.value = false;
       videoState.value = false;
@@ -1430,6 +1441,11 @@ class VideoDetailController extends GetxController
     vttSubtitlesIndex.value = -1;
     vttSubtitles.clear();
 
+    // sponsor block
+    if (blockConfig.enableBlock) {
+      resetBlock();
+    }
+
     if (!isFileSource) {
       // language
       languages.value = null;
@@ -1443,11 +1459,6 @@ class VideoDetailController extends GetxController
       // view point
       if (plPlayerController.showViewPoints) {
         viewPointList.clear();
-      }
-
-      // sponsor block
-      if (blockConfig.enableBlock) {
-        resetBlock();
       }
 
       // interactive video

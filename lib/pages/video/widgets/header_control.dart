@@ -1844,6 +1844,8 @@ class HeaderControlState extends State<HeaderControl>
                         ),
                       ),
                     ),
+                ],
+                if (plPlayerController.enableBlock)
                   Obx(
                     () => videoDetailCtr.segmentProgressList.isNotEmpty
                         ? SizedBox(
@@ -1862,7 +1864,6 @@ class HeaderControlState extends State<HeaderControl>
                           )
                         : const SizedBox.shrink(),
                   ),
-                ],
                 if (!isPortrait || isFullScreen || PlatformUtils.isDesktop) ...[
                   SizedBox(
                     width: btnWidth,
