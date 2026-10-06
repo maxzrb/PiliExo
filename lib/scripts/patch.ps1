@@ -250,7 +250,23 @@ try {
 } catch {
 }
 
-flutter pub get
+# Windows Android 构建不生成桌面链接，避免链接权限错误中断 Android 插件注册。
+$DesktopEnvKeys = @('FLUTTER_WINDOWS', 'FLUTTER_LINUX', 'FLUTTER_MACOS')
+$PreviousDesktopEnv = @{}
+try {
+    if ($platform.ToLower() -eq 'android' -and $env:OS -eq 'Windows_NT') {
+        foreach ($key in $DesktopEnvKeys) {
+            $PreviousDesktopEnv[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+            [Environment]::SetEnvironmentVariable($key, 'false', 'Process')
+        }
+    }
+    flutter pub get
+    if ($LASTEXITCODE -ne 0) { throw "flutter pub get 失败：$LASTEXITCODE" }
+} finally {
+    foreach ($key in $PreviousDesktopEnv.Keys) {
+        [Environment]::SetEnvironmentVariable($key, $PreviousDesktopEnv[$key], 'Process')
+    }
+}
 
 $MaterialUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
     Where-Object { $_.Name -like "material_ui-*" } |
