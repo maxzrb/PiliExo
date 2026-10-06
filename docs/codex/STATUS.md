@@ -1,12 +1,18 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-09-28 14:57 (+08:00)
+- 更新时间：2026-10-06 23:19 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
-- 分析基线：`9356ceb22`（`v26.9.28.1` 发布提交）；当前开发提交 `0b0717212` 升级工具链与依赖，不属于既有 Release。
-- 发布状态：`v26.9.28.1` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.1/` 镜像；两份正式 APK 和校验清单均已上传并核验。当前开发分支已升 Flutter 3.47.5 与依赖，但尚未发布新 Release；应用版本仍为 `26.9.28+1`，Android `versionCode=24`。
-- 当前工作：此前处理的 22 个 PiliPlus 提交中，`3d8711cb3`、`5f68384c4`、`e49209f82` 的适用部分现由 `0b0717212` 落地：Flutter 3.47.5、`material_ui 1.4.0`、其补丁及定向依赖升级。`483a423be` 已重新评估，仍未合入，原因与后续移植边界见下方记录。
-- 当前验证：Flutter 3.47.5 全量测试 65/65、Analyze 无 error/warning（55 条 info）、Android arm64 debug APK 构建及 `:app:testDebugUnitTest` 通过；SDK/依赖缓存已迁至项目内 `tools/`，新路径 `pub get`、工具链校验和播放状态定向测试再次通过。尚未用 3.47.5 构建正式 Release 或进行真机回归；上版 3.47.4 正式包不受影响。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；开发分支锁定 Flutter 3.47.5，当前正式版本仍为 `v26.9.28.1`。
+- 分析基线：`f79be53d9`（已发布 `v26.9.28.2`，与 origin 当前分支同步），本轮修改在工作区。
+- 发布状态：GitHub latest 与连接手机均确认为 `v26.9.28.2`；应用版本 `26.9.28+2` / Android `versionCode=25`。本轮不构建正式 APK、不发布、不改版本；ModelScope 本版状态本轮未核验。
+- 当前工作：已定位 BV1tfei6MEMn 的 Media3 FLAC 输入缓冲不足及 sample_rate=0，新增音轨格式修正；上游已审查至 `4ed5968f3`（2.1.6），43 项建议见 `docs/PiliPlus上游审查-2026-10-06.md`，本轮未合并上游。
+- 当前验证：原生 :app:compileReleaseKotlin 通过；独立 Android 验证工程复用相同修正代码，4 项 JUnit 格式回归测试通过。原项目完整 Robolectric 测试/Flutter/APK 构建未完成；真机临时验证程序安装被手机拒绝，用户明确留待发布时验证原视频。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；开发分支锁定 Flutter 3.47.5，当前正式版本为 `v26.9.28.2`。
+
+## 上游同步状态（2026-10-06 审查，尚未合入）
+
+- `a30fcc310..4ed5968f3` 共 43 个提交，逐项审查结论与依赖持久化在 `docs/PiliPlus上游审查-2026-10-06.md`。
+- 优先候选：`691d0307a`、`affb0bdd1`、`dbb92ef2c`、`55d89f55a`、`80b1db31b` + `951a91b53`、`858dba22d`。播放器相关提交需人工适配 Media3/mpv 双后端。
+- 本轮仅检查；功能重构与工具链升级另行实施，保留所有历史排除映射。
 
 ## 上游同步状态（已处理至 2026-09-28）
 
@@ -1012,3 +1018,15 @@
 - 环境注意：项目绝对路径含空格，`objective_c` 原生 hook 会截断命令，使用 `subst P:` 映射项目目录后验证成功。初次 Gradle 在线构建在 Google Storage 引擎构件下载停滞；通过 `FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn` 重试成功。直接离线单测未指定目标架构时缺少 v7a/x86_64 debug 引擎缓存，指定 arm64 后通过。用户索要的 Flutter 3.47.5 SDK 与三个 engine JAR 的 Google Storage 直链已在对话中提供；本轮不需要用户手动下载。
 - SDK、压缩包和 Pub 缓存现在位于被 Git 忽略的项目内 `tools/`，避免 `flutter clean` 删除；`docs/本机发布工具链.md` 与 `docs/发布流程.md` 已更新。构建仅出现既有插件 compileSdk 覆盖及 `flutter_volume_controller` 未来 Built-in Kotlin 兼容提醒。未改应用版本号、未构建正式签名 Release、未做 Android 真机回归。
 - 源码与流程提交 `0b0717212 build: upgrade Flutter 3.47.5 and material_ui 1.4.0`；本次 HandShake 记录另行提交。当前分支 `merge/upstream-2.1.4-20260913`，完成记录提交后推送 origin；`v26.9.28.1` 标签和既有产物保持不变。
+
+## 2026-10-06 23:19
+
+- 新环境/跨设备接手：初始本地为 9 月 14 日提交 `381bf87f8`，经 `git pull --ff-only origin merge/upstream-2.1.4-20260913` 同步到 `f79be53d9`。原有未跟踪 `tmp/` 保留。GitHub latest 与手机 dumpsys 版本均为 v26.9.28.2 / code 25，修正旧快照遗漏的发布状态。
+- 用户复现 BV1tfei6MEMn 后抓取 `build/diagnostics/hdr-live.log`：`audio/flac` / 2 声道 / sample_rate=0，系统 c2.android.flac.decoder 实际输出 96000 Hz；多次 `InsufficientCapacityException: Buffer too small (32768 < 36693)`，随后 ExoPlayer Unexpected runtime error / IllegalArgumentException，整播放器回退 mpv。堆栈已混淆；sample_rate=0 对最终断言的影响为结合格式和源码作出的判断。
+- 新增 `FlacFormatExtractorsFactory.kt`：在 Progressive 音轨的 TrackOutput.format 处读取有效 fLaC/STREAMINFO，恢复采样率和声道数，并按最大压缩帧预留输入缓冲；未知最大帧时按最大未压缩块加帧头计算。保留容器更大的 maxInputSize，非 FLAC、缺失/非法初始化数据不改动。接入 HdrMedia3Plugin 分离音轨，不改变视频 SurfaceView、音质选择或 FFmpeg 回退优先级。
+- 官方 Media3 1.11.0 BoxParser.java 已核实 dfLa 初始化数据包含 fLaC + 元数据块头；保存于忽略目录 build/diagnostics。原生 :app:compileReleaseKotlin --offline（排除 Flutter 编译，使用 3.47.4 SDK Gradle 插件与既有 release 引擎缓存）通过，只有既有弃用警告。该验证不等同 Flutter 3.47.5 完整构建。
+- 新增 4 项格式回归测试。原工程 debug 测试缺 Flutter debug 引擎缓存，release 单测任务未提供；独立临时 Android 工程复用相同修正源码，将测试运行器改为普通 JUnit（Android stub returnDefaultValues），4/4 通过。临时程序用于同类 96 kHz/24 bit FLAC 对比，APK 已生成但 ADB 安装失败 INSTALL_FAILED_ABORTED: User rejected permissions，未完成真机播放。
+- 用户明确“到时候发布再验证”，因此不再构建或尝试安装。当前手机应用未被更新；后续发布需验证原视频 HDR + Hi-Res、HDR + AAC/E-AC-3、倍速/seek、暂停恢复和回退路径，并补跑原工程 Robolectric 测试。
+- 环境：当前路径 D:/pyprogram/piliexo 不含空格，无需 subst；本机仅有 D:/tools/flutter-3.47.4/3.47.2，旧设备的项目内 tools/flutter-3.47.5 和 Pub 缓存未带过来。下载 3.47.5 官方镜像清单请求返回 404，未改 SDK 锁定。发现百度网盘生成 .baiduyun.uploading.cfg 混入 Android 构建中间目录导致 AAPT 读错文件；临时验证工程将 build/cache 放到 C:/Users/maxzr/AppData/Local/Temp/piliexo-flac-20261006 后构建成功，发布前建议排除构建缓存同步。
+- 上游 fetch 到 `4ed5968f3`（2.1.6）；43 项标题、stat 与关键 diff 审查记录已输出。重点候选共 7 个上游提交；本轮未 cherry-pick、未 commit/push、未更改应用版本。
+- Git：3 个原生源码/测试文件及 3 份记录为本轮改动，另有原有 tmp/。日志、临时 APK、验证工程均在忽略目录；实时 ADB 日志采集已停止。建议修复验证后独立提交，再实施上游候选批次。

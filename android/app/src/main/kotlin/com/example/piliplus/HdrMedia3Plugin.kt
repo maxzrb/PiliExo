@@ -1061,7 +1061,10 @@ private class HdrMedia3Session(
                 audio.mimeType?.takeIf(String::isNotBlank)?.let(::setMimeType)
             }
             .build()
-        val audioSource = ProgressiveMediaSource.Factory(fallbackFactory)
+        val audioSource = ProgressiveMediaSource.Factory(
+            fallbackFactory,
+            FlacFormatExtractorsFactory(),
+        )
             .createMediaSource(audioItem)
         return MergingMediaSource(true, true, videoSource, audioSource)
     }
