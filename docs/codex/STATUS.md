@@ -1,17 +1,19 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-06 23:45 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`；隔离构建仓库在 C 盘，D 盘待完成后快进同步。
-- 当前工作：已合入用户指定的全部 41 项提交，HDR FLAC 格式修正保留；正式发布准备 `v26.10.6.1` / Android versionCode=26。
-- 当前验证：Flutter 3.47.6 / Dart 3.13.5 校验通过，25 个 framework 与 9 个 material 补丁通过；全项目静态分析仅 64 个 info，无 error/warning；Flutter 测试、Release 构建和发布验收进行中。
-- GitHub 已登录；ModelScope 已登录 AerithDream。发布需要两个 ARM APK、签名/ABI/版本校验、镜像哈希核验。
-- 真机原视频 BV1tfei6MEMn 待安装正式包复验；此前临时 APK 被系统拒绝安装。HDR 失败日志明确为 FLAC 96kHz 24bit 音轨缓冲不足及 sample_rate=0。
+- 更新时间：2026-10-07 00:12 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`；D 盘工程与 C 盘隔离构建源码已同步，正式源码提交 `df375e716`。
+- 发布状态：[v26.10.7.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.1) 已为 GitHub latest；ModelScope 两份 APK 已上传并下载比对 SHA-256。Android versionCode=27 / versionName=26.10.7，手机已成功覆盖安装。
+- 当前完成：用户指定全部 41 项上游提交已合入；HDR FLAC 播放与启动 Logo 卡住问题已修复。手机启动首页和音频服务正常，用户确认 BV1tfei6MEMn 的 HDR 播放、声音正常。
+- 验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
+- 工具链：Flutter 3.47.6 / Dart 3.13.5；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁。SDK 与 Pub 缓存持久化在 C 盘，详见本机工具链文档。
+- 已知验收边界：完整原工程 Robolectric 测试未完成，release 无 unit test task，debug 离线模式缺新引擎 embedding；v7a 未做真机验收，iOS/桌面改动仅静态分析通过。
+- Git 状态：发布源码、分支和标签已推送；本条发布验收记录另提交推送。用户原有 `tmp/` 不修改；所有签名文件保持忽略。
 
-## 上游同步状态（2026-10-06 审查，尚未合入）
+## 上游同步状态（2026-10-06 审查，后续已合入 41 项）
 
 - `a30fcc310..4ed5968f3` 共 43 个提交，逐项审查结论与依赖持久化在 `docs/PiliPlus上游审查-2026-10-06.md`。
 - 优先候选：`691d0307a`、`affb0bdd1`、`dbb92ef2c`、`55d89f55a`、`80b1db31b` + `951a91b53`、`858dba22d`。播放器相关提交需人工适配 Media3/mpv 双后端。
-- 本轮仅检查；功能重构与工具链升级另行实施，保留所有历史排除映射。
+- 用户随后明确要求合入全部 41 项，已逐项完成；实际映射见审查文档的“用户指定全部 41 项后的实际合并”。排除本轮 README 和上游版本号两项，历史排除映射继续保留。
 
 ## 上游同步状态（已处理至 2026-09-28）
 
@@ -1037,3 +1039,19 @@
 - 保留双后端倍速/截图/清屏、混合推荐和评论数刷新；补齐 iOS PiP 状态同步和桌面 PiP 尺寸定义。
 - C 盘隔离源码避开百度网盘锁；D 盘旧 cherry-pick 状态将在最终同步时清理，仅撤销本轮未完成暂存变更。
 - Flutter 官方 tag 工具链与配套补丁已就绪，原有 SDK 和签名保留；最终测试、APK 校验和上传结果待追加。
+
+
+## 2026-10-07 00:12 发布完成与真机修复验收
+
+- v26.10.6.1 曾完成发布，用户安装后报告卡在启动 Logo。根因为 Windows 符号链接失败导致 flutter pub get 未完成插件注入；旧 APK 的 DEX 没有 GeneratedPluginRegistrant。此前把“依赖已解析”当作可使用 --no-pub 构建是错误判断。
+- 旧版本已设置为预发布并加问题说明，移出正式更新通道；标签和历史资产不重写。
+- 在 Windows Android pub get 命令期间关闭桌面目标环境变量，成功生成 29 个原生插件注册项。新增 verify_android_plugins.ps1，预构建元数据脚本与 CI 都强制校验；patch.ps1 遇 pub get 失败立即停止并恢复环境变量。
+- 新版本 v26.10.7.1 / versionCode=27 / source=df375e716：双 ABI APK 校验通过，DEX 内注册类存在，正式签名与此前手机包相同（SHA-256 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51）。adb install -r 成功；手机首页与 AudioService 已正常。
+- 原视频 BV1tfei6MEMn 用户确认正常播放、出声。日志显示 Media3 1.11.0，FLAC sample-rate=96000、max-input-size=37941；未见 Buffer too small 或播放异常，已播放超过两分钟。证据在 build/diagnostics/release-v26.10.7.1/。
+- 67 项 Flutter 测试再次通过；插件注册缺失、不全、有效三种回归检查通过。完整项目原生 Robolectric 测试受 Debug embedding 离线缓存限制未跑完；4 项独立 FLAC 回归测试已通过且源码一致，不将其宣称为完整原生测试通过。
+- GitHub Release latest、标题/标签、三个资产 SHA-256 核验通过。ModelScope 两份 APK 下载 HTTP 200，哈希一致。APK 与 SHA256SUMS 保留于 dist/release/v26.10.7.1/。
+
+```text
+f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_android_v26.10.7.1_arm64-v8a.apk
+6c4f9a658cecea463a4f97084dcc1f7e68bf6d87ecb8ee406636a1e071eb58be  PiliExo_android_v26.10.7.1_armeabi-v7a.apk
+```
