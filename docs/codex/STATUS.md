@@ -1,13 +1,13 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-07 00:12 (+08:00)
+- 更新时间：2026-10-07 00:17 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`；D 盘工程与 C 盘隔离构建源码已同步，正式源码提交 `df375e716`。
 - 发布状态：[v26.10.7.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.1) 已为 GitHub latest；ModelScope 两份 APK 已上传并下载比对 SHA-256。Android versionCode=27 / versionName=26.10.7，手机已成功覆盖安装。
 - 当前完成：用户指定全部 41 项上游提交已合入；HDR FLAC 播放与启动 Logo 卡住问题已修复。手机启动首页和音频服务正常，用户确认 BV1tfei6MEMn 的 HDR 播放、声音正常。
 - 验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
 - 工具链：Flutter 3.47.6 / Dart 3.13.5；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁。SDK 与 Pub 缓存持久化在 C 盘，详见本机工具链文档。
 - 已知验收边界：完整原工程 Robolectric 测试未完成，release 无 unit test task，debug 离线模式缺新引擎 embedding；v7a 未做真机验收，iOS/桌面改动仅静态分析通过。
-- Git 状态：发布源码、分支和标签已推送；本条发布验收记录另提交推送。用户原有 `tmp/` 不修改；所有签名文件保持忽略。
+- Git 状态：发布源码、分支、标签及验收记录已推送；工作区只保留用户原有未跟踪 `tmp/`。签名文件保持忽略，原工程 pub get、SDK 与插件注册校验均通过。
 
 ## 上游同步状态（2026-10-06 审查，后续已合入 41 项）
 
@@ -1055,3 +1055,12 @@
 f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_android_v26.10.7.1_arm64-v8a.apk
 6c4f9a658cecea463a4f97084dcc1f7e68bf6d87ecb8ee406636a1e071eb58be  PiliExo_android_v26.10.7.1_armeabi-v7a.apk
 ```
+
+
+## 2026-10-07 00:17 输入缓冲依据复核与收尾
+
+- 用户询问 37941 字节是否足够；复核 RFC 9639 §8.2（https://www.rfc-editor.org/rfc/rfc9639.html#section-8.2）和 Media3 1.11.0 MediaCodecAudioRenderer：maxInputSize 直接用于 codec max-input-size。
+- 37941 是当前音轨元数据的最大压缩帧大小，并非固定常数。已知最大帧非零时取其与原 format.maxInputSize 较大者；未知时按最大未压缩块加 64 字节估算。其他音轨会独立计算，保留更大的既有值。
+- 手机日志的 AidlBufferPool 显示 4 个缓冲共 151764 字节、单缓冲 37941，证实实际配置生效。当前合规音轨无需额外固定扩容；不能以本次短时间实播宣称任何损坏元数据都不会失败。
+- 原工程成功执行 Flutter 3.47.6 pub get（命令环境暂时关闭桌面目标），Android 29 个原生插件注册完整，verify_flutter 通过；本机 android/local.properties 已改为持久 C 盘新 SDK。
+- 已停止本轮 ADB 连续日志采集。正式 APK 不改动，最新正式 Release 仍为 v26.10.7.1。
