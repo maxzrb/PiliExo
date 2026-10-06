@@ -643,7 +643,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     }
 
+    const shortSide = 280.0;
+    const minShortSide = 160.0;
     final Size size;
+    final Size minimumSize;
     final state = videoPlayerController!.state;
     int width = state.width;
     int height = state.height;
@@ -658,7 +661,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       minimumSize = Size(minShortSide * aspectRatio, minShortSide);
     }
 
-    await windowManager.setMinimumSize(size);
+    await windowManager.setMinimumSize(minimumSize);
     setAlwaysOnTop(true);
     if (_lastPipBounds != null) {
       windowManager.setBounds(
@@ -2073,6 +2076,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       danmakuController?.clear();
       try {
         await _videoPlayerController?.seek(position);
+        _updateIOSPip(position);
       } catch (e) {
         if (kDebugMode) debugPrint('seek failed: $e');
       }

@@ -45,7 +45,7 @@ if ($lockFlutter -ne $pubspecFlutter) {
     throw "pubspec.lock 与项目声明的 Flutter 版本不一致：$lockFlutter / $pubspecFlutter；请用正确 SDK 执行 flutter pub get"
 }
 
-$versionOutput = & $FlutterPath --version 2>&1
+$versionOutput = & $FlutterPath --version --no-version-check 2>&1
 if ($LASTEXITCODE -ne 0) {
     throw "无法执行 Flutter：$FlutterPath`n$($versionOutput -join [Environment]::NewLine)"
 }

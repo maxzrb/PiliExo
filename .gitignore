@@ -153,3 +153,6 @@ dist
 test*
 !test/
 !test/**
+
+# 百度网盘生成的上传状态文件不进入源码。
+*.baiduyun.uploading.cfg

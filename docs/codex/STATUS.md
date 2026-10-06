@@ -1,12 +1,11 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-06 23:19 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
-- 分析基线：`f79be53d9`（已发布 `v26.9.28.2`，与 origin 当前分支同步），本轮修改在工作区。
-- 发布状态：GitHub latest 与连接手机均确认为 `v26.9.28.2`；应用版本 `26.9.28+2` / Android `versionCode=25`。本轮不构建正式 APK、不发布、不改版本；ModelScope 本版状态本轮未核验。
-- 当前工作：已定位 BV1tfei6MEMn 的 Media3 FLAC 输入缓冲不足及 sample_rate=0，新增音轨格式修正；上游已审查至 `4ed5968f3`（2.1.6），43 项建议见 `docs/PiliPlus上游审查-2026-10-06.md`，本轮未合并上游。
-- 当前验证：原生 :app:compileReleaseKotlin 通过；独立 Android 验证工程复用相同修正代码，4 项 JUnit 格式回归测试通过。原项目完整 Robolectric 测试/Flutter/APK 构建未完成；真机临时验证程序安装被手机拒绝，用户明确留待发布时验证原视频。
-- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；开发分支锁定 Flutter 3.47.5，当前正式版本为 `v26.9.28.2`。
+- 更新时间：2026-10-06 23:45 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`；隔离构建仓库在 C 盘，D 盘待完成后快进同步。
+- 当前工作：已合入用户指定的全部 41 项提交，HDR FLAC 格式修正保留；正式发布准备 `v26.10.6.1` / Android versionCode=26。
+- 当前验证：Flutter 3.47.6 / Dart 3.13.5 校验通过，25 个 framework 与 9 个 material 补丁通过；全项目静态分析仅 64 个 info，无 error/warning；Flutter 测试、Release 构建和发布验收进行中。
+- GitHub 已登录；ModelScope 已登录 AerithDream。发布需要两个 ARM APK、签名/ABI/版本校验、镜像哈希核验。
+- 真机原视频 BV1tfei6MEMn 待安装正式包复验；此前临时 APK 被系统拒绝安装。HDR 失败日志明确为 FLAC 96kHz 24bit 音轨缓冲不足及 sample_rate=0。
 
 ## 上游同步状态（2026-10-06 审查，尚未合入）
 
@@ -1030,3 +1029,11 @@
 - 环境：当前路径 D:/pyprogram/piliexo 不含空格，无需 subst；本机仅有 D:/tools/flutter-3.47.4/3.47.2，旧设备的项目内 tools/flutter-3.47.5 和 Pub 缓存未带过来。下载 3.47.5 官方镜像清单请求返回 404，未改 SDK 锁定。发现百度网盘生成 .baiduyun.uploading.cfg 混入 Android 构建中间目录导致 AAPT 读错文件；临时验证工程将 build/cache 放到 C:/Users/maxzr/AppData/Local/Temp/piliexo-flac-20261006 后构建成功，发布前建议排除构建缓存同步。
 - 上游 fetch 到 `4ed5968f3`（2.1.6）；43 项标题、stat 与关键 diff 审查记录已输出。重点候选共 7 个上游提交；本轮未 cherry-pick、未 commit/push、未更改应用版本。
 - Git：3 个原生源码/测试文件及 3 份记录为本轮改动，另有原有 tmp/。日志、临时 APK、验证工程均在忽略目录；实时 ADB 日志采集已停止。建议修复验证后独立提交，再实施上游候选批次。
+
+
+## 2026-10-06 23:45 全部 41 项合并及发布准备
+
+- 用户已授权合并全部 41 项并发布，且已完成 ModelScope 登录。逐项映射见审查文档新增实际合并表。
+- 保留双后端倍速/截图/清屏、混合推荐和评论数刷新；补齐 iOS PiP 状态同步和桌面 PiP 尺寸定义。
+- C 盘隔离源码避开百度网盘锁；D 盘旧 cherry-pick 状态将在最终同步时清理，仅撤销本轮未完成暂存变更。
+- Flutter 官方 tag 工具链与配套补丁已就绪，原有 SDK 和签名保留；最终测试、APK 校验和上传结果待追加。
