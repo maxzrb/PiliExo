@@ -1990,23 +1990,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Future<void> setPlaybackSpeed(double speed) async {
     lastPlaybackSpeed = playbackSpeed;
 
-<<<<<<< HEAD
-    if (speed == currentRate) {
-      return;
-    }
+    if (speed == currentRate) return;
 
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.setSpeed(speed);
     } else {
       await _videoPlayerController?.setRate(speed);
     }
-    _playbackSpeed.value = speed;
-=======
-    if (speed == _videoPlayerController?.state.rate) return;
-
-    await _videoPlayerController?.setRate(speed);
     if (!isLive) _playbackSpeed.value = speed;
->>>>>>> 80b1db31b (opt set playback speed)
     _updatePlaybackState();
     if (danmakuController != null) {
       try {
