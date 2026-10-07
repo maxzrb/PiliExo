@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:PiliPlus/models/common/frosted_surface_style.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:material_ui/material_ui.dart';
 
 class FrostedSurfaceSettings {
@@ -82,12 +83,25 @@ class FrostedSurface extends StatelessWidget {
         ? colorScheme.surface
         : color!;
     final opaqueSurface = baseColor.withValues(alpha: 1);
+    final surfaceBrightness = ThemeData.estimateBrightnessForColor(
+      opaqueSurface,
+    );
     final themedChild = Theme(
       data: theme.copyWith(
         appBarTheme: theme.appBarTheme.copyWith(
           backgroundColor: settings.enabled
               ? Colors.transparent
               : opaqueSurface,
+          // 按磨砂底色设置状态栏图标，避免透明 AppBar 被误判为深色背景。
+          systemOverlayStyle:
+              theme.appBarTheme.systemOverlayStyle ??
+              SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarBrightness: surfaceBrightness,
+                statusBarIconBrightness: surfaceBrightness == Brightness.light
+                    ? Brightness.dark
+                    : Brightness.light,
+              ),
         ),
         navigationBarTheme: theme.navigationBarTheme.copyWith(
           backgroundColor: settings.enabled

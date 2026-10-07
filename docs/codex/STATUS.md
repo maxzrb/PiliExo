@@ -1,13 +1,14 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-07 00:17 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`；D 盘工程与 C 盘隔离构建源码已同步，正式源码提交 `df375e716`。
+- 更新时间：2026-10-07 13:04 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；本轮已快进至 `1a9b35bad`。正式源码提交仍为 `df375e716`。
 - 发布状态：[v26.10.7.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.1) 已为 GitHub latest；ModelScope 两份 APK 已上传并下载比对 SHA-256。Android versionCode=27 / versionName=26.10.7，手机已成功覆盖安装。
-- 当前完成：用户指定全部 41 项上游提交已合入；HDR FLAC 播放与启动 Logo 卡住问题已修复。手机启动首页和音频服务正常，用户确认 BV1tfei6MEMn 的 HDR 播放、声音正常。
-- 验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
+- 当前完成：用户指定全部 41 项上游提交已合入；HDR FLAC 播放与启动 Logo 卡住问题已修复。手机启动首页和音频服务正常，用户确认 BV1tfei6MEMn 的 HDR 播放、声音正常。 本轮修复设置页共用磨砂顶栏的状态栏图标颜色：按实际底色判断明暗，设置首页及子页同步生效。
+- 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
+- 本轮验证：已恢复 Flutter 3.47.6 / Dart 3.13.5，25 个 framework 与 9 个 material_ui 1.5.0 Android 补丁生效；锁文件不变、pub get 成功、29 个 Android 原生插件注册通过。67 项 Flutter 测试通过，lib/test 静态分析无 error/warning（114 条 info），正式双 ABI APK 待构建与校验。
 - 工具链：Flutter 3.47.6 / Dart 3.13.5；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁。SDK 与 Pub 缓存持久化在 C 盘，详见本机工具链文档。
 - 已知验收边界：完整原工程 Robolectric 测试未完成，release 无 unit test task，debug 离线模式缺新引擎 embedding；v7a 未做真机验收，iOS/桌面改动仅静态分析通过。
-- Git 状态：发布源码、分支、标签及验收记录已推送；工作区只保留用户原有未跟踪 `tmp/`。签名文件保持忽略，原工程 pub get、SDK 与插件注册校验均通过。
+- Git 状态：源代码修复与 v26.10.7.2 发布准备待提交，随后生成元数据并构建。用户已明确要求本次跳过真机验收、直接发布；原始 STATUS 备份 stash 保留。
 
 ## 上游同步状态（2026-10-06 审查，后续已合入 41 项）
 
@@ -20,9 +21,9 @@
 - 上轮已合入：`11e02b866`、`8b6abc07d`、`f1a41ed0f`、`7399f3507`、`08a9f5509`、`faf49b355`、`20b1cb5c0`、`df86de3ec`、`92c455be7`、`c876e5d8b`、`2408a7f4d`、`89fe1755f`；`e9008c8eb`、`41ccd5801`、`94e413ac0`、`1cf440ed9` 的相关播放状态/震动改动由本地 `1aede42d6` 人工适配，不应再整提交 cherry-pick。
 - 本轮边界：`48f075758..a30fcc310`，22 个新增提交；`git fetch upstream main` 与 `git ls-remote upstream refs/heads/main` 均确认 `a30fcc310`。`git pull --ff-only` 显示本地发布分支已与 origin 同步。
 - 已落地：逐提交映射见下方“2026-09-28（2.1.5）”；截图、搜索黑名单、旧版 WebView 登录、点赞消息、分 P、主页标签、收藏夹、初始倍速、画中画和播放通知状态均已纳入本版。
-- 重新评估：此前 `c61777333` 因忽略自定义文本菜单而暂缓；上游新增 `483a423be` 已修复该问题。若需要默认站内搜索按钮，应组合审查并移植这两项，不能只搬前者。
+- 重新评估：此前 `c61777333` 因忽略自定义文本菜单而暂缓；现已与修复该问题的 `483a423be` 成对移植菜单逻辑，见文末 `v26.9.28.2` 发布记录。
 - 继续暂缓：播放通知三笔提交的适用逻辑已移植，但 `df86852f3` 附带的 audio_service/audio_session 开发分支及 AGP/Kotlin 升级不合入；`682ada6c4`、`2f4a50200` 为 iOS/Linux，`a0e6148e9` 为 iOS；`acff988f1` 仅移除本地已无的 `openDevTools()`；`a30fcc310` 上游版本号与 PiliExo 规则不符。上轮暂缓的图片保存、SC 图片、tooltip、桌面端提交继续按既有理由暂缓。
-- 发布后复审：`3d8711cb3`、`5f68384c4`、`e49209f82` 的适用依赖及补丁由本地 `0b0717212` 落地；`483a423be` 的上下文菜单修复已证实可解决原先覆盖自定义菜单的问题，但仍需与 `c61777333` 中的默认站内搜索按钮一起做独立行为变更，不宜在工具链升级中夹带。
+- 发布后复审：`3d8711cb3`、`5f68384c4`、`e49209f82` 的适用依赖及补丁由本地 `0b0717212` 落地；`483a423be` 与 `c61777333` 的菜单部分随后由 `ca683a327` 独立落地。
 
 ## 上游同步轮次记录（2026-09-28，2.1.5）
 
@@ -1064,3 +1065,34 @@ f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_androi
 - 手机日志的 AidlBufferPool 显示 4 个缓冲共 151764 字节、单缓冲 37941，证实实际配置生效。当前合规音轨无需额外固定扩容；不能以本次短时间实播宣称任何损坏元数据都不会失败。
 - 原工程成功执行 Flutter 3.47.6 pub get（命令环境暂时关闭桌面目标），Android 29 个原生插件注册完整，verify_flutter 通过；本机 android/local.properties 已改为持久 C 盘新 SDK。
 - 已停止本轮 ADB 连续日志采集。正式 APK 不改动，最新正式 Release 仍为 v26.10.7.1。
+
+
+## 2026-10-07 12:27 拉取前本地历史记录保留
+
+以下为本地未提交的 2026-09-28 15:36 快照，恢复时保留作历史补记；当前版本、工具链与工作状态以文件顶部为准。
+
+- 更新时间：2026-09-28 15:36 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
+- 分析基线：`f79be53d9`（`v26.9.28.2` 发布提交）；此前 `0b0717212` 升级工具链与依赖，`ca683a327` 定向移植文本选择菜单。
+- 发布状态：`v26.9.28.2` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.2/` 镜像；两份正式 APK 和校验清单均已上传并核验。应用版本 `26.9.28+2`，Android `versionCode=25`。
+- 当前工作：`c61777333` 的默认站内搜索菜单与 `483a423be` 的自定义菜单保留修复已成对定向移植；未带入前置提交中无关的图片保存弹窗路由变化。Flutter 3.47.5、`material_ui 1.4.0` 与相关依赖升级由先前的 `0b0717212` 一并进入新正式版。
+- 当前验证：Flutter 3.47.5 全量测试 67/67；应用/测试目录 Analyze 无 error/warning（114 条 info），菜单定向分析通过；双 ABI Release 构建成功，包名、版本、单 ABI、FFmpeg、R8 映射与 V2 正式签名均通过，签名证书与上一版一致。尚未进行 Android 真机回归。
+- 目标：PiliExo 仅 Android 在线 UGC/PGC HDR 使用 Media3 原生 SurfaceView；SDR、直播和离线保持 mpv；应用包名独立为 com.maxzrb.piliexo，外观磨砂效果可配置；暂不接入 Android Kyant 液态玻璃。Android `versionCode` 按正式 Release 全局递增，保留 `vYY.M.D.N` 标签格式；开发分支锁定 Flutter 3.47.5，当前正式版本为 `v26.9.28.2`。
+
+## 2026-10-07 12:27 设置页状态栏图标颜色修复
+
+- 起始分支 `merge/upstream-2.1.4-20260913` 位于 `f79be53d9`，仅 STATUS 有未提交改动；首次 `git pull --ff-only` 因远端同时修改该文件中止。定向 stash 后再次 pull 成功，快进到 `1a9b35bad`。恢复 stash 时只在顶部快照冲突，保留远端当前快照，将本地旧快照补入历史，其他本地修订正常恢复；stash 作为备份保留，没有遗留冲突或暂存文件。
+- 原因：FrostedSurface 开启磨砂时将 AppBarTheme.backgroundColor 设为透明；AppBar 默认按该颜色 RGB（黑色）计算亮度，导致浅色设置页错误使用白色状态栏图标。
+- 修改 `lib/common/widgets/frosted_surface.dart`：按实际不透明磨砂底色计算亮度，并设置透明状态栏及对应 Android/iOS 明暗样式；保留已有主题与 AppBar 的显式覆盖优先级。关闭磨砂时同样适配；设置首页、设置子页面和其他共用顶栏同步受益。
+- 验证：现有项目内 Dart 3.13.4 执行 `dart analyze lib/common/widgets/frosted_surface.dart` 得到 No issues found；`dart format --output=none --set-exit-if-changed` 与 `git diff --check` 通过。未新增测试、未运行全量测试或 APK 构建；尚需真机检查浅色/深色及磨砂开关切换。
+- 当前设备缺少远端记录的 Flutter 3.47.6 SDK 和 material_ui 1.5.0 缓存，仅保留项目内旧 SDK/依赖；使用 `subst P:` 指向当前工程，使旧 package_config 的项目缓存路径可用。没有修改版本锁定或依赖清单。正式发布仍为 v26.10.7.1，版本号保持不变。
+- 收尾：更新 STATUS 与中文工作进度；三份文件为未提交改动，没有 commit/push 或发布操作。下一步使用锁定工具链并在手机上确认显示后提交修复。
+
+## 2026-10-07 13:04 v26.10.7.2 工具链恢复与发布准备
+
+- 用户明确要求查找既有 Flutter 3.47.6 后发布 Release，并选择“本次跳过真机验收，直接发布”；本轮不再以设备连接作为发布阻塞条件。
+- 搜索当前电脑 C 盘用户目录、工具目录、项目目录与下载目录，只发现 3.47.2、3.47.4、3.47.5；此前发布设备的 D 盘与 C:/Users/maxzr/AppData/Local/piliexo-tools/flutter-3.47.6 均不在当前设备。已在项目 tools/flutter-3.47.6/flutter 从官方 tag 恢复同一提交 5fc346839b5d0eef006ed8404392afb4dfae428d，engine=692136cb6582dbfc5af3fb33c2515a069f2f66d0，实际版本校验为 Flutter 3.47.6 / Dart 3.13.5。
+- 项目内 SDK 应用 25 个 Android framework 补丁；material_ui 1.5.0 缓存应用 9 个补丁并逐项反向检查。初次在父 Git 仓库的缓存子目录应用补丁被跳过，导致编译缺类型；改为在根目录指定 --directory 并以 UTF-8/LF 原始字节传入后已修正，未修改应用业务代码以绕过此问题。
+- Pub Git 全量 fetch 曾停滞，改为补齐锁定提交；hive_ce 2.20.1 下载停滞，使用官方镜像补齐同一 archive，SHA-256 与锁文件一致。最终 flutter pub get --offline --enforce-lockfile 成功，pubspec.lock 无改动，29 个 Android 插件注册校验通过。SDK、Pub 缓存、日志均位于 Git 忽略的 tools/，命令使用 P: 映射。
+- 验证：修正缓存后 flutter test --no-pub 为 67/67；flutter analyze --no-pub --no-fatal-infos lib test 无 error/warning（114 条 info）；版本与插件校验、git diff --check 通过。Android 引擎缓存正在准备，下一步构建 Release 并检查正式签名、包名、版本、单 ABI、FFmpeg 和 DEX 插件注册。
+- 远端最新为 v26.10.7.1；本次正式编号 v26.10.7.2，pubspec=26.10.7+2，Android versionCode=28（上一正式包为 27）。版本迭代记录及发布说明已更新，尚未公开新 Release。
