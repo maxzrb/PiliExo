@@ -1,14 +1,14 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-07 13:04 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；本轮已快进至 `1a9b35bad`。正式源码提交仍为 `df375e716`。
-- 发布状态：[v26.10.7.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.1) 已为 GitHub latest；ModelScope 两份 APK 已上传并下载比对 SHA-256。Android versionCode=27 / versionName=26.10.7，手机已成功覆盖安装。
-- 当前完成：用户指定全部 41 项上游提交已合入；HDR FLAC 播放与启动 Logo 卡住问题已修复。手机启动首页和音频服务正常，用户确认 BV1tfei6MEMn 的 HDR 播放、声音正常。 本轮修复设置页共用磨砂顶栏的状态栏图标颜色：按实际底色判断明暗，设置首页及子页同步生效。
+- 更新时间：2026-10-07 13:24 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码提交 `88fdff087`，annotated tag `v26.10.7.2` 指向该提交。
+- 发布状态：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2) 已公开并设为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 已上传，三个资产的大小及 SHA-256 与本地一致。应用版本 `26.10.7+2`，Android versionCode=28；本次按用户要求跳过真机验收。
+- 当前完成：修复设置首页及子页顶部状态栏图标颜色；共用磨砂顶栏按实际底色判断明暗，浅色背景使用深色图标、深色背景使用浅色图标，保留显式样式覆盖。此前的 41 项上游更新、HDR FLAC 与启动插件注册修复继续保留。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
-- 本轮验证：已恢复 Flutter 3.47.6 / Dart 3.13.5，25 个 framework 与 9 个 material_ui 1.5.0 Android 补丁生效；锁文件不变、pub get 成功、29 个 Android 原生插件注册通过。67 项 Flutter 测试通过，lib/test 静态分析无 error/warning（114 条 info），正式双 ABI APK 待构建与校验。
-- 工具链：Flutter 3.47.6 / Dart 3.13.5；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁。SDK 与 Pub 缓存持久化在 C 盘，详见本机工具链文档。
-- 已知验收边界：完整原工程 Robolectric 测试未完成，release 无 unit test task，debug 离线模式缺新引擎 embedding；v7a 未做真机验收，iOS/桌面改动仅静态分析通过。
-- Git 状态：源代码修复与 v26.10.7.2 发布准备待提交，随后生成元数据并构建。用户已明确要求本次跳过真机验收、直接发布；原始 STATUS 备份 stash 保留。
+- 本轮验证：Flutter 3.47.6 / Dart 3.13.5；锁文件不变、pub get 成功、29 个 Android 原生插件注册完整；67 项测试通过，lib/test Analyze 无 error/warning（114 条 info）。两 ABI Release 构建、包名/版本/单 ABI/FFmpeg/DEX 插件注册/R8 映射/V2 正式签名及远端哈希校验通过。
+- 工具链：当前设备在项目内 `tools/flutter-3.47.6/flutter` 恢复官方同一 tag，命令使用 P: 映射；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁生效，Pub 缓存为 `tools/pub-cache`。详见本机工具链文档。
+- 已知验收边界：用户明确要求本次跳过真机验收；本轮未运行原生 Robolectric/iOS/桌面测试。此前 v26.10.7.1 的手机启动、HDR/声音验收记录仍保留，不将其作为本版状态栏显示已验收的结论。
+- Git 状态：发布源码、分支与 annotated tag 已推送；收尾记录作为独立文档提交推送，Release 标签保持指向构建源码。SDK、缓存、签名和产物均保持忽略；拉取前原始 STATUS 的备份 stash 保留。
 
 ## 上游同步状态（2026-10-06 审查，后续已合入 41 项）
 
@@ -1096,3 +1096,18 @@ f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_androi
 - Pub Git 全量 fetch 曾停滞，改为补齐锁定提交；hive_ce 2.20.1 下载停滞，使用官方镜像补齐同一 archive，SHA-256 与锁文件一致。最终 flutter pub get --offline --enforce-lockfile 成功，pubspec.lock 无改动，29 个 Android 插件注册校验通过。SDK、Pub 缓存、日志均位于 Git 忽略的 tools/，命令使用 P: 映射。
 - 验证：修正缓存后 flutter test --no-pub 为 67/67；flutter analyze --no-pub --no-fatal-infos lib test 无 error/warning（114 条 info）；版本与插件校验、git diff --check 通过。Android 引擎缓存正在准备，下一步构建 Release 并检查正式签名、包名、版本、单 ABI、FFmpeg 和 DEX 插件注册。
 - 远端最新为 v26.10.7.1；本次正式编号 v26.10.7.2，pubspec=26.10.7+2，Android versionCode=28（上一正式包为 27）。版本迭代记录及发布说明已更新，尚未公开新 Release。
+
+## 2026-10-07 13:24 v26.10.7.2 发布完成
+
+- 发布源码 `88fdff0872ad81f23985c60d73f0883e89d0f9f6`；应用版本 `26.10.7+2`、Android versionCode=28；分支与 annotated tag 已推送，远端 v26.10.7.2 的 peeled tag 指向该源码提交，tag object 为 025c0f6eeefdd0325fb8089382abd2e2d3800494。
+- Flutter 3.47.6 工具链校验与 29 个 Android 原生插件注册通过；67 项 Flutter 测试通过；lib/test 静态分析无 error/warning（114 条 info）；assembleRelease 成功，耗时 418 秒。没有为了构建改动版本锁文件或业务依赖。
+- arm64-v8a APK 为 31,598,998 bytes，armeabi-v7a APK 为 31,523,517 bytes；包名 com.maxzrb.piliexo、版本 26.10.7 / code 28、单 ABI、libffmpegJNI.so、DEX 插件注册与 R8 FfmpegAudioRenderer 保留均通过。V2 正式签名证书 SHA-256 与上一版一致：b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。初次校验脚本未适配 build-tools 37 的 V2 Signer 输出标签，修正摘要提取后校验通过，未改签名或重新签包。
+- GitHub Release https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2 已公开且为 latest；标题/tag 均为 v26.10.7.2，非预发布。先以 draft 上传全部三份资产，再完成镜像与远端哈希校验后公开；GitHub 三份资产均 uploaded，digest/大小与本地一致。Release 正文与 UTF-8 发布说明一致。
+- ModelScope AerithDream/PiliExo 的 releases/v26.10.7.2/ 上传 3/3 成功、0 failed、0 deleted；两份 APK HEAD HTTP 200、Content-Length 和 X-Linked-ETag 与本地大小及 SHA-256 一致，SHA256SUMS 的 GET 内容哈希一致。
+- 产物保留于 dist/release/v26.10.7.2/；构建/测试/分析/上传日志和验证报告在被忽略的 tools/。当前设备工具链路径已写入文档；SDK 从 Git 安装，tools/flutter-3.47.6/flutter-source-3.47.6.zip 是中断的备用源码下载，不用于恢复或构建。
+- 按用户明确选择“本次跳过真机验收，直接发布”，未连接手机、未安装本版；仍需用户安装后确认设置页在浅色/深色和磨砂开关切换下的显示效果。收尾文档独立提交推送，正式标签及 APK 不再改动。
+
+```text
+ba3718264ed264f29f1dc8c15068e14e63d7fa758653fd1ca3ad7c1d82a1495d  PiliExo_android_v26.10.7.2_arm64-v8a.apk
+be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_android_v26.10.7.2_armeabi-v7a.apk
+```
