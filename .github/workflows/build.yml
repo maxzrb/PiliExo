@@ -82,6 +82,10 @@ jobs:
               shell: pwsh
               run: lib/scripts/verify_flutter.ps1
 
+            - name: 校验README发布信息
+              shell: pwsh
+              run: lib/scripts/verify_readme.ps1
+
             - name: Apply Patch
               shell: pwsh
               run: lib/scripts/patch.ps1 android

@@ -3,6 +3,7 @@ param(
 )
 
 try {
+    & (Join-Path $PSScriptRoot 'verify_readme.ps1')
     if ([string]::IsNullOrWhiteSpace($Arg) -or $Arg -eq 'android') {
         & (Join-Path $PSScriptRoot 'verify_android_plugins.ps1')
     }

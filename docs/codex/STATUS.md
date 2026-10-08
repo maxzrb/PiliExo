@@ -1,9 +1,10 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-07 13:24 (+08:00)
+- 更新时间：2026-10-08 17:33 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码提交 `88fdff087`，annotated tag `v26.10.7.2` 指向该提交。
 - 发布状态：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2) 已公开并设为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 已上传，三个资产的大小及 SHA-256 与本地一致。应用版本 `26.10.7+2`，Android versionCode=28；本次按用户要求跳过真机验收。
-- 当前完成：修复设置首页及子页顶部状态栏图标颜色；共用磨砂顶栏按实际底色判断明暗，浅色背景使用深色图标、深色背景使用浅色图标，保留显式样式覆盖。此前的 41 项上游更新、HDR FLAC 与启动插件注册修复继续保留。
+- README 维护：当前版本更新至 v26.10.7.2 / Flutter 3.47.6，补齐已发布功能和修复；正式发布必须同步 README，verify_readme.ps1 已接入预构建元数据脚本和 Android CI。默认分支 main 同步同一 README，明确从发布分支或 Release 标签构建。
+- 最近应用改动：修复设置首页及子页顶部状态栏图标颜色；共用磨砂顶栏按实际底色判断明暗，浅色背景使用深色图标、深色背景使用浅色图标，保留显式样式覆盖。此前的 41 项上游更新、HDR FLAC 与启动插件注册修复继续保留。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
 - 本轮验证：Flutter 3.47.6 / Dart 3.13.5；锁文件不变、pub get 成功、29 个 Android 原生插件注册完整；67 项测试通过，lib/test Analyze 无 error/warning（114 条 info）。两 ABI Release 构建、包名/版本/单 ABI/FFmpeg/DEX 插件注册/R8 映射/V2 正式签名及远端哈希校验通过。
 - 工具链：当前设备在项目内 `tools/flutter-3.47.6/flutter` 恢复官方同一 tag，命令使用 P: 映射；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁生效，Pub 缓存为 `tools/pub-cache`。详见本机工具链文档。
@@ -1111,3 +1112,14 @@ f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_androi
 ba3718264ed264f29f1dc8c15068e14e63d7fa758653fd1ca3ad7c1d82a1495d  PiliExo_android_v26.10.7.2_arm64-v8a.apk
 be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_android_v26.10.7.2_armeabi-v7a.apk
 ```
+
+
+## 2026-10-08 17:33 README 更新及发布流程校验
+
+- 用户要求此次更新 README，并将 README 更新加入后续发布流程。启动 git pull --ff-only 同步至 7a9c1269f，GitHub latest 已核实为 v26.10.7.2；应用配置 26.10.7+2，Flutter 3.47.6。本轮不构建 APK、不修改发布版本或标签。
+- 原 README 仍是 v26.8.30.2 / Flutter 3.47.2；现已更新版本、工具链、发布源码分支、HDR FLAC、磨砂/状态栏、手势反馈、更新、离线合集缓存、文字选择菜单等已发布功能。
+- 下方 PiliPlus README 快照对齐已审查提交 4ed5968f3，英文链接改为对应上游绝对地址，明确原项目平台范围。实际合入 41 项的映射不变。
+- 新增 lib/scripts/verify_readme.ps1，核对 README 发布版本、Flutter 版本及当前 Release URL；lib/scripts/build.ps1 和 Android CI 都调用它。docs/发布流程.md 加入发布前 README 维护清单与发布后默认分支核对。
+- 验证：当前 README 校验通过；旧版 README、旧 Flutter 版本、错误下载地址均正确失败；git diff --check 通过。本轮仅文档与发布脚本修改，不运行 Flutter/Android 构建。
+- 默认分支 main 的独立文档提交 a5a6154bc 只改 README，未整合其他应用代码。将它并入发布分支以保留共同历史，再推送两边；发布分支与默认分支 README 内容应完全一致。
+- 用户原有未跟踪 tmp/ 保留；本轮没有修改任何签名、SDK 或 APK。
