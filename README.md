@@ -1,36 +1,48 @@
 # PiliExo
 
-PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Android fork，面向 Android 在线 UGC/PGC 视频提供原生 HDR 播放能力。当前包名为 `com.maxzrb.piliexo`，SDR、直播和离线播放仍保留原有 mpv 路径。
+PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Android fork，面向 Android 在线 UGC/PGC 视频提供原生 HDR 播放能力。包名为 `com.maxzrb.piliexo`，可与原版 PiliPlus 共存；SDR、直播和离线播放使用 mpv。
 
 ## 项目状态
 
-- 当前正式版本：`v26.8.30.2`。
-- 仅 Android 构建和发布；其他平台代码随上游保留，暂不作为本 fork 的发布目标。
-- 固定使用 Flutter `3.47.2`；Android Kotlin 增量编译默认关闭，用于规避项目与 Flutter 插件缓存跨盘时的路径问题。
-- Android Release 提供 `arm64-v8a` 和 `armeabi-v7a`，正式包使用 `com.maxzrb.piliexo`。
+- 当前正式版本：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2)（2026-10-07）。
+- Flutter 工具链：`3.47.6`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
+- 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
+- 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
+- PiliPlus 上游改动已审查至 `4ed5968f3`（2.1.6），最近一轮合入 41 项功能、修复和依赖更新，保留 PiliExo 的播放器与界面定制。
 
 ## PiliExo 的实际修改
 
-- Android 在线 UGC/PGC 的 HDR 播放使用 Media3 原生 `SurfaceView`；SDR、直播、离线和播放器回退继续使用 mpv。
-- 播放器洞察提供概览、视频、音频、播放和事件详情，补齐视频码率，并优化摘要/详情在全屏播放器中的位置和展开交互。
-- 检查更新优先使用 ModelScope，失败时回退 GitHub；Android ARM64 使用 Aria2-next 32 分片、断点续传、SHA-256 校验和系统安装器，更新弹窗显示实时进度和取消操作。
-- 首页推荐支持 Web 推荐与 App 推荐两端滑块，按 10% 步进调整混合比例；保存后下一次首页刷新生效，刷新成功后不再显示待生效提示，混合结果会交错、去重并在单路失败时兜底。
-- 播放时修改画质、移动数据画质或音质只作用于当前播放，不回写默认画质、移动数据画质、默认音质和移动数据音质。
-- 同步 PiliPlus 字体页面重构、字体存储迁移、选择区域补丁和相关依赖升级。
+- Android 在线 UGC/PGC 的 HDR 播放使用 Media3 原生 `SurfaceView`；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，播放失败时保留 mpv 回退。
+- 修复高采样率 FLAC 音轨导致 HDR 播放失败的问题：从音轨元数据补齐真实采样率，按每条音轨的最大帧大小配置输入缓冲。
+- 播放器洞察提供概览、视频、音频、播放和事件详情，显示编码、解码器、分辨率、码率、音频参数和回退原因。
+- 顶栏、底栏和浮动底栏支持磨砂半透明，可关闭或选择轻薄、标准、浓厚效果；设置页面状态栏图标随顶栏背景明暗适配。
+- 播放手势支持可配置的震动反馈和强度；播放中调整画质、移动数据画质或音质只作用于当前播放，不回写默认设置。
+- 首页推荐支持 Web/App 混合比例，按 10% 步进调整；下次刷新生效，结果交错、去重，并在单路请求失败时兜底。
+- 检查更新优先使用 ModelScope，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、进度显示、取消和系统安装器。
+- 同步上游离线片段跳过和 UGC 合集缓存，改善收藏夹、番剧多季度切换、直播、黑名单过滤、图片缩放手势与媒体通知切换视频。
+- 选中文字默认提供站内搜索，选中网址可直接打开，同时保留调用方自定义菜单。
 
-## 下载与发布
+## 下载与更新
 
-- [GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
+- [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](version/版本迭代记录.md) · [Android 发布流程](docs/发布流程.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/docs/本机发布工具链.md)
+
+APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
+
+## 构建与发布维护
+
+当前发布使用 Flutter `3.47.6` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
+
+每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。构建元数据脚本与 Android CI 会校验 README 中的版本、Flutter 版本是否与项目配置一致；发布后还需同步 GitHub 默认分支的 README。
 
 本项目是个人为了兴趣而开发的第三方自用修改版，仅用于学习和测试，请于下载后 24 小时内删除。所用 API 皆从官方网站收集，不提供任何破解内容。
 
-下方原项目 README 取自 PiliPlus 上游 `main`，保留原文以便对照（同步基线：`9624c37255837412e8677a6b9d69fdfac720b68a`）。
+下方为 PiliPlus 上游 README 快照，取自提交 [`4ed5968f3`](https://github.com/bggRGjQaUbCoE/PiliPlus/tree/4ed5968f37af8b4aa7e0f13178cb8d8c2f86defc)。其中的平台支持和项目计划属于原项目，PiliExo 的发布范围见上方说明。
 
 ---
 
-## 以下为原项目readme内容
+## 以下为原项目 README 内容
 
 <div align="center">
     <img width="200" height="200" src="assets/images/logo/logo.png">
@@ -41,13 +53,15 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 <div align="center">
     <h1>PiliPlus</h1>
 <div align="center">
-    
+
+中文 | [English](https://github.com/bggRGjQaUbCoE/PiliPlus/blob/4ed5968f37af8b4aa7e0f13178cb8d8c2f86defc/README.en.md)
+
 ![GitHub repo size](https://img.shields.io/github/repo-size/bggRGjQaUbCoE/PiliPlus)
 ![GitHub Repo stars](https://img.shields.io/github/stars/bggRGjQaUbCoE/PiliPlus)
 ![GitHub all releases](https://img.shields.io/github/downloads/bggRGjQaUbCoE/PiliPlus/total)
 </div>
     <p>使用Flutter开发的BiliBili第三方客户端</p>
-    
+
 <img src="assets/screenshots/510shots_so.png" width="32%" alt="home" />
 <img src="assets/screenshots/174shots_so.png" width="32%" alt="home" />
 <img src="assets/screenshots/850shots_so.png" width="32%" alt="home" />
@@ -193,7 +207,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
   - [x] 观看记录
   - [x] 我的收藏
   - [x] 站内私信
-  
+
 - [x] 动态相关
   - [x] 全部、投稿、番剧分类查看
   - [x] 动态评论查看
@@ -215,14 +229,14 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
   - [x] 字幕
   - [x] 记忆播放
   - [x] 视频比例：高度/宽度适应、填充、包含等
-     
+
 - [x] 搜索相关
   - [x] 热搜
   - [x] 搜索历史
   - [x] 默认搜索词
   - [x] 投稿、番剧、直播间、用户搜索
   - [x] 视频搜索排序、按时长筛选
-    
+
 - [x] 视频详情页相关
   - [x] 视频选集(分p)切换
   - [x] 点赞、投币、收藏/取消收藏
@@ -234,7 +248,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
   - [x] 评论笔记图片查看、保存
 
 - [x] 设置相关
-  - [x] 画质、音质、解码方式预设      
+  - [x] 画质、音质、解码方式预设
   - [x] 图片质量设定
   - [x] 主题模式：亮色/暗色/跟随系统
   - [x] 震动反馈(可选)
@@ -247,7 +261,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 下载
 
-可以通过右侧release进行下载或拉取代码到本地进行编译
+可以从 [Releases](https://github.com/bggRGjQaUbCoE/PiliPlus/releases) 下载，或克隆仓库拉取代码后在本地编译。
 
 <br/>
 
