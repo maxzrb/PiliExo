@@ -1123,3 +1123,5 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 验证：当前 README 校验通过；旧版 README、旧 Flutter 版本、错误下载地址均正确失败；git diff --check 通过。本轮仅文档与发布脚本修改，不运行 Flutter/Android 构建。
 - 默认分支 main 的独立文档提交 a5a6154bc 只改 README，未整合其他应用代码。将它并入发布分支以保留共同历史，再推送两边；发布分支与默认分支 README 内容应完全一致。
 - 用户原有未跟踪 tmp/ 保留；本轮没有修改任何签名、SDK 或 APK。
+
+- 2026-10-08 17:36 收尾核验：发布分支 98fdfb047 与 main a5a6154bc 已推送；通过 GitHub Contents API 确认两边 README 与本地提交完全一致。相对链接/截图路径检查、README 校验及 git diff --check 通过。工作区只保留原有 tmp/。
