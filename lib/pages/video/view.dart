@@ -146,10 +146,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     if (videoDetailController.isUgc) {
       return ugcIntroController.videoDetail.value.hasSeasonOrParts;
     }
-    if (videoDetailController.videoType == .pgc) {
-      return pgcIntroController.pgcItem.hasEpisodes;
-    }
-    return false;
+    return pgcIntroController.pgcItem.hasEpisodes;
   }
 
   final videoReplyPanelKey = GlobalKey();
@@ -1770,8 +1767,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   Widget get seasonPanel {
     if (videoDetailController.isUgc) return ugcSeasonPanel;
-    if (videoDetailController.videoType == .pgc) return pgcSeasonPanel;
-    throw UnimplementedError();
+    return pgcSeasonPanel;
   }
 
   Widget get pgcSeasonPanel {
