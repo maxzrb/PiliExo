@@ -17,8 +17,7 @@ class MineHistoryItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasDuration = item.hasDuration;
     return GestureDetector(
-      onTap: () =>
-          onPushHistory(item, item.history.business).whenComplete(onPop),
+      onTap: () => onPushHistory(item).whenComplete(onPop),
       behavior: .opaque,
       child: Column(
         crossAxisAlignment: .start,
@@ -33,7 +32,7 @@ class MineHistoryItem extends StatelessWidget {
               ),
               if (hasDuration)
                 ...item.progressIndicator(ColorScheme.of(context)),
-              ?item.label(context, hasDuration, item.history.business),
+              ?item.label,
             ],
           ),
           const SizedBox(height: 8),
