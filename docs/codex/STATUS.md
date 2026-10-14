@@ -1,13 +1,13 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-14 12:25 (+08:00)
+- 更新时间：2026-10-14 12:42 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码 `9362263b2`，annotated tag `v26.10.14.1` 指向该源码。
 - 发布状态：[v26.10.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.14.1) 已公开且为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 全部同步并核验。应用 `26.10.14+1`，Android versionCode=29；用户明确选择本次跳过真机验收。
 - README 维护：发布分支和 GitHub 默认分支 main 均已更新到 v26.10.14.1 / Flutter 3.47.7，含本轮新增功能和上游边界；默认分支独立文档提交 ecadf414d，发布分支合并其历史为 3df958bf7。正式发布继续强制 README 校验。
 - 最近应用改动：已完成 24 项上游处理：21 项 Android/共享修复和功能合入或适配、1 项本地已满足、2 项永久排除。已升级 Flutter 3.47.7 / material_ui 1.6.0；保留双播放器、HDR/FLAC、磨砂、混合推荐和独立版本规则。业务适配 77c8e53e9，构建修复 19b859718。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
 - 本轮合并验证：正式源码 72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；版本/README/29 个插件注册检查通过，双 ABI Release 构建、包名/版本/唯一 ABI/FFmpeg/DEX 注册/R8/V2 签名及双源长度和 SHA-256 校验通过。
-- 工具链：当前设备项目内 tools/flutter-3.47.7/reused-sdk，命令使用 P: 映射；Flutter 3.47.7 / Dart 3.13.5，25 个 framework 与 9 个 material_ui 1.6.0 Android 补丁生效，Pub 缓存仍为 tools/pub-cache。旧 SDK 保留，详见本机工具链文档。
+- 工具链：项目内 tools/flutter-3.47.7/reused-sdk，Flutter 3.47.7 / Dart 3.13.5，25 个 framework 与 9 个 Material 1.6.0 补丁；Pub 缓存为 tools/pub-cache。日常配置使用真实项目路径，P: 仅供构建临时使用；用户要求发布后必须清理，当前映射已移除。
 - 已知验收边界：用户已明确选择本次跳过真机验收后发布；本轮无设备连接、未安装、未进行真实 B 站账户权限/HDR 切换及新增界面交互验收。此选择仅适用于本次，未来发布按流程处理。
 - Git 状态：发布源码、分支、annotated tag 和默认分支 README 均已推送；收尾记录独立提交推送，标签保持指向构建源码。工作树收尾后干净；SDK/缓存/签名和产物继续忽略。
 
@@ -1216,3 +1216,12 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - GitHub 默认分支 main 的 README 已用独立文档提交 ecadf414d 更新；将其合并回发布分支为 3df958bf7，保持共同历史。只有工作树/API 行尾差异导致 README 合并冲突，已验证正文完全一致后保留发布源码的规范化版本；相对发布源码无内容差异，不移动标签或重建包。
 - APK 与校验清单保留在 dist/release/v26.10.14.1/；所有日志、校验 JSON 和临时脚本在 tools/，SDK/缓存/签名文件保持忽略。没有设备连接，按用户明确选择未安装或进行新一轮真机交互验收，不把离线请求测试描述成真实 B 站权限验证。
 - 收尾：本记录和中文进度单独提交并推送；发布标签固定在源码提交不改写。版本、工具链、README、已合并/永久排除的上游清单和下一轮审查边界 bd5e04e5d 均已持久化。
+
+
+## 2026-10-14 12:42 发布后清理临时 P 盘
+
+- 用户指出发布后应移除临时盘符。此前漏做了清理，现已将它设为后续发布的必要收尾步骤。
+- 确认 P: 为本次创建、映射到 C:/Codex Program/piliexo 的 subst 虚拟盘；在真实路径下为 SDK flutter_tools 和项目执行离线锁定依赖获取，恢复生成 package_config、插件路径和 android/local.properties 的真实 SDK 路径。依赖锁文件和业务源码未改动。
+- 已执行 subst P: /d；subst 列表不再包含该映射，P:/ 不存在。移除后，从真实路径执行 flutter --no-version-check --version 成功，版本仍为 Flutter 3.47.7 / Dart 3.13.5。
+- 发布流程和本机工具链文档明确：P 盘仅在构建需要时临时创建，结束后恢复本机配置并移除；保留用户原有盘符、项目文件、SDK、缓存、签名与发布产物。未重建或替换 v26.10.14.1 资产。
+- 仅更新四份流程/状态文档；不新增测试或运行完整构建。收尾文档提交并推送，正式发布标签保持指向 9362263b2。
