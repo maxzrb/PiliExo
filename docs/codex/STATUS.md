@@ -1,15 +1,39 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-14 10:33 (+08:00)
+- 更新时间：2026-10-14 12:03 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码提交 `88fdff087`，annotated tag `v26.10.7.2` 指向该提交。
 - 发布状态：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2) 已公开并设为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 已上传，三个资产的大小及 SHA-256 与本地一致。应用版本 `26.10.7+2`，Android versionCode=28；本次按用户要求跳过真机验收。
 - README 维护：当前版本更新至 v26.10.7.2 / Flutter 3.47.6，补齐已发布功能和修复；正式发布必须同步 README，verify_readme.ps1 已接入预构建元数据脚本和 Android CI。默认分支 main 同步同一 README，明确从发布分支或 Release 标签构建。
-- 最近应用改动：修复设置首页及子页顶部状态栏图标颜色；共用磨砂顶栏按实际底色判断明暗，浅色背景使用深色图标、深色背景使用浅色图标，保留显式样式覆盖。此前的 41 项上游更新、HDR FLAC 与启动插件注册修复继续保留。
+- 最近应用改动：已完成 24 项上游处理：21 项 Android/共享修复和功能合入或适配、1 项本地已满足、2 项永久排除。已升级 Flutter 3.47.7 / material_ui 1.6.0；保留双播放器、HDR/FLAC、磨砂、混合推荐和独立版本规则。业务适配 77c8e53e9，构建修复 19b859718。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
-- 最近发布验证：Flutter 3.47.6 / Dart 3.13.5；锁文件不变、pub get 成功、29 个 Android 原生插件注册完整；67 项测试通过，lib/test Analyze 无 error/warning（114 条 info）。两 ABI Release 构建、包名/版本/单 ABI/FFmpeg/DEX 插件注册/R8 映射/V2 正式签名及远端哈希校验通过。
-- 工具链：当前设备在项目内 `tools/flutter-3.47.6/flutter` 恢复官方同一 tag，命令使用 P: 映射；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁生效，Pub 缓存为 `tools/pub-cache`。详见本机工具链文档。
-- 已知验收边界：用户明确要求本次跳过真机验收；本轮未运行原生 Robolectric/iOS/桌面测试。此前 v26.10.7.1 的手机启动、HDR/声音验收记录仍保留，不将其作为本版状态栏显示已验收的结论。
-- Git 状态：当前发布分支 HEAD `d1ac90ca0` 与 origin 同步；本轮只审查上游，新增审查报告并更新 STATUS/中文进度，三份文档尚未提交；源码、版本和 Release 标签未改动。工具链缓存在本分支保持忽略。
+- 本轮合并验证：72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；Flutter/README/29 个 Android 插件注册检查通过；Android Debug APK 构建及包名/版本/arm64 引擎/FFmpeg/DEX 注册检查通过。未做新 Release 构建。
+- 工具链：当前设备项目内 tools/flutter-3.47.7/reused-sdk，命令使用 P: 映射；Flutter 3.47.7 / Dart 3.13.5，25 个 framework 与 9 个 material_ui 1.6.0 Android 补丁生效，Pub 缓存仍为 tools/pub-cache。旧 SDK 保留，详见本机工具链文档。
+- 已知验收边界：本轮无 Android 真机连接，未运行 iOS/桌面测试，未发布新版本。后续发布前需验证 OGV 实际权限/音轨、HDR/SDR 互切、截图、文章评论与我的页交互；本轮离线回归不等于服务器与真机验收。
+- Git 状态：本轮源码、构建修复和收尾记录均提交到本地发布分支，未推送；收尾后工作树干净。回退分支 codex/backup-before-upstream-20261014 保留合并前源码，SDK/缓存/签名/APK 均继续忽略。
+
+## 当前上游同步结果（2026-10-14）
+
+- 用户授权安全合并全部 Android 适用项，24 项已逐项处理至 `bd5e04e5d`：Android 修复/功能和工具链已落地，两个纯平台提交永久排除；Surface 撤回参数在本地原已满足，无须单独应用。完整映射见 `docs/PiliPlus上游审查-2026-10-13.md` 的“用户授权后的实际合并”。
+- 已合入：下载整季遮罩/排序、搜索重试、课程横屏侧栏、文章跳评论与滚动、OGV 播放接口、截图/JNI/PiP、mpv 最终净修复、竖版封面、电竞、我的页卡片、buvid、共享图片/瀑布流及适用依赖。
+- 保留 Media3/mpv 双后端、HDR 原生 SurfaceView/FLAC/FFmpeg、混合推荐、磨砂、文章分享、移动数据文案与独立发布规则；补齐 buvid 修改后已缓存登录/gRPC 元数据同步、OGV 无播放信息错误、我的页子控制器释放。
+- 工具链升级至 Flutter 3.47.7 / Dart 3.13.5，material_ui 1.6.0；25 个 framework 与 9 个 Material Android 补丁全部应用。72/72 测试、Analyze 无 error/warning（114 info）、版本/README/29 个原生插件注册检查通过。
+- Android Debug 首次因 dl.google.com DNS 失败；19b859718 将 io.flutter 从 Google/Maven Central 排除后，使用 Flutter 引擎仓库重建成功。包名/版本、arm64 Flutter 引擎、FFmpeg 和 DEX 注册检查通过。
+- 回退分支 `codex/backup-before-upstream-20261014` 保留 d1ac90ca0。应用版本仍为 26.10.7+2 / code 28，未发布或改写正式标签；本轮提交仅在本地，尚未推送。
+
+## Android 范围外永久排除：不再核验
+
+用户明确要求 Android 无关提交纳入不再核验。下列原提交后续不再作为候选检查、试合或测试；只有用户改变平台范围，或后续新提交另含 Android 逻辑时才按新范围处理。共享 Dart/插件接口不能只因原问题发生在 Windows 就直接排除，本轮 3997a46fc 已作为共享改动适配。
+
+| 上游提交 | 平台/原因 | 处理规则 |
+| --- | --- | --- |
+| `a035fbb5ae46516c7b7ca59a94810f8dc5d21b5f` | 桌面 tray_manager 迁移 | 永久排除、不再核验 |
+| `5aa16d54e58db96ff843a15a260c5ad3cacbe811` | Darwin/iOS picker 依赖 | 永久排除、不再核验 |
+| `75c83af892e8d9af05f0869cc699fe9753ee56f4` | 历史 Linux WebView/Cookie 支持 | 永久排除、不再核验原提交 |
+| `682ada6c4d2592ff876ffec7bc2019935514c6b7` | 历史 iOS Geetest 补丁 | 永久排除、不再核验 |
+| `2f4a50200fdb96e1bca161d7d1f1182fa95001fa` | 历史 Linux WebView 调整 | 永久排除、不再核验 |
+| `a0e6148e928bf2d7f6e14599cab01bde2a0630f7` | 历史 iOS 音频类别 | 永久排除、不再核验 |
+
+历史已被用户要求合入的桌面/iOS 项（如 bdca06f2b、901dc2b9c、8f2af3c09）按既有本地映射视为已处理，不回滚也不重复核验。所有本轮已合入或适配的原提交同样不重复 cherry-pick，下一轮从 bd5e04e5d 之后开始。
 
 ## 上游复核（2026-10-14）
 
@@ -1157,3 +1181,15 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 进一步对照截图/音频/JNI、mpv 初始化、课程侧栏和 OGV 请求；核对上游 PR 3224 以及问题 3238/3239/2685，补充回归原因和 Android 适用范围。
 - 补充此前摘要未列出的通知上下集 Future.sync 改动；明确 b2d6a5bef 在本地为无效重复参数修正，不能因“11 项候选”而机械执行 11 次 cherry-pick。
 - 三个小修复、文章、OGV、mpv 净变化和音频回调共七组 git apply --check 通过。未改源码/版本、未运行构建/测试或真机验收；收尾仅三份审查文档变更，建议实施前单独提交审查记录。
+
+
+## 2026-10-14 12:03 安全合并上游 Android 适用项
+
+- 用户明确授权合并全部值得合并的提交，并要求 Android 无关项不再核验。初始只有前两轮三份审查文档改动；先以 e3e9723a7 保存，再建立 codex/backup-before-upstream-20261014 保护 d1ac90ca0，未覆盖用户源码。
+- 在现有发布分支逐项完成 21 个上游提交的应用或本地适配；Surface 参数撤回本地原已满足，两个纯平台提交永久排除。完整原提交映射在审查文档；后续审查起点 bd5e04e5d，不重复 cherry-pick 原提交。
+- 显式保留 HDR SurfaceView/FLAC/FFmpeg、双后端播放状态、截图守卫、混合推荐、文章分享、移动数据文案和发布规则。我的页冲突按新接口解开，并补齐子控制器关闭；OGV 无数据返回业务错误；buvid 修改后同步全部已加载账户的 gRPC/header 元数据，并确保迁移写入成功后才删除旧值。
+- Flutter 3.47.7 官方 tag 和实际 SDK 一致，25 个 framework Android 补丁、Material 1.6.0 九个补丁均应用。新版四份 hosted 包归档逐个对照锁文件 SHA-256，随后 flutter pub get --offline 成功，插件注册 29/29。新增 SDK 在 tools/flutter-3.47.7/reused-sdk，通过 P: 路径执行；旧 SDK/缓存/签名不变。
+- 验证：flutter test --no-pub --concurrency=1 全量 72/72；Analyze 无 error/warning（114 info）；verify_flutter、verify_readme、verify_android_plugins 通过。新增五项离线请求回归验证 OGV POST/GET、JSON/csrf、续播/业务错误和 buvid 请求头一致性。
+- Debug 首次被 Google Maven DNS 阻塞，构建修复 19b859718 限定 Flutter 组的仓库搜索后重建成功。Android arm64 目标 Debug APK 构建成功；包名 com.maxzrb.piliexo.debug / 26.10.7 / code 28，Flutter 引擎仅 arm64-v8a，FFmpeg JNI 与 DEX 插件注册存在。Debug 依赖包另含 v7a/x86_64 插件库，不将其宣称为 Release 单 ABI 验收。APK 123,917,243 bytes，SHA-256 e78f49b64ad414a93c850c35b1b56354674dbf1374219c7263bb4bb27ac4a9eb。
+- 构建仅出现既有插件 compileSdk 覆盖、KGP 和 SDK XML 工具提示；本轮没有新真机连接，未跑独立原生单测或 iOS/桌面回归。当前未进行正式双 ABI Release 构建或发布，APK 仅用于本地编译验证。
+- 应用保持 26.10.7+2 / Android versionCode 28，不修改既有 Release/tag，不更新版本迭代记录。已更新 STATUS、中文进度、完整合并/排除映射、工具链与发布流程；git diff --check 通过。源码与记录本地提交，未 push；收尾后工作树干净。
