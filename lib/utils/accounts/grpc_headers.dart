@@ -20,7 +20,7 @@ abstract final class GrpcHeaders {
   static String get _traceId => Constants.traceId;
   static String get _sessionId => Utils.generateRandomString(8);
 
-  static final Map<String, String> _base = {
+  static Map<String, String> get _base => {
     'grpc-encoding': 'gzip',
     'gzip-accept-encoding': 'gzip,identity',
     'user-agent': Constants.userAgent,

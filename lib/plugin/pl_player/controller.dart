@@ -1279,7 +1279,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     if (Platform.isAndroid) {
       // 避免切源期间的 mpv 空闲画面重设暂停视频的输出尺寸。
-      await player.setProperty('force-window', 'no');
+      player.setProperty('force-window', 'no');
     }
 
     player.setMediaHeader(userAgent: BrowserUa.pc, referer: HttpString.baseUrl);

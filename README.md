@@ -5,7 +5,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 ## 项目状态
 
 - 当前正式版本：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2)（2026-10-07）。
-- Flutter 工具链：`3.47.6`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
+- Flutter 工具链：`3.47.7`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游改动已审查至 `4ed5968f3`（2.1.6），最近一轮合入 41 项功能、修复和依赖更新，保留 PiliExo 的播放器与界面定制。
@@ -32,7 +32,7 @@ APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armea
 
 ## 构建与发布维护
 
-当前发布使用 Flutter `3.47.6` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
+当前发布使用 Flutter `3.47.7` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
 
 每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。构建元数据脚本与 Android CI 会校验 README 中的版本、Flutter 版本是否与项目配置一致；发布后还需同步 GitHub 默认分支的 README。
 

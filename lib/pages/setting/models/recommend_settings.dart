@@ -172,10 +172,12 @@ void _showBuvidDialog(BuildContext context, VoidCallback setState) {
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Get.back();
-            Pref.buvid = LoginUtils.buvid = LoginUtils.generateBuvid();
-            setState();
+          onPressed: () async {
+            await LoginUtils.setBuvid(LoginUtils.generateBuvid());
+            if (context.mounted) {
+              Navigator.of(context).pop();
+              setState();
+            }
           },
           child: const Text('随机'),
         ),
@@ -187,11 +189,13 @@ void _showBuvidDialog(BuildContext context, VoidCallback setState) {
           ),
         ),
         TextButton(
-          onPressed: () {
-            Get.back();
+          onPressed: () async {
             if (buvid.isEmpty) return;
-            Pref.buvid = LoginUtils.buvid = buvid;
-            setState();
+            await LoginUtils.setBuvid(buvid);
+            if (context.mounted) {
+              Navigator.of(context).pop();
+              setState();
+            }
           },
           child: const Text('确定'),
         ),

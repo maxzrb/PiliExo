@@ -1031,14 +1031,12 @@ abstract final class Pref {
     if (value != null) {
       _setting
           .put(SettingBoxKey.buvid, value)
-          .whenComplete(() => _localCache.delete(SettingBoxKey.buvid));
+          .then((_) => _localCache.delete(SettingBoxKey.buvid));
       return value;
     }
 
-    if (value == null) {
-      buvid = value = LoginUtils.generateBuvid();
-    }
-
+    value = LoginUtils.generateBuvid();
+    buvid = value;
     return value;
   }
 

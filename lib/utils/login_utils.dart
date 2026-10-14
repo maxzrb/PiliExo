@@ -7,6 +7,8 @@ import 'package:PiliPlus/main.dart' show webViewEnvironment;
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -99,6 +101,18 @@ abstract final class LoginUtils {
   }
 
   static String buvid = Pref.buvid;
+
+  /// 保存标识后同步已缓存的账户请求头，避免同一请求混用新旧 buvid。
+  static Future<void> setBuvid(String value) async {
+    await GStorage.setting.put(SettingBoxKey.buvid, value);
+    buvid = value;
+    for (final account in {
+      ...Accounts.account.values,
+      ...Accounts.accountMode,
+    }) {
+      account.grpcHeaders.addAll(GrpcHeaders.newHeaders(account.accessKey));
+    }
+  }
 
   // static String getUUID() {
   //   return const Uuid().v4().replaceAll('-', '');
