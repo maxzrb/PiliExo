@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-14 12:03 (+08:00)
+- 更新时间：2026-10-14 12:10 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码提交 `88fdff087`，annotated tag `v26.10.7.2` 指向该提交。
 - 发布状态：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2) 已公开并设为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 已上传，三个资产的大小及 SHA-256 与本地一致。应用版本 `26.10.7+2`，Android versionCode=28；本次按用户要求跳过真机验收。
-- README 维护：当前版本更新至 v26.10.7.2 / Flutter 3.47.6，补齐已发布功能和修复；正式发布必须同步 README，verify_readme.ps1 已接入预构建元数据脚本和 Android CI。默认分支 main 同步同一 README，明确从发布分支或 Release 标签构建。
+- README 维护：当前源码为 v26.10.14.1 / Flutter 3.47.7 发布准备，补齐已发布功能和修复；正式发布必须同步 README，verify_readme.ps1 已接入预构建元数据脚本和 Android CI。默认分支 main 同步同一 README，明确从发布分支或 Release 标签构建。
 - 最近应用改动：已完成 24 项上游处理：21 项 Android/共享修复和功能合入或适配、1 项本地已满足、2 项永久排除。已升级 Flutter 3.47.7 / material_ui 1.6.0；保留双播放器、HDR/FLAC、磨砂、混合推荐和独立版本规则。业务适配 77c8e53e9，构建修复 19b859718。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
 - 本轮合并验证：72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；Flutter/README/29 个 Android 插件注册检查通过；Android Debug APK 构建及包名/版本/arm64 引擎/FFmpeg/DEX 注册检查通过。未做新 Release 构建。
@@ -1193,3 +1193,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - Debug 首次被 Google Maven DNS 阻塞，构建修复 19b859718 限定 Flutter 组的仓库搜索后重建成功。Android arm64 目标 Debug APK 构建成功；包名 com.maxzrb.piliexo.debug / 26.10.7 / code 28，Flutter 引擎仅 arm64-v8a，FFmpeg JNI 与 DEX 插件注册存在。Debug 依赖包另含 v7a/x86_64 插件库，不将其宣称为 Release 单 ABI 验收。APK 123,917,243 bytes，SHA-256 e78f49b64ad414a93c850c35b1b56354674dbf1374219c7263bb4bb27ac4a9eb。
 - 构建仅出现既有插件 compileSdk 覆盖、KGP 和 SDK XML 工具提示；本轮没有新真机连接，未跑独立原生单测或 iOS/桌面回归。当前未进行正式双 ABI Release 构建或发布，APK 仅用于本地编译验证。
 - 应用保持 26.10.7+2 / Android versionCode 28，不修改既有 Release/tag，不更新版本迭代记录。已更新 STATUS、中文进度、完整合并/排除映射、工具链与发布流程；git diff --check 通过。源码与记录本地提交，未 push；收尾后工作树干净。
+
+
+## 2026-10-14 12:10 v26.10.14.1 发布准备
+
+- 用户明确要求发布 Release。远端 latest 为 v26.10.7.2，今日尚无版本，确定 v26.10.14.1；应用 26.10.14+1，Android 全局 versionCode 由 28 增至 29。
+- 已准备 README、版本迭代记录、Release notes 和测试构建版本规则。已有正式密钥与上一版 APK 均存在，下一步构建并核验签名一致性。
+- 当前 ADB 无设备；按发布流程先完成所有自动验证和待发布资产，真机验收状态在最终发布前明确处理。未公开新 Release。
