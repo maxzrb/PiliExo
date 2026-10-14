@@ -2,8 +2,13 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
     repositories {
-        google()
-        mavenCentral()
+        // Flutter 引擎由 Flutter 仓库提供，避免先访问其他仓库而中断解析。
+        google {
+            content { excludeGroup("io.flutter") }
+        }
+        mavenCentral {
+            content { excludeGroup("io.flutter") }
+        }
     }
 }
 
