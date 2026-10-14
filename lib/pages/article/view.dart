@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/common/widgets/flutter/refresh_indicator.dart';
 import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
@@ -475,14 +476,14 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
                       },
                     ),
                   ),
-                  // Expanded(
-                  //   child: textIconButton(
-                  //     text: '分享',
-                  //     icon: CustomIcons.share_node,
-                  //     stat: null,
-                  //     onPressed: () => ShareUtils.shareText(controller.url),
-                  //   ),
-                  // ),
+                  Expanded(
+                    child: textIconButton(
+                      text: '分享',
+                      icon: CustomIcons.share_node,
+                      stat: null,
+                      onPressed: () => ShareUtils.shareText(controller.url),
+                    ),
+                  ),
                   Expanded(
                     child: textIconButton(
                       icon: FontAwesomeIcons.star,

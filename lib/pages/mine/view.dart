@@ -448,7 +448,9 @@ class _MediaPageState extends CommonPageState<MinePage>
 
   void _autoRefresh(MineRefreshMixin tabCtr) => Timer(
     const Duration(milliseconds: 150),
-    () => tabCtr.onRefresh(isManual: false),
+    () {
+      if (!controller.isClosed) tabCtr.onRefresh(isManual: false);
+    },
   );
 
   Widget _buildFav() {

@@ -382,6 +382,7 @@ abstract final class VideoHttp {
               if (reason != null) {
                 return Error(_parseVideoErr(reason['code'], reason['message']));
               }
+              return const Error('未获取到播放信息');
             }
         }
         return Success(data);
@@ -395,6 +396,8 @@ abstract final class VideoHttp {
           seasonId: seasonId,
           tryLook: tryLook,
           videoType: .pgc,
+          language: language,
+          voiceBalance: voiceBalance,
         );
       }
       return Error(_parseVideoErr(res.data['code'], res.data['message']));

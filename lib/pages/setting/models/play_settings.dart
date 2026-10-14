@@ -1,5 +1,7 @@
 import 'dart:io' show Platform;
 
+import 'package:PiliPlus/utils/android/android_helper.dart';
+
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/models/common/super_chat_type.dart';
 import 'package:PiliPlus/models/common/video/subtitle_pref_type.dart';
@@ -234,7 +236,8 @@ List<SettingsModel> get playSettings => [
       setKey: SettingBoxKey.continuePlayInBackground,
       defaultVal: false,
     ),
-  if (Platform.isAndroid || IOSPipHelper.isAvailable)
+  if ((Platform.isAndroid && PiliAndroidHelper.isPipAvailable) ||
+      (Platform.isIOS && IOSPipHelper.isAvailable))
     SwitchModel(
       title: '后台画中画',
       subtitle: '进入后台时以小窗形式（PiP）播放',

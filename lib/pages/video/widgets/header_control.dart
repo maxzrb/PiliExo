@@ -44,7 +44,7 @@ import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService, ShutdownPanel;
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
-import 'package:PiliPlus/utils/android/bindings.g.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
@@ -1929,8 +1929,8 @@ class HeaderControlState extends State<HeaderControl>
                     ),
                   ),
                 ),
-                if (Platform.isAndroid ||
-                    IOSPipHelper.isAvailable ||
+                if ((Platform.isAndroid && PiliAndroidHelper.isPipAvailable) ||
+                    (Platform.isIOS && IOSPipHelper.isAvailable) ||
                     (PlatformUtils.isDesktop && !isFullScreen))
                   SizedBox(
                     width: btnWidth,
@@ -1943,7 +1943,8 @@ class HeaderControlState extends State<HeaderControl>
                           plPlayerController.toggleDesktopPip();
                           return;
                         }
-                        if (Platform.isIOS || AndroidHelper.isPipAvailable) {
+                        if (Platform.isIOS ||
+                            PiliAndroidHelper.isPipAvailable) {
                           plPlayerController.enterPip();
                         }
                       },

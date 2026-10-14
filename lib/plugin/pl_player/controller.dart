@@ -58,8 +58,10 @@ import 'package:PiliPlus/utils/utils.dart';
 import 'package:archive/archive.dart' show getCrc32;
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:easy_debounce/easy_throttle.dart';
-import 'package:flutter/foundation.dart' show ValueNotifier, VoidCallback, kDebugMode;
-import 'package:flutter/services.dart' show DeviceOrientation, HapticFeedback, KeyDownEvent, LogicalKeyboardKey;
+import 'package:flutter/foundation.dart'
+    show ValueNotifier, VoidCallback, kDebugMode;
+import 'package:flutter/services.dart'
+    show DeviceOrientation, HapticFeedback, KeyDownEvent, LogicalKeyboardKey;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:get/get.dart';
@@ -1049,9 +1051,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     if (Platform.isAndroid && autoPiP) {
       if (DeviceUtils.sdkInt < 31) {
-        AndroidHelper$ToDart.onUserLeaveHint = Runnable.implement(
-          $Runnable(run: _onUserLeaveHint),
-        );
+        final callback = Runnable.implement($Runnable(run: _onUserLeaveHint));
+        AndroidHelper$ToDart.onUserLeaveHint = callback;
+        callback.release();
       } else {
         _isAutoEnterPip = true;
       }
@@ -1274,6 +1276,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         hwdec: hwdec,
       ),
     );
+
+    if (Platform.isAndroid) {
+      // 避免切源期间的 mpv 空闲画面重设暂停视频的输出尺寸。
+      await player.setProperty('force-window', 'no');
+    }
 
     player.setMediaHeader(userAgent: BrowserUa.pc, referer: HttpString.baseUrl);
 
@@ -2595,7 +2602,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _clearPreview();
     }
     if (Platform.isAndroid) {
-      AndroidHelper$ToDart.onUserLeaveHint?.release();
       AndroidHelper$ToDart.onUserLeaveHint = null;
     } else if (Platform.isIOS) {
       IOSPipHelper.dispose();
@@ -2693,81 +2699,92 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     videoShot = await VideoHttp.videoshot(bvid: bvid, cid: cid!);
   }
 
+  bool _takingScreenshot = false;
   Future<void> takeScreenshot() async {
     if (isMedia3Hdr) {
       SmartDialog.showToast('HDR 原生播放暂不支持截图');
       return;
     }
-    SmartDialog.showToast('截图中');
-    final image = await videoPlayerController?.screenshot();
-    if (image == null) {
-      SmartDialog.showToast('截图失败');
-      return;
-    }
-
-    var saved = false;
-    Future<void> save() async {
-      if (saved) return;
-      saved = true;
-      Get.back(result: false);
-      final bytes = await image.toByteData(format: .png);
-      image.dispose();
-      if (bytes != null) {
-        final time = DurationUtils.formatDuration(
-          positionInMilliseconds / 1000,
-        ).replaceAll(':', '-');
-        ImageUtils.saveByteImg(
-          bytes: bytes.buffer.asUint8List(),
-          fileName: 'screenshot_${cid}_$time',
-        );
-      } else {
-        SmartDialog.showToast('保存失败');
+    if (_takingScreenshot) return;
+    _takingScreenshot = true;
+    ui.Image? image;
+    try {
+      SmartDialog.showToast('截图中');
+      image = await videoPlayerController?.screenshot();
+      if (image == null) {
+        SmartDialog.showToast('截图失败');
+        return;
       }
-    }
-
-    SmartDialog.showToast('点击弹窗或按 Enter 保存截图');
-    final dispose = await showDialog<bool>(
-      context: Get.context!,
-      builder: (context) => Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent &&
-              (event.logicalKey == LogicalKeyboardKey.enter ||
-                  event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
-            save();
-            return KeyEventResult.handled;
+      final screenshot = image;
+      var saved = false;
+      SmartDialog.showToast('点击弹窗或按 Enter 保存截图');
+      await showDialog<void>(
+        context: Get.context!,
+        requestFocus: true,
+        builder: (context) {
+          Future<void> save() async {
+            if (saved) return;
+            saved = true;
+            final bytes = await screenshot.toByteData(format: .png);
+            if (bytes != null) {
+              final time = DurationUtils.formatDuration(
+                positionInMilliseconds / 1000,
+              ).replaceAll(':', '-');
+              await ImageUtils.saveByteImg(
+                bytes: bytes.buffer.asUint8List(),
+                fileName: 'screenshot_${cid}_$time',
+              );
+            } else {
+              SmartDialog.showToast('保存失败');
+            }
+            if (context.mounted) Navigator.of(context).pop();
           }
-          return KeyEventResult.ignored;
-        },
-        child: GestureDetector(
-          onTap: save,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: min(MediaQuery.widthOf(context) / 3, 350),
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      width: 5,
-                      color: ColorScheme.of(context).surface,
+
+          return Focus(
+            autofocus: true,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.keyS ||
+                      event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+                save();
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: GestureDetector(
+              onTap: save,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: min(MediaQuery.widthOf(context) / 3, 350),
                     ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: RawImage(image: image),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          width: 5,
+                          color: ColorScheme.of(context).surface,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(5),
+                        child: RawImage(image: screenshot),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-    if (dispose ?? true) image.dispose();
+          );
+        },
+      );
+    } finally {
+      image?.dispose();
+      _takingScreenshot = false;
+    }
   }
 
   void onPopInvokedWithResult(bool didPop, Object? result) {

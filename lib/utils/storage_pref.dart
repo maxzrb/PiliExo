@@ -1024,13 +1024,25 @@ abstract final class Pref {
       _setting.get(SettingBoxKey.silentDownImg, defaultValue: false);
 
   static String get buvid {
-    String? buvid = _localCache.get(LocalCacheKey.buvid);
-    if (buvid == null) {
-      buvid = LoginUtils.generateBuvid();
-      _localCache.put(LocalCacheKey.buvid, buvid);
+    String? value = _setting.get(SettingBoxKey.buvid);
+    if (value != null) return value;
+
+    value = _localCache.get(SettingBoxKey.buvid);
+    if (value != null) {
+      _setting
+          .put(SettingBoxKey.buvid, value)
+          .whenComplete(() => _localCache.delete(SettingBoxKey.buvid));
+      return value;
     }
-    return buvid;
+
+    if (value == null) {
+      buvid = value = LoginUtils.generateBuvid();
+    }
+
+    return value;
   }
+
+  static set buvid(String value) => _setting.put(SettingBoxKey.buvid, value);
 
   static bool get showMemberShop =>
       _setting.get(SettingBoxKey.showMemberShop, defaultValue: false);

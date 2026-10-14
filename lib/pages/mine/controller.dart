@@ -123,6 +123,14 @@ class MineController extends GetxController with AccountMixin {
     }
   }
 
+  @override
+  void onClose() {
+    for (final ctr in tabCtr()) {
+      ctr.onDelete();
+    }
+    super.onClose();
+  }
+
   bool get isLogin => accountService.isLogin.value;
 
   Future<void> queryUserInfo() async {

@@ -11,18 +11,37 @@ import 'package:material_ui/material_ui.dart';
 
 const _iconSize = 20.0;
 
+void showPgcCover({
+  required String? title,
+  required String? cover,
+  dynamic aid,
+  String? bvid,
+}) => imageSaveDialog(
+  title: title,
+  cover: cover,
+  aid: aid,
+  bvid: bvid,
+  orientation: .portrait,
+  aspectRatio: Style.aspectRatio3x4,
+);
+
 void imageSaveDialog({
   required String? title,
   required String? cover,
   dynamic aid,
   String? bvid,
+  Orientation orientation = .landscape,
+  double aspectRatio = Style.aspectRatio16x9,
 }) {
   SmartDialog.show(
     animationType: .centerScale_otherSlide,
     builder: (context) {
       final colorScheme = ColorScheme.of(context);
-      final imgWidth = MediaQuery.sizeOf(context).shortestSide - 16;
-      final height = imgWidth / Style.aspectRatio16x9;
+      final shortestSide = MediaQuery.sizeOf(context).shortestSide;
+      final height = orientation == .portrait
+          ? shortestSide * 0.8
+          : (shortestSide - 16) / aspectRatio;
+      final imgWidth = height * aspectRatio;
       return Padding(
         padding: const .symmetric(horizontal: Style.safeSpace),
         child: DecoratedBox(

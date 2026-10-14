@@ -1,3 +1,6 @@
+import 'package:PiliPlus/common/widgets/custom_icon.dart';
+import 'package:PiliPlus/utils/login_utils.dart';
+import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/pages/rcmd/controller.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
@@ -16,6 +19,12 @@ List<SettingsModel> get recommendSettings {
   var appRatio = Pref.appRcmdRatio;
   var pendingRefresh = Pref.appRcmdRatioPending;
   return [
+    NormalModel(
+      title: 'buvid',
+      leading: const Icon(CustomIcons.identifier_circle),
+      getSubtitle: () => LoginUtils.buvid,
+      onTap: _showBuvidDialog,
+    ),
     NormalModel(
       title: '首页推荐来源',
       leading: const Icon(Icons.model_training_outlined),
@@ -147,4 +156,46 @@ List<SettingsModel> get recommendSettings {
       onChanged: (value) => RecommendFilter.applyFilterToRelatedVideos = value,
     ),
   ];
+}
+
+void _showBuvidDialog(BuildContext context, VoidCallback setState) {
+  String buvid = LoginUtils.buvid;
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('buvid'),
+      content: TextFormField(
+        autofocus: true,
+        initialValue: buvid,
+        onChanged: (value) => buvid = value,
+        inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r"\s"))],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Get.back();
+            Pref.buvid = LoginUtils.buvid = LoginUtils.generateBuvid();
+            setState();
+          },
+          child: const Text('随机'),
+        ),
+        TextButton(
+          onPressed: Get.back,
+          child: Text(
+            '取消',
+            style: TextStyle(color: ColorScheme.of(context).outline),
+          ),
+        ),
+        TextButton(
+          onPressed: () {
+            Get.back();
+            if (buvid.isEmpty) return;
+            Pref.buvid = LoginUtils.buvid = buvid;
+            setState();
+          },
+          child: const Text('确定'),
+        ),
+      ],
+    ),
+  );
 }
