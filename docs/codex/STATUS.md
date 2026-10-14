@@ -1,15 +1,15 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-14 12:10 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码提交 `88fdff087`，annotated tag `v26.10.7.2` 指向该提交。
-- 发布状态：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2) 已公开并设为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 已上传，三个资产的大小及 SHA-256 与本地一致。应用版本 `26.10.7+2`，Android versionCode=28；本次按用户要求跳过真机验收。
-- README 维护：当前源码为 v26.10.14.1 / Flutter 3.47.7 发布准备，补齐已发布功能和修复；正式发布必须同步 README，verify_readme.ps1 已接入预构建元数据脚本和 Android CI。默认分支 main 同步同一 README，明确从发布分支或 Release 标签构建。
+- 更新时间：2026-10-14 12:25 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码 `9362263b2`，annotated tag `v26.10.14.1` 指向该源码。
+- 发布状态：[v26.10.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.14.1) 已公开且为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 全部同步并核验。应用 `26.10.14+1`，Android versionCode=29；用户明确选择本次跳过真机验收。
+- README 维护：发布分支和 GitHub 默认分支 main 均已更新到 v26.10.14.1 / Flutter 3.47.7，含本轮新增功能和上游边界；默认分支独立文档提交 ecadf414d，发布分支合并其历史为 3df958bf7。正式发布继续强制 README 校验。
 - 最近应用改动：已完成 24 项上游处理：21 项 Android/共享修复和功能合入或适配、1 项本地已满足、2 项永久排除。已升级 Flutter 3.47.7 / material_ui 1.6.0；保留双播放器、HDR/FLAC、磨砂、混合推荐和独立版本规则。业务适配 77c8e53e9，构建修复 19b859718。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
-- 本轮合并验证：72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；Flutter/README/29 个 Android 插件注册检查通过；Android Debug APK 构建及包名/版本/arm64 引擎/FFmpeg/DEX 注册检查通过。未做新 Release 构建。
+- 本轮合并验证：正式源码 72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；版本/README/29 个插件注册检查通过，双 ABI Release 构建、包名/版本/唯一 ABI/FFmpeg/DEX 注册/R8/V2 签名及双源长度和 SHA-256 校验通过。
 - 工具链：当前设备项目内 tools/flutter-3.47.7/reused-sdk，命令使用 P: 映射；Flutter 3.47.7 / Dart 3.13.5，25 个 framework 与 9 个 material_ui 1.6.0 Android 补丁生效，Pub 缓存仍为 tools/pub-cache。旧 SDK 保留，详见本机工具链文档。
-- 已知验收边界：本轮无 Android 真机连接，未运行 iOS/桌面测试，未发布新版本。后续发布前需验证 OGV 实际权限/音轨、HDR/SDR 互切、截图、文章评论与我的页交互；本轮离线回归不等于服务器与真机验收。
-- Git 状态：本轮源码、构建修复和收尾记录均提交到本地发布分支，未推送；收尾后工作树干净。回退分支 codex/backup-before-upstream-20261014 保留合并前源码，SDK/缓存/签名/APK 均继续忽略。
+- 已知验收边界：用户已明确选择本次跳过真机验收后发布；本轮无设备连接、未安装、未进行真实 B 站账户权限/HDR 切换及新增界面交互验收。此选择仅适用于本次，未来发布按流程处理。
+- Git 状态：发布源码、分支、annotated tag 和默认分支 README 均已推送；收尾记录独立提交推送，标签保持指向构建源码。工作树收尾后干净；SDK/缓存/签名和产物继续忽略。
 
 ## 当前上游同步结果（2026-10-14）
 
@@ -1200,3 +1200,19 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 用户明确要求发布 Release。远端 latest 为 v26.10.7.2，今日尚无版本，确定 v26.10.14.1；应用 26.10.14+1，Android 全局 versionCode 由 28 增至 29。
 - 已准备 README、版本迭代记录、Release notes 和测试构建版本规则。已有正式密钥与上一版 APK 均存在，下一步构建并核验签名一致性。
 - 当前 ADB 无设备；按发布流程先完成所有自动验证和待发布资产，真机验收状态在最终发布前明确处理。未公开新 Release。
+
+
+## 2026-10-14 12:25 v26.10.14.1 双源发布完成
+
+- 用户明确要求发布，并在双 ABI 正式包已完成自动校验后选择“跳过真机验收，直接发布”；该例外只用于本次发布，不能当作以后默认跳过。
+- 发布源码 `9362263b273083221a3a31582a6414d76e56f9d8`，应用 26.10.14+1，Android versionCode=29；分支与 annotated tag 已推送，tag object=5aee690f4c543ee41183fd57d5b08ccd417b6d9d，解引用指向上述源码。版本迭代记录和 Release notes 已随源码提交，既有版本历史保留。
+- 发布前 Flutter 3.47.7、README、29 个 Android 原生插件注册校验通过；pub get --offline --enforce-lockfile 成功，锁文件不变；Flutter 全量串行测试 72/72，lib/test Analyze 无 error/warning（114 info）。
+- 双 ABI Release 构建成功，耗时 278.1 秒；两包均核对 com.maxzrb.piliexo / versionName 26.10.14 / code 29、唯一目标 ABI、FFmpeg JNI、DEX 插件注册和 R8 FfmpegAudioRenderer 保留。两包 V2 正式签名证书 SHA-256 为 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51，与 v26.10.7.2 完全相同。
+- PiliExo_android_v26.10.14.1_arm64-v8a.apk：31,620,633 bytes，SHA-256 `300a3a54a3ef609f92433a0a2b4eda4052eb2d3ab5c3cd834f80a6e17496bd80`。
+- PiliExo_android_v26.10.14.1_armeabi-v7a.apk：31,538,346 bytes，SHA-256 `ef900c7afa3194f3f431d186948469a92c1fa9492a7218cdce40d214e20caaf4`。
+- SHA256SUMS.txt：218 bytes，SHA-256 `e96e89593768201c0da8b255048714b9c1466d622b613ef66d783289e4a9970f`。
+- GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.10.14.1>；先草稿上传并核验全部三份资产，随后公开并设为 latest。标题/tag 均为 v26.10.14.1，非预发布；资产 uploaded、size/digest 均与本地一致，Release 正文与 UTF-8 notes 内容一致（GitHub 使用 CRLF）。发布后再次核验 latest 和三份 digest。
+- ModelScope AerithDream/PiliExo 的 releases/v26.10.14.1/ 三个文件 committed、0 failed、0 deleted；两个 APK HEAD 200，Content-Length/X-Linked-ETag 与本地一致，SHA256SUMS.txt 的远端内容哈希匹配。
+- GitHub 默认分支 main 的 README 已用独立文档提交 ecadf414d 更新；将其合并回发布分支为 3df958bf7，保持共同历史。只有工作树/API 行尾差异导致 README 合并冲突，已验证正文完全一致后保留发布源码的规范化版本；相对发布源码无内容差异，不移动标签或重建包。
+- APK 与校验清单保留在 dist/release/v26.10.14.1/；所有日志、校验 JSON 和临时脚本在 tools/，SDK/缓存/签名文件保持忽略。没有设备连接，按用户明确选择未安装或进行新一轮真机交互验收，不把离线请求测试描述成真实 B 站权限验证。
+- 收尾：本记录和中文进度单独提交并推送；发布标签固定在源码提交不改写。版本、工具链、README、已合并/永久排除的上游清单和下一轮审查边界 bd5e04e5d 均已持久化。
