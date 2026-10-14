@@ -1,15 +1,30 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-08 17:33 (+08:00)
+- 更新时间：2026-10-14 10:33 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码提交 `88fdff087`，annotated tag `v26.10.7.2` 指向该提交。
 - 发布状态：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2) 已公开并设为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 已上传，三个资产的大小及 SHA-256 与本地一致。应用版本 `26.10.7+2`，Android versionCode=28；本次按用户要求跳过真机验收。
 - README 维护：当前版本更新至 v26.10.7.2 / Flutter 3.47.6，补齐已发布功能和修复；正式发布必须同步 README，verify_readme.ps1 已接入预构建元数据脚本和 Android CI。默认分支 main 同步同一 README，明确从发布分支或 Release 标签构建。
 - 最近应用改动：修复设置首页及子页顶部状态栏图标颜色；共用磨砂顶栏按实际底色判断明暗，浅色背景使用深色图标、深色背景使用浅色图标，保留显式样式覆盖。此前的 41 项上游更新、HDR FLAC 与启动插件注册修复继续保留。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
-- 本轮验证：Flutter 3.47.6 / Dart 3.13.5；锁文件不变、pub get 成功、29 个 Android 原生插件注册完整；67 项测试通过，lib/test Analyze 无 error/warning（114 条 info）。两 ABI Release 构建、包名/版本/单 ABI/FFmpeg/DEX 插件注册/R8 映射/V2 正式签名及远端哈希校验通过。
+- 最近发布验证：Flutter 3.47.6 / Dart 3.13.5；锁文件不变、pub get 成功、29 个 Android 原生插件注册完整；67 项测试通过，lib/test Analyze 无 error/warning（114 条 info）。两 ABI Release 构建、包名/版本/单 ABI/FFmpeg/DEX 插件注册/R8 映射/V2 正式签名及远端哈希校验通过。
 - 工具链：当前设备在项目内 `tools/flutter-3.47.6/flutter` 恢复官方同一 tag，命令使用 P: 映射；25 个 framework Android 补丁与 9 个 material_ui 1.5.0 补丁生效，Pub 缓存为 `tools/pub-cache`。详见本机工具链文档。
 - 已知验收边界：用户明确要求本次跳过真机验收；本轮未运行原生 Robolectric/iOS/桌面测试。此前 v26.10.7.1 的手机启动、HDR/声音验收记录仍保留，不将其作为本版状态栏显示已验收的结论。
-- Git 状态：发布源码、分支与 annotated tag 已推送；收尾记录作为独立文档提交推送，Release 标签保持指向构建源码。SDK、缓存、签名和产物均保持忽略；拉取前原始 STATUS 的备份 stash 保留。
+- Git 状态：当前发布分支 HEAD `d1ac90ca0` 与 origin 同步；本轮只审查上游，新增审查报告并更新 STATUS/中文进度，三份文档尚未提交；源码、版本和 Release 标签未改动。工具链缓存在本分支保持忽略。
+
+## 上游复核（2026-10-14）
+
+- 重新 pull/fetch/ls-remote：本地发布分支与 origin 同步，上游仍为 bd5e04e5d，较昨日 0 个新增提交；4ed5968f3 之后的 24 项仍全部待实施。复核补记在 docs/PiliPlus上游审查-2026-10-13.md 顶部。
+- 三个小修复优先级不变。补充 e958c094d 的音频上下集 Future.sync 异常传播适配；本地保留 playOwner 归属逻辑。mpv 的 Surface 参数 false 已在本地存在，b2d6a5bef 不应单独合入，仅评估最终剩余 force-window=no。
+- 已核对上游 PR 3224、回归问题 3238/3239 和图片问题 2685；图片原始问题为 Windows 窗口缩放场景，Android 本轮仍列可选低优先级。
+- 七组无写入补丁预检全部通过。未新增测试、构建、真机验收、源码合并、版本更改或提交推送；仍只有报告/STATUS/中文进度三份文档未提交。
+
+## 上游同步审查（2026-10-13，仅审查尚未合入）
+
+- 实际已合入边界仍为 `4ed5968f3`；本轮审查至 `bd5e04e5d`，范围共 24 项，完整结论见 `docs/PiliPlus上游审查-2026-10-13.md`。不要将审查边界误当成合并边界。
+- 优先共 11 个上游提交：三个小修复 `6830ec15c`/`c8a8a4100`/`a01318a22`；`e958c094d` 的截图/JNI/PiP 适用部分；文章 `e15497044`→`ed202131a`→`196ce4a38`；暂停画面 `661791240`+`b2d6a5bef` 最终净变化；OGV `583fd9d8d`→`e3ef282fa`。
+- 暂停画面第一笔的 Surface 参数 true 已被后笔撤回；本地已经为 false，仅评估 mpv force-window=no，保留 HDR 后端和视图重挂载。OGV 要验证账户 Cookie、权限、续播及 HDR/音轨，未证实旧 API 已全面失效。
+- 可选：竖版封面、PGC 标签、电竞卡片、图片/瀑布流迁移、我的页卡片和 buvid；图片 gaplessPlayback 需要新 Git 库 API，buvid 要保留本地混合推荐设置。Flutter 3.47.7/material_ui 1.6.0 与滚动补丁单独验证；桌面托盘和纯 iOS 依赖跳过 Android 批次。
+- 验证仅静态审查与 git apply --check：三个小修复、文章整组、OGV 整组及暂停画面净 diff 通过。不代表运行验证通过；未测试、构建、真机验收或发布。
 
 ## 上游同步状态（2026-10-06 审查，后续已合入 41 项）
 
@@ -1125,3 +1140,20 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 用户原有未跟踪 tmp/ 保留；本轮没有修改任何签名、SDK 或 APK。
 
 - 2026-10-08 17:36 收尾核验：发布分支 98fdfb047 与 main a5a6154bc 已推送；通过 GitHub Contents API 确认两边 README 与本地提交完全一致。相对链接/截图路径检查、README 校验及 git diff --check 通过。工作区只保留原有 tmp/。
+
+
+## 2026-10-13 16:33 每周上游审查
+
+- 按用户要求检查值得合并的 PiliPlus 更新。读取上次 STATUS 与 2026-10-06 审查/实际合并映射；发现起始 main 仅含旧源码，先 git pull --ff-only 同步 README，再切换实际发布分支并快进到 d1ac90ca0。起始无已跟踪文件改动；原 tools/ 在发布分支已忽略。
+- git fetch upstream --prune 抓取 bd5e04e5d；git ls-remote 核对远端一致，4ed5968f3..bd5e04e5d 共 24 项。逐项检查 diff、依赖关系及本地代码，输出完整报告 docs/PiliPlus上游审查-2026-10-13.md。
+- 建议先合三个小修复，再定向移植截图/JNI、文章评论与滚动、mpv 暂停画面及 OGV。显式记录 Surface 参数已撤回、封面 SmartDialog 冲突、文章分享入口取舍、图片库 API 依赖和 buvid 混合推荐冲突。
+- git cherry 的 24 项均为 +；七个单提交及文章/OGV/暂停画面三组最终 diff 的 git apply --check 通过。缺前置与本地定制导致的应用失败逐项注明，未将其误判为功能无价值。
+- 未合并本轮源码、改版本、运行构建或测试、commit/push 或发布。仅审查报告、STATUS 与 version/工作进度.md 为未提交变更；当前分支仍与 origin 同步，建议实施前独立保存审查记录。
+
+
+## 2026-10-14 10:33 上游审查复核
+
+- 用户要求重新检查；重新获取远端并确认 upstream/main 仍为 bd5e04e5d，较昨日无新增，发布分支 d1ac90ca0 与 origin 同步。保留昨日三份未提交审查文档，没有 stash 或覆盖本地修改。
+- 进一步对照截图/音频/JNI、mpv 初始化、课程侧栏和 OGV 请求；核对上游 PR 3224 以及问题 3238/3239/2685，补充回归原因和 Android 适用范围。
+- 补充此前摘要未列出的通知上下集 Future.sync 改动；明确 b2d6a5bef 在本地为无效重复参数修正，不能因“11 项候选”而机械执行 11 次 cherry-pick。
+- 三个小修复、文章、OGV、mpv 净变化和音频回调共七组 git apply --check 通过。未改源码/版本、未运行构建/测试或真机验收；收尾仅三份审查文档变更，建议实施前单独提交审查记录。
