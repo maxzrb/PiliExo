@@ -4,11 +4,11 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.10.7.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.7.2)（2026-10-07）。
-- Flutter 工具链：`3.47.6`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
+- 当前正式版本：[v26.10.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.14.1)（2026-10-14）。
+- Flutter 工具链：`3.47.7`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游改动已审查至 `4ed5968f3`（2.1.6），最近一轮合入 41 项功能、修复和依赖更新，保留 PiliExo 的播放器与界面定制。
+- PiliPlus 上游已处理至 `bd5e04e5d`；本轮合入或适配 21 项 Android/共享功能与修复，保留 PiliExo 的播放器与界面定制，纯平台更新不重复核验。
 
 ## PiliExo 的实际修改
 
@@ -21,6 +21,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 检查更新优先使用 ModelScope，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、进度显示、取消和系统安装器。
 - 同步上游离线片段跳过和 UGC 合集缓存，改善收藏夹、番剧多季度切换、直播、黑名单过滤、图片缩放手势与媒体通知切换视频。
 - 选中文字默认提供站内搜索，选中网址可直接打开，同时保留调用方自定义菜单。
+- “我的”页支持自选和排序收藏、观看记录、稍后再看、订阅卡片；推荐设置可自定义或随机生成 buvid，保留 Web/App 混合比例。
+- 番剧和课程适配 OGV 播放接口；文章/图文支持直接进入评论，保留分享，并修复评论滚动。
+- 改善离线合集选中与排序、课程横屏选集、截图防重复、画中画入口、竖版封面和图片切换。
 
 ## 下载与更新
 
@@ -32,7 +35,7 @@ APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armea
 
 ## 构建与发布维护
 
-当前发布使用 Flutter `3.47.6` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
+当前发布使用 Flutter `3.47.7` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
 
 每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。构建元数据脚本与 Android CI 会校验 README 中的版本、Flutter 版本是否与项目配置一致；发布后还需同步 GitHub 默认分支的 README。
 
