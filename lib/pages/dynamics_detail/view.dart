@@ -35,6 +35,7 @@ import 'package:PiliPlus/pages/dynamics_repost/view.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
+import 'package:PiliPlus/utils/reply_scheme_helper.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/share_utils.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -49,8 +50,8 @@ class DynamicDetailPage extends StatefulWidget {
   State<DynamicDetailPage> createState() => _DynamicDetailPageState();
 }
 
-class _DynamicDetailPageState
-    extends CommonDynPageMultiState<DynamicDetailPage> {
+class _DynamicDetailPageState extends CommonDynPageMultiState<DynamicDetailPage>
+    with DynReplyLocateStateMixin {
   @override
   late final DynamicDetailController controller;
   late final DynRepostController _repostController;
@@ -74,10 +75,10 @@ class _DynamicDetailPageState
   @override
   void initState() {
     super.initState();
-    final args = Get.arguments;
+    final Map args = Get.arguments;
     final item = args['item'] as DynamicItemModel;
     final id = item.idStr.toString();
-    if (args['viewComment'] ?? false) {
+    if (args['viewComment'] == true || args.containsKey(rootRpIdKey)) {
       WidgetsBinding.instance.addPostFrameCallback(_jumpToComment);
     }
     final stat = item.modules.moduleStat;

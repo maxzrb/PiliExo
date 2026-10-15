@@ -46,7 +46,8 @@ class ArticlePage extends StatefulWidget {
   State<ArticlePage> createState() => _ArticlePageState();
 }
 
-class _ArticlePageState extends CommonDynPageState<ArticlePage> {
+class _ArticlePageState extends CommonDynPageState<ArticlePage>
+    with DynReplyLocateStateMixin {
   @override
   late final ArticleController controller;
   @override
@@ -65,7 +66,7 @@ class _ArticlePageState extends CommonDynPageState<ArticlePage> {
       ArticleController.new,
       tag: params['type']! + params['id']!,
     );
-    if (params.containsKey('viewComment')) {
+    if (params.containsKey('viewComment') || controller.rootRpId != null) {
       _centerKey = UniqueKey();
     }
     super.initState();
