@@ -1089,7 +1089,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       // 播放中切换只更新当前播放器，不回写默认画质偏好。
                     },
                     child: Text(
-                      item.newDesc ?? '',
+                      item.newDesc ?? item.quality.toString(),
                       style: enabled
                           ? const TextStyle(color: Colors.white, fontSize: 13)
                           : const TextStyle(
