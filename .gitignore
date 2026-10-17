@@ -153,6 +153,7 @@ dist
 test*
 !test/
 !test/**
+!/tool/test_playback_experiment.py
 !/tool/test_playback_power_probe.py
 !/tool/test_ui_power_probe.py
 !/tool/test_ui_power_experiment.py
