@@ -197,8 +197,8 @@ Future<void> _showReplyAtBlockDialog(
     setState();
   } else {
     if (!context.mounted) return;
-    String? countStr;
-    await showDialog<String>(
+    String countStr = replyAtBlockType.$1?.toString() ?? '';
+    final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('屏蔽@的数量'),
@@ -218,15 +218,15 @@ Future<void> _showReplyAtBlockDialog(
             ),
           ),
           TextButton(
-            onPressed: Get.back,
+            onPressed: () => Navigator.pop(context, true),
             child: const Text('确认'),
           ),
         ],
       ),
     );
-    if (countStr != null) {
+    if (accepted == true && context.mounted) {
       try {
-        final count = int.parse(countStr!);
+        final count = int.parse(countStr);
         if (count > 0) {
           await Pref.updateReplyAtBlockType(count, .count);
           setState();

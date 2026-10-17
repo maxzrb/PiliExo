@@ -6,6 +6,7 @@ import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/reply/reply_at_match_type.dart';
 import 'package:PiliPlus/utils/global_data.dart';
+import 'package:PiliPlus/utils/reply_at_filter.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:fixnum/fixnum.dart';
 
@@ -44,70 +45,11 @@ abstract final class ReplyGrpc {
     final content = reply.content;
     if (content.emotes.isNotEmpty || content.pictures.isNotEmpty) return false;
 
-    final atNameToMid = content.atNameToMid;
-    if (atNameToMid.isEmpty) return false;
-
-    final message = content.message;
-
-    int start = 0;
-    if (reply.root != reply.parent) {
-      int? colon;
-      for (int i = 0; i < message.length; i++) {
-        if (message.codeUnitAt(i) == 0x3A /* `:` */ ) {
-          colon = i;
-          break;
-        }
-      }
-      if (colon == null) return false;
-      start = colon + 1;
-    }
-
-    bool hasAt = false;
-    final codeUnits = <int>[];
-
-    bool isAt() {
-      if (codeUnits.isEmpty) return false;
-      final name = String.fromCharCodes(codeUnits);
-      codeUnits.clear();
-      return atNameToMid.containsKey(name);
-    }
-
-    for (int i = start; i < message.length; i++) {
-      final codeUnit = message.codeUnitAt(i);
-      switch (codeUnit) {
-        case 0x20: // ` `
-          if (hasAt) {
-            hasAt = false;
-            if (isAt()) {
-              continue;
-            } else {
-              return false;
-            }
-          }
-        case 0x40: // `@`
-          if (hasAt) {
-            if (isAt()) {
-              continue;
-            } else {
-              return false;
-            }
-          }
-          hasAt = true;
-        case 0xA: // `\n`
-          continue;
-        case _:
-          if (hasAt) {
-            codeUnits.add(codeUnit);
-          } else {
-            return false;
-          }
-      }
-    }
-    if (hasAt && codeUnits.isNotEmpty) {
-      return isAt();
-    }
-    codeUnits.clear();
-    return false;
+    return isMentionOnlyReply(
+      content.message,
+      content.atNameToMid.keys,
+      hasReplyPrefix: reply.root != reply.parent,
+    );
   }
 
   static bool needRemoveAtReply(ReplyInfo reply) =>

@@ -1,5 +1,4 @@
-import 'dart:io' show Platform, Directory;
-import 'dart:math' show max;
+import 'dart:io' show Platform;
 
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/common/widgets/dialog/simple_dialog_option.dart';
@@ -14,6 +13,7 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/home/controller.dart';
+import 'package:PiliPlus/pages/main/controller.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
@@ -22,7 +22,6 @@ import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/filtering_text.dart';
-import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/gesture_haptics.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
@@ -624,6 +623,97 @@ void _visitor(Element context) {
     context.markNeedsBuild();
   } else {
     context.visitChildren(_visitor);
+  }
+}
+
+Future<void> _showFavDialog(BuildContext context) async {
+  if (Accounts.main.isLogin) {
+    final res = await FavHttp.allFavFolders(Accounts.main.mid);
+    if (res case Success(:final response)) {
+      final list = response.list;
+      if (list == null || list.isEmpty) {
+        return;
+      }
+      final quickFavId = Pref.quickFavId;
+      if (!context.mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          clipBehavior: Clip.hardEdge,
+          title: const Text('选择默认收藏夹'),
+          contentPadding: const EdgeInsets.only(top: 5, bottom: 18),
+          content: SingleChildScrollView(
+            child: RadioGroup(
+              onChanged: (value) {
+                Get.back();
+                GStorage.setting.put(SettingBoxKey.quickFavId, value);
+                SmartDialog.showToast('设置成功');
+              },
+              groupValue: quickFavId,
+              child: Column(
+                children: list
+                    .map(
+                      (item) => RadioListTile(
+                        toggleable: true,
+                        dense: true,
+                        title: Text(item.title),
+                        value: item.id,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      res.toast();
+    }
+  }
+}
+
+Future<void> _showReplyCountDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final res = await showDialog<double>(
+    context: context,
+    builder: (context) => SliderDialog(
+      title: const Text('连接重试次数'),
+      min: 0,
+      max: 8,
+      divisions: 8,
+      precise: 0,
+      value: Pref.retryCount.toDouble(),
+    ),
+  );
+  if (res != null) {
+    await GStorage.setting.put(SettingBoxKey.retryCount, res.toInt());
+    setState();
+    SmartDialog.showToast('重启生效');
+  }
+}
+
+Future<void> _showReplyDelayDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final res = await showDialog<double>(
+    context: context,
+    builder: (context) => SliderDialog(
+      title: const Text('连接重试间隔'),
+      min: 0,
+      max: 1000,
+      divisions: 10,
+      precise: 0,
+      value: Pref.retryDelay.toDouble(),
+      suffix: 'ms',
+    ),
+  );
+  if (res != null) {
+    await GStorage.setting.put(SettingBoxKey.retryDelay, res.toInt());
+    setState();
+    SmartDialog.showToast('重启生效');
   }
 }
 

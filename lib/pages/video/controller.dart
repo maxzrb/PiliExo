@@ -730,7 +730,10 @@ class VideoDetailController extends GetxController
     bool isLowerResolution(VideoItem item) {
       final area = (item.width ?? 0) * (item.height ?? 0);
       if (currentArea > 0 && area > 0) return area < currentArea;
-      return item.quality.index > current.quality.index;
+      // 画质模型兼容未知服务端编码；未知顺序不能当作可降低分辨率的依据。
+      final itemOrder = VideoQuality.values.indexOf(item.quality);
+      final currentOrder = VideoQuality.values.indexOf(current.quality);
+      return itemOrder >= 0 && currentOrder >= 0 && itemOrder > currentOrder;
     }
 
     final indices = <int>[currentIndex];
