@@ -4,12 +4,15 @@ import 'package:PiliPlus/grpc/bilibili/pagination.pb.dart';
 import 'package:PiliPlus/grpc/grpc_req.dart';
 import 'package:PiliPlus/grpc/url.dart';
 import 'package:PiliPlus/http/loading_state.dart';
+import 'package:PiliPlus/models/common/reply/reply_at_match_type.dart';
 import 'package:PiliPlus/utils/global_data.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:fixnum/fixnum.dart';
 
 abstract final class ReplyGrpc {
   static bool antiGoodsReply = Pref.antiGoodsReply;
+  static (int? count, ReplyAtBlockType type) blockAtOnlyReply =
+      Pref.replyAtBlockType;
   static RegExp replyRegExp = RegExp(
     Pref.banWordForReply,
     caseSensitive: false,
@@ -37,8 +40,86 @@ abstract final class ReplyGrpc {
         reply.content.message.contains(Constants.goodsUrlPrefix);
   }
 
+  static bool _isAtOnlyReply(ReplyInfo reply) {
+    final content = reply.content;
+    if (content.emotes.isNotEmpty || content.pictures.isNotEmpty) return false;
+
+    final atNameToMid = content.atNameToMid;
+    if (atNameToMid.isEmpty) return false;
+
+    final message = content.message;
+
+    int start = 0;
+    if (reply.root != reply.parent) {
+      int? colon;
+      for (int i = 0; i < message.length; i++) {
+        if (message.codeUnitAt(i) == 0x3A /* `:` */ ) {
+          colon = i;
+          break;
+        }
+      }
+      if (colon == null) return false;
+      start = colon + 1;
+    }
+
+    bool hasAt = false;
+    final codeUnits = <int>[];
+
+    bool isAt() {
+      if (codeUnits.isEmpty) return false;
+      final name = String.fromCharCodes(codeUnits);
+      codeUnits.clear();
+      return atNameToMid.containsKey(name);
+    }
+
+    for (int i = start; i < message.length; i++) {
+      final codeUnit = message.codeUnitAt(i);
+      switch (codeUnit) {
+        case 0x20: // ` `
+          if (hasAt) {
+            hasAt = false;
+            if (isAt()) {
+              continue;
+            } else {
+              return false;
+            }
+          }
+        case 0x40: // `@`
+          if (hasAt) {
+            if (isAt()) {
+              continue;
+            } else {
+              return false;
+            }
+          }
+          hasAt = true;
+        case 0xA: // `\n`
+          continue;
+        case _:
+          if (hasAt) {
+            codeUnits.add(codeUnit);
+          } else {
+            return false;
+          }
+      }
+    }
+    if (hasAt && codeUnits.isNotEmpty) {
+      return isAt();
+    }
+    codeUnits.clear();
+    return false;
+  }
+
+  static bool needRemoveAtReply(ReplyInfo reply) =>
+      switch (blockAtOnlyReply.$2) {
+        .disable => false,
+        .atOnly => _isAtOnlyReply(reply),
+        .count => reply.content.atNameToMid.length >= blockAtOnlyReply.$1!,
+      };
+
   static bool needRemoveGrpc(ReplyInfo reply) {
     return GlobalData().blackMids.contains(reply.mid.toInt()) ||
+        needRemoveAtReply(reply) ||
         (enableFilter && replyRegExp.hasMatch(reply.content.message)) ||
         (antiGoodsReply && needRemoveGoodGrpc(reply));
   }

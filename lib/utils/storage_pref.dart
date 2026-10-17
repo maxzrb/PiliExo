@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:PiliPlus/common/widgets/gesture/horizontal_drag_gesture_recognizer.dart'
     show deviceTouchSlop;
 import 'package:PiliPlus/common/widgets/pair.dart';
+import 'package:PiliPlus/grpc/reply.dart';
 import 'package:PiliPlus/http/constants.dart';
 import 'package:PiliPlus/models/common/bar_hide_type.dart';
 import 'package:PiliPlus/models/common/dynamic/dynamic_badge_mode.dart';
@@ -14,6 +15,7 @@ import 'package:PiliPlus/models/common/member/tab_type.dart';
 import 'package:PiliPlus/models/common/mine_tab_type.dart';
 import 'package:PiliPlus/models/common/msg/msg_unread_type.dart';
 import 'package:PiliPlus/models/common/nav_bar_config.dart';
+import 'package:PiliPlus/models/common/reply/reply_at_match_type.dart';
 import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/skip_type.dart';
@@ -1160,4 +1162,24 @@ abstract final class Pref {
           ?.map<MineTabType>((index) => .values[index])
           .toSet() ??
       MineTabType.kDefault;
+
+  static (int? count, ReplyAtBlockType type) get replyAtBlockType {
+    final int? value = _setting.get(SettingBoxKey.replyAtBlockType);
+    if (value != null) {
+      if (value == ReplyAtBlockType.atOnly.value) {
+        return (null, .atOnly);
+      } else if (value > 0) {
+        return (value, .count);
+      }
+    }
+    return (null, .disable);
+  }
+
+  static Future<void> updateReplyAtBlockType(
+    int? value,
+    ReplyAtBlockType type,
+  ) {
+    ReplyGrpc.blockAtOnlyReply = (value, type);
+    return GStorage.setting.put(SettingBoxKey.replyAtBlockType, value);
+  }
 }
