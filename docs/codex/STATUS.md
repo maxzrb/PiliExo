@@ -1,17 +1,18 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-17 23:02 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码 `9362263b2`，annotated tag `v26.10.14.1` 指向该源码。
-- 发布状态：[v26.10.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.14.1) 已公开且为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 全部同步并核验。应用 `26.10.14+1`，Android versionCode=29；用户明确选择本次跳过真机验收。
-- README 维护：发布分支和 GitHub 默认分支 main 均已更新到 v26.10.14.1 / Flutter 3.47.7，含本轮新增功能和上游边界；默认分支独立文档提交 ecadf414d，发布分支合并其历史为 3df958bf7。正式发布继续强制 README 校验。
-- 最近应用改动：已完成 24 项上游处理：21 项 Android/共享修复和功能合入或适配、1 项本地已满足、2 项永久排除。已升级 Flutter 3.47.7 / material_ui 1.6.0；保留双播放器、HDR/FLAC、磨砂、混合推荐和独立版本规则。业务适配 77c8e53e9，构建修复 19b859718。
-- 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
-- 本轮合并验证：正式源码 72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；版本/README/29 个插件注册检查通过，双 ABI Release 构建、包名/版本/唯一 ABI/FFmpeg/DEX 注册/R8/V2 签名及双源长度和 SHA-256 校验通过。
-- 工具链：当前D盘设备使用 `D:/pyprogram/piliexo/tools/flutter-3.47.7/reused-sdk`、Flutter 3.47.7 / Dart 3.13.5，25个framework和9个Material补丁；Pub缓存 `C:/Users/maxzr/AppData/Local/Pub/Cache`，没有subst/P盘。网盘污染AAPT资源时改用 `C:/Users/maxzr/AppData/Local/piliexo-experiment-20261015` 隔离构建；详见本机工具链文档。
-- 已知验收边界：用户已明确选择本次跳过真机验收后发布；本轮无设备连接、未安装、未进行真实 B 站账户权限/HDR 切换及新增界面交互验收。此选择仅适用于本次，未来发布按流程处理。
-- Git 状态：本轮开始pull --ff-only至78d5e8857，与origin同名分支同步。播放器两阶段实现、测试/工具/报告/工具链及进度记录尚未提交或推送；保留既有tmp/，忽略目录中的ADB数据/APK不提交，正式release/tag及版本未改。
-- 当前任务：mpv倍速修复及12项上游适配已提交，预备包ADB通过；准备v26.10.17.1/code30正式双ABI，安装复核后发布。功耗研究暂停。
-- 下一步：完成原生测试、正式双ABI构建/校验/覆盖安装，发布GitHub及ModelScope并核对哈希与默认分支README。手机已无诊断预备包，收尾恢复超时120000，最终保留正式arm64。
+- 更新时间：2026-10-17 23:15 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`；正式源码 `034fbe5c9cc839968ee85935af3489f9a51b0820`，annotated tag `v26.10.17.1` 指向该源码。后续仅文档同步/记录提交，不改变正式源码标签。
+- 发布状态：[v26.10.17.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.17.1) 已公开且为 GitHub latest；两 APK 与 SHA256SUMS 已在 GitHub 核对 digest/长度，并从 ModelScope 逐文件回读核对 SHA-256/长度。应用 `26.10.17+1`，Android versionCode=30。
+- README：默认分支 main 独立文档提交 `8071d01f0` 已推送，仅修改 README；发布分支已合入其历史为09d9c9589，两边 README 内容一致。
+- 本轮实现：mpv按素材与目标倍速初始化解码需求；倍速请求在播放器锁内复核有效性，取消原始触摸/离页恢复基础倍速；HUD隐藏时停止无效重建但保留掉帧监测和提示。功耗/GPU/HCPP研究暂停，研究开关正式包全部关闭，默认后端策略未改。
+- 上游：本轮审查bd5e04e5d..88eca305d共20项，12项合入/适配、8项排除/暂缓/被后续覆盖。完整映射见docs/PiliPlus上游审查-2026-10-17.md，下轮从88eca305d之后开始。回退备份codex/backup-before-upstream-20261017保留eb94aecaa。
+- 代码验证：最终提交112/112 Flutter测试通过，Analyze 0 error/0 warning、60 info；Python21/21通过；4/4原生FLAC回归通过。正式双ABI、版本/README/Flutter/29插件、FFmpeg/R8/DEX、唯一ABI/V2原签名及设备回拉哈希校验通过。
+- ADB：HONOR NTH-AN00 Android14上完成无研究预备包播放/加速/连续切速/原始取消/1.5倍恢复、横竖屏、暂停/进度/前后台、设置迁移和取消、评论、4K Dolby Vision与FLAC96k、SDR切换。最终v7和arm64都覆盖安装、首页和长按恢复通过；恢复分别60.075/60.175每秒、Codec丢弃0；手机最终保留正式arm64，120000ms息屏已恢复，PID空、Dozing。
+- 限制：Codec输出不是物理屏幕FPS；快速切速瞬间仍有丢弃，8e精确松手时延/150msP95及相较官方0.5W功耗差未测得。荣耀首次运行v7包出现系统兼容提示（两包targetSdk37），确认后正常运行；arm64无该提示。单机/固定样片验收不等于所有机型与账户无缺陷。
+- 工具链：D:/pyprogram/piliexo/tools/flutter-3.47.7/reused-sdk（Flutter3.47.7/Dart3.13.5），Pub缓存C:/Users/maxzr/AppData/Local/Pub/Cache；正式包在受管C盘工作树构建，临时树收尾归档，未创建P盘映射。
+- 产物/证据：dist/release/v26.10.17.1/保留两APK及SHA256SUMS；原始ADB、测试、发布门禁和远端校验记录归档ignored tools/diagnostics/rate-fix-20261017。不上传凭据、签名文件或原始账号日志。
+- Git状态：源码、标签及发布收尾记录均已提交推送；仅保留用户既有未跟踪tmp/，不清理它。
+- 下一步：本轮修复/上游/发布已完成；等待用户在日常设备回报。只有用户恢复功耗研究时继续GPU/HWC方向；8e需连接自身复测，不从备用机结果外推。
 
 ## 当前上游同步结果（2026-10-14）
 
@@ -1364,3 +1365,16 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 预备包无研究开关，正常60.0、长按稳定175.775/秒，松手12秒窗口（去前2秒）60.01/秒、丢弃0；快速长按恢复60.6/秒、取消恢复60.75/秒，均丢弃0。Codec输出不等于物理屏幕帧率，加速/切速瞬间仍有丢弃，8e未验证。
 - 真机覆盖安装、设置/取消对话框、基础1.5倍恢复、横竖屏/暂停恢复/seek/前后台、评论、4K Dolby Vision/BT.2020 HLG及FLAC 96000Hz、切1080P SDR/mpv通过。未发现本应用致命异常或FLAC缓冲错误；功耗0.5W问题不作已解决声明。
 - 准备正式v26.10.17.1、应用26.10.17+1/code30；远端当天标签为空。正式双ABI构建和安装复核后才发布。原生FLAC测试依赖网络慢，用官方SHA1校验本地缓存，正在重跑。
+
+## 2026-10-17 23:15 — v26.10.17.1 正式发布与双ABI真机验收
+
+- 正式源码034fbe5c9，tag v26.10.17.1，code30；GitHub公开/latest，ModelScope两APK与校验和全部回读核验。README main独立提交8071d01f0，发布分支合入历史09d9c9589。
+- 最终112项Flutter通过；C盘新工作树初次缺ignored tools目录导致setUp失败，补目录后全量重跑通过；无应用源码变更。原生FLAC4项通过，Robolectric大JAR网络受阻，官方SHA1校验后用仅单测的本地init脚本补依赖；正式构建不加载该脚本。
+- 双ABI包原签名、版本、唯一ABI、插件/FFmpeg/DEX/R8、构建元数据commit全部通过；最终两包分别覆盖安装、首页/播放/长按恢复与回拉哈希通过，恢复60.075(v7)/60.175(arm64)，4个稳态样本均丢弃0。首次v7系统兼容提示已记录，确认后运行通过；arm64无提示，最终留arm64。
+- arm64 SHA256：72fa7913d259c196717ec14577eb97cf1a4155dfac5689db7186de09ac6447e7（31639092字节）；v7：ca8e1d11630eb5a6ac6b04401e977213a8d5a760d822684e8dd8ac7c159b84f6（31565796字节）；SHA256SUMS：59219ce1f04bedd287dcd6572dde8bb69aaa043665b13fa0f1e716168aa2fa8f。
+- 镜像新提交刚上传后短暂404，两次重试后3文件均回读通过，再公开GitHub草稿；未覆盖旧版、未跳过校验。
+- 备用机恢复120000ms、测试进程停止并息屏。正式包dist持久保留；临时构建树归档前保存原生JUnit、mapping、元数据和门禁到ignored诊断目录。功耗研究保持暂停；8e/真实屏幕帧间隔和0.5W差未验证。
+
+### 2026-10-17 23:16 — 收尾确认
+
+- 受管release-20261017工作树已由Codex归档，list_artifacts返回archived_worktree。正式资产、构建metadata、原生JUnit、mapping与诊断证据已提前保存。GitHub API再次确认公开/latest、3资产digest正确，contents API验证main README与当前内容一致；raw站点一次502改用同源API复核通过。发布标签仍指向034fbe5c9，后续仅文档历史与记录。
