@@ -35,6 +35,7 @@ class PlaybackTelemetry {
     this.cdnUri = '',
     this.bandwidthEstimate = '',
     this.playerState = '',
+    this.droppedFramesAvailable = true,
     this.droppedFrames = 0,
     this.recentDroppedFrames = 0,
     this.fallbackReason = '',
@@ -74,6 +75,7 @@ class PlaybackTelemetry {
   final String cdnUri;
   final String bandwidthEstimate;
   final String playerState;
+  final bool droppedFramesAvailable;
   final int droppedFrames;
   final int recentDroppedFrames;
   final String fallbackReason;
@@ -113,6 +115,7 @@ class PlaybackTelemetry {
     String? cdnUri,
     String? bandwidthEstimate,
     String? playerState,
+    bool? droppedFramesAvailable,
     int? droppedFrames,
     int? recentDroppedFrames,
     String? fallbackReason,
@@ -151,6 +154,8 @@ class PlaybackTelemetry {
     cdnUri: cdnUri ?? this.cdnUri,
     bandwidthEstimate: bandwidthEstimate ?? this.bandwidthEstimate,
     playerState: playerState ?? this.playerState,
+    droppedFramesAvailable:
+        droppedFramesAvailable ?? this.droppedFramesAvailable,
     droppedFrames: droppedFrames ?? this.droppedFrames,
     recentDroppedFrames: recentDroppedFrames ?? this.recentDroppedFrames,
     fallbackReason: fallbackReason ?? this.fallbackReason,

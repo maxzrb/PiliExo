@@ -178,4 +178,12 @@ void main() {
     expect(source.videoRepresentations, hasLength(1));
     expect(source.videoRepresentations.single.id, 'primary');
   });
+  test('mpv 未提供计数时显示暂不可用，复制快照仍保留可用性', () {
+    final telemetry = const PlaybackTelemetry(droppedFramesAvailable: false);
+    final snapshot = PlaybackInsightSnapshot.fromTelemetry(telemetry.copyWith());
+    expect(snapshot.droppedFramesAvailable, isFalse);
+    expect(snapshot.videoRows.where((row) => row.label.contains('掉帧')).map((row) => row.value),
+        everyElement('暂不可用'));
+  });
+
 }

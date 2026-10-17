@@ -6,12 +6,14 @@ sealed class DataSource {
   final String? audioSource;
   final int? videoBitrate;
   final int? audioBitrate;
+  final String? videoFrameRate;
 
   DataSource({
     required this.videoSource,
     required this.audioSource,
     this.videoBitrate,
     this.audioBitrate,
+    this.videoFrameRate,
   });
 }
 
@@ -21,6 +23,7 @@ class NetworkSource extends DataSource {
     required super.audioSource,
     super.videoBitrate,
     super.audioBitrate,
+    super.videoFrameRate,
   });
 }
 
@@ -117,6 +120,7 @@ class HdrNetworkSource extends NetworkSource {
          audioSource: audio?.urls.first,
          videoBitrate: video.bitrate,
          audioBitrate: audio?.bitrate,
+         videoFrameRate: video.frameRate,
        );
 }
 

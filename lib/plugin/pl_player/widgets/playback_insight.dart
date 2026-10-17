@@ -54,6 +54,16 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
   var _detailsExpanded = false;
   var _initialWindowShown = false;
   var _summaryHitTestEnabled = false;
+  var _hasMeasuredData = false;
+
+  bool get _needsSnapshotRebuild =>
+      _detailsExpanded ||
+      _summaryHitTestEnabled ||
+      switch (playbackInsightModeNotifier.value) {
+        PlaybackInsightMode.always => true,
+        PlaybackInsightMode.smart => _smartVisible,
+        PlaybackInsightMode.off => false,
+      };
 
   bool get _smartVisible {
     // 控制条是优先来源；没有控制条时才显示起播/掉帧事件窗口。
@@ -73,6 +83,7 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
     );
 
     final snapshot = widget.controller.playbackInsight.value;
+    _hasMeasuredData = snapshot.hasMeasuredData;
     if (snapshot.hasMeasuredData &&
         playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
       _initialWindowShown = true;
@@ -82,6 +93,8 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
 
   void _onSnapshotChanged() {
     final snapshot = widget.controller.playbackInsight.value;
+    final measurementChanged = _hasMeasuredData != snapshot.hasMeasuredData;
+    _hasMeasuredData = snapshot.hasMeasuredData;
     if (!snapshot.hasMeasuredData) {
       _initialWindowShown = false;
       _detailsExpanded = false;
@@ -101,7 +114,12 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
             ? _startupSummaryDuration
             : _eventSummaryDuration,
       );
-    } else if (mounted) {
+    } else if (mounted &&
+        (_needsSnapshotRebuild ||
+            (measurementChanged &&
+                playbackInsightModeNotifier.value !=
+                    PlaybackInsightMode.off))) {
+      // 完全不可见时只更新事件状态；再次显示时直接读取最新快照。
       setState(() {});
     }
   }
@@ -167,7 +185,10 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
         _keepSummaryHitTestDuringFade();
       }
     }
-    if (mounted) setState(() {});
+    if (mounted &&
+        playbackInsightModeNotifier.value == PlaybackInsightMode.smart) {
+      setState(() {});
+    }
   }
 
   void _onModeChanged() {

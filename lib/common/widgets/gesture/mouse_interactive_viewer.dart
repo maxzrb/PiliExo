@@ -27,6 +27,7 @@ class MouseInteractiveViewer extends StatefulWidget {
     this.onPointerPanZoomUpdate,
     this.onPointerPanZoomEnd,
     required this.onPointerDown,
+    this.onPointerCancel,
     required this.onPanEnd,
     required this.onPanStart,
     required this.onPanUpdate,
@@ -62,6 +63,7 @@ class MouseInteractiveViewer extends StatefulWidget {
   final PointerPanZoomUpdateEventListener? onPointerPanZoomUpdate;
   final PointerPanZoomEndEventListener? onPointerPanZoomEnd;
   final PointerDownEventListener onPointerDown;
+  final PointerCancelEventListener? onPointerCancel;
   final GestureScaleEndCallback onPanEnd;
   final GestureScaleStartCallback onPanStart;
   final GestureScaleUpdateCallback onPanUpdate;
@@ -690,6 +692,7 @@ class _MouseInteractiveViewerState extends State<MouseInteractiveViewer>
       behavior: HitTestBehavior.opaque,
       onPointerSignal: _receivedPointerSignal,
       onPointerDown: widget.onPointerDown,
+      onPointerCancel: widget.onPointerCancel,
       onPointerPanZoomStart: _scaleGestureRecognizer.addPointerPanZoom,
       onPointerPanZoomUpdate: widget.onPointerPanZoomUpdate,
       onPointerPanZoomEnd: widget.onPointerPanZoomEnd,

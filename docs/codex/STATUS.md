@@ -1,15 +1,17 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-14 12:42 (+08:00)
+- 更新时间：2026-10-17 22:17 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`，跟踪 origin 同名分支；正式发布源码 `9362263b2`，annotated tag `v26.10.14.1` 指向该源码。
 - 发布状态：[v26.10.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.14.1) 已公开且为 GitHub latest；ModelScope 两份 APK 与 SHA256SUMS 全部同步并核验。应用 `26.10.14+1`，Android versionCode=29；用户明确选择本次跳过真机验收。
 - README 维护：发布分支和 GitHub 默认分支 main 均已更新到 v26.10.14.1 / Flutter 3.47.7，含本轮新增功能和上游边界；默认分支独立文档提交 ecadf414d，发布分支合并其历史为 3df958bf7。正式发布继续强制 README 校验。
 - 最近应用改动：已完成 24 项上游处理：21 项 Android/共享修复和功能合入或适配、1 项本地已满足、2 项永久排除。已升级 Flutter 3.47.7 / material_ui 1.6.0；保留双播放器、HDR/FLAC、磨砂、混合推荐和独立版本规则。业务适配 77c8e53e9，构建修复 19b859718。
 - 上次发布验证：67 项 Flutter 测试通过；静态分析无 error/warning（64 个 info）；4 项 FLAC 格式回归此前通过，正式源码与测试工程一致；插件注册缺失/不全/正常三种回归检查通过；两 ABI Release、签名/包名/版本/FFmpeg/DEX 插件注册及远端哈希校验通过。
 - 本轮合并验证：正式源码 72/72 Flutter 测试通过，Analyze 无 error/warning（114 info）；版本/README/29 个插件注册检查通过，双 ABI Release 构建、包名/版本/唯一 ABI/FFmpeg/DEX 注册/R8/V2 签名及双源长度和 SHA-256 校验通过。
-- 工具链：项目内 tools/flutter-3.47.7/reused-sdk，Flutter 3.47.7 / Dart 3.13.5，25 个 framework 与 9 个 Material 1.6.0 补丁；Pub 缓存为 tools/pub-cache。日常配置使用真实项目路径，P: 仅供构建临时使用；用户要求发布后必须清理，当前映射已移除。
+- 工具链：当前D盘设备使用 `D:/pyprogram/piliexo/tools/flutter-3.47.7/reused-sdk`、Flutter 3.47.7 / Dart 3.13.5，25个framework和9个Material补丁；Pub缓存 `C:/Users/maxzr/AppData/Local/Pub/Cache`，没有subst/P盘。网盘污染AAPT资源时改用 `C:/Users/maxzr/AppData/Local/piliexo-experiment-20261015` 隔离构建；详见本机工具链文档。
 - 已知验收边界：用户已明确选择本次跳过真机验收后发布；本轮无设备连接、未安装、未进行真实 B 站账户权限/HDR 切换及新增界面交互验收。此选择仅适用于本次，未来发布按流程处理。
-- Git 状态：发布源码、分支、annotated tag 和默认分支 README 均已推送；收尾记录独立提交推送，标签保持指向构建源码。工作树收尾后干净；SDK/缓存/签名和产物继续忽略。
+- Git 状态：本轮开始pull --ff-only至78d5e8857，与origin同名分支同步。播放器两阶段实现、测试/工具/报告/工具链及进度记录尚未提交或推送；保留既有tmp/，忽略目录中的ADB数据/APK不提交，正式release/tag及版本未改。
+- 当前任务：用户暂停功耗研究，沿mpv落实倍速修复；已加后端锁内请求有效性检查及原始触摸取消恢复。初次103全量+1定向触摸测试通过，首轮真机稳定3倍/恢复。新增授权：安全筛选合并上游bd5e04e5d..88eca305d共20项，预备包ADB验收后发布。
+- 下一步：先保存倍速修复提交，再逐项安全适配上游Android改动，构建无研究开关预备包，ADB验收播放/切速/横竖屏/设置/新改动后按发布流程双ABI、签名、版本/README/插件校验与Release/镜像发布。功耗/HCPP研究暂停；手机暂诊断包、超时600000，收尾须恢复120000并换无诊断包。
 
 ## 当前上游同步结果（2026-10-14）
 
@@ -910,7 +912,7 @@
 - 发布命令使用用户范围 Microsoft OpenJDK 17.0.10.7、Flutter 3.47.2、`lib/scripts/build.ps1` 和本地正式签名；`pili_release.json` 的版本/Android code/提交哈希为 26.9.2/14/9036dab1f，完全对应发布提交。
 - 双 ABI APK 已通过 aapt2 包名/版本/ABI/FFmpeg 检查和 apksigner V2 校验；GitHub Release 资产 digest、ModelScope HEAD 长度和 ETag 均与本地 SHA-256 一致。Flutter 全量测试 57/57、Analyze 无 error（51 条既有 info）、`git diff --check` 通过。
 - 持久风险：新签名不能覆盖旧签名版本，应用更新弹窗和 Release notes 已明确要求备份、卸载旧版后重新安装；未完成 Android 真机交互回归。后续继续保管 `android/piliexo-release.jks`、`android/key.properties` 和密码，避免再次遗失。
-- Git 状态：发布 tag 指向 `9036dab1f`，`origin/main` 已同步；本条收尾记录将在发布提交之后单独提交并推送，发布 APK 的构建元数据保持不变。
+- Git 状态：本轮开始pull --ff-only至78d5e8857，与origin同名分支同步。播放器两阶段实现、测试/工具/报告/工具链及进度记录尚未提交或推送；保留既有tmp/，忽略目录中的ADB数据/APK不提交，正式release/tag及版本未改。
 
 ## 2026-09-02 22:24
 
@@ -928,7 +930,7 @@
 - GitHub Release：<https://github.com/maxzrb/PiliExo/releases/tag/v26.9.2.2>；两个 APK digest 与本地 SHA-256 一致，`SHA256SUMS.txt` 已上传，Release 为非 draft、非 prerelease。
 - ModelScope `AerithDream/PiliExo` 已同步至 `releases/v26.9.2.2/`；两个固定 APK 地址均 HTTP 200，Content-Length 和 `X-Linked-ETag` 与本地哈希一致。
 - 发布前 Flutter 3.47.2 工具链校验、`pub get --offline`、Flutter 全量测试 54/54、Analyze 无 error（51 条既有 info）和 `git diff --check` 均通过；`pub get` 首次在线尝试因依赖下载长时间无输出中止，补齐锁定版 `fl_chart-1.2.0` 缓存后离线解析成功。未连接 Android 真机，暂缺真实播放回归。
-- Git 状态：`main` 与 `origin/main` 已同步；tag `v26.9.2.2` 指向发布提交。`android/piliexo-release.jks`、`android/key.properties`、`dist/`、`pili_release.json` 继续保持 Git 忽略，需将密钥和密码上传至网盘私人空间或加密备份。
+- Git 状态：本轮开始pull --ff-only至78d5e8857，与origin同名分支同步。播放器两阶段实现、测试/工具/报告/工具链及进度记录尚未提交或推送；保留既有tmp/，忽略目录中的ADB数据/APK不提交，正式release/tag及版本未改。
 
 ## 2026-09-04 21:46
 
@@ -989,7 +991,7 @@
 - 在 `lib/pages/video/introduction/pgc/controller.dart` 的 `onInit()` 中，复用 PGC 接口已返回的 `pgcItem.stat.reply` 初始化评论数量；评论关闭时不执行，统计缺失时与 UGC 逻辑一致回退为 0，不额外增加网络请求。
 - 验证：目标文件 `flutter analyze ... --no-pub` 为 No issues found；完整 `flutter analyze --no-pub` 无 error/warning（55 条既有 info）；`git diff --check` 通过。`flutter test --no-pub` 并发运行在 8 个用例后长时间无输出而中止；改用 `--concurrency=1` 后前 2 个文件 9/9 通过，随后在第 3 个文件加载阶段再次卡顿并中止，属于当前 Windows Flutter 测试缓存/加载问题，未观察到测试失败。
 - 环境更正：本机 Flutter 3.47.4 实际 SDK 根目录为 `D:\tools\flutter-3.47.4`，可执行文件位于其 `bin` 下；旧快照多写了一层 `\flutter`。
-- Git 状态：分支仍为 `merge/upstream-2.1.4-20260913`；未提交改动包含本次控制器修复及 HandShake 记录，另有用户原有未跟踪 `tmp/`。建议真机确认影视/番剧首屏评论数量后提交。
+- Git 状态：本轮开始pull --ff-only至78d5e8857，与origin同名分支同步。播放器两阶段实现、测试/工具/报告/工具链及进度记录尚未提交或推送；保留既有tmp/，忽略目录中的ADB数据/APK不提交，正式release/tag及版本未改。
 
 ## 2026-09-14 23:49
 
@@ -1111,7 +1113,7 @@ f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_androi
 
 以下为本地未提交的 2026-09-28 15:36 快照，恢复时保留作历史补记；当前版本、工具链与工作状态以文件顶部为准。
 
-- 更新时间：2026-09-28 15:36 (+08:00)
+- 更新时间：2026-10-17 22:17 (+08:00)
 - 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
 - 分析基线：`f79be53d9`（`v26.9.28.2` 发布提交）；此前 `0b0717212` 升级工具链与依赖，`ca683a327` 定向移植文本选择菜单。
 - 发布状态：`v26.9.28.2` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.2/` 镜像；两份正式 APK 和校验清单均已上传并核验。应用版本 `26.9.28+2`，Android `versionCode=25`。
@@ -1225,3 +1227,133 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 已执行 subst P: /d；subst 列表不再包含该映射，P:/ 不存在。移除后，从真实路径执行 flutter --no-version-check --version 成功，版本仍为 Flutter 3.47.7 / Dart 3.13.5。
 - 发布流程和本机工具链文档明确：P 盘仅在构建需要时临时创建，结束后恢复本机配置并移除；保留用户原有盘符、项目文件、SDK、缓存、签名与发布产物。未重建或替换 v26.10.14.1 资产。
 - 仅更新四份流程/状态文档；不新增测试或运行完整构建。收尾文档提交并推送，正式发布标签保持指向 9362263b2。
+
+
+## 2026-10-15 20:30 长按倍速卡顿调查与方案
+
+- 用户要求研究老手机长按加速的解决方案，并补充老手机持续卡顿明显、8e 新手机以切换顿挫和不跟手为主；用户认为松手后的追帧可能对应新手机体验。记录为待验证关联，不将两台设备判为同一已证实根因。
+- 启动读取 HandShake、STATUS 与本机工具链记录；根目录无 AGENTS.md/INDEX.md，遵守用户给定 UTF-8 文件规则。git pull --ff-only 从 d1ac90ca0 快进至 78d5e8857；既有 tmp/ 未改动。
+- ADB 初次启动曾短暂 unauthorized，后续正常授权。设备 NTH-AN00 / HNNTH、SM7325、Android 14，1080x2340、120Hz；现有正式安装包 26.10.14 / code 29，未覆盖安装或修改持久配置。
+- 推荐视频《【胡闹战地】最好的老师-10发M417》为1080p60 HEVC，实际 c2.qti.hevc.decoder 硬解。两轮1x/长按3x/恢复采集，第二轮用手机epoch对齐：Done 60.05/84.83/84.93，Rendered 59.88/9.32/9.17，Discarded 0/75.54/75.67 帧每秒。松手后初期仍丢帧，后续确认最终恢复约60帧送显、0丢弃，未量出精确恢复时长。
+- 初始化明确 frame-rate=30、format had no operating-rate；核实Android参数定义与FFmpeg解码选项。本机旧构建libmpv含0.41.0-dirty/operating_rate字符串，仍须实验包运行验证传参和效果，不能据此宣称修复。
+- 复核锁定依赖：setRate先写Dart state再异步设置mpv；临时长按共用lastPlaybackSpeed；mpv洞察未填真实掉帧、60fps为源帧率；弹幕duration更新不等于清空全部文字缓存。环境帧、隐藏HUD重建和同步FFI是次要待测因素。
+- 第一轮SurfaceFlinger名称括号引用错误，失败结果弃用；第二轮修正并取得合成层中位间隔约8.4ms，不能当视频帧率。gfxinfo仅2帧，不能评价Flutter视频；媒体会话buffered position=0不表示mpv缓存为零。
+- 新增调查方案：operating_rate → 同步策略 → 状态与音频切换 → 附带降载 → 必要时Media3 SDR，附验收目标。未修改业务代码、未运行Flutter测试或构建，没有优化A/B提升结论。原始证据在忽略的 tools/diagnostics/long-press-20261015/。
+- 最后确认应用暂停、speed=1.0。新增方案并更新两份记录，版本不变，未提交或推送。D:/pyprogram/piliexo为本轮目录，历史其他主机/SDK路径不当作当前事实。记录脚本首次因Windows Python缺少tzdata失败，未写入文件；改用明确UTC+8成功，无需安装依赖。
+
+## 2026-10-15 22:19 第一阶段倍速对照与功耗研究
+
+- 新增PlaybackRateCoordinator，基础/临时速度分离、最新请求合并、过时回执与generation隔离；控制器/视图接入暂停、完成、锁定和生命周期恢复。新增PlaybackExperiment及ADB脚本，默认构建不采样、不覆盖速率；两个编译开关后续拆分，方便关闭诊断做功耗对照。
+- 本机恢复3.47.7和18个锁定hosted包，offline enforce-lockfile成功，25+9补丁、版本/README/29插件注册通过。0和180两个同签名同版本Release包构建、真机覆盖安装运行；arm64 libmpv/libflutter哈希相同。D盘网盘资源污染通过C盘隔离克隆解决，未关闭同步程序。
+- 主对照三组各3轮，另加1次反向0复测。0/display长按Done84.74、送显9.29；0/audio送显9.24；180/display Done180.10、送显179.05，位置推进约3倍、恢复约60。无覆盖松手20秒仍约14.6秒偏差，180组恢复P95约0.44～0.57ms。包含初始seek的三轮pilot不作为主表基线。
+- 边界：Codec送显不等于屏幕FPS；video-pts/mistimed不可用；2Hz采样不能证明150ms，FFI查询有开销。早期source事件无hwdec/fps不是软解证据。native仍有no operating-rate日志，不能声称最终参数接收已确认，待补180完整日志/正向确认。
+- 核对上游#2411/#2814/#2832/#1320播放、后台和高刷反馈；#2832发帖者iPhone，不混同本机。USB充电时读到最高37.7°C/thermal2，未配对，不能归因或估算省电百分比。保留高刷/画质/弹幕，固定180仅实验；优先研究动态需求、不可见更新/闲置释放和额外GPU工作。核对本项目Media3 1.11.0具备fps×speed及setParameters运行中更新；mpv精确库等价接口未确认。
+- 验证：80/80测试，lib/test分析0error/0warning、54info；拆开关后相关3文件analyze无问题、5文件format无变化；Python py_compile/help和git diff --check通过。脚本新增每轮电池/thermal上下文及断连清理，尚未真机跑新版本。
+- 当前ADB断连；用户已收到重插/调试提示。最后0诊断包由脚本强停，原包备份完整在 tools/diagnostics/long-press-20261015/phase1/original-v26.10.14.1.apk，尚未恢复。不要记录设备解锁信息。
+- 全部本轮变更未提交/未推送，版本/tag未变；建议补测/复核后git add/commit。不要加入tmp/、原始设备数据、签名配置或个人信息。
+
+## 2026-10-15 23:25 设备重连、有效补测与恢复原包
+
+- 手机ADB重新授权后恢复连接。补采180包CCodec/CCodecConfig DEBUG日志，仍有no operating-rate，原生最终接收机制没有得到证实。
+- 第一次补测未产生任何加速手势且始终1倍速，明确排除；脚本新增手势/目标倍速校验与无效轮次标记/停止。按用户授权从观看记录进入原视频，支持--attach单轮接入，使用800,450坐标捕获完整3→1事件。
+- 新有效补测起点约140秒，单列不并入60秒主表：Done179.79/Rendered177.79，位置2.996倍、avsync P95 10.718ms；恢复Rendered60、位置0.99996倍、avsync P95 0.340ms。温度36.9→37.3°C、thermal1→1、USB充电，不作为功耗结论。
+- validation-audit.json回查既有主对照9轮、反向1轮和新补测1轮全部通过；第一次补测1轮无效。新脚本上下文采集/attach/校验已真机运行，py_compile/help通过；后续--attach只支持1轮以免停止后无法自动重新进入。
+- 新出现第二台ADB设备，所有后续操作显式指定老机序列号，未操作其他设备。自动审批拒绝直接ADB打开视频链接且未给出详细原因；后续在用户明确授权下从手机UI观看记录进入，未重试被拒的启动命令。
+- 已adb install -r恢复原备份，安装Success；从设备重新拉取base.apk SHA256=300a3a54a3ef609f92433a0a2b4eda4052eb2d3ab5c3cd834f80a6e17496bd80，与备份相同。包信息code29/name26.10.14；pidof无进程，手机息屏，数据保留。
+- 两份报告/工具说明与状态更新；无新构建/发布/版本变更/提交推送。后续继续原生参数机制、动态需求、关闭诊断的功耗与实际呈现测量；8e待其自身实测。
+
+## 2026-10-16 20:56 默认性能候选、HUD掉帧链路与功耗边界
+
+- 用户要求继续性能优化，并强调隐藏HUD仍能提示新掉帧及PiliPlus相对官方约高0.5W的整体功耗。按既有授权继续实现，不重复征求方案确认。沿用HandShake，本次工作目录仍D:/pyprogram/piliexo，C盘隔离构建避免同步污染。
+- 新增DecoderOperatingRate：解析十进制/有理数源帧率；Android硬解点播按fps×max(基础、长按)规划；将frameRate从源模型传入。默认开关-1为自动规划，0为关闭覆盖对照，正数为强制；文件局部选项在open前设置，未知/直播/音频/软解不覆盖。尚未实现运行中每次手势动态降速，不声称固定高需求无功耗代价。
+- HUD隐藏只跳过setState，新掉帧/首次测量仍检测。补齐原mpv适配层缺失的真实掉帧，新增独立libmpv客户端订阅两种掉帧和缓存窗口，复用1Hz非阻塞读取，getter只读缓存；不可用显示暂不可用。暂停停采样、切源与主播放器销毁前释放客户端，普通seek不释放。缓存窗口本素材无有效码率时保留标称回退。
+- 精确库mpv v0.41.0-dirty/FFmpeg n9.0.1及FFmpeg传参源码已核对。native日志仍不能证明厂商最终接收operating-rate，不扩大机制结论。默认自动规划完整诊断轮valid=true：正常60、长按177.26、恢复60/s，位置2.993倍、恢复avsync P95 0.555ms。切速瞬态仍有计数突增，已在报告披露；Codec送显不等于屏幕FPS，150ms呈现目标未验证。
+- HUD真机截图证明隐藏→新掉帧76提示→再次淡出；日常包拖动07:24→01:03后长按仍显示新掉帧98，退出重进正常。未以降低画质/源视频帧率/屏幕刷新率/关弹幕获取改善。
+- 最终关闭2Hz诊断和原生日志的arm64 Release构建成功，93/93测试通过，Analyze 0error/0warning、58info；Python编译与git diff --check通过。D盘首次全测编译停滞后中止；C盘首次因缺tools临时目录发生2个setup/teardown错误，创建目录后完整93项通过；最终源码再次93项通过。恢复真实路径工具链，无新依赖。
+- 日常APK tools/diagnostics/long-press-20261015/phase2/PiliExo-performance-arm64-20261016.apk，31619315字节，SHA256=b3bc15204f5961e3c52b985545d3c59b18b4202c5b1fbb12ab8e8bd49dc635db；com.maxzrb.piliexo、code29/name26.10.14、唯一arm64-v8a，证书b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51与原包一致。install-r成功，回拉base.apk同哈希。原备份保留，当前不再恢复原包；应用停止/手机息屏。
+- 关闭诊断实际日志0条PILI_PLAYBACK，production-resource-valid完整外部复测：正常59.996、长按177.929、恢复60.011/s；CPU单核等效104.5/210.4/110.3%。原包两段120.3/144.5%、长按送显9.25/s；恢复段因同步目录文件锁中断不纳入，其他超时或缺summary任务排除。位置不同/无ABBA，不算CPU改善百分比，不换算W。后续测量先写C盘再归档。
+- 官方tv.danmaku.bili未安装，电流sysfs无权限、powerstats/batteryproperties没有可用能耗；USB充电电量不能测W。将整体输出合成、弹幕、环境帧66ms复制、后台和Media3 SDR对照列为后续归因。环境帧是PiliExo新增，不能归为PiliPlus共有成本。约0.5W未证实也未宣称消除。
+- 20:40左右自动审批拦截含解锁/导航的批量ADB命令，仅blocked by policy。已向用户解释并请求手工播放；用户明确回复已播放并批准ADB后，后续操作在新授权下执行。没有重复尝试此前被拒的直接URL启动。全程显式指定老机，不保存解锁信息。
+- 报告 docs/播放器性能优化与功耗复测-2026-10-16.md、tool/README及前阶段报告入口已更新；版本/release/tag不变，全部改动未提交/未推送。建议审阅后git add/commit，勿加入tmp/、签名、个人数据与忽略的设备日志。
+
+
+## 2026-10-16 22:58 播放与界面功耗归因、采集纠正与设备恢复
+
+- 用户继续授权功耗研究，补充界面功耗范围。延续HandShake和明确实验方向；AGENTS.md/INDEX.md不存在，遵循用户贴入的UTF-8/中文注释要求。此前pull --ff-only已同步78d5e8857；保留上阶段未提交改动和tmp/，没有提交推送或修改版本/release/tag。
+- PlaybackPowerProbe默认关闭；mpv环境帧ABBA与关闭环境帧后的同步ABBA，每窗seek60秒并预热至实际68.000～68.500秒再测20秒。Media3 SDR仅研究同一主视频/音轨，无画质编码备选，非正式通用SDR路径。mpv8窗、Media34窗有效，1080p60、1倍、无缓冲、约60/s送显，视频Discarded及已提供掉帧稳态增量0。送显不等于屏幕真实FPS。
+- mpv环境开/关CPU111.3743/106.2176%、栅格55.5380/51.2299%，差约5.16个百分点；环境帧为PiliExo新增，不能直接解释PiliPlus共有反馈。display-resample/audio CPU105.9159/105.8908%，不改默认同步。Media3环境开A两窗98.28/111.98波动大，关104.84%接近mpv106.22%，没有明确总CPU/功率优势，不切默认后端。
+- 重要纠正：旧采集器混合同PID的AAC音频Rendered0与HEVC视频Rendered60，误报30/s。已向用户撤回并道歉；按精确视频解码器名与PID过滤，支持--video-decoder。用未改原始日志复算media3-corrected/summary.json valid=true，HEVC59.97～60.03/s、Discarded0。旧media3-rejected-30fps仅错误审计，纠正汇总含原始日志SHA256，不能再作为低FPS证据。初次Media3因缓冲瞬间isPlaying=false和线程退出竞态中止，已修正playWhenReady等待与部分stat；初次mpv固定墙钟预热pilot单列。
+- UiPowerProbe与main/view显式入口PILI_UI_POWER_PROBE默认false，普通包不注册回调。推荐列表100↔550逻辑像素700ms单程+150ms间隔，10往返；静置/滚动分别磨砂开/关ABBA4窗20秒，起止100，fixed-path-abba共8窗valid=true。切页/后台取消，finally恢复内存磨砂和列表位置，不写持久偏好；不是实际触摸全场景验收。
+- 界面静置开/关CPU0.1767/0.0570%，均0个Flutter帧、栅格0；独立日常亮屏30秒CPU0.0333%。只覆盖已加载推荐页，不外推其他页/动图/加载异常/整机显示功耗。固定滚动开/关CPU78.3545/72.7725%、栅格60.5568/53.2841%；同10往返，帧1697/1699与1700/1700。raster P95开7.701/7.863ms、关7.117/7.201ms；超8.333ms约2.68%与0.94%，不等价系统最终掉帧。未限帧或少移动。
+- 新增ui_power_probe.py和ui_power_experiment.py，采集CPU/线程、显示/锁屏/前台、日志与截图。两次自动息屏初样排除；手势pilot因导航隐藏位置漂移与14/15次不齐，另一次误进视频采集主动中止，不入严格对照。analysis-selection.json记录选择原因；普通工具valid仅表示系统状态检查通过，页面与匹配仍需截图审核。
+- 界面120Hz、自动亮度0.035134055，温度37.6→38.2°C、thermal1→1、USB；播放轮亮度0.21441004/120Hz。不能跨亮度比较功率。源码默认DisplayMode.auto，未发现默认强制120Hz。官方B站未安装、真实电流/能耗仍不可用，0.5W未验证，CPU不可换W。
+- 官方文档支持继续研究模糊区域/非重叠分组、不可见Ticker/轮询及平台视图合成，但未证明本机全部原因。当前FrostedSurface已有裁剪。HCPP需API34+Impeller Vulkan且实验性；本项目仍关闭Impeller，不盲开，不把Surface必然省电当结论。保留视觉优化尚未落默认，不全局降帧/关弹幕/永久关磨砂。
+- C盘隔离UI研究arm64 Release构建成功，签名与原包一致。新增研究入口后完整Flutter93/93，Analyze0error/0warning/58info；Python11项回归、py_compile、git diff --check通过。原始数据/APK在忽略目录tools/diagnostics/power-20261016/，UI数据在其ui/；临时先写C盘避免D同步锁。记录时间最初遇本机Python缺tzdata，改为显式UTC+08，不新增依赖。
+- 已再次install-r恢复日常候选，回拉base.apk SHA256=b3bc15204f5961e3c52b985545d3c59b18b4202c5b1fbb12ab8e8bd49dc635db。磨砂原开启/标准，研究start originalFrosted=true且覆盖仅内存；临时屏幕超时600000ms已恢复读回120000ms。pidof无进程、屏幕OFF，不留研究包、不恢复旧正式包覆盖候选，不存解锁信息。
+- 报告/README/STATUS与中文进度更新。待办：保留视觉的实际默认优化、不可见缓存页/动图/加载异常、暂停返回与后台/锁屏矩阵、真实W与官方同条件对照、8e及运行中解码动态需求。审阅后建议git add/commit，勿加入tmp/、个人截图/日志、APK与签名。
+- 收尾补充：.gitignore既有test*规则会忽略tool下Python回归文件，已只为本轮三个测试源码增加例外，确保随代码审阅而不遗漏；未扩大其他忽略目录范围。
+
+
+## 2026-10-16 23:59 环境光优化原型已构建，按用户要求稍后真机测试
+
+- 用户“可以”授权按环境光→磨砂顺序实施。已pull --ff-only无新增，沿用HandShake和原未提交工作。随后用户“我在打电动，等会测”，已停止真机实验/后续构建，不自动继续，不创建定时任务。
+- 新增models/ambient_frame.dart：环境光策略/纹理元数据、RGBA消息严格尺寸/行跨度校验与ImageDescriptor.raw解码释放。mpv原型复用现有textureId及布局/镜像/比例，不创建解码器，纹理有效时不启动66ms截图循环，监听纹理尺寸/ID和布局变化，切源/隐藏/生命周期清理。GPU路径仍需显式PILI_AMBIENT_GPU_TEXTURE=true，默认false。
+- Media3原型保留PixelCopy/SurfaceView，增加format=rgba8888原始像素返回；getPixels明确ARGB整数字段转为预乘RGBA，避免Bitmap原生内存字节序假设，减少PNG编解码。旧PNG接口保留作对照/回退。AmbientFramePolicy.optimized当前源码默认true，Media3新路径尚待真机验证，不能据此发布日常包。
+- 更新VideoStatusBarAmbient、pl_player/controller/view、pages/video/view与Media3桥接；纹理元数据按值去重，不按视频帧执行Dart重建。Framebuffer/Texture/HDR真实色彩、不同比例/镜像/暂停/全屏/切源需要真机验收，没有宣称功耗收益或默认启用GPU。
+- PlaybackPowerProbe增加PILI_POWER_COMPARE_AMBIENT：四窗ABBA均开启效果，A原取图/B优化，mpv为GPU、Media3为RGBA，记录持续textureId。采集器支持阶段截图与GPU无截图/持续有效纹理校验，避免环境图没画出来被误算成省电。Python目标回归15项通过。
+- 新增ambient_frame_test.dart，RGBA红绿顺序、行跨度、非法数据与纹理布局4项通过。第一次行跨度测试把原始读回误当紧密排列，改为核对两行实际像素后通过；不是修改实现绕过颜色错误。目标静态分析无error/warning，发现新增info后清理；完整测试/最终全量Analyze尚未在此次原型后执行，旧93项不能当成新源码最终验证。
+- C盘隔离arm64 Release研究构建在用户暂停附近完成，264s成功；未安装、未启动对照。APK保存在C:/Users/maxzr/AppData/Local/piliexo-power-optimization-20261016/ambient-compare-prototype-arm64.apk，SHA256=d96d5aaf4a1992338ff79b6f91037b8e0bbab51d255db526c668b9a03c9a8709。编译开关PILI_POWER_PROBE=true、PILI_POWER_COMPARE_AMBIENT=true、PILI_AMBIENT_GPU_TEXTURE=true。这是研究包，不能留作日常包。不要误用先前UI实验的旧APK。
+- 用户暂停后已恢复screen_off_timeout=120000并读回，force-stop应用、屏幕关闭。手机自始至终仍为b3bc1520日常性能候选，没有安装新原型；Java构建客户端已结束，仅空闲编译守护进程可能保留，不杀其他任务进程。临时恢复清单在C:/Users/maxzr/AppData/Local/piliexo-power-optimization-20261016/device-restore.json，不存解锁信息。
+- 待用户继续：先运行mpv同片段4窗ABBA并核对环境背景、视频60/s、掉帧/音画同步、CPU与视觉；GPU若更贵不启用。然后Media3 PNG/RGBA同条件和HDR正确性；通过才构建关闭研究的日常候选。之后实施磨砂静态底色/滤镜复用，不能先关效果、降帧或把CPU换算W。0.5W来源仍未证实，8e与更多内容未验收。
+- 本轮代码/文档未提交推送，正式版本/release/tag未改。此次收尾只保存成果和状态，未继续跑高负载测试；建议恢复后审阅阶段改动再提交。
+
+## 2026-10-17 12:19（恢复环境光/磨砂优化，进行中）
+
+- 已完成mpv纹理和Media3 RGBA各4窗对照；均保留效果、同素材约68秒起点。mpv视频60送显/秒、无新增可见掉帧，但总CPU/栅格工作方向不同；GPU纹理和RGBA默认false，不能声称省电。
+- 首页跳过纯色滤镜两轮valid=true、结果方向相反；第一轮CPU78.475→79.298，复核78.176→75.677。不将第一轮失败数据删除。现增加RepaintBoundary缓存独立测试，不混合两实现。
+- 第二原型3项目标像素/动态背景测试通过；此前完整100/100，Analyze 0error/0warning58info，Python增加GPU未知/加权比例回归后17/17。第二原型完整Flutter+Analyze正在session45346；UI设备采集session22538。
+- C盘root=C:/Users/maxzr/AppData/Local/piliexo-power-optimization-20261017，隔离构建=C:/Users/maxzr/AppData/Local/piliexo-experiment-20261015。ui-boundary-prototype-arm64.apk已安装；daily-v1-not-installed.apk虽构建成功，但只跳过滤镜不稳定，未安装，不应误当已验收日常包。
+- GPU gpubusy可读、频率节点拒绝；可选--gpu-busy仅整机滚动采样比例，非瓦数；原始数据/源码说明入报告。手机超时临时1800000，原值120000必须恢复。无提交、推送或版本更改。
+
+## 2026-10-17 12:38（本轮功耗优化完成、日常候选已恢复）
+
+- 最终实现：首页三个确认纯色背景的顶栏仅省去重复BackdropFilter并用RepaintBoundary缓存，底栏/动态背景仍磨砂。只跳过滤镜原型两轮方向不稳；增加缓存后两轮GPU采样均A约64→B约34→A约64，CPU基本持平，栅格超预算3.148→2.737%、复核3.974→2.971%。不是整机功率下降47%，频率节点拒绝。
+- mpv GPU补测4窗valid，CPU111.196→108.156%，整机GPU采样40.479→43.350%；PILI_AMBIENT_GPU_TEXTURE默认false。Media3 RGBA四窗未见稳定收益且首末UI工作漂移，PILI_AMBIENT_RAW_RGBA默认false。既有倍速/隐藏HUD新掉帧提示逻辑保留。
+- 最终完整100/100 Flutter测试，Analyze 0error/0warning58info（info使退出码1），Python17/17、py_compile、diff --check通过。lib/test/Kotlin与隔离构建源一致，manifest保留哈希；未新增依赖或更改发布版本。
+- 已安装日常APK tools/diagnostics/power-optimization-20261017/PiliExo-power-optimization-arm64-20261017.apk，31621069字节，com.maxzrb.piliexo/code29/26.10.14/arm64，V2证书b96dcddf不变；SHA256 be24783463b2d8869a90e71771e8d66c39dd7f161c5c94fd7702e477e13d6481，回拉base一致。
+- 日常功能复核正常/3倍速/恢复Codec送显60.000/178.775/60.029，discarded0/1.250/0；HUD记录2掉帧，仍存在长按瞬态丢帧，不能称零掉帧或测得精确恢复时延。暂停图标/静止像素、横屏2340×1080、返回竖屏、恢复、拖动进度、退出重进/环境光均复核。早期点击失败图保留，以functional-summary.json最终证据清单为准。
+- 全部89份数据归档到ignored tools/diagnostics/power-optimization-20261017并逐文件验哈希；日常研究事件为空。手机应用停止、PID空，超时已恢复并读回120000ms，Dozing息屏。没有留下研究包；原b3bc1520仍可回退。
+- 未验证：真实W、官方客户端差值、8e时延、HDR RGBA兼容。后续优先真实能耗/显示/VPU动态预留与其他动态界面，不能靠降全局帧率解决。Git仍在merge/upstream-2.1.4-20260913@78d5e8857，代码/工具/报告/进度未提交推送，保留tmp/，正式release/tag不变。
+
+## 2026-10-17 17:44（正常播放硬解预留对照完成）
+
+- pull --ff-only仍78d5e8857、分支与origin同步，保留全部既有脏改动/tmp，无提交推送或发布。
+- 新增PILI_POWER_COMPARE_OPERATING_RATE（默认false，必须与POWER_PROBE组合且不混环境光对照）。同一进程180/60/60/180每窗前重建轨道，seek60预热68后20秒，普通1倍速；不是手势无缝调节。每窗验视频组件原生algo.rate最后配置，PID/TID/组件隔离，不能只信Dart回读或误采AAC。
+- 两轮4窗valid=true：应用CPU112.177→116.559、112.466→114.768（180→60），GPU40.833→40.034、39.110→40.468，方向不一；首轮60第三窗输出掉帧3/Codecdiscarded0.167，复核0。未改日常预留或帧率，不认定180整机必然更省电，VPU功率不可测。
+- 复核display快照四窗120.00001Hz/模式2、亮度0.21450275、前台解锁亮屏一致；热1→1、37.9→38.6℃。首轮热0→1、35.3→36.9℃且UI帧1660/1763/2011/1775不齐，不能把全部CPU差归于VPU。复核栅格54.880→54.924近持平，MediaCodec_loop7.629→8.783、HwBinder5.661→6.309，需调度追踪而非断言轮询。
+- 已核对mpv v0.41.0源码：vd-lavc-o配置UPDATE_VD会触发视频链重建/seek，不能充当MediaCodec.setParameters接口；native trace跨参数窗出现多次初始化。在线人数轮询退后台/离路由已有停止路径，暂未发现漏跑，其他缓存动图/Ticker尚未真机覆盖。
+- 最终100/100 Flutter，Analyze 0error/0warning59info（退出1），Python19/19、py_compile、diff --check通过。原型实际源码保留playback_power_probe.prototype.dart；之后追加取消间隙保护，仅代码/静态验证，未主动切源取消真机实验。没有新的日常实现/包版本改动。
+- 归档tools/diagnostics/decoder-power-20261017含两轮原始日志、原生配置证据、每窗显示快照、APK和构建/验证日志；C盘原始root=C:/Users/maxzr/AppData/Local/piliexo-decoder-power-20261017，隔离构建仍C:/Users/maxzr/AppData/Local/piliexo-experiment-20261015。
+- 已install-r恢复上一轮日常be24783463b2d8869a90e71771e8d66c39dd7f161c5c94fd7702e477e13d6481，回拉base一致；screen_off_timeout恢复120000，PID空，Dozing息屏，没有留下研究包。正式release/tag/版本不变，研究资料ignored，改动未提交推送。
+
+
+## 2026-10-17 18:16（视频合成与解码调度补测）
+
+- 日常be247834与Media3 traceOnly原型同段1080p60 HEVC，texture-A1/surface-B2/B3/texture-A4，22秒追踪去首尾1秒。四窗120.00001Hz/亮度0.21420749、ON解锁前台，USB温度38.0→39.6℃，不是精确68秒对齐，也不是瓦数测量。
+- SF原文/FrameTimeline证据：mpv Flutter最终层DEVICE、usesClientComposition=false；Media3再有独立1920×1080/60Hz视频DEVICE层。mpv Thread-5约60次EGL提交/秒后Flutter再合成；传统HC将Flutter raster并到主线程，双全屏ImageReader合计约148次EGL提交/秒，不是148FPS。A应用CPU106.847/B111.135，SF59.832/59.128，HWC29.372/26.831，media.hwcodec20.528/19.844，整机GPU采样41.635/44.029，未见整体收益，不改日常后端。
+- 四窗无ftrace/buffer data_loss；B2/B3有192/185个trace_sorter_negative_timestamp_dropped，未归因，不称零诊断或据此比较细微jank。FrameTimeline覆盖不同，mpv无应用条目不能当零丢帧。保留失败/暂停/64MiB覆盖样本并manifest明确排除。
+- 非紧凑30秒自动长按4秒捕获wakers，PID8021/视频TID8456，Thread-6主要唤醒源，另CodecLooper/Thread-5/HwBinder与media.hwcodec回调；精确调用栈未有，不能断言忙轮询。正常/长按/松手/恢复Runnable P95约0.355/0.146/0.345/0.359ms，调入578.7/1908.1/856.5/575.2次每秒，无长期调度饥饿证据。释放首个约1秒输出49/丢弃74.9，之后约60/0；不是屏幕实际FPS或精确75帧可见丢失。android.log标记缺失，用REALTIME快照对齐独立logcat。
+- 新tool/composition_trace.py（默认只读，可显式一次长按）、PILI_POWER_TRACE_ONLY（默认false，不挂ABBA/采样）。官方Flutter与本机SDK支持候选HCPP，但API34+Impeller/Vulkan，当前manifest禁用Impeller，需独立原型与HDR/画面/生命周期回归。没有改日常FPS/预留/HUD检测。
+- 100/100 Flutter、19/19 Python；研究文件定向Analyze 0error/0warning1info，py_compile/diff --check通过。研究APK SHA256 7504c831413eb5523efd030c3741ec06a726b46538b6af9567a625d126de49b4，238份数据逐文件验哈希归档ignored tools/diagnostics/composition-20261017；原始C:/Users/maxzr/AppData/Local/piliexo-composition-20261017，官方trace_processor v57.2哈希已核验。
+- 日常APK已恢复be24783463b2d8869a90e71771e8d66c39dd7f161c5c94fd7702e477e13d6481，回拉一致，screen_off_timeout120000，PID空，Dozing息屏。未提交推送、未改版本/正式release/tag；相对官方0.5W、VPU功率和8e精确时延未验证。
+
+
+## 2026-10-17 22:17（用户暂停功耗研究，转倍速修复与上游发布）
+
+- 用户明确暂停功耗研究，继续mpv兜底；随后授权安全合并PiliPlus近期值得合并提交，预备包经ADB验收后发布Release。不再启动GPU/HCPP/瓦数研究；保留默认关闭研究代码和历史证据。
+- 新修复：倍速请求在media-kit操作锁取得后检查revision/generation/后端身份，等待seek/open期间已松手的旧加速不再下发；setRate(synchronized:false)只在已持同一操作锁内调用，互斥仍保持。补3项竞态测试。
+- 发现Flutter已识别长按收到PointerCancel不保证触发onLongPressCancel/End，MouseInteractiveViewer透传原始取消，播放视图销毁也结束临时加速。新增实际触摸取消Widget回归，通过。
+- 初次103/103全量Flutter通过；新增取消Widget定向1/1通过；定向Analyze无error/warning（4个旧info+已消除1个新cascade提示）。Python21/21通过，采集器修正按应用PID/视频组件隔离，避免混AAC。
+- diagnostic-arm64已安装完成竖屏一轮10秒长按/20秒恢复：位置3.000倍，HEVC Rendered178.657/Discarded1.286，恢复60.053/0，恢复avsync P95 0.234ms；稳态边界不等于150ms呈现验收。取消修复发生在该包构建后，须进入后续预备包复测。
+- ADB仍AEFUUT1715006716，原息屏120000暂改600000，诊断轮结束应用停止，最终必须安装无诊断预备/正式包并恢复息屏。数据C:/Users/maxzr/AppData/Local/piliexo-rate-fix-20261017。
+- 已fetch上游main=88eca305d，bd5e04e5d之后20提交，接下来逐项审查/映射，不覆盖本地HDR/FLAC/磨砂/混合推荐/倍速修复。正式版本尚未递增。

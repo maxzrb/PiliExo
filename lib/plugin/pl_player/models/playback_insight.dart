@@ -37,6 +37,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     super.cdnUri,
     super.bandwidthEstimate,
     super.playerState,
+    super.droppedFramesAvailable,
     super.droppedFrames,
     super.recentDroppedFrames,
     super.fallbackReason,
@@ -95,6 +96,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     cdnUri: telemetry.cdnUri,
     bandwidthEstimate: telemetry.bandwidthEstimate,
     playerState: telemetry.playerState,
+    droppedFramesAvailable: telemetry.droppedFramesAvailable,
     droppedFrames: telemetry.droppedFrames,
     recentDroppedFrames: telemetry.recentDroppedFrames,
     fallbackReason: telemetry.fallbackReason,
@@ -193,8 +195,14 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     PlaybackInsightRow('视频码率', videoBitrate),
     PlaybackInsightRow('视频解码器', videoDecoder),
     PlaybackInsightRow('硬/软解', videoDecoderType),
-    PlaybackInsightRow('累计掉帧', '$droppedFrames'),
-    PlaybackInsightRow('近期掉帧', '$recentDroppedFrames'),
+    PlaybackInsightRow(
+      '累计掉帧',
+      droppedFramesAvailable ? '$droppedFrames' : '暂不可用',
+    ),
+    PlaybackInsightRow(
+      '近期掉帧',
+      droppedFramesAvailable ? '$recentDroppedFrames' : '暂不可用',
+    ),
   ]);
 
   List<PlaybackInsightRow> get audioRows => _rows([

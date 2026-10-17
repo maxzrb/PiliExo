@@ -173,7 +173,8 @@ class HdrMedia3Plugin(
                         .coerceIn(16, 256)
                     val height = (call.argument<Number>("height")?.toInt() ?: 54)
                         .coerceIn(16, 256)
-                    manager.getSession(call).captureAmbientFrame(width, height) {
+                    manager.getSession(call).captureAmbientFrame(width, height,
+                        call.argument<String>("format") == "rgba8888") {
                         result.success(it)
                     }
                 }
@@ -797,7 +798,7 @@ private class HdrMedia3Session(
      * 这里使用 PixelCopy 只读取 SurfaceView 的画面，HDR 播放链路仍然直接输出到
      * SurfaceView，不会经过 TextureView、Flutter Texture 或软件视频合成。
      */
-    fun captureAmbientFrame(width: Int, height: Int, callback: (ByteArray?) -> Unit) {
+    fun captureAmbientFrame(width: Int, height: Int, rawPixels: Boolean, callback: (Any?) -> Unit) {
         if (released || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             callback(null)
             return
@@ -827,6 +828,31 @@ private class HdrMedia3Session(
                     if (copyResult != PixelCopy.SUCCESS || released) {
                         bitmap.recycle()
                         callback(null)
+                        return@request
+                    }
+                    if (rawPixels) {
+                        // getPixels明确返回ARGB颜色整数；逐通道输出RGBA，避免平台字节序差异。
+                        val message = try {
+                            val colors = IntArray(width * height)
+                            bitmap.getPixels(colors, 0, width, 0, 0, width, height)
+                            val pixels = ByteArray(width * height * 4)
+                            for (index in colors.indices) {
+                                val color = colors[index]
+                                val alpha = color ushr 24
+                                val offset = index * 4
+                                pixels[offset] = ((((color ushr 16) and 255) * alpha + 127) / 255).toByte()
+                                pixels[offset + 1] = ((((color ushr 8) and 255) * alpha + 127) / 255).toByte()
+                                pixels[offset + 2] = (((color and 255) * alpha + 127) / 255).toByte()
+                                pixels[offset + 3] = alpha.toByte()
+                            }
+                            mapOf("format" to "rgba8888", "width" to width,
+                                "height" to height, "rowBytes" to width * 4, "pixels" to pixels)
+                        } catch (_: Throwable) {
+                            null
+                        } finally {
+                            bitmap.recycle()
+                        }
+                        callback(message)
                         return@request
                     }
                     val output = ByteArrayOutputStream()

@@ -24,6 +24,7 @@ import 'package:PiliPlus/utils/mobile_observer.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/ui_power_probe.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -56,6 +57,7 @@ class _MainAppState extends PopScopeState<MainApp>
   @override
   void initState() {
     super.initState();
+    if (UiPowerProbe.enabled) UiPowerProbe.start();
     addObserverMobile(this);
     if (Platform.isMacOS) {
       HardwareKeyboard.instance.addHandler(_handleKeyEvent);

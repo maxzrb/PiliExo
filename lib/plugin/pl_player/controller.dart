@@ -20,6 +20,7 @@ import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
 import 'package:PiliPlus/pages/setting/models/play_settings.dart'
     show kMaxVolume;
 import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
+import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
@@ -33,8 +34,13 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_insight.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/danmaku_options.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/decoder_operating_rate.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/media_bitrate.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/mpv_runtime_observer.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_experiment.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_power_probe.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_rate_coordinator.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
@@ -90,6 +96,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 播放页顶部系统状态栏使用的低分辨率视频环境帧。
   final ValueNotifier<ui.Image?> statusBarAmbientFrame = ValueNotifier(null);
+  final ValueNotifier<AmbientTextureFrame?> statusBarAmbientTexture =
+      ValueNotifier(null);
 
   /// 播放器洞察面板使用的实时数据。
   final ValueNotifier<PlaybackInsightSnapshot> playbackInsight = ValueNotifier(
@@ -100,6 +108,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   num? _media3AudioBitrateBitsPerSecond;
   num? _media3MediaBitrateBitsPerSecond;
   MpvMediaBitrateSampler? _mpvMediaBitrateSampler;
+  MpvRuntimeObserver? _mpvRuntimeObserver;
   Timer? _bandwidthRefreshTimer;
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
@@ -157,7 +166,15 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   HdrMedia3Controller? get hdrMedia3Controller => _hdrMedia3Controller;
 
+  void setStatusBarAmbientTexture(AmbientTextureFrame frame) {
+    final old = statusBarAmbientFrame.value;
+    statusBarAmbientFrame.value = null;
+    old?.dispose();
+    statusBarAmbientTexture.value = frame;
+  }
+
   void setStatusBarAmbientFrame(ui.Image? image) {
+    statusBarAmbientTexture.value = null;
     final old = statusBarAmbientFrame.value;
     if (identical(old, image)) return;
     statusBarAmbientFrame.value = image;
@@ -165,6 +182,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void clearStatusBarAmbientFrame() {
+    statusBarAmbientTexture.value = null;
     final old = statusBarAmbientFrame.value;
     if (old == null) return;
     statusBarAmbientFrame.value = null;
@@ -177,6 +195,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _media3VideoBitrateBitsPerSecond = null;
     _media3AudioBitrateBitsPerSecond = null;
     _media3MediaBitrateBitsPerSecond = null;
+    _mpvRuntimeObserver?.dispose();
+    _mpvRuntimeObserver = null;
     _mpvMediaBitrateSampler?.reset();
     _mpvMediaBitrateSampler = null;
     _notifyPlaybackInsight();
@@ -251,6 +271,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     ].whereType<String>().where((value) => value.isNotEmpty).toList();
     final telemetry = PlaybackTelemetry(
       engine: 'mpv 兼容播放器',
+      droppedFramesAvailable:
+          _mpvRuntimeObserver?.metrics.droppedFramesAvailable ?? false,
+      droppedFrames: _mpvRuntimeObserver?.metrics.droppedFrames ?? 0,
+      recentDroppedFrames:
+          _mpvRuntimeObserver?.metrics.recentDroppedFrames ?? 0,
       resolution: _formatResolution(state.width, state.height),
       videoCodec: videoTrack.codec ?? '',
       videoColor: colorParts.join(' / '),
@@ -313,8 +338,18 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _refreshBandwidthEstimate() {
     if (_bandwidthRefreshTimer == null) return;
+    _mpvRuntimeObserver?.poll();
+    if (_mpvRuntimeObserver case final observer?
+        when PlaybackExperiment.enabled) {
+      _playbackExperiment.event('insight_metrics', {
+        'available': observer.metrics.droppedFramesAvailable,
+        'droppedFrames': observer.metrics.droppedFrames,
+        'recentDroppedFrames': observer.metrics.recentDroppedFrames,
+        'mediaBitsPerSecond': observer.metrics.mediaBitsPerSecond,
+      });
+    }
     _playbackTelemetry = _playbackTelemetry.copyWith(
-      bandwidthEstimate: _formatBitrate(_currentMediaBitrate()),
+      bandwidthEstimate: _formatBitrate(_currentMediaBitrate(sampleMpv: true)),
     );
     _notifyPlaybackInsight();
   }
@@ -336,7 +371,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     return '${(bitrate / 1000).toStringAsFixed(0)} kbps';
   }
 
-  num? _currentMediaBitrate() {
+  /// 原生属性查询只由采样定时器触发，界面getter和交互回调只读缓存。
+  num? _currentMediaBitrate({bool sampleMpv = false}) {
     if (_hdrMedia3Controller != null) {
       final measured = _validBitrate(_media3MediaBitrateBitsPerSecond);
       if (measured != null) return measured;
@@ -362,10 +398,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _validBitrate(state.track.audio.bitrate) ??
           _validBitrate(dataSource.audioBitrate),
     );
+    final observer = _mpvRuntimeObserver;
+    if (observer != null) {
+      return observer.metrics.mediaBitsPerSecond ?? fallback;
+    }
     return (_mpvMediaBitrateSampler ??= MpvMediaBitrateSampler(
       player.getProperty,
     )).sample(
-      isPlaying: state.playing,
+      isPlaying: sampleMpv && state.playing,
       fallbackBitsPerSecond: fallback,
     );
   }
@@ -461,9 +501,25 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   int _playerCount = 0;
 
-  late double lastPlaybackSpeed = 1.0;
   final RxDouble _playbackSpeed = Pref.playSpeedDefault.obs;
   late final RxDouble _longPressSpeed = Pref.longPressSpeedDefault.obs;
+  late final _rateCoordinator = PlaybackRateCoordinator(
+    initialRate: _playbackSpeed.value,
+    apply: _applyPlaybackRate,
+    onConfirmed: _onPlaybackRateConfirmed,
+  );
+  final _playbackExperiment = PlaybackExperimentRecorder();
+  Timer? _playbackExperimentTimer;
+  bool _playbackExperimentDecoderReported = false;
+  int _rateCommandSequence = 0;
+  PlaybackPowerProbe? _powerProbe;
+  bool _powerProbeStarted = false;
+
+  double get longPressTargetSpeed =>
+      _rateCoordinator.temporaryRate ??
+      (enableAutoLongPressSpeed
+          ? _rateCoordinator.baseRate * 2
+          : longPressSpeed);
 
   final RxDouble volume = RxDouble(
     PlatformUtils.isDesktop ? Pref.desktopVolume : 1.0,
@@ -1110,6 +1166,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }) async {
     try {
       _processing = true;
+      _powerProbe?.cancel();
+      _stopPlaybackExperiment();
+      _rateCoordinator.resetForSource();
+      longPressStatus.value = false;
+      _playbackSpeed.value = _rateCoordinator.baseRate;
       this.isLive = isLive;
       _videoType = videoType ?? VideoType.ugc;
       this.width = width;
@@ -1173,6 +1234,37 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
 
       await _initializePlayer();
+      if (PlaybackPowerProbe.enabled &&
+          !_powerProbeStarted &&
+          _bvid == 'BV1a2pr6aEC1' &&
+          (_videoPlayerController != null || _hdrMedia3Controller != null)) {
+        _powerProbeStarted = true;
+        final player = _videoPlayerController;
+        final hdr = _hdrMedia3Controller;
+        final source = this.dataSource;
+        final probe = _powerProbe = PlaybackPowerProbe();
+        unawaited(
+          probe.run(
+            player: player,
+            media3: hdr,
+            sourceFrameRate: source.videoFrameRate,
+            telemetry: () => playbackInsightSnapshot,
+            ambientTextureId: () => statusBarAmbientTexture.value?.textureId,
+            isCurrent: () =>
+                identical(player, _videoPlayerController) &&
+                identical(hdr, _hdrMedia3Controller) &&
+                identical(source, this.dataSource),
+            resetSegment: () async {
+              danmakuController?.clear();
+              if (hdr != null) {
+                await hdr.seekTo(const Duration(seconds: 60));
+              } else {
+                await player!.seek(const Duration(seconds: 60));
+              }
+            },
+          ),
+        );
+      }
       if (_autoPlay) _startBandwidthRefresh();
       onInit?.call();
     } catch (err, stackTrace) {
@@ -1248,6 +1340,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     assert(_videoPlayerController == null);
     final opt = {
       'video-sync': Pref.videoSync,
+      if (PlaybackExperiment.nativeLogs)
+        'msg-level': 'all=error,vd=debug,ffmpeg/video=debug',
       if (Platform.isAndroid) 'ao': Pref.audioOutput,
       'volume':
           (PlatformUtils.isMobile ? Pref.playerVolume : volume.value * 100)
@@ -1261,7 +1355,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     final player = await Player.create(
       configuration: PlayerConfiguration(
-        logLevel: kDebugMode ? .warn : .error,
+        logLevel: PlaybackExperiment.nativeLogs
+            ? .debug
+            : kDebugMode
+            ? .warn
+            : .error,
         options: opt,
       ),
     );
@@ -1295,7 +1393,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   bool _canUseMedia3Hdr(DataSource source) =>
       Platform.isAndroid &&
       !isLive &&
-      Pref.enableMedia3Hdr &&
+      (Pref.enableMedia3Hdr || PlaybackPowerProbe.media3Sdr) &&
       source is HdrNetworkSource;
 
   Future<void> _disposeHdrController() async {
@@ -1400,6 +1498,19 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
 
     final Map<String, String> extras = {
+      // 文件局部选项在本次解码初始化前生效；切源不沿用上一段视频的需求。
+      ...PlaybackExperiment.decoderOptions(
+        isAndroid: Platform.isAndroid,
+        plannedRate: DecoderOperatingRate.plan(
+          isAndroid: Platform.isAndroid,
+          hardwareEnabled: hwdec != null,
+          isLive: isLive,
+          audioOnly: onlyPlayAudio.value,
+          frameRate: dataSource.videoFrameRate,
+          baseRate: _rateCoordinator.baseRate,
+          temporaryRate: longPressTargetSpeed,
+        ),
+      ),
       if (dataSource is FileSource)
         'cache': 'no'
       else if (isLive)
@@ -1434,6 +1545,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       ),
       play: false,
     );
+    if (Platform.isAndroid) {
+      _mpvRuntimeObserver?.dispose();
+      _mpvRuntimeObserver = MpvRuntimeObserver.create(player);
+    }
     videoOutputReady.value = true;
     _notifyPlaybackInsight();
   }
@@ -1515,6 +1630,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _onPlayingChanged(bool playing) {
     if (playing) {
+      _startBandwidthRefresh();
+      _startPlaybackExperiment();
       _stopWakeLockTimer();
       WakelockPlus.enable();
       if (_isAutoEnterPip) {
@@ -1528,6 +1645,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       audioSessionHandler?.setActive(true);
       _updatePlaybackState();
     } else {
+      unawaited(setLongPressStatus(false));
+      _stopPlaybackExperiment();
+      _stopBandwidthRefresh();
       _disableAutoEnterPip();
       playerStatus.value = .paused;
       _updateIOSPip();
@@ -1551,6 +1671,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void _onCompleted() {
+    unawaited(setLongPressStatus(false));
+    _stopPlaybackExperiment();
     _playWhenReady = false;
     _stopBandwidthRefresh();
     playerStatus.value = .completed;
@@ -1970,8 +2092,17 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       stream.buffering.listen((bool buffering) {
         _onBufferingChanged(buffering);
       }),
-      if (kDebugMode)
+      if (kDebugMode || PlaybackExperiment.nativeLogs)
         stream.log.listen(((PlayerLog log) {
+          if (PlaybackExperiment.nativeLogs &&
+              (log.prefix == 'vd' || log.prefix.startsWith('ffmpeg/video'))) {
+            _playbackExperiment.event('decoder_log', {
+              'prefix': log.prefix,
+              'level': log.level,
+              'text': log.text,
+            });
+          }
+          if (!kDebugMode) return;
           if (log.level == 'error' || log.level == 'fatal') {
             Utils.reportError(
               '${log.level}: ${log.prefix}: ${log.text}\n${player.state.playlist}',
@@ -2040,6 +2171,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 移除事件监听
   void _removeListeners() {
+    _stopBandwidthRefresh();
+    _mpvRuntimeObserver?.dispose();
+    _mpvRuntimeObserver = null;
     _subscriptions?.forEach((e) => e.cancel());
     _subscriptions?.clear();
     _subscriptions = null;
@@ -2101,17 +2235,53 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
-  /// 设置倍速
-  Future<void> setPlaybackSpeed(double speed) async {
-    lastPlaybackSpeed = playbackSpeed;
-
-    if (speed == currentRate) return;
+  /// 等待播放器操作锁后重新核对请求，已松手或切源的旧倍速不再进入mpv。
+  Future<void> _applyPlaybackRate(
+    double speed,
+    bool Function() isCurrent,
+  ) async {
+    final clock = Stopwatch()..start();
+    final command = ++_rateCommandSequence;
+    _playbackExperiment.event('rate_queued', {
+      'command': command,
+      'rate': speed,
+    });
+    Future<void> dispatch(Future<void> Function() send) async {
+      _playbackExperiment.event('rate_dispatch', {
+        'command': command,
+        'rate': speed,
+        'queuedUs': clock.elapsedMicroseconds,
+      });
+      await send();
+      _playbackExperiment.event('rate_ack', {
+        'command': command,
+        'rate': speed,
+        'latencyUs': clock.elapsedMicroseconds,
+      });
+    }
 
     if (_hdrMedia3Controller case final hdr?) {
-      await hdr.setSpeed(speed);
-    } else {
-      await _videoPlayerController?.setRate(speed);
+      if (isCurrent()) await dispatch(() => hdr.setSpeed(speed));
+      return;
     }
+    final player = _videoPlayerController;
+    if (player == null) throw StateError('倍速请求没有可用播放器');
+    await player.lock.synchronized(() async {
+      if (!isCurrent() ||
+          !identical(player, _videoPlayerController) ||
+          _hdrMedia3Controller != null) {
+        _playbackExperiment.event('rate_skipped', {
+          'command': command,
+          'rate': speed,
+        });
+        return;
+      }
+      // 已持有同一把media-kit操作锁，关闭内部重复加锁，不绕过seek/open的互斥。
+      await dispatch(() => player.setRate(speed, synchronized: false));
+    });
+  }
+
+  void _onPlaybackRateConfirmed(double speed) {
     if (!isLive) _playbackSpeed.value = speed;
     _updatePlaybackState();
     if (danmakuController != null) {
@@ -2126,16 +2296,70 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
+  /// 用户选择的基础倍速不会被长按请求改写。
+  Future<void> setPlaybackSpeed(double speed) {
+    longPressStatus.value = false;
+    return _rateCoordinator.setBaseRate(
+      isMedia3Hdr ? speed.clamp(0.1, 4.0).toDouble() : speed,
+    );
+  }
+
   // 还原默认速度
   double playSpeedDefault = Pref.playSpeedDefault;
-  Future<void> setDefaultSpeed() async {
-    if (_hdrMedia3Controller case final hdr?) {
-      await hdr.setSpeed(playSpeedDefault);
-    } else {
-      await _videoPlayerController?.setRate(playSpeedDefault);
-    }
-    _playbackSpeed.value = playSpeedDefault;
-    _updatePlaybackState();
+  Future<void> setDefaultSpeed() => setPlaybackSpeed(playSpeedDefault);
+
+  void _startPlaybackExperiment() {
+    if (!PlaybackExperiment.enabled || _playbackExperimentTimer != null) return;
+    final player = _videoPlayerController;
+    if (player == null || isMedia3Hdr) return;
+    _playbackExperiment.start();
+    _playbackExperimentDecoderReported = false;
+    _playbackExperiment.event('source', {
+      'bvid': _bvid,
+      'cid': cid,
+      'operatingRateOverride': PlaybackExperiment.operatingRate,
+      'sourceFrameRate': dataSource.videoFrameRate,
+      'videoSync': Pref.videoSync,
+      'hwdec': player.getProperty('hwdec-current'),
+      'decoderOptions': player.getProperty('vd-lavc-o'),
+      'sourceFps': player.state.track.video.fps,
+      'vo': player.getProperty('vo'),
+      'af': player.getProperty('af'),
+    });
+    _playbackExperimentTimer = Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) {
+        if (!identical(player, _videoPlayerController)) return;
+        // 起播事件可能早于Codec创建，另存一次解码就绪后的真实后端信息。
+        if (!_playbackExperimentDecoderReported) {
+          final activeDecoder = player.getProperty('hwdec-current');
+          if (activeDecoder.isNotEmpty) {
+            _playbackExperimentDecoderReported = true;
+            _playbackExperiment.event('decoder_ready', {
+              'hwdec': activeDecoder,
+              'videoCodec': player.getProperty('video-codec'),
+              'videoParams': player.getProperty('video-params'),
+              'mpvVersion': player.getProperty('mpv-version'),
+              'ffmpegVersion': player.getProperty('ffmpeg-version'),
+              'decoderOptions': player.getProperty('vd-lavc-o'),
+            });
+          }
+        }
+        _playbackExperiment.sample(
+          readProperty: player.getProperty,
+          targetRate: _rateCoordinator.targetRate,
+          baseRate: _rateCoordinator.baseRate,
+          longPress: longPressStatus.value,
+          positionMs: positionInMilliseconds,
+        );
+      },
+    );
+  }
+
+  void _stopPlaybackExperiment() {
+    _playbackExperimentTimer?.cancel();
+    _playbackExperimentTimer = null;
+    _playbackExperiment.dispose();
   }
 
   /// 播放视频
@@ -2156,6 +2380,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       await _videoPlayerController?.play();
     }
     _startBandwidthRefresh();
+    _startPlaybackExperiment();
 
     audioSessionHandler?.setActive(true);
 
@@ -2165,8 +2390,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 暂停播放
   Future<void> pause({bool notify = true, bool isInterrupt = false}) async {
+    await setLongPressStatus(false);
     _playWhenReady = false;
     _stopBandwidthRefresh();
+    _stopPlaybackExperiment();
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.pause();
     } else {
@@ -2283,27 +2510,28 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 设置长按倍速状态 live模式下禁用
   Future<void> setLongPressStatus(bool val) async {
-    if (isLive) {
+    // 释放与取消不受锁定、直播和暂停守卫影响，避免临时速度残留。
+    if (!val) {
+      if (!_rateCoordinator.isTemporary && !longPressStatus.value) return;
+      longPressStatus.value = false;
+      _playbackExperiment.event('gesture_end', {
+        'restoreRate': _rateCoordinator.baseRate,
+      });
+      await _rateCoordinator.endTemporary();
       return;
     }
-    if (controlsLock.value) {
-      return;
-    }
-    if (longPressStatus.value == val) {
-      return;
-    }
+    if (isLive || controlsLock.value || longPressStatus.value) return;
     if (val) {
       if (playerStatus.isPlaying) {
-        longPressStatus.value = val;
-        HapticFeedback.lightImpact();
-        await setPlaybackSpeed(
-          enableAutoLongPressSpeed ? playbackSpeed * 2 : longPressSpeed,
+        final target = longPressTargetSpeed;
+        _playbackExperiment.event('gesture_start', {'targetRate': target});
+        final applied = _rateCoordinator.beginTemporary(
+          isMedia3Hdr ? target.clamp(0.1, 4.0).toDouble() : target,
         );
+        longPressStatus.value = true;
+        HapticFeedback.lightImpact();
+        await applied;
       }
-    } else {
-      // if (kDebugMode) debugPrint('$playbackSpeed');
-      longPressStatus.value = val;
-      await setPlaybackSpeed(lastPlaybackSpeed);
     }
   }
 
@@ -2376,6 +2604,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 关闭控制栏
   void onLockControl(bool val) {
+    if (val) unawaited(setLongPressStatus(false));
     feedBack();
     controlsLock.value = val;
     if (!val && showControls.value) {
@@ -2588,6 +2817,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
 
     _playerCount = 0;
+    _powerProbe?.cancel();
+    longPressStatus.value = false;
+    _stopPlaybackExperiment();
+    _rateCoordinator.dispose();
     _stopBandwidthRefresh();
     if (removeSafeArea) {
       showSystemBar();

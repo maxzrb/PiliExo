@@ -38,12 +38,14 @@ import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_control_type.dart';
+import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/double_tap_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/gesture_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_power_probe.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/app_bar_ani.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/backward_seek.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/bottom_control.dart';
@@ -159,6 +161,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   static const _ambientCaptureInterval = Duration(milliseconds: 66);
   static const _ambientSampleWidth = 96;
   static const _ambientSampleHeight = 54;
+  VideoController? _ambientTextureSource;
+  Listenable? _ambientTextureChanges;
   bool _ambientCaptureLoopRunning = false;
   int _ambientCaptureGeneration = 0;
   bool _ambientHostLifecycleStarted = true;
@@ -339,7 +343,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     );
 
     if (Platform.isAndroid && widget.videoDetailController != null) {
+      if (PlaybackPowerProbe.enabled) {
+        PlaybackPowerProbe.ambientEnabled.addListener(_scheduleAmbientCapture);
+      }
       plPlayerController.addStatusLister(_onAmbientPlaybackStatusChanged);
+      AmbientFramePolicy.optimized.addListener(_scheduleAmbientCapture);
       _ambientFullscreenListener = plPlayerController.isFullScreen.listen(
         (_) => _scheduleAmbientCapture(),
       );
@@ -359,6 +367,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   bool get _shouldCaptureAmbientFrame {
+    if (PlaybackPowerProbe.enabled &&
+        !PlaybackPowerProbe.ambientEnabled.value) {
+      return false;
+    }
     final detailController = widget.videoDetailController;
     if (!mounted || !Platform.isAndroid || detailController == null) {
       return false;
@@ -371,6 +383,59 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         !plPlayerController.isPipMode &&
         !detailController.removeSafeArea &&
         detailController.scrollRatio.value <= 0.001;
+  }
+
+  void _bindAmbientTextureChanges() {
+    final source = plPlayerController.videoController;
+    if (identical(source, _ambientTextureSource)) return;
+    _ambientTextureChanges?.removeListener(_scheduleAmbientCapture);
+    _ambientTextureSource = source;
+    _ambientTextureChanges = source == null
+        ? null
+        : Listenable.merge([source.id, source.rect]);
+    _ambientTextureChanges?.addListener(_scheduleAmbientCapture);
+  }
+
+  bool _publishAmbientTexture() {
+    if (!AmbientFramePolicy.gpuTexture ||
+        !AmbientFramePolicy.optimized.value ||
+        plPlayerController.media3HdrActive.value) {
+      return false;
+    }
+    final source = plPlayerController.videoController;
+    final id = source?.id.value;
+    final rect = source?.rect.value;
+    final render = _videoKey.currentContext?.findRenderObject();
+    if (id == null ||
+        rect == null ||
+        rect.width <= 1 ||
+        rect.height <= 1 ||
+        source!.player.state.width <= 0 ||
+        render is! RenderRepaintBoundary ||
+        !render.hasSize ||
+        render.size.isEmpty) {
+      return false;
+    }
+    final fit = plPlayerController.videoFit.value;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    plPlayerController.setStatusBarAmbientTexture(
+      AmbientTextureFrame(
+        textureId: id,
+        viewportSize: render.size,
+        videoSize: Size(
+          fit.aspectRatio == null
+              ? rect.width / dpr
+              : rect.height / dpr * fit.aspectRatio!,
+          rect.height / dpr,
+        ),
+        fit: fit.boxFit,
+        alignment: widget.alignment,
+        fill: widget.fill,
+        flipX: plPlayerController.flipX.value,
+        flipY: plPlayerController.flipY.value,
+      ),
+    );
+    return true;
   }
 
   void _scheduleAmbientCapture() {
@@ -395,7 +460,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           return;
         }
 
+        // 纹理由后端随视频帧更新，Dart只在布局或纹理变化时发布元数据。
+        if (_publishAmbientTexture()) return;
+        final captureClock = PlaybackPowerProbe.enabled
+            ? (Stopwatch()..start())
+            : null;
         final image = await _captureAmbientFrame();
+        if (PlaybackPowerProbe.enabled && image != null) {
+          PlaybackPowerProbe.ambientCaptures++;
+          PlaybackPowerProbe.ambientCaptureUs +=
+              captureClock!.elapsedMicroseconds;
+        }
         if (image != null) {
           if (mounted &&
               generation == _ambientCaptureGeneration &&
@@ -421,6 +496,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   Future<ui.Image?> _captureAmbientFrame() async {
     try {
       if (plPlayerController.media3HdrActive.value) {
+        if ((AmbientFramePolicy.compare || AmbientFramePolicy.rawPixels) &&
+            AmbientFramePolicy.optimized.value) {
+          final pixels = await plPlayerController.hdrMedia3Controller
+              ?.captureAmbientPixels(
+                width: _ambientSampleWidth,
+                height: _ambientSampleHeight,
+              );
+          if (pixels != null) return await pixels.toImage();
+        }
         final bytes = await plPlayerController.hdrMedia3Controller
             ?.captureAmbientFrame(
               width: _ambientSampleWidth,
@@ -462,6 +546,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(plPlayerController.setLongPressStatus(false));
+    }
     _ambientHostLifecycleStarted =
         state != AppLifecycleState.paused &&
         state != AppLifecycleState.detached;
@@ -512,7 +600,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   @override
   void dispose() {
+    // 视图销毁与已识别长按的PointerCancel不保证触发onLongPressEnd。
+    unawaited(plPlayerController.setLongPressStatus(false));
     _ambientCaptureGeneration++;
+    if (PlaybackPowerProbe.enabled) {
+      PlaybackPowerProbe.ambientEnabled.removeListener(_scheduleAmbientCapture);
+    }
+    AmbientFramePolicy.optimized.removeListener(_scheduleAmbientCapture);
+    _ambientTextureChanges?.removeListener(_scheduleAmbientCapture);
     _ambientFullscreenListener?.cancel();
     _ambientScrollListener?.cancel();
     plPlayerController.removeStatusLister(_onAmbientPlaybackStatusChanged);
@@ -1662,7 +1757,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       ),
                       child: Obx(
                         () => Text(
-                          '${plPlayerController.enableAutoLongPressSpeed ? (plPlayerController.longPressStatus.value ? plPlayerController.lastPlaybackSpeed : plPlayerController.playbackSpeed) * 2 : plPlayerController.longPressSpeed}倍速中',
+                          '${plPlayerController.longPressTargetSpeed}倍速中',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -2277,6 +2372,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       child: Obx(
         () {
           final isHdr = plPlayerController.media3HdrActive.value;
+          _bindAmbientTextureChanges();
+          // 复用纹理时，缩放模式、镜像与视口变化也必须更新环境背景布局。
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _scheduleAmbientCapture(),
+          );
           final hdrController = plPlayerController.hdrMedia3Controller;
           final videoFit = plPlayerController.videoFit.value;
           if (isHdr != _wasHdr) {
@@ -2340,6 +2440,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             onPointerPanZoomUpdate: _onPointerPanZoomUpdate,
             onPointerPanZoomEnd: _onPointerPanZoomEnd,
             onPointerDown: _onPointerDown,
+            onPointerCancel: (_) =>
+                unawaited(plPlayerController.setLongPressStatus(false)),
             onPanStart: _onPanStart,
             onPanUpdate: _onPanUpdate,
             onPanEnd: _onPanEnd,
@@ -2413,7 +2515,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                     final video = videoDetailController.findVideoByQa(value);
                     url = video.baseUrl;
                     qa = video.quality;
-                    return false;
+                    {
+                      return false;
+                    }
                   },
                   itemBuilder: (context) => videoInfo.supportFormats!
                       .map(
@@ -2431,7 +2535,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   value: () => preset,
                   onSelected: (value) {
                     preset = value;
-                    return false;
+                    {
+                      return false;
+                    }
                   },
                   itemBuilder: (context) => WebpPreset.values
                       .map((i) => PopupMenuItem(value: i, child: Text(i.name)))

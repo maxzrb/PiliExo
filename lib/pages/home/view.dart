@@ -114,6 +114,7 @@ class _HomePageState extends CommonPageState<HomePage>
               offset: Offset(0, -offset),
               height: Style.topBarHeight - offset,
               child: FrostedSurface(
+                backgroundIsUniform: true,
                 showBorder: false,
                 child: Padding(
                   padding: padding,
@@ -135,13 +136,19 @@ class _HomePageState extends CommonPageState<HomePage>
               duration: const Duration(milliseconds: 500),
               height: showSearchBar ? Style.topBarHeight : 0,
               padding: padding,
-              child: FrostedSurface(showBorder: false, child: child),
+              child: FrostedSurface(
+                backgroundIsUniform: true,
+                showBorder: false,
+                child: child,
+              ),
             ),
           );
         });
       }
     }
+    // 顶栏在Column中先于列表绘制，背后只有主页面的纯色Material。
     return FrostedSurface(
+      backgroundIsUniform: true,
       showBorder: false,
       child: Container(
         height: Style.topBarHeight,

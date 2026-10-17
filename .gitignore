@@ -153,6 +153,9 @@ dist
 test*
 !test/
 !test/**
+!/tool/test_playback_power_probe.py
+!/tool/test_ui_power_probe.py
+!/tool/test_ui_power_experiment.py
 
 # 百度网盘生成的上传状态文件不进入源码。
 *.baiduyun.uploading.cfg

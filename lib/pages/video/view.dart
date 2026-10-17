@@ -129,7 +129,10 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   Widget? get _videoStatusBarAmbient {
     final controller = plPlayerController;
     if (!Platform.isAndroid || controller == null) return null;
-    return VideoStatusBarAmbient(frame: controller.statusBarAmbientFrame);
+    return VideoStatusBarAmbient(
+      frame: controller.statusBarAmbientFrame,
+      texture: controller.statusBarAmbientTexture,
+    );
   }
 
   bool isShowing = true;
