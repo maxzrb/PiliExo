@@ -4,7 +4,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.10.18.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.1)（2026-10-18）。
+- 当前正式版本：[v26.10.18.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.2)（2026-10-18）。
 - Flutter 工具链：`3.47.7`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
@@ -25,9 +25,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 番剧和课程适配 OGV 播放接口；文章/图文支持直接进入评论，保留分享，并修复评论滚动。
 - 改善离线合集选中与排序、课程横屏选集、截图防重复、画中画入口、竖版封面和图片切换。
 
-- 优化 AudioTrack、AAudio 和 OpenSL ES 切速响应，保持原音调；AudioTrack 高采样率音频保留采样率请求，兼容 96/192 kHz 音源。
-- 洞察排除起播/切速过渡和无感零星丢弃，持续掉帧仍能提示，恢复后不再常亮警告；构建缺少版本信息时不误报签名迁移。
-- 修复部分 Android 设备长按加速后持续掉帧，过期倍速请求及系统取消触摸均会正确恢复基础倍速；洞察隐藏时仍监测并提示掉帧。
+- 沿用已通过真机手测的音频与播放核心组合，倍速保持原音调；长按默认 2 倍并支持直接输入自定义数值。
+- 洞察显示近 1 秒与总丢帧，起播、进入及退出倍速各排除最多 5 帧正常切换丢弃；近期归零仍保留总数与黄色警示，构建缺少版本信息时不误报签名迁移。
+- 修复部分 Android 设备长按加速后松手持续追帧：恢复基础倍速后仅检查一次音画差，较大时精确重定位，可能出现短暂停顿；长按期间隐藏底部灰色进度块，洞察隐藏时仍监测丢帧。
 - 优化首页固定背景顶栏的磨砂绘制；设置重新分类，新增纯 @ 评论与数量过滤，并保留原有自定义选项。
 
 ## 下载与更新
