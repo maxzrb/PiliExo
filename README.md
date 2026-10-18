@@ -42,7 +42,7 @@ APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armea
 
 当前发布使用 Flutter `3.47.7` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
 
-每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。构建元数据脚本与 Android CI 会校验 README 中的版本、Flutter 版本是否与项目配置一致；发布后还需同步 GitHub 默认分支的 README。
+每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。本项目仅在本机构建、打包和签名，不使用 GitHub Actions。本地预构建脚本会校验版本与 Flutter 工具链；发布后同步默认分支的 README。
 
 本项目是个人为了兴趣而开发的第三方自用修改版，仅用于学习和测试，请于下载后 24 小时内删除。所用 API 皆从官方网站收集，不提供任何破解内容。
 

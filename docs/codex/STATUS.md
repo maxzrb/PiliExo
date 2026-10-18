@@ -1,22 +1,22 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-18 17:03 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`；正式源码 `034fbe5c9cc839968ee85935af3489f9a51b0820`，annotated tag `v26.10.17.1` 指向该源码。后续仅文档同步/记录提交，不改变正式源码标签。
-- 发布状态：[v26.10.17.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.17.1) 已公开且为 GitHub latest；两 APK 与 SHA256SUMS 已在 GitHub 核对 digest/长度，并从 ModelScope 逐文件回读核对 SHA-256/长度。应用 `26.10.17+1`，Android versionCode=30。
-- README：默认分支 main 独立文档提交 `8071d01f0` 已推送，仅修改 README；发布分支已合入其历史为09d9c9589，两边 README 内容一致。
-- 本轮实现：mpv按素材与目标倍速初始化解码需求；倍速请求在播放器锁内复核有效性，取消原始触摸/离页恢复基础倍速；HUD隐藏时停止无效重建但保留掉帧监测和提示。功耗/GPU/HCPP研究暂停，研究开关正式包全部关闭，默认后端策略未改。
-- 上游：本轮审查bd5e04e5d..88eca305d共20项，12项合入/适配、8项排除/暂缓/被后续覆盖。完整映射见docs/PiliPlus上游审查-2026-10-17.md，下轮从88eca305d之后开始。回退备份codex/backup-before-upstream-20261017保留eb94aecaa。
-- 代码验证：最终提交112/112 Flutter测试通过，Analyze 0 error/0 warning、60 info；Python21/21通过；4/4原生FLAC回归通过。正式双ABI、版本/README/Flutter/29插件、FFmpeg/R8/DEX、唯一ABI/V2原签名及设备回拉哈希校验通过。
-- ADB：HONOR NTH-AN00 Android14上完成无研究预备包播放/加速/连续切速/原始取消/1.5倍恢复、横竖屏、暂停/进度/前后台、设置迁移和取消、评论、4K Dolby Vision与FLAC96k、SDR切换。最终v7和arm64都覆盖安装、首页和长按恢复通过；恢复分别60.075/60.175每秒、Codec丢弃0；手机最终保留正式arm64，120000ms息屏已恢复，PID空、Dozing。
-- 限制：Codec输出不是物理屏幕FPS；快速切速瞬间仍有丢弃，8e精确松手时延/150msP95及相较官方0.5W功耗差未测得。荣耀首次运行v7包出现系统兼容提示（两包targetSdk37），确认后正常运行；arm64无该提示。单机/固定样片验收不等于所有机型与账户无缺陷。
-- 工具链：D:/pyprogram/piliexo/tools/flutter-3.47.7/reused-sdk（Flutter3.47.7/Dart3.13.5），Pub缓存C:/Users/maxzr/AppData/Local/Pub/Cache；正式包在受管C盘工作树构建，临时树收尾归档，未创建P盘映射。
-- 产物/证据：dist/release/v26.10.17.1/保留两APK及SHA256SUMS；原始ADB、测试、发布门禁和远端校验记录归档ignored tools/diagnostics/rate-fix-20261017。不上传凭据、签名文件或原始账号日志。
-- Git状态：正式发布已同步；当前8e跟进的诊断/音频缓冲实现、测试、报告及状态记录未提交，另保留用户既有tmp/。HEAD仍a55f4708a，不创建新标签。
-- 当前跟进：Hi-Res保护/洞察持续异常判定的无诊断手测包5e11a60f...已安装8e并回拉/首页校验。96/192k请求保留且绕开小缓冲，不全局强制48k；洞察排除有限过渡和孤立丢弃，持续/严重异常仍提示。最终18+10+5定向回归通过，用户自行复核实际播放，不再自动采集。息屏60000ms、JSON删除。禁止Actions、功耗暂停、图标忽略；未发布。
+- 更新时间：2026-10-18 17:17 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`。正式源码 `d6e3f1199b513c3ba7347cc1c1e35ed67473c072`，annotated tag `v26.10.18.1` 固定指向该源码；后续记录/约束提交不改写正式标签。
+- 发布状态：[v26.10.18.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.1) 已公开且为GitHub latest，应用26.10.18+1 / Android code31。双APK及SHA256SUMS均核对GitHub digest/长度，并从ModelScope完整回读核对哈希/长度；本机在dist/release/v26.10.18.1。
+- 用户最新约束：不得使用GitHub Actions构建；只能本地构建、打包、签名。仓库Actions设置已禁用并多次回读enabled=false，禁止重新启用或dispatch。根AGENTS.md、README及发布流程已记录。
+- Actions事件：推送d6e3f1199触发39113935580，工作流校验失败、0构建任务，已向用户说明；关闭Actions后推送标签无新增运行。旧任务/草稿不删除。
+- 正式实现：AudioTrack普通PCM按设备适配低延迟，96/192k与直通保留请求并绕开小缓冲；OpenSL/AAudio保持原音调与已认可切速配置。洞察过滤有限起播/切速过渡及稳定区孤立丢弃，持续或严重异常仍可捕获，隐藏HUD仍监测。缺失Dart构建元数据不再误报历史旧版/签名迁移。
+- AAudio最终决定：音效会话混音候选虽恢复音量但被用户否决；媒体类型直出对照无改善，用户要求结束调查、恢复原路线。两项实验均已撤销，正式AOT确认无session/adaptive-session/media-role参数；不加增益/归一化/全局重采样。音量差异未解决，不再主动继续此项。7项临时日志属性已恢复并回读。
+- 真机：8e AN5UUT6225004417，MEP-AN00 Android17，只支持arm64。正式ARM64覆盖安装成功，系统26.10.18/code31，回拉hash2770e485…一致，首页52节点、PID11051，无启动致命异常。此前相同播放器/原生核心用户已确认流畅、原音调正常；本次仅安装/版本/启动校验，未自动跑播放矩阵。v7仅构建和静态门禁，8e无法运行32位包。
+- 验证：26文件132项Flutter通过；真实18.1/code31定义的音频/版本10项通过；C策略5项通过；Analyze 0error/0warning、62info。README/Flutter3.47.7/29插件、R8/DEX/FFmpeg/唯一ABI/V2原签名、64位全部ELF16KB段对齐通过。发布门禁均保存在本机8e实验目录。
+- 正式签名：仍b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51，与旧正式包一致。此前旧版/不同密钥提示源于测试包缺少pili.*参数，正式包完整metadata已与manifest/AOT核对。
+- 原生artifact：arm64 d822d86b…（16,498,608字节）、v7 d2c4b53d…（12,749,372字节），补丁/sources清单已入Git。AAudio原生源码与v0.41.0完全一致。外部native prefix曾重编译临时AAudio策略，不得直接拿来替换已验证artifact；需按原源码重新构建后再验证。
+- 正式APK：arm64 SHA256=2770e485126ae409902df66da70145f70937b6f24f5fa1ce4ca9015eb30305d1（33,329,272字节）；v7 SHA256=bfd799f2623a040e0cc09b7230b9c1bd7ffded9b8b59d47aef74dc8ca70fad85（32,293,000字节）。
+- 默认分支main：独立README提交`8609b01375f4455444ac5361b767cd5e66b64334`，已回读与当前README一致，未合并应用源码到main。
+- 工具链：Flutter3.47.7/Dart3.13.5、NDK28.2.13676358，本机C盘受管树C:/Users/maxzr/.codex/worktrees/8e-transition-20261017/piliexo detached于正式源码，保留缓存/签名配置。诊断工作先stash保存（preserve 8e diagnostic source before v26.10.18.1 formal build）。所有构建在本机离线Gradle执行，无Actions产物。
+- 构建注意：直接离线Gradle需同时核对ignored android/local.properties的flutter.versionName、生成pili_release.json和Dart defines；本轮门禁抓到manifest旧日期后已改为18并重新构建。Windows D盘文件/Hook锁发生过工具中断，最终均重试到通过；发布状态脚本迁移到C盘并使用原子写入。
+- 上游边界：保持88eca305d，本次未新增上游合并；功耗/GPU研究继续暂停，桌面图标问题继续忽略。用户tmp/保留，不纳入Git。
 
-- 本轮发布准备：用户授权发布 v26.10.18.1，应用26.10.18+1 / code31，尚未提交发布源码、建标签或公开。双ABI本地原生库已完成（arm64 d822d86b…；v7 d2c4b53d…），ELF/55导出/系统依赖/16KB段对齐通过。手测后新增AAudio音量反馈，用户要求AAudio保持直出，混音候选已否决并撤销，8e已恢复原包；音量偏小仍待查。
-- 直出音量当前实验：仅C盘实验树设置audio-set-media-role=yes，包b18c1656…已覆盖8e成功，MMAP_NOIRQ+DIRECT/session=-1/48k/24bit/CT=MOVIE/端口-21dB已确认。用户听感待答，主工作树无此实验。132项Flutter逐文件通过，真实18.1/code31定义的音频/版本10项通过，C原生策略5项通过，Analyze 0 error/0 warning/62 info。新Release仍未公开。
-- 最新决定：用户结束AAudio音量调查，媒体类型实验无改善，已撤销；两类音量实验均不进入正式包。继续已授权的v26.10.18.1本地Release，正式包恢复原AAudio直出配置。
 ## 当前上游同步结果（2026-10-14）
 
 - 用户授权安全合并全部 Android 适用项，24 项已逐项处理至 `bd5e04e5d`：Android 修复/功能和工具链已落地，两个纯平台提交永久排除；Surface 撤回参数在本地原已满足，无须单独应用。完整映射见 `docs/PiliPlus上游审查-2026-10-13.md` 的“用户授权后的实际合并”。
@@ -1493,3 +1493,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 
 - 用户实测媒体类型声明对照音量无变化，明确要求“算了，恢复原路线”。停止本轮音量调查，撤销C盘实验树的audio-set-media-role设置；正式配置保留原AAudio低延迟/MMAP可用路径，不加会话、增益、归一化或全局重采样。两种实验均不发布，音量差异保持未解决记录。
 - 继续此前已授权的本地Release准备；正式包恢复原路线，仍用原正式签名。132+10 Flutter和5项原生测试、无error/warning分析结果可用；实验未改变主树实现。
+
+## 2026-10-18 17:17 v26.10.18.1 正式发布完成
+
+- GitHub Release416345527已公开且latest，标签指向d6e3f1199；两个原签名APK和SHA256SUMS在GitHub/ModelScope完成远端校验。下载目录releases/v26.10.18.1，8e安装正式arm64并回拉hash一致。
+- 双ABI正式构建全部本机完成。手测候选两项AAudio音量实验被撤销，不纳入AOT/原生库。用户要求停止音量调查，保留直出与原音调。
+- 仓库Actions禁用并复核，标签后无新增任务；根AGENTS/发布流程/README固化本地构建要求。main仅README同步提交8609b01375f4455444ac5361b767cd5e66b64334，应用源码不合入main。
+- 当前收尾只提交README、AGENTS、发布流程与状态记录；正式源码标签不改写，用户tmp/保留。
