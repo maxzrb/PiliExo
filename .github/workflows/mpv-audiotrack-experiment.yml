@@ -1,0 +1,73 @@
+name: AudioTrack native experiment
+
+on:
+  push:
+    branches: [codex/audiotrack-native-20261018]
+    paths:
+      - patches/mpv/audiotrack-low-latency-experiment.patch
+      - .github/workflows/mpv-audiotrack-experiment.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      TRAVIS: '1'
+      ENCODERS_GPL: ''
+      WGET: wget
+      cores: '4'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: 安装原生构建工具
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config nasm autoconf automake libtool ninja-build unzip wget python3-venv cmake gettext gperf bison flex
+          python3 -m venv "$RUNNER_TEMP/mpv-build-venv"
+          "$RUNNER_TEMP/mpv-build-venv/bin/pip" install meson jinja2 jsonschema
+          echo "$RUNNER_TEMP/mpv-build-venv/bin" >> "$GITHUB_PATH"
+      - name: 取得与现有库对应的构建源码
+        run: |
+          git clone --no-checkout https://github.com/My-Responsitories/libmpv-android-video-build.git native-builder
+          git -C native-builder checkout --detach 8e50ecc027cd2443a3ef9b1a87991d37f1acdc41
+          mkdir -p native-builder/buildscripts/sdk
+          ln -s "$ANDROID_HOME" native-builder/buildscripts/sdk/android-sdk-linux
+      - name: 应用原生实验补丁
+        working-directory: native-builder/buildscripts
+        run: |
+          chmod +x *.sh include/*.sh scripts/*.sh
+          ./download.sh
+          ./patch.sh
+          git -C deps/mpv apply --check "$GITHUB_WORKSPACE/patches/mpv/audiotrack-low-latency-experiment.patch"
+          git -C deps/mpv apply "$GITHUB_WORKSPACE/patches/mpv/audiotrack-low-latency-experiment.patch"
+          cp flavors/default.sh scripts/ffmpeg.sh
+          chmod +x scripts/ffmpeg.sh
+      - name: 构建 arm64 原生库
+        working-directory: native-builder/buildscripts
+        run: ./build.sh --arch arm64
+      - name: 保存独立原生库与源码清单
+        run: |
+          mkdir -p native-artifact
+          cp native-builder/buildscripts/prefix/arm64-v8a/lib/libmpv.so native-artifact/
+          sha256sum native-artifact/libmpv.so patches/mpv/audiotrack-low-latency-experiment.patch > native-artifact/SHA256SUMS
+          git -C native-builder rev-parse HEAD > native-artifact/builder-commit.txt
+          for source in native-builder/buildscripts/deps/*; do
+            if [ -d "$source/.git" ]; then
+              printf '%s ' "$(basename "$source")"
+              git -C "$source" rev-parse HEAD
+            fi
+          done > native-artifact/dependency-commits.txt
+          pip freeze > native-artifact/python-build-tools.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: audiotrack-native-arm64
+          path: native-artifact/
+          if-no-files-found: error
+          retention-days: 14
