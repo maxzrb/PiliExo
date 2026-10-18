@@ -52,6 +52,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     this.playWhenReady = false,
     this.isBuffering = false,
     this.firstFrame = false,
+    this.excludedDroppedFrames = 0,
   });
 
   factory PlaybackInsightSnapshot.fromTelemetry(
@@ -64,6 +65,9 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     bool playWhenReady = false,
     bool isBuffering = false,
     bool firstFrame = false,
+    int? droppedFrames,
+    int? recentDroppedFrames,
+    int excludedDroppedFrames = 0,
   }) => PlaybackInsightSnapshot(
     engine: telemetry.engine,
     quality: telemetry.quality,
@@ -97,8 +101,9 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     bandwidthEstimate: telemetry.bandwidthEstimate,
     playerState: telemetry.playerState,
     droppedFramesAvailable: telemetry.droppedFramesAvailable,
-    droppedFrames: telemetry.droppedFrames,
-    recentDroppedFrames: telemetry.recentDroppedFrames,
+    droppedFrames: droppedFrames ?? telemetry.droppedFrames,
+    recentDroppedFrames: recentDroppedFrames ?? telemetry.recentDroppedFrames,
+    excludedDroppedFrames: excludedDroppedFrames,
     fallbackReason: telemetry.fallbackReason,
     fallbackHistory: telemetry.fallbackHistory,
     lastError: telemetry.lastError,
@@ -121,6 +126,29 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   final bool playWhenReady;
   final bool isBuffering;
   final bool firstFrame;
+  final int excludedDroppedFrames;
+
+  /// 原始诊断和功耗对照仍使用后端计数，不受洞察展示规则影响。
+  int get rawDroppedFrames => droppedFrames + excludedDroppedFrames;
+
+  PlaybackInsightSnapshot withDropCounts({
+    required int droppedFrames,
+    required int recentDroppedFrames,
+    required int excludedDroppedFrames,
+  }) => PlaybackInsightSnapshot.fromTelemetry(
+    this,
+    positionMs: positionMs,
+    durationMs: durationMs,
+    forwardBufferMs: forwardBufferMs,
+    speed: speed,
+    isPlaying: isPlaying,
+    playWhenReady: playWhenReady,
+    isBuffering: isBuffering,
+    firstFrame: firstFrame,
+    droppedFrames: droppedFrames,
+    recentDroppedFrames: recentDroppedFrames,
+    excludedDroppedFrames: excludedDroppedFrames,
+  );
 
   bool get hasMeasuredData =>
       resolution.isNotEmpty ||
@@ -161,7 +189,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   String get statusText {
     if (lastError.isNotEmpty) return '播放出现错误';
     if (fallbackReason.isNotEmpty) return '已执行编码回退';
-    if (droppedFrames > 0) return '已记录 $droppedFrames 个掉帧';
+    if (recentDroppedFrames > 0) return '检测到播放掉帧';
     if (isBuffering && playWhenReady) return '缓冲中';
     if (!hasMeasuredData) return '等待播放器数据';
     return '实时数据';
@@ -196,11 +224,11 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     PlaybackInsightRow('视频解码器', videoDecoder),
     PlaybackInsightRow('硬/软解', videoDecoderType),
     PlaybackInsightRow(
-      '累计掉帧',
+      '累计异常掉帧',
       droppedFramesAvailable ? '$droppedFrames' : '暂不可用',
     ),
     PlaybackInsightRow(
-      '近期掉帧',
+      '近期异常掉帧',
       droppedFramesAvailable ? '$recentDroppedFrames' : '暂不可用',
     ),
   ]);

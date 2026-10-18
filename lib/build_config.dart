@@ -1,4 +1,10 @@
 abstract final class BuildConfig {
+  // 缺少构建参数时不能把历史默认值当成真实已安装版本，尤其不能触发旧签名迁移。
+  static const bool hasReleaseMetadata =
+      bool.hasEnvironment('pili.name') &&
+      bool.hasEnvironment('pili.releaseBuild') &&
+      bool.hasEnvironment('pili.code');
+
   // versionCode 是 Android 安装版本号，必须按正式 Release 全局递增，不能按日期重置。
   static const int versionCode = int.fromEnvironment(
     'pili.code',
@@ -22,5 +28,6 @@ abstract final class BuildConfig {
     defaultValue: 'N/A',
   );
 
-  static String get displayVersion => '$versionName+$releaseBuild';
+  static String get displayVersion =>
+      hasReleaseMetadata ? '$versionName+$releaseBuild' : '本地构建（未写入版本信息）';
 }

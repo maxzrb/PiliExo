@@ -1,0 +1,255 @@
+--- a/audio/out/ao_audiotrack.c
++++ b/audio/out/ao_audiotrack.c
+@@ -39,6 +39,7 @@
+     jint channel_config;
+     jint format;
+     jint size;
++    jint legacy_size;
+ 
+     jobject timestamp;
+     int64_t timestamp_fetched;
+@@ -59,6 +60,12 @@
+ 
+     bool cfg_pcm_float;
+     int cfg_session_id;
++    bool cfg_low_latency;
++    bool cfg_adaptive_rate;
++    bool low_latency_enabled;
++    bool high_rate_compat;
++    int cfg_buffer_ms;
++    int cfg_chunk_ms;
+ 
+     bool thread_terminate;
+     bool thread_created;
+@@ -95,6 +102,9 @@
+     jmethodID writeShortV23;
+     jmethodID writeBufferV21;
+     jmethodID getBufferSizeInFramesV23;
++    jmethodID getBufferCapacityInFramesV24;
++    jmethodID getPerformanceModeV26;
++    jmethodID getUnderrunCountV24;
+     jmethodID getPlaybackHeadPosition;
+     jmethodID getTimestamp;
+     jmethodID getLatency;
+@@ -128,6 +138,9 @@
+     {"write", "([SIII)I", MP_JNI_METHOD, OFFSET(writeShortV23), 0},
+     {"write", "(Ljava/nio/ByteBuffer;II)I", MP_JNI_METHOD, OFFSET(writeBufferV21), 1},
+     {"getBufferSizeInFrames", "()I", MP_JNI_METHOD, OFFSET(getBufferSizeInFramesV23), 0},
++    {"getBufferCapacityInFrames", "()I", MP_JNI_METHOD, OFFSET(getBufferCapacityInFramesV24), 0},
++    {"getPerformanceMode", "()I", MP_JNI_METHOD, OFFSET(getPerformanceModeV26), 0},
++    {"getUnderrunCount", "()I", MP_JNI_METHOD, OFFSET(getUnderrunCountV24), 0},
+     {"getTimestamp", "(Landroid/media/AudioTimestamp;)Z", MP_JNI_METHOD, OFFSET(getTimestamp), 1},
+     {"getPlaybackHeadPosition", "()I", MP_JNI_METHOD, OFFSET(getPlaybackHeadPosition), 1},
+     {"getLatency", "()I", MP_JNI_METHOD, OFFSET(getLatency), 1},
+@@ -233,6 +246,33 @@
+ };
+ #undef OFFSET
+ 
++// API26 的公开低延迟构造器；旧系统缺少可选方法时保留原路径。
++static struct JNIAudioTrackBuilder {
++    jclass clazz;
++    jmethodID ctor;
++    jmethodID setAudioAttributes;
++    jmethodID setAudioFormat;
++    jmethodID setTransferMode;
++    jmethodID setBufferSizeInBytes;
++    jmethodID setSessionId;
++    jmethodID setPerformanceMode;
++    jmethodID build;
++} AudioTrackBuilder;
++#define OFFSET(member) offsetof(struct JNIAudioTrackBuilder, member)
++static const struct MPJniField AudioTrackBuilder_mapping[] = {
++    {"android/media/AudioTrack$Builder", NULL, MP_JNI_CLASS, OFFSET(clazz), 0},
++    {"<init>", "()V", MP_JNI_METHOD, OFFSET(ctor), 0},
++    {"setAudioAttributes", "(Landroid/media/AudioAttributes;)Landroid/media/AudioTrack$Builder;", MP_JNI_METHOD, OFFSET(setAudioAttributes), 0},
++    {"setAudioFormat", "(Landroid/media/AudioFormat;)Landroid/media/AudioTrack$Builder;", MP_JNI_METHOD, OFFSET(setAudioFormat), 0},
++    {"setTransferMode", "(I)Landroid/media/AudioTrack$Builder;", MP_JNI_METHOD, OFFSET(setTransferMode), 0},
++    {"setBufferSizeInBytes", "(I)Landroid/media/AudioTrack$Builder;", MP_JNI_METHOD, OFFSET(setBufferSizeInBytes), 0},
++    {"setSessionId", "(I)Landroid/media/AudioTrack$Builder;", MP_JNI_METHOD, OFFSET(setSessionId), 0},
++    {"setPerformanceMode", "(I)Landroid/media/AudioTrack$Builder;", MP_JNI_METHOD, OFFSET(setPerformanceMode), 0},
++    {"build", "()Landroid/media/AudioTrack;", MP_JNI_METHOD, OFFSET(build), 0},
++    {0}
++};
++#undef OFFSET
++
+ static struct JNIAudioManager {
+     jclass clazz;
+     jint ERROR_DEAD_OBJECT;
+@@ -274,6 +314,7 @@
+     ENTRY(AudioAttributesBuilder),
+     ENTRY(AudioFormat),
+     ENTRY(AudioFormatBuilder),
++    ENTRY(AudioTrackBuilder),
+     ENTRY(AudioManager),
+     ENTRY(AudioTimestamp),
+ };
+@@ -313,15 +354,43 @@
+         jobject attr = MP_JNI_CALL_OBJECT(attr_builder, AudioAttributesBuilder.build);
+         MP_JNI_LOCAL_FREEP(&attr_builder);
+ 
+-        audiotrack = MP_JNI_NEW(
+-            AudioTrack.clazz,
+-            AudioTrack.ctorV21,
+-            attr,
+-            format,
+-            p->size,
+-            AudioTrack.MODE_STREAM,
+-            p->cfg_session_id
+-        );
++        if (p->low_latency_enabled && AudioTrackBuilder.setPerformanceMode &&
++            p->format != AudioFormat.ENCODING_IEC61937) {
++            jobject builder = MP_JNI_NEW(AudioTrackBuilder.clazz, AudioTrackBuilder.ctor);
++            if (MP_JNI_EXCEPTION_LOG(ao) >= 0 && builder) {
++                tmp = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.setAudioAttributes, attr);
++                MP_JNI_LOCAL_FREEP(&tmp);
++                tmp = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.setAudioFormat, format);
++                MP_JNI_LOCAL_FREEP(&tmp);
++                tmp = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.setTransferMode, AudioTrack.MODE_STREAM);
++                MP_JNI_LOCAL_FREEP(&tmp);
++                tmp = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.setBufferSizeInBytes, p->size);
++                MP_JNI_LOCAL_FREEP(&tmp);
++                tmp = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.setSessionId, p->cfg_session_id);
++                MP_JNI_LOCAL_FREEP(&tmp);
++                // Android 公开常量 PERFORMANCE_MODE_LOW_LATENCY = 1。
++                tmp = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.setPerformanceMode, 1);
++                MP_JNI_LOCAL_FREEP(&tmp);
++                if (MP_JNI_EXCEPTION_LOG(ao) >= 0)
++                    audiotrack = MP_JNI_CALL_OBJECT(builder, AudioTrackBuilder.build);
++                if (MP_JNI_EXCEPTION_LOG(ao) < 0)
++                    MP_JNI_LOCAL_FREEP(&audiotrack);
++                MP_JNI_LOCAL_FREEP(&builder);
++            }
++        }
++        if (!audiotrack) {
++            // 请求被系统拒绝时恢复兼容缓冲，不能因实验参数失去声音。
++            p->size = p->legacy_size;
++            audiotrack = MP_JNI_NEW(
++                AudioTrack.clazz,
++                AudioTrack.ctorV21,
++                attr,
++                format,
++                p->size,
++                AudioTrack.MODE_STREAM,
++                p->cfg_session_id
++            );
++        }
+ 
+         MP_JNI_LOCAL_FREEP(&format);
+         MP_JNI_LOCAL_FREEP(&attr);
+@@ -359,6 +428,16 @@
+             ao->device_buffer = bufferSize;
+         }
+     }
++
++    // 保存系统实际采用的容量与模式，不能把请求成功当成低延迟已生效。
++    int performance = AudioTrack.getPerformanceModeV26 ?
++        MP_JNI_CALL_INT(audiotrack, AudioTrack.getPerformanceModeV26) : -1;
++    MP_JNI_EXCEPTION_LOG(ao);
++    int capacity = AudioTrack.getBufferCapacityInFramesV24 ?
++        MP_JNI_CALL_INT(audiotrack, AudioTrack.getBufferCapacityInFramesV24) : -1;
++    MP_JNI_EXCEPTION_LOG(ao);
++    MP_INFO(ao, "PiliExo AudioTrack actual: rate=%d buffer_frames=%d capacity=%d performance=%d chunk_bytes=%d\n",
++            p->samplerate, ao->device_buffer, capacity, performance, p->chunksize);
+ 
+     p->audiotrack = (*env)->NewGlobalRef(env, audiotrack);
+     MP_JNI_LOCAL_FREEP(&audiotrack);
+@@ -608,6 +687,11 @@
+     struct priv *p = ao->priv;
+     JNIEnv *env = MP_JNI_GET_ENV(ao);
+     if (p->audiotrack) {
++        if (AudioTrack.getUnderrunCountV24) {
++            int underruns = MP_JNI_CALL_INT(p->audiotrack, AudioTrack.getUnderrunCountV24);
++            if (MP_JNI_EXCEPTION_LOG(ao) >= 0)
++                MP_INFO(ao, "PiliExo AudioTrack final underruns=%d\n", underruns);
++        }
+         MP_JNI_CALL_VOID(p->audiotrack, AudioTrack.stop);
+         MP_JNI_EXCEPTION_LOG(ao);
+         MP_JNI_CALL_VOID(p->audiotrack, AudioTrack.flush);
+@@ -642,6 +726,27 @@
+     mp_mutex_destroy(&p->lock);
+ 
+     uninit_jni(ao);
++}
++
++// 独立的采样率策略便于回归检查；设备能力不足时不把请求值当成实际输出。
++static bool piliexo_audiotrack_fast_path(int rate, int channels, bool adaptive, bool pcm)
++{
++    return pcm && channels <= 2 && (!adaptive || rate <= 48000);
++}
++
++static int piliexo_audiotrack_rate(int requested, int native_rate,
++                                  bool adaptive, bool pcm, bool fast_capable)
++{
++    if (native_rate <= 0)
++        return requested;
++    if (!adaptive)
++        return requested < native_rate ? requested : native_rate;
++    // 高采样率与直通不受低延迟目标采样率约束。
++    if (!pcm || requested > 48000)
++        return requested;
++    if (fast_capable && native_rate <= 48000)
++        return native_rate;
++    return requested;
+ }
+ 
+ static int init(struct ao *ao)
+@@ -673,6 +778,10 @@
+         p->format = AudioFormat.ENCODING_PCM_16BIT;
+     }
+ 
++    const bool pcm_output = p->format != AudioFormat.ENCODING_IEC61937;
++    p->high_rate_compat = p->cfg_adaptive_rate && pcm_output && ao->samplerate > 48000;
++    p->low_latency_enabled = p->cfg_low_latency && piliexo_audiotrack_fast_path(
++        ao->samplerate, ao->channels.num, p->cfg_adaptive_rate, pcm_output);
+     if (AudioTrack.getNativeOutputSampleRate) {
+         jint samplerate = MP_JNI_CALL_STATIC_INT(
+             AudioTrack.clazz,
+@@ -681,7 +790,9 @@
+         );
+         if (MP_JNI_EXCEPTION_LOG(ao) == 0) {
+             MP_VERBOSE(ao, "AudioTrack.nativeOutputSampleRate = %d\n", samplerate);
+-            ao->samplerate = MPMIN(samplerate, ao->samplerate);
++            ao->samplerate = piliexo_audiotrack_rate(
++                ao->samplerate, samplerate, p->cfg_adaptive_rate, pcm_output,
++                p->low_latency_enabled && AudioTrackBuilder.setPerformanceMode);
+         }
+     }
+     p->samplerate = ao->samplerate;
+@@ -748,8 +859,25 @@
+     mp_assert(p->size % bps == 0);
+     ao->device_buffer = p->size / bps;
+ 
++    p->legacy_size = p->size;
++    // ao->sstride 要等驱动初始化结束后才填充，此处用已确认的格式和声道数计算。
++    const int frame_size = bps * ao->channels.num;
++    // 仅显式实验参数启用小队列，直通格式与默认构建保留原行为。
++    if (p->low_latency_enabled && AudioTrackBuilder.setPerformanceMode &&
++        p->format != AudioFormat.ENCODING_IEC61937 && p->cfg_buffer_ms > 0) {
++        int frames = MPMAX(1, (int64_t)p->samplerate * p->cfg_buffer_ms / 1000);
++        p->size = frames * frame_size;
++        ao->device_buffer = frames;
++    }
+     p->chunksize = p->size;
+-    p->chunk = talloc_size(ao, p->size);
++    if (p->cfg_chunk_ms > 0 && !p->high_rate_compat && p->format != AudioFormat.ENCODING_IEC61937) {
++        int frames = MPMAX(1, (int64_t)p->samplerate * p->cfg_chunk_ms / 1000);
++        p->chunksize = MPMIN(p->size, frames * frame_size);
++    }
++    MP_VERBOSE(ao, "PiliExo AudioTrack experiment: low_latency=%d buffer=%d chunk=%d stride=%d\n",
++               p->low_latency_enabled, p->size, p->chunksize, frame_size);
++    mp_assert(p->size > 0 && p->chunksize > 0 && p->chunksize % frame_size == 0);
++    p->chunk = talloc_size(ao, p->chunksize);
+ 
+     jobject timestamp = MP_JNI_NEW(AudioTimestamp.clazz, AudioTimestamp.ctor);
+     if (MP_JNI_EXCEPTION_LOG(ao) < 0 || !timestamp) {
+@@ -850,6 +978,10 @@
+     .options   = (const struct m_option[]) {
+         {"pcm-float", OPT_BOOL(cfg_pcm_float)},
+         {"session-id", OPT_INT(cfg_session_id)},
++        {"low-latency", OPT_BOOL(cfg_low_latency)},
++        {"adaptive-rate", OPT_BOOL(cfg_adaptive_rate)},
++        {"buffer-ms", OPT_INT(cfg_buffer_ms), M_RANGE(0, 1000)},
++        {"chunk-ms", OPT_INT(cfg_chunk_ms), M_RANGE(0, 1000)},
+         {0}
+     },
+     .options_prefix = "audiotrack",

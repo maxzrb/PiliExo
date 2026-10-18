@@ -7,6 +7,12 @@ import 'package:flutter/scheduler.dart';
 abstract final class PlaybackExperiment {
   static const enabled = bool.fromEnvironment('PILI_PLAYBACK_DIAGNOSTICS');
   static const nativeLogs = bool.fromEnvironment('PILI_MPV_NATIVE_LOGS');
+  static const transitionProbe =
+      enabled && bool.fromEnvironment('PILI_TRANSITION_PROBE');
+  static const sampleMilliseconds = int.fromEnvironment(
+    'PILI_PLAYBACK_SAMPLE_MS',
+    defaultValue: 500,
+  );
   static const operatingRate = int.fromEnvironment(
     'PILI_MPV_OPERATING_RATE',
     defaultValue: -1,
@@ -53,7 +59,7 @@ class PlaybackExperimentRecorder {
 
   void event(String event, Map<String, Object?> values) {
     if (!PlaybackExperiment.enabled) return;
-    debugPrint(
+    debugPrintSynchronously(
       'PILI_PLAYBACK ${jsonEncode({
         'event': event,
         'epochMs': DateTime.now().millisecondsSinceEpoch,
@@ -77,6 +83,10 @@ class PlaybackExperimentRecorder {
       'speed',
       'audio-pts',
       'video-pts',
+      'time-pos',
+      'estimated-frame-number',
+      'audio-speed-correction',
+      'vo-delayed-frame-count',
       'avsync',
       'frame-drop-count',
       'decoder-frame-drop-count',

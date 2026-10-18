@@ -1,1 +1,2 @@
 *.patch text eol=lf
+patches/mpv/*.patch whitespace=-blank-at-eol

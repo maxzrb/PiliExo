@@ -85,6 +85,11 @@ abstract final class Update {
     if (kDebugMode) return;
     SmartDialog.dismiss();
     try {
+      final current = ReleaseVersion.current;
+      if (current == null) {
+        if (!isAuto) SmartDialog.showToast('当前构建缺少有效版本信息，暂无法检查更新');
+        return;
+      }
       final res = await Request().get(
         Api.latestApp,
         options: Options(
@@ -94,8 +99,7 @@ abstract final class Update {
       );
       final data = _asMap(res.data);
       final latest = ReleaseVersion.tryParse(data?['tag_name']?.toString());
-      final current = ReleaseVersion.current;
-      if (data == null || latest == null || current == null) {
+      if (data == null || latest == null) {
         if (!isAuto) {
           SmartDialog.showToast('检查更新失败，Release 标签格式不受支持');
         }

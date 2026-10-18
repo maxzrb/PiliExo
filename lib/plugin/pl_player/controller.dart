@@ -35,12 +35,15 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/danmaku_options.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/decoder_operating_rate.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/mpv_audio_options.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/media_bitrate.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_runtime_observer.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_experiment.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_drop_accounting.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_power_probe.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_rate_coordinator.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_transition_probe.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
@@ -104,6 +107,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     const PlaybackInsightSnapshot(),
   );
   PlaybackTelemetry _playbackTelemetry = const PlaybackTelemetry();
+  final _insightClock = Stopwatch()..start();
+  final _dropAccounting = PlaybackDropAccounting();
   num? _media3VideoBitrateBitsPerSecond;
   num? _media3AudioBitrateBitsPerSecond;
   num? _media3MediaBitrateBitsPerSecond;
@@ -191,6 +196,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _resetPlaybackInsight() {
     _stopBandwidthRefresh();
+    _dropAccounting.reset();
     _playbackTelemetry = const PlaybackTelemetry();
     _media3VideoBitrateBitsPerSecond = null;
     _media3AudioBitrateBitsPerSecond = null;
@@ -199,10 +205,12 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _mpvRuntimeObserver = null;
     _mpvMediaBitrateSampler?.reset();
     _mpvMediaBitrateSampler = null;
-    _notifyPlaybackInsight();
+    playbackInsight.value = const PlaybackInsightSnapshot();
   }
 
-  PlaybackInsightSnapshot get playbackInsightSnapshot {
+  PlaybackInsightSnapshot get playbackInsightSnapshot => playbackInsight.value;
+
+  PlaybackInsightSnapshot get _rawPlaybackInsightSnapshot {
     final hdr = _hdrMedia3Controller;
     if (hdr != null) {
       final bufferedMs = (hdr.bufferedPosition - hdr.position).inMilliseconds
@@ -351,11 +359,31 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _playbackTelemetry = _playbackTelemetry.copyWith(
       bandwidthEstimate: _formatBitrate(_currentMediaBitrate(sampleMpv: true)),
     );
-    _notifyPlaybackInsight();
+    _publishPlaybackInsight(finishInterval: true);
   }
 
   void _notifyPlaybackInsight([Object? _]) {
-    playbackInsight.value = playbackInsightSnapshot;
+    _publishPlaybackInsight();
+  }
+
+  void _publishPlaybackInsight({bool finishInterval = false}) {
+    final raw = _rawPlaybackInsightSnapshot;
+    final now = _insightClock.elapsedMilliseconds;
+    if (raw.firstFrame && raw.isPlaying) _dropAccounting.firstFrame(now);
+    if (raw.droppedFramesAvailable) {
+      _dropAccounting.sample(
+        raw.droppedFrames,
+        nowMs: now,
+        finishInterval: finishInterval,
+        isPlaying: raw.isPlaying,
+        isBuffering: raw.isBuffering,
+      );
+    }
+    playbackInsight.value = raw.withDropCounts(
+      droppedFrames: _dropAccounting.droppedFrames,
+      recentDroppedFrames: _dropAccounting.recentDroppedFrames,
+      excludedDroppedFrames: _dropAccounting.excludedDroppedFrames,
+    );
   }
 
   static String _formatResolution(int width, int height) =>
@@ -512,6 +540,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Timer? _playbackExperimentTimer;
   bool _playbackExperimentDecoderReported = false;
   int _rateCommandSequence = 0;
+  PlaybackTransitionProbe? _transitionProbe;
+  bool _transitionProbeStarted = false;
   PlaybackPowerProbe? _powerProbe;
   bool _powerProbeStarted = false;
 
@@ -1248,7 +1278,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
             player: player,
             media3: hdr,
             sourceFrameRate: source.videoFrameRate,
-            telemetry: () => playbackInsightSnapshot,
+            telemetry: () => _rawPlaybackInsightSnapshot,
             ambientTextureId: () => statusBarAmbientTexture.value?.textureId,
             isCurrent: () =>
                 identical(player, _videoPlayerController) &&
@@ -1340,9 +1370,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     assert(_videoPlayerController == null);
     final opt = {
       'video-sync': Pref.videoSync,
-      if (PlaybackExperiment.nativeLogs)
-        'msg-level': 'all=error,vd=debug,ffmpeg/video=debug',
-      if (Platform.isAndroid) 'ao': Pref.audioOutput,
+      if (PlaybackExperiment.nativeLogs) 'msg-level': 'all=error,vd=debug,ffmpeg/video=debug,cplayer=debug,ao=debug,af=debug',
+      ...MpvAudioOptions.forOutput(
+        isAndroid: Platform.isAndroid,
+        output: Pref.audioOutput,
+        audioTrackCandidate: const bool.fromEnvironment(
+          'PILI_AUDIO_TRACK_CANDIDATE',
+        ),
+      ),
       'volume':
           (PlatformUtils.isMobile ? Pref.playerVolume : volume.value * 100)
               .toString(),
@@ -2282,6 +2317,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void _onPlaybackRateConfirmed(double speed) {
+    _dropAccounting.speedTransition(_insightClock.elapsedMilliseconds);
     if (!isLive) _playbackSpeed.value = speed;
     _updatePlaybackState();
     if (danmakuController != null) {
@@ -2327,7 +2363,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       'af': player.getProperty('af'),
     });
     _playbackExperimentTimer = Timer.periodic(
-      const Duration(milliseconds: 500),
+      Duration(
+        milliseconds: PlaybackExperiment.sampleMilliseconds.clamp(20, 500),
+      ),
       (_) {
         if (!identical(player, _videoPlayerController)) return;
         // 起播事件可能早于Codec创建，另存一次解码就绪后的真实后端信息。
@@ -2354,9 +2392,23 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         );
       },
     );
+    if (PlaybackExperiment.transitionProbe && !_transitionProbeStarted) {
+      _transitionProbeStarted = true;
+      final probe = _transitionProbe = PlaybackTransitionProbe();
+      unawaited(
+        probe.run(
+          player: player,
+          setRate: setPlaybackSpeed,
+          isCurrent: () =>
+              identical(player, _videoPlayerController) && _playerCount > 0,
+          recorder: _playbackExperiment,
+        ),
+      );
+    }
   }
 
   void _stopPlaybackExperiment() {
+    _transitionProbe?.cancel();
     _playbackExperimentTimer?.cancel();
     _playbackExperimentTimer = null;
     _playbackExperiment.dispose();

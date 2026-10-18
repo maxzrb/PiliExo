@@ -164,6 +164,57 @@ void main() {
     expect(find.text('1920×1080'), findsNothing);
   });
 
+  testWidgets('隐藏HUD不提示起播三帧，确认的稳定异常仍能弹出', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.smart;
+    controller.showControls.value = false;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 320,
+          height: 200,
+          child: PlaybackInsightHud(
+            controller: controller,
+            isFullScreen: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    const excluded = PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      excludedDroppedFrames: 3,
+    );
+    expect(excluded.rawDroppedFrames, 3);
+    expect(excluded.statusText, '实时数据');
+    controller.playbackInsight.value = excluded;
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    await tester.pump();
+    expect(find.text('1920×1080'), findsNothing);
+
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 3,
+      recentDroppedFrames: 3,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1920×1080'), findsOneWidget);
+  });
+
+  test('历史异常保留详情计数，恢复后状态不再持续报掉帧', () {
+    const recovered = PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 10,
+      excludedDroppedFrames: 3,
+    );
+    expect(recovered.statusText, '实时数据');
+    expect(recovered.rawDroppedFrames, 13);
+  });
+
   testWidgets('摘要黑色背景区域可以点击展开详情', (tester) async {
     playbackInsightModeNotifier.value = PlaybackInsightMode.always;
     controller.playbackInsight.value = const PlaybackInsightSnapshot(
