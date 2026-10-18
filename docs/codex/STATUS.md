@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-18 23:43 (+08:00)
+- 更新时间：2026-10-19 00:08 (+08:00)
 - 当前决定：用户已确认音频与长按倍速方案；保留不等待旧倍速回复、默认2倍/可自定义、autosync=0、松手恢复基础倍速80ms后仅检查一次avsync，>0.3秒执行absolute+exact。此前周期seek、keyframes倒流、解码跳帧/降倍率、AAudio会话/媒体类型实验均不恢复。
-- 工作分支：`merge/upstream-2.1.4-20260913`。正式源码 `d6e3f1199b513c3ba7347cc1c1e35ed67473c072`，annotated tag `v26.10.18.1` 固定指向该源码；后续记录/约束提交不改写正式标签。
-- 发布状态：[v26.10.18.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.1) 已公开且为GitHub latest，应用26.10.18+1 / Android code31。双APK及SHA256SUMS均核对GitHub digest/长度，并从ModelScope完整回读核对哈希/长度；本机在dist/release/v26.10.18.1。
+- 工作分支：`merge/upstream-2.1.4-20260913`。正式源码 `fc3287c930462bdd5e765b48af620106cc765351`，annotated tag `v26.10.18.2` 固定指向该源码；收尾文档提交不改写正式标签。
+- 发布状态：[v26.10.18.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.2) 已公开且为GitHub latest，应用26.10.18+2 / Android code32。实际北京时间2026-10-19 00:05:19发布，用户明确要求跨日保留原编号。双APK及SHA256SUMS已核对GitHub digest/长度，并从ModelScope完整回读核对；本机dist/release/v26.10.18.2。
 - 用户最新约束：不得使用GitHub Actions构建；只能本地构建、打包、签名。仓库Actions设置已禁用并多次回读enabled=false，禁止重新启用或dispatch。根AGENTS.md、README及发布流程已记录。
 - Actions事件：推送d6e3f1199触发39113935580，工作流校验失败、0构建任务，已向用户说明；关闭Actions后推送标签无新增运行。旧任务/草稿不删除。
 - 洞察清理/回归：保留起播、进入/退出倍速各5帧容差及“近1秒丢帧 xx · 总丢帧 xx”和持续黄灯。23:24清理包f230ac4e…被用户反馈松手持续卡顿；该包额外更换原生库并启用AudioTrack候选参数，与22:12已通过exact手测包不等价。已撤销这两项额外变化，23:40:47覆盖恢复包b26ccb1b…；用户同视频/画质确认“短暂停顿后恢复正常，不再持续追帧”。此组合为当前已验收基线，不再擅自切换。
@@ -12,9 +12,10 @@
 - 真机：8e AN5UUT6225004417，MEP-AN00 Android17，只支持arm64。正式ARM64覆盖安装成功，系统26.10.18/code31，回拉hash2770e485…一致，首页52节点、PID11051，无启动致命异常。此前相同播放器/原生核心用户已确认流畅、原音调正常；本次仅安装/版本/启动校验，未自动跑播放矩阵。v7仅构建和静态门禁，8e无法运行32位包。
 - 已发布版本验证：26文件132项Flutter通过；真实18.1/code31定义的音频/版本10项通过；C策略5项通过；Analyze 0error/0warning、62info。README/Flutter3.47.7/29插件、R8/DEX/FFmpeg/唯一ABI/V2原签名、64位全部ELF16KB段对齐通过。发布门禁均保存在本机8e实验目录。
 - 正式签名：仍b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51，与旧正式包一致。此前旧版/不同密钥提示源于测试包缺少pili.*参数，正式包完整metadata已与manifest/AOT核对。
+- 当前正式播放基线：arm64 libmpv=e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98，v7=a310c26214decfa37a515a20b308ea512b002dab26bc16a8e7b76d4be9761f0d；不启用AudioTrack候选驱动参数。正式ARM64全部7个非Dart库与已确认b26ccb1b…手测包一致。
 - 历史已发布版本原生artifact（不能直接替换当前exact手测组合）：arm64 d822d86b…（16,498,608字节）、v7 d2c4b53d…（12,749,372字节），补丁/sources清单已入Git。AAudio原生源码与v0.41.0完全一致。外部native prefix曾重编译临时AAudio策略，不得直接拿来替换已验证artifact；需按原源码重新构建后再验证。
-- 正式APK：arm64 SHA256=2770e485126ae409902df66da70145f70937b6f24f5fa1ce4ca9015eb30305d1（33,329,272字节）；v7 SHA256=bfd799f2623a040e0cc09b7230b9c1bd7ffded9b8b59d47aef74dc8ca70fad85（32,293,000字节）。
-- 默认分支main：独立README提交`8609b01375f4455444ac5361b767cd5e66b64334`，已回读与当前README一致，未合并应用源码到main。
+- 正式APK：arm64 SHA256=a76866a523802ded189c398cb82fed9ba9655d8a890c291c64b2350b47ce5313（32,764,024字节）；v7 SHA256=24c38e891d23595f0429518754692a8d10e658c9ec17b4a540f8370289ba8dfc（32,313,480字节）。
+- 默认分支main：独立README提交`22a11f575c95017e00c792ec4e4f13ae27a75143`，已回读与当前README一致，仅同步下载/版本说明，未合并应用源码到main。
 - 工具链：Flutter3.47.7/Dart3.13.5、NDK28.2.13676358，本机C盘受管树C:/Users/maxzr/.codex/worktrees/8e-transition-20261017/piliexo detached于正式源码，保留缓存/签名配置。诊断工作先stash保存（preserve 8e diagnostic source before v26.10.18.1 formal build）。所有构建在本机离线Gradle执行，无Actions产物。
 - 构建注意：直接离线Gradle需同时核对ignored android/local.properties的flutter.versionName、生成pili_release.json和Dart defines；本轮门禁抓到manifest旧日期后已改为18并重新构建。Windows D盘文件/Hook锁发生过工具中断，最终均重试到通过；发布状态脚本迁移到C盘并使用原子写入。
 - 上游边界：保持88eca305d，本次未新增上游合并；功耗/GPU研究继续暂停，桌面图标问题继续忽略。用户tmp/保留，不纳入Git。
@@ -1649,3 +1650,19 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 固定当前已验收组合：libmpv e03d7145…以及其他6个非Dart原生库与22:12包一致；AudioTrack不额外开启候选驱动选项，OpenSL/AAudio原参数和AO顺序保持；保留当前controller的一次80ms/0.3秒/absolute+exact方案、长按底部灰块修复以及洞察三阶段各5帧容差和持续总数/黄灯。
 - 证据支持恢复原播放组合后同场景症状消失；本轮未分别隔离验证新原生库与候选音频参数，不能将问题单独归因于其中一项。停止继续更换音频/核心或增加诊断、周期重定位。未来只做洞察清理时，不得顺带替换原生库或启用候选参数。
 - 当前已安装版本26.10.18/code31，原签名、回拉哈希一致，45项相关测试、静态检查和打包门禁均通过。源码/状态/中文进度仍未提交，建议按这份已确认组合统一提交；未发布、未推送、无GitHub Actions。版本号不变，不更新版本迭代记录。
+
+
+## 2026-10-19 00:08 v26.10.18.2 正式发布完成（按用户要求保留原编号）
+
+- 用户要求发布新Release，原计划为2026-10-18当天第二版v26.10.18.2，Android code31→32。完成双架构构建校验后，NTH测试机已断开，ADB仅有另一台设备，未擅自对其安装。项目流程要求正式包覆盖安装并进入首页后再公开；用户对重连要求明确答复“不必了”，并在跨日后明确要求“按原编号发布”，因此不再等待设备、沿用v26.10.18.2/code32。未创建v26.10.19.1，也没有重编号或改写旧正式标签。实际北京时间2026-10-19 00:05:19公开。
+- 源码提交fc3287c930462bdd5e765b48af620106cc765351，annotated tag v26.10.18.2；分支与标签使用git push --atomic一并推送。提交仅包含已通过手测的最终播放组合、洞察恢复/清理、长按设置与底部灰块修复、相关回归和版本文档；签名密钥/密码/令牌、pili_release.json、APK及用户tmp/未纳入提交。
+- 发布组合固定：保留不等待旧倍速回复、默认2倍/自定义、autosync=0、松手恢复基础倍速80ms后仅检查一次avsync，>0.3秒按audio-pts做一次absolute+exact。保留底部灰块修复；起播/进入及退出倍速各最多排除5帧，洞察为近1秒/总丢帧并持续保留黄灯。无周期seek、keyframes或AudioTrack候选驱动参数、AAudio会话/媒体类型实验。
+- 本机C盘受管树同步并逐字节核对D盘源码；Flutter3.47.7/README/29插件门禁通过。完整正式pili.name=26.10.18、releaseBuild=2、code=32、hash=fc3287c930462bdd5e765b48af620106cc765351与时间注入，Android local.properties/显式Gradle版本参数一致。首轮双ABI离线构建因armeabi_v7a_release Maven仓库关联缓存缺失而未完成；已找到同engine deb287481e3ce9468f3434937ced4240a70539ca的现有JAR/POM，校验SHA1与Gradle缓存目录值一致，用限定当前Android根工程及两项ABI模块的本机Maven init脚本补索引，未修改公共依赖、SDK或播放核心。重试本地离线构建成功1m44s。
+- 验证：此前完整29文件143项测试记录保留，最终音频恢复后的45项相关测试通过；本轮携带正式32/2元数据的版本4项+音频5项共9项通过。全量Dart analyze退出0、0 error/0 warning、59项既有info。原签名、唯一ABI、manifest/AOT版本来源、FFmpeg/R8映射/DEX插件注册、全部原生ELF架构及APK zipalign -P16通过；ARM64全部ELF LOAD段16KB对齐，v7按32位4KB标准核对（包括其FFmpeg库），不虚报32位全部ELF16KB。
+- ARM64的全部7个非Dart原生库与用户已确认b26ccb1b…手测包逐字节一致，mpv=e03d7145…。v7 mpv为同代公开包对应a310c262…，其余插件来自当前锁定源码构建；v7 Flutter 3.47.7引擎与Gradle缓存中的同engine JAR经同版NDK --strip-unneeded后逐字节一致。不能直接把历史17.1包不同Flutter/本机构建插件的整库二进制当成当前32位基线。包内AOT包含absolute+exact、新洞察文本及正式提交哈希，不含已否决候选参数或实验探针标记。
+- 正式APK：arm64 32,764,024字节，SHA256=a76866a523802ded189c398cb82fed9ba9655d8a890c291c64b2350b47ce5313；v7 32,313,480字节，SHA256=24c38e891d23595f0429518754692a8d10e658c9ec17b4a540f8370289ba8dfc。两包证书仍b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。SHA256SUMS.txt（220字节）自身SHA256=155f9dbb6077a467b2d6b6f8804bea63a3395db7dddd0935ca1f7983e0465a39。
+- GitHub Release 416551720 已公开且latest：https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.2；三项远端digest和长度与本地完全一致。ModelScope AerithDream/PiliExo 的releases/v26.10.18.2三项文件上传并完整回读核对通过。首项上传后公开下载路径短暂404，API文件列表已确认上传成功，随后HEAD返回200；恢复后加入限次404重试完成完整回读，未更换应用镜像路径。历史草稿不删除，本次首次中断生成的草稿亦保留；实际公开Release以latest ID为准。
+- GitHub和镜像上传使用已有凭据管理器/SDK登录，仅在内存使用凭据，无凭据写入源码或日志。发布状态脚本置于C:/Users/maxzr/.codex/release-publish-20261018-2，构建/测试/对齐/AOT/上传回读门禁在ignored dist/release/v26.10.18.2。
+- 默认main仅README独立同步，最终提交22a11f575c95017e00c792ec4e4f13ae27a75143；回读与当前README相同，已说明实际19日发布但按用户要求沿用18.2编号。未合并应用源码到main。发布分支/标签/README推送前后多次回读Actions enabled=false，workflow total_count始终4，未新增构建或触发运行。
+- 本次正式APK未再次安装真机（用户明确跳过），测试机仍为此前已确认的26.10.18/code31 b26ccb1b…手测包；不宣称正式code32首页或新的完整播放矩阵通过。旧机在相同播放核心/音频/控制代码组合上的用户确认仍有效，不能扩大到所有设备或32位真机。未对另一台当前在线设备进行安装。
+- 收尾仅提交README实际发布日期、版本记录和本条状态/中文进度；正式标签继续固定fc3287c93，不改写。保留用户tmp/。下一步如有新反馈再处理，不继续音频/功耗/图标实验。
