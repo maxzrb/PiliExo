@@ -2,14 +2,16 @@ import 'package:PiliPlus/plugin/pl_player/utils/av_sync_guard.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('音画差不超过 0.3 秒时交给播放器追帧', () {
+  test('音画差不超过 1 秒时交给播放器追帧', () {
     expect(AvSyncGuard.needsSeek(0), isFalse);
-    expect(AvSyncGuard.needsSeek(0.299), isFalse);
     expect(AvSyncGuard.needsSeek(0.3), isFalse);
+    expect(AvSyncGuard.needsSeek(0.8), isFalse);
+    expect(AvSyncGuard.needsSeek(0.999), isFalse);
+    expect(AvSyncGuard.needsSeek(1.0), isFalse);
   });
 
-  test('音画差超过 0.3 秒时需要重定位', () {
-    expect(AvSyncGuard.needsSeek(0.301), isTrue);
+  test('音画差超过 1 秒时需要重定位', () {
+    expect(AvSyncGuard.needsSeek(1.001), isTrue);
     expect(AvSyncGuard.needsSeek(4.5), isTrue);
   });
 

@@ -2166,6 +2166,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (_hdrMedia3Controller case final hdr?) {
       danmakuController?.clear();
       try {
+        _beginDropTransition();
         await hdr.seekTo(position);
       } catch (e) {
         if (kDebugMode) debugPrint('seek failed: $e');
@@ -2182,6 +2183,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
       danmakuController?.clear();
       try {
+        // 等待缓冲结束后、真正发送 seek 前再开启容差，避免等待期间额度过期。
+        _beginDropTransition();
         await _videoPlayerController?.seek(position);
         _updateIOSPip(position);
       } catch (e) {
@@ -2226,11 +2229,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     await player.setRate(speed, synchronized: false);
   }
 
-  void _beginDropTransition() {
-    // 发送切速前结算已有丢帧；迟到回执不能重置五帧容差。
+  void _beginDropTransition({bool reuseAllowance = false}) {
+    // 先建立容差，再收取后端计数并一次性发布过滤后的快照，避免先告警再排除。
+    _dropAccounting.speedTransition(
+      _insightClock.elapsedMilliseconds,
+      reuseAllowance: reuseAllowance,
+    );
     _mpvRuntimeObserver?.poll();
     _publishPlaybackInsight();
-    _dropAccounting.speedTransition(_insightClock.elapsedMilliseconds);
   }
 
   void _onPlaybackRateConfirmed(double speed) {
@@ -2273,6 +2279,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       await seekTo(Duration.zero, isSeek: false);
     }
 
+    if (!isPlaying) _beginDropTransition(reuseAllowance: repeat);
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.play();
     } else {
@@ -2291,6 +2298,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     await setLongPressStatus(false);
     _playWhenReady = false;
     _stopBandwidthRefresh();
+    if (isPlaying) _beginDropTransition(reuseAllowance: true);
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.pause();
     } else {
@@ -2433,7 +2441,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
-  /// 长按结束后只检查一次：0.3 秒内交给播放器追帧，超过才重定位一次。
+  /// 长按结束后只检查一次：1 秒内交给播放器追帧，超过才重定位一次。
   Future<void> _resyncAfterLongPress(
     int revision,
     Player? player,
@@ -2462,6 +2470,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
           audioPts <= 0) {
         return;
       }
+      _beginDropTransition(reuseAllowance: true);
       await player.command([
         'seek',
         audioPts.toStringAsFixed(3),

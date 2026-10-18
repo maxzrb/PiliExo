@@ -127,20 +127,69 @@ void main() {
     });
   }
 
-  test('计数回退或主动切源会清除旧异常，重新给予五帧起播容差', () {
+  test('后端清零后保留历史总数，不重新发放起播容差', () {
     final c = stable()
       ..sample(15, nowMs: 5000, finishInterval: true)
-      ..sample(0, nowMs: 6000, finishInterval: true)
-      ..sample(6, nowMs: 7000, finishInterval: true);
-    expect(c.droppedFrames, 1);
-    expect(c.excludedDroppedFrames, 5);
-    c
+      ..sample(0, nowMs: 6000, finishInterval: true);
+    expect(c.droppedFrames, 15);
+    expect(c.recentDroppedFrames, 0);
+    c.sample(6, nowMs: 7000, finishInterval: true);
+    expect(c.droppedFrames, 21);
+    expect(c.rawDroppedFrames, 21);
+    expect(c.excludedDroppedFrames, 0);
+  });
+
+  test('只有显式新会话重置会清除累计并恢复起播容差', () {
+    final c = stable()
+      ..sample(15, nowMs: 5000, finishInterval: true)
       ..reset()
       ..firstFrame(8000)
       ..sample(5, nowMs: 9000, finishInterval: true);
     expect(c.droppedFrames, 0);
     expect(c.rawDroppedFrames, 5);
+    expect(c.excludedDroppedFrames, 5);
     expect(c.recentDroppedFrames, 0);
+  });
+
+  test('预先开启退出容差：后端清零与被排除的帧均不清历史或先计入再扣回', () {
+    final c = stable()..sample(12, nowMs: 4500, finishInterval: true);
+    final totals = [c.droppedFrames];
+    c.speedTransition(5000);
+    for (final (total, time) in [(0, 5100), (3, 5200), (5, 5300)]) {
+      c.sample(total, nowMs: time, finishInterval: true);
+      totals.add(c.droppedFrames);
+      expect(c.recentDroppedFrames, 0);
+    }
+    expect(totals, [12, 12, 12, 12]);
+    c.sample(7, nowMs: 5400, finishInterval: true);
+    expect(c.droppedFrames, 14);
+    expect(c.recentDroppedFrames, 2);
+    expect(c.rawDroppedFrames, 19);
+    expect(c.excludedDroppedFrames, 5);
+  });
+
+  test('松手后exact复用已消耗的额度，不能多排除五帧', () {
+    final c = stable()
+      ..sample(12, nowMs: 4500, finishInterval: true)
+      ..speedTransition(5000)
+      ..sample(15, nowMs: 5050, finishInterval: true)
+      ..speedTransition(5080, reuseAllowance: true)
+      ..sample(0, nowMs: 5100)
+      ..sample(4, nowMs: 5500, finishInterval: true);
+    expect(c.droppedFrames, 14);
+    expect(c.recentDroppedFrames, 2);
+    expect(c.excludedDroppedFrames, 5);
+    expect(c.rawDroppedFrames, 19);
+  });
+
+  test('负数或重复计数不重置基线，也不重复累计历史', () {
+    final c = stable()
+      ..sample(12, nowMs: 5000, finishInterval: true)
+      ..sample(-1, nowMs: 5500)
+      ..sample(12, nowMs: 5600)
+      ..sample(13, nowMs: 6000, finishInterval: true);
+    expect(c.droppedFrames, 13);
+    expect(c.recentDroppedFrames, 1);
   });
 
   test('重复界面快照不重复计数或消耗近期告警，下一秒正常归零', () {

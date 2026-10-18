@@ -5,13 +5,14 @@ class MpvRuntimeMetrics {
   int? forwardBytes;
   double? cacheDuration;
   int recentDroppedFrames = 0;
-  int? _previousDroppedFrames;
+  int? _previousOutputDroppedFrames;
+  int? _previousDecoderDroppedFrames;
+  int _totalDroppedFrames = 0;
 
   bool get droppedFramesAvailable =>
       outputDroppedFrames != null || decoderDroppedFrames != null;
 
-  int get droppedFrames =>
-      (outputDroppedFrames ?? 0) + (decoderDroppedFrames ?? 0);
+  int get droppedFrames => _totalDroppedFrames;
 
   double? get mediaBitsPerSecond {
     final bytes = forwardBytes;
@@ -27,14 +28,23 @@ class MpvRuntimeMetrics {
     return value.isFinite && value > 0 ? value : null;
   }
 
-  /// 每次采样完成后计算增量；切源或 seek 导致计数回退时重新建立基线。
+  /// 输出和解码计数独立累计，单项清零或暂时未知不能清掉历史或相互抵扣。
   void finishSample() {
-    final current = droppedFramesAvailable ? droppedFrames : null;
-    final previous = _previousDroppedFrames;
     recentDroppedFrames =
-        current != null && previous != null && current >= previous
-        ? current - previous
-        : 0;
-    _previousDroppedFrames = current;
+        _delta(outputDroppedFrames, _previousOutputDroppedFrames) +
+        _delta(decoderDroppedFrames, _previousDecoderDroppedFrames);
+    _totalDroppedFrames += recentDroppedFrames;
+    if (outputDroppedFrames != null && outputDroppedFrames! >= 0) {
+      _previousOutputDroppedFrames = outputDroppedFrames;
+    }
+    if (decoderDroppedFrames != null && decoderDroppedFrames! >= 0) {
+      _previousDecoderDroppedFrames = decoderDroppedFrames;
+    }
+  }
+
+  static int _delta(int? current, int? previous) {
+    if (current == null || current < 0) return 0;
+    if (previous == null || current < previous) return current;
+    return current - previous;
   }
 }

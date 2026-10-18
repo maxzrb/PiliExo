@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// 起播和每次切速最多排除五帧，其他播放丢帧立即计入洞察。
+/// 起播和每次播放状态切换最多排除五帧，其他播放丢帧立即计入洞察。
 /// 复用既有采样，保留原始计数，不根据后端计数断言设备故障。
 class PlaybackDropAccounting {
   static const startupWindowMs = 3000;
@@ -15,13 +15,14 @@ class PlaybackDropAccounting {
   int? _windowUntilMs;
   int _remainingAllowance = transitionAllowanceFrames;
   int _intervalFrames = 0;
+  int _lastBackendTotal = 0;
 
   void reset() {
     rawDroppedFrames = droppedFrames = recentDroppedFrames = 0;
     _startupPending = true;
     _windowUntilMs = null;
     _remainingAllowance = transitionAllowanceFrames;
-    _intervalFrames = 0;
+    _intervalFrames = _lastBackendTotal = 0;
   }
 
   void firstFrame(int nowMs) {
@@ -31,11 +32,13 @@ class PlaybackDropAccounting {
     // 首帧前后的起播共用五帧，首帧事件不能再次补满容差。
   }
 
-  void speedTransition(int nowMs) {
+  void speedTransition(int nowMs, {bool reuseAllowance = false}) {
     if (_startupPending) return;
+    final reuse =
+        reuseAllowance && _windowUntilMs != null && nowMs <= _windowUntilMs!;
     _windowUntilMs = nowMs + transitionWindowMs;
-    // 进入与退出倍速各有五帧；未使用的额度不叠加到下一次切速。
-    _remainingAllowance = transitionAllowanceFrames;
+    // 松手后的一次 exact 与退出倍速共用五帧，不因后续重定位再次补满。
+    if (!reuse) _remainingAllowance = transitionAllowanceFrames;
   }
 
   void sample(
@@ -45,14 +48,11 @@ class PlaybackDropAccounting {
     bool isPlaying = true,
     bool isBuffering = false,
   }) {
-    total = math.max(0, total);
-    if (total < rawDroppedFrames) {
-      // 切源或后端计数重置时不继承旧异常和容差。
-      reset();
-      firstFrame(nowMs);
-    }
-    var delta = total - rawDroppedFrames;
-    rawDroppedFrames = total;
+    if (total < 0) return;
+    // 后端可在 seek 或重建输出时清零；历史总数只由显式新会话 reset 清除。
+    var delta = total >= _lastBackendTotal ? total - _lastBackendTotal : total;
+    _lastBackendTotal = total;
+    rawDroppedFrames += delta;
     if (!isPlaying || isBuffering) {
       _intervalFrames = recentDroppedFrames = 0;
       // 暂停和缓冲不授予新的切速容差，恢复后继续正常计数。
