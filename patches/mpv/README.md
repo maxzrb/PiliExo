@@ -6,7 +6,7 @@
 
 本轮工具链为 Windows NDK 28.2.13676358、API 24、CMake 3.22.1、Meson 1.11.2、Ninja 1.13.2。分别使用 `aarch64-linux-android24-clang` 和 `armv7a-linux-androideabi24-clang`，依赖静态链接；C++ 使用 `c++_static` 与 `c++abi`，禁止把主机 RPATH 或主机 DLL 带进 Android 库。共享库链接要求 `--no-undefined` 和 `-z,max-page-size=16384`。mpv 启用 libmpv、AAudio、OpenSL ES、AudioTrack、Android 硬解，禁用 cplayer、GPL、Lua、Vulkan 与文档生成。32 位 FFmpeg 使用 ARMv7/NEON，两个架构分别安装到独立前缀，禁止共用编译产物。
 
-正式构建必须先运行 `lib/scripts/build.ps1` 生成当前提交的版本元数据，再同时传入 `PILI_AUDIO_TRACK_CANDIDATE=true`。此开关必须与本目录补丁构建的原生库成对使用；原始 media-kit 库不识别新增 AudioTrack 选项。应用不全局指定 `audio-samplerate`：普通单双声道 PCM 按设备能力申请低延迟，高于 48 kHz 的 PCM 和直通音频保留原请求并避开小缓冲路径。申请采样率不等于证明设备 DAC 原样输出。
+构建必须先运行 `lib/scripts/build.ps1` 生成当前提交的版本元数据。注意：2026-10-18 长按 exact 已通过手测的 22:12 包实际使用原 libmpv（SHA256 `e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98`），AOT 未启用 AudioTrack 候选参数。后续洞察清理包擅自换成下述定制库并启用候选配置后，用户反馈松手持续卡顿复发，因此当前恢复该已验证组合。不能仅以本目录原生策略单测通过为由再次替换现有播放核心。下述适配策略及 `d822d86b…` 定制库仅保留为历史正式包/原生研究记录，不作为当前 exact 手测路线默认。若另行启用新增选项，必须与本目录补丁构建的原生库配套；原始库不识别这些选项。应用不全局指定 `audio-samplerate`：普通单双声道 PCM 按设备能力申请低延迟，高于 48 kHz 的 PCM 和直通音频保留原请求并避开小缓冲路径。申请采样率不等于证明设备 DAC 原样输出。
 
 本地生成常规 Release APK 后，使用 `lib/scripts/package_android_native.py` 分别替换同架构 `libmpv.so`，清理其他 ABI，执行 16 KB zipalign 并使用原正式证书签名。该脚本要求提供预期原生库 SHA-256，校验 ELF 架构、包内其他文件不变、原生库字节一致及签名前后证书一致。发布前还必须核验安装包版本、Dart 元数据、FFmpeg/JNI 注册、原生依赖、导出表和设备覆盖安装。
 

@@ -830,7 +830,8 @@ class _StatusDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = snapshot.lastError.isNotEmpty
         ? const Color(0xFFE57373)
-        : snapshot.recentDroppedFrames > 0 ||
+        : snapshot.droppedFrames > 0 ||
+              snapshot.recentDroppedFrames > 0 ||
               (snapshot.isBuffering && snapshot.playWhenReady)
         ? const Color(0xFFFFB74D)
         : const Color(0xFF66E28A);

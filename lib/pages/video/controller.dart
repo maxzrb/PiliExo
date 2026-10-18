@@ -1,5 +1,3 @@
-import 'package:PiliPlus/plugin/pl_player/utils/playback_power_probe.dart';
-
 import 'dart:async';
 import 'dart:io' show File, Platform;
 import 'dart:math' show min;
@@ -834,14 +832,13 @@ class VideoDetailController extends GetxController
         isMp4: entry.mediaType == 1,
         hasDashAudio: entry.hasDashAudio,
       );
-    } else if (((PlaybackPowerProbe.media3Sdr && bvid == 'BV1a2pr6aEC1') ||
-            HdrPlaybackPolicy.shouldUseMedia3(
-              isAndroid: Platform.isAndroid,
-              isLive: false,
-              isFile: isFileSource,
-              enabled: Pref.enableMedia3Hdr,
-              qualityCode: currentVideoQa.value?.code ?? 0,
-            )) &&
+    } else if (HdrPlaybackPolicy.shouldUseMedia3(
+          isAndroid: Platform.isAndroid,
+          isLive: false,
+          isFile: isFileSource,
+          enabled: Pref.enableMedia3Hdr,
+          qualityCode: currentVideoQa.value?.code ?? 0,
+        ) &&
         data.dash != null) {
       final videoUrls = VideoUtils.getCdnUrls(firstVideo.playUrls);
       final audioUrls = firstAudio == null
@@ -859,9 +856,7 @@ class VideoDetailController extends GetxController
             frameRate: firstVideo.frameRate,
             bitrate: firstVideo.bandWidth,
           ),
-          videoRepresentations: PlaybackPowerProbe.media3Sdr
-              ? const []
-              : _buildHdrRepresentations(),
+          videoRepresentations: _buildHdrRepresentations(),
           audio: audioUrls.isEmpty
               ? null
               : HdrTrackSource(

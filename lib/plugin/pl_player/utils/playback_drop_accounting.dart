@@ -1,63 +1,41 @@
 import 'dart:math' as math;
 
-/// 区分起播/切速重对齐、孤立丢弃与持续播放异常；原始计数始终保留。
-/// 复用既有一秒采样，不增加定时器或原生查询；不根据计数断言设备故障。
+/// 起播和每次切速最多排除五帧，其他播放丢帧立即计入洞察。
+/// 复用既有采样，保留原始计数，不根据后端计数断言设备故障。
 class PlaybackDropAccounting {
   static const startupWindowMs = 3000;
   static const transitionWindowMs = 2000;
-  static const maxContinuousTransitionMs = 6000;
-  static const severeIntervalFrames = 12;
+  static const transitionAllowanceFrames = 5;
 
   int rawDroppedFrames = 0;
   int droppedFrames = 0;
   int recentDroppedFrames = 0;
   int get excludedDroppedFrames => rawDroppedFrames - droppedFrames;
   bool _startupPending = true;
-  bool _settling = true;
   int? _windowUntilMs;
-  int? _transitionBurstStartMs;
-  int? _lastTransitionMs;
+  int _remainingAllowance = transitionAllowanceFrames;
   int _intervalFrames = 0;
-  int _pendingFrames = 0;
-  bool _previousIntervalDropped = false;
 
   void reset() {
     rawDroppedFrames = droppedFrames = recentDroppedFrames = 0;
-    _startupPending = _settling = true;
-    _windowUntilMs = _transitionBurstStartMs = _lastTransitionMs = null;
-    _resetEvidence();
-  }
-
-  void _resetEvidence() {
-    _intervalFrames = _pendingFrames = 0;
-    _previousIntervalDropped = false;
+    _startupPending = true;
+    _windowUntilMs = null;
+    _remainingAllowance = transitionAllowanceFrames;
+    _intervalFrames = 0;
   }
 
   void firstFrame(int nowMs) {
     if (!_startupPending) return;
     _startupPending = false;
     _windowUntilMs = nowMs + startupWindowMs;
-    _transitionBurstStartMs = nowMs;
-    _settling = true;
-    _resetEvidence();
+    // 首帧前后的起播共用五帧，首帧事件不能再次补满容差。
   }
 
   void speedTransition(int nowMs) {
-    final last = _lastTransitionMs;
-    _lastTransitionMs = nowMs;
-    if (last == null || nowMs - last > transitionWindowMs) {
-      _transitionBurstStartMs = nowMs;
-    }
-    final start = _transitionBurstStartMs ??= nowMs;
-    // 连续切速最多宽限六秒，不能反复长按而无限屏蔽真实性能不足。
-    final next = math.min(
-      nowMs + transitionWindowMs,
-      start + maxContinuousTransitionMs,
-    );
-    if (next <= nowMs) return;
-    _windowUntilMs = next;
-    _settling = true;
-    _resetEvidence();
+    if (_startupPending) return;
+    _windowUntilMs = nowMs + transitionWindowMs;
+    // 进入与退出倍速各有五帧；未使用的额度不叠加到下一次切速。
+    _remainingAllowance = transitionAllowanceFrames;
   }
 
   void sample(
@@ -69,46 +47,38 @@ class PlaybackDropAccounting {
   }) {
     total = math.max(0, total);
     if (total < rawDroppedFrames) {
-      // 切源或后端计数重置时不继承旧计数和持续性证据。
-      rawDroppedFrames = droppedFrames = recentDroppedFrames = 0;
-      _resetEvidence();
+      // 切源或后端计数重置时不继承旧异常和容差。
+      reset();
+      firstFrame(nowMs);
     }
-    final delta = total - rawDroppedFrames;
+    var delta = total - rawDroppedFrames;
     rawDroppedFrames = total;
     if (!isPlaying || isBuffering) {
-      // 暂停和网络缓冲不归因为设备性能，恢复时重新收集稳定区间。
-      _resetEvidence();
-      _settling = true;
-      recentDroppedFrames = 0;
+      _intervalFrames = recentDroppedFrames = 0;
+      // 暂停和缓冲不授予新的切速容差，恢复后继续正常计数。
+      if (_windowUntilMs != null && nowMs > _windowUntilMs!) {
+        _windowUntilMs = null;
+        _remainingAllowance = 0;
+      }
       return;
     }
-    final inWindow =
-        _startupPending || (_windowUntilMs != null && nowMs <= _windowUntilMs!);
-    if (inWindow || _settling) {
-      // 丢弃跨越窗口边界的一次采样，避免延迟上报的过渡计数漏进稳定区间。
-      _resetEvidence();
-      recentDroppedFrames = 0;
-      if (finishInterval && !inWindow) _settling = false;
-      return;
+    if (_startupPending || _windowUntilMs != null) {
+      final excluded = math.min(delta, _remainingAllowance);
+      delta -= excluded;
+      _remainingAllowance -= excluded;
+      if (_windowUntilMs != null && nowMs > _windowUntilMs!) {
+        // 边界采样中的延迟上报仍受五帧总额约束，随后立即关闭窗口。
+        _windowUntilMs = null;
+        _remainingAllowance = 0;
+      }
     }
+    droppedFrames += delta;
     _intervalFrames += delta;
-    if (!finishInterval) return;
-    final frames = _intervalFrames;
-    _intervalFrames = 0;
-    recentDroppedFrames = 0;
-    if (frames == 0) {
-      _pendingFrames = 0;
-      _previousIntervalDropped = false;
-      return;
+    if (finishInterval) {
+      recentDroppedFrames = _intervalFrames;
+      _intervalFrames = 0;
+    } else if (delta > 0) {
+      recentDroppedFrames = _intervalFrames;
     }
-    // 连续两个采样区间都有丢帧才确认为持续异常；严重突发直接报告。
-    if (_previousIntervalDropped || frames >= severeIntervalFrames) {
-      recentDroppedFrames = _pendingFrames + frames;
-      droppedFrames += recentDroppedFrames;
-      _pendingFrames = 0;
-    } else {
-      _pendingFrames = frames;
-    }
-    _previousIntervalDropped = true;
   }
 }

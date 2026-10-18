@@ -45,7 +45,6 @@ import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/gesture_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
-import 'package:PiliPlus/plugin/pl_player/utils/playback_power_probe.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/app_bar_ani.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/backward_seek.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/bottom_control.dart';
@@ -343,9 +342,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     );
 
     if (Platform.isAndroid && widget.videoDetailController != null) {
-      if (PlaybackPowerProbe.enabled) {
-        PlaybackPowerProbe.ambientEnabled.addListener(_scheduleAmbientCapture);
-      }
       plPlayerController.addStatusLister(_onAmbientPlaybackStatusChanged);
       AmbientFramePolicy.optimized.addListener(_scheduleAmbientCapture);
       _ambientFullscreenListener = plPlayerController.isFullScreen.listen(
@@ -367,10 +363,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   bool get _shouldCaptureAmbientFrame {
-    if (PlaybackPowerProbe.enabled &&
-        !PlaybackPowerProbe.ambientEnabled.value) {
-      return false;
-    }
     final detailController = widget.videoDetailController;
     if (!mounted || !Platform.isAndroid || detailController == null) {
       return false;
@@ -462,15 +454,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
         // 纹理由后端随视频帧更新，Dart只在布局或纹理变化时发布元数据。
         if (_publishAmbientTexture()) return;
-        final captureClock = PlaybackPowerProbe.enabled
-            ? (Stopwatch()..start())
-            : null;
         final image = await _captureAmbientFrame();
-        if (PlaybackPowerProbe.enabled && image != null) {
-          PlaybackPowerProbe.ambientCaptures++;
-          PlaybackPowerProbe.ambientCaptureUs +=
-              captureClock!.elapsedMicroseconds;
-        }
         if (image != null) {
           if (mounted &&
               generation == _ambientCaptureGeneration &&
@@ -603,9 +587,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     // 视图销毁与已识别长按的PointerCancel不保证触发onLongPressEnd。
     unawaited(plPlayerController.setLongPressStatus(false));
     _ambientCaptureGeneration++;
-    if (PlaybackPowerProbe.enabled) {
-      PlaybackPowerProbe.ambientEnabled.removeListener(_scheduleAmbientCapture);
-    }
     AmbientFramePolicy.optimized.removeListener(_scheduleAmbientCapture);
     _ambientTextureChanges?.removeListener(_scheduleAmbientCapture);
     _ambientFullscreenListener?.cancel();
@@ -2046,6 +2027,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             child: Obx(
               () {
                 final showControls = plPlayerController.showControls.value;
+                // 长按倍速期间隐藏底部进度条，避免分段条灰色底块露出。
+                if (plPlayerController.longPressStatus.value) {
+                  return const SizedBox.shrink();
+                }
                 final bool offstage;
                 switch (plPlayerController.progressType) {
                   case .alwaysShow:

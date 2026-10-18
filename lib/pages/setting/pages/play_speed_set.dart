@@ -112,6 +112,54 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
     );
   }
 
+  Future<void> showLongPressSpeedDialog() async {
+    var value = longPressSpeedDefault.toString();
+    final formKey = GlobalKey<FormState>();
+    final result = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('长按倍速'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            autofocus: true,
+            initialValue: value,
+            keyboardType: const .numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: '倍速数值',
+              helperText: '默认 2 倍，例如 1.5、2、3',
+            ),
+            inputFormatters: FilteringText.decimal,
+            onChanged: (text) => value = text,
+            validator: (text) {
+              final rate = double.tryParse(text ?? '');
+              return rate == null || !rate.isFinite || rate <= 0
+                  ? '请输入大于 0 的有效倍速'
+                  : null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, double.parse(value));
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (result == null) return;
+    await video.put(VideoBoxKey.longPressSpeedDefault, result);
+    if (mounted) setState(() => longPressSpeedDefault = result);
+  }
+
   // 设定倍速弹窗
   void showBottomSheet(ThemeData theme, int index) {
     showModalBottomSheet(
@@ -211,7 +259,7 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
                 bottom: 0,
               ),
               child: Text(
-                '点击下方按钮设置默认（长按）倍速',
+                '长按倍速可直接修改，也可从下方倍速列表选择',
                 style: TextStyle(color: theme.colorScheme.outline),
               ),
             ),
@@ -229,8 +277,10 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
             ),
             if (!enableAutoLongPressSpeed)
               ListTile(
-                title: const Text('默认长按倍速'),
-                subtitle: Text(longPressSpeedDefault.toString()),
+                title: const Text('长按倍速'),
+                subtitle: Text('$longPressSpeedDefault 倍，点击修改'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: showLongPressSpeedDialog,
               ),
             Padding(
               padding: const EdgeInsets.only(

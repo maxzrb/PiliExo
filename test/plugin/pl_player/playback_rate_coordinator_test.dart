@@ -4,6 +4,33 @@ import 'package:PiliPlus/plugin/pl_player/utils/playback_rate_coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('旧加速回复未返回时，松手恢复已发送并可独立确认', () async {
+    final oldReply = Completer<void>();
+    final sent = <double>[];
+    final confirmed = <double>[];
+    final rates = PlaybackRateCoordinator(
+      initialRate: 1,
+      apply: (rate, isCurrent) async {
+        if (!isCurrent()) return;
+        sent.add(rate);
+        if (rate == 3) await oldReply.future;
+      },
+      onConfirmed: confirmed.add,
+    );
+    final hold = rates.beginTemporary(3);
+    expect(sent, [3]);
+    final release = rates.endTemporary();
+    await Future<void>.delayed(Duration.zero);
+    expect(oldReply.isCompleted, isFalse);
+    expect(sent, [3, 1]);
+    expect(confirmed, [1]);
+    await Future.wait([hold, release]);
+    oldReply.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(confirmed, [1]);
+    expect(rates.confirmedRate, 1);
+  });
+
   test('等待播放器操作锁时松手，不再向后端发送旧加速', () async {
     final lock = Completer<void>();
     final sent = <double>[];

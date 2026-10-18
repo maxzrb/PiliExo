@@ -29,43 +29,22 @@ void main() {
     expect(options['audio-pitch-correction'], 'yes');
   });
 
-  test('AudioTrack 保留明确选择，未验证成功的调参不进入正式路径', () {
-    const output = 'audiotrack,opensles,aaudio';
-    final options = MpvAudioOptions.forOutput(
-      isAndroid: true,
-      output: output,
-    );
-    expect(options, {
-      'ao': output,
+  test('AudioTrack与已通过exact手测的包一致，不额外启用原生候选参数', () {
+    const output = 'audiotrack,aaudio,opensles';
+    expect(MpvAudioOptions.forOutput(isAndroid: true, output: output), {
       'audio-pitch-correction': 'yes',
+      'ao': output,
     });
   });
 
-  test('AudioTrack手测候选按原生能力适配，不设置全局48k采样率或关闭音调', () {
-    final options = MpvAudioOptions.forOutput(
-      isAndroid: true,
-      output: 'audiotrack,aaudio,opensles',
-      audioTrackCandidate: true,
-    );
-    expect(options, isNot(contains('aaudio-session-id')));
-    expect(options, isNot(contains('aaudio-adaptive-session')));
-    expect(options['audiotrack-adaptive-rate'], 'yes');
-    expect(options['audiotrack-low-latency'], 'yes');
-    expect(options['audio-pitch-correction'], 'yes');
-    expect(options, isNot(contains('audio-samplerate')));
-  });
-
-  test('其他音频输出回退到AudioTrack时也保留Hi-Res，不改变首选输出', () {
-    final options = MpvAudioOptions.forOutput(
-      isAndroid: true,
-      output: 'aaudio,opensles,audiotrack',
-      audioTrackCandidate: true,
-    );
-    expect(options, isNot(contains('aaudio-session-id')));
-    expect(options, isNot(contains('aaudio-adaptive-session')));
-    expect(options['audiotrack-adaptive-rate'], 'yes');
-    expect(options['ao'], 'aaudio,opensles,audiotrack');
-    expect(options, isNot(contains('audio-samplerate')));
+  test('AAudio回退顺序与已通过手测包一致，不附加AudioTrack候选参数', () {
+    const output = 'aaudio,opensles,audiotrack';
+    expect(MpvAudioOptions.forOutput(isAndroid: true, output: output), {
+      'audio-pitch-correction': 'yes',
+      'ao': output,
+      'audio-buffer': '0.05',
+      'aaudio-performance-mode': 'low-latency',
+    });
   });
 
   test('其他平台不接收 Android 音频驱动参数，倍速仍保持原音调', () {

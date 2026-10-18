@@ -170,7 +170,7 @@ List<SettingsModel> get videoSettings => [
   NormalModel(
     title: '自动同步',
     leading: const Icon(Icons.sync_rounded),
-    getSubtitle: () => '当前：${Pref.autosync}（此项即mpv的--autosync）',
+    getSubtitle: () => '当前：${Pref.autosync}；0 为直接同步（推荐），大于 0 为平滑同步',
     onTap: _showAutoSyncDialog,
   ),
   NormalModel(

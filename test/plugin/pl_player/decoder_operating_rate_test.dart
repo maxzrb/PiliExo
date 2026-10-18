@@ -2,6 +2,14 @@ import 'package:PiliPlus/plugin/pl_player/utils/decoder_operating_rate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('正式参数只按规划需求申请吞吐，无需求时保留原策略', () {
+    expect(DecoderOperatingRate.options(plannedRate: 120), {
+      'vd-lavc-o': 'operating_rate=120',
+    });
+    expect(DecoderOperatingRate.options(plannedRate: null), isEmpty);
+    expect(DecoderOperatingRate.options(plannedRate: 0), isEmpty);
+  });
+
   int? plan(
     String? fps, {
     double base = 1,

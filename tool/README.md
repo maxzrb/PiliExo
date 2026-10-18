@@ -1,3 +1,8 @@
+> 2026-10-18：音频与长按倍速方案确认后，应用内 PlaybackExperiment、
+> PlaybackTransitionProbe、PlaybackPowerProbe 及其编译开关已移除。
+> 下文对应的采集脚本与命令仅作历史实验记录；当前正式源码不再运行自动切速、
+> 音频参数矩阵、SDR 后端强制切换或播放功耗 ABBA 探针。重新开展研究时应使用独立实验分支。
+
 run `dart run tool/jnigen.dart`
 
 ## 长按倍速实验

@@ -2,6 +2,11 @@ import 'dart:math' as math;
 
 /// 在打开视频时按已知源帧率和用户的倍速需求规划解码吞吐，不限制呈现帧率。
 abstract final class DecoderOperatingRate {
+  static Map<String, String> options({required int? plannedRate}) => {
+    if (plannedRate != null && plannedRate > 0)
+      'vd-lavc-o': 'operating_rate=$plannedRate',
+  };
+
   static double? parseFrameRate(String? value) {
     if (value == null) return null;
     final parts = value.trim().split('/');

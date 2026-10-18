@@ -1,16 +1,18 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-18 17:17 (+08:00)
+- 更新时间：2026-10-18 23:43 (+08:00)
+- 当前决定：用户已确认音频与长按倍速方案；保留不等待旧倍速回复、默认2倍/可自定义、autosync=0、松手恢复基础倍速80ms后仅检查一次avsync，>0.3秒执行absolute+exact。此前周期seek、keyframes倒流、解码跳帧/降倍率、AAudio会话/媒体类型实验均不恢复。
 - 工作分支：`merge/upstream-2.1.4-20260913`。正式源码 `d6e3f1199b513c3ba7347cc1c1e35ed67473c072`，annotated tag `v26.10.18.1` 固定指向该源码；后续记录/约束提交不改写正式标签。
 - 发布状态：[v26.10.18.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.18.1) 已公开且为GitHub latest，应用26.10.18+1 / Android code31。双APK及SHA256SUMS均核对GitHub digest/长度，并从ModelScope完整回读核对哈希/长度；本机在dist/release/v26.10.18.1。
 - 用户最新约束：不得使用GitHub Actions构建；只能本地构建、打包、签名。仓库Actions设置已禁用并多次回读enabled=false，禁止重新启用或dispatch。根AGENTS.md、README及发布流程已记录。
 - Actions事件：推送d6e3f1199触发39113935580，工作流校验失败、0构建任务，已向用户说明；关闭Actions后推送标签无新增运行。旧任务/草稿不删除。
-- 正式实现：AudioTrack普通PCM按设备适配低延迟，96/192k与直通保留请求并绕开小缓冲；OpenSL/AAudio保持原音调与已认可切速配置。洞察过滤有限起播/切速过渡及稳定区孤立丢弃，持续或严重异常仍可捕获，隐藏HUD仍监测。缺失Dart构建元数据不再误报历史旧版/签名迁移。
+- 洞察清理/回归：保留起播、进入/退出倍速各5帧容差及“近1秒丢帧 xx · 总丢帧 xx”和持续黄灯。23:24清理包f230ac4e…被用户反馈松手持续卡顿；该包额外更换原生库并启用AudioTrack候选参数，与22:12已通过exact手测包不等价。已撤销这两项额外变化，23:40:47覆盖恢复包b26ccb1b…；用户同视频/画质确认“短暂停顿后恢复正常，不再持续追帧”。此组合为当前已验收基线，不再擅自切换。
 - AAudio最终决定：音效会话混音候选虽恢复音量但被用户否决；媒体类型直出对照无改善，用户要求结束调查、恢复原路线。两项实验均已撤销，正式AOT确认无session/adaptive-session/media-role参数；不加增益/归一化/全局重采样。音量差异未解决，不再主动继续此项。7项临时日志属性已恢复并回读。
+- 本轮测试机：NTH-AN00 / AEFUUT1715006716，已覆盖26.10.18/code31，安装时间23:40:47，回拉hash b26ccb1b…与本地一致；PID25208，无启动致命异常。除Dart AOT外7个原生库与22:12可用包逐字节一致，libmpv=e03d7145…；保留数据设置，未自动播放/切速；用户手测确认短暂停顿后恢复正常、不再持续追帧。
 - 真机：8e AN5UUT6225004417，MEP-AN00 Android17，只支持arm64。正式ARM64覆盖安装成功，系统26.10.18/code31，回拉hash2770e485…一致，首页52节点、PID11051，无启动致命异常。此前相同播放器/原生核心用户已确认流畅、原音调正常；本次仅安装/版本/启动校验，未自动跑播放矩阵。v7仅构建和静态门禁，8e无法运行32位包。
-- 验证：26文件132项Flutter通过；真实18.1/code31定义的音频/版本10项通过；C策略5项通过；Analyze 0error/0warning、62info。README/Flutter3.47.7/29插件、R8/DEX/FFmpeg/唯一ABI/V2原签名、64位全部ELF16KB段对齐通过。发布门禁均保存在本机8e实验目录。
+- 已发布版本验证：26文件132项Flutter通过；真实18.1/code31定义的音频/版本10项通过；C策略5项通过；Analyze 0error/0warning、62info。README/Flutter3.47.7/29插件、R8/DEX/FFmpeg/唯一ABI/V2原签名、64位全部ELF16KB段对齐通过。发布门禁均保存在本机8e实验目录。
 - 正式签名：仍b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51，与旧正式包一致。此前旧版/不同密钥提示源于测试包缺少pili.*参数，正式包完整metadata已与manifest/AOT核对。
-- 原生artifact：arm64 d822d86b…（16,498,608字节）、v7 d2c4b53d…（12,749,372字节），补丁/sources清单已入Git。AAudio原生源码与v0.41.0完全一致。外部native prefix曾重编译临时AAudio策略，不得直接拿来替换已验证artifact；需按原源码重新构建后再验证。
+- 历史已发布版本原生artifact（不能直接替换当前exact手测组合）：arm64 d822d86b…（16,498,608字节）、v7 d2c4b53d…（12,749,372字节），补丁/sources清单已入Git。AAudio原生源码与v0.41.0完全一致。外部native prefix曾重编译临时AAudio策略，不得直接拿来替换已验证artifact；需按原源码重新构建后再验证。
 - 正式APK：arm64 SHA256=2770e485126ae409902df66da70145f70937b6f24f5fa1ce4ca9015eb30305d1（33,329,272字节）；v7 SHA256=bfd799f2623a040e0cc09b7230b9c1bd7ffded9b8b59d47aef74dc8ca70fad85（32,293,000字节）。
 - 默认分支main：独立README提交`8609b01375f4455444ac5361b767cd5e66b64334`，已回读与当前README一致，未合并应用源码到main。
 - 工具链：Flutter3.47.7/Dart3.13.5、NDK28.2.13676358，本机C盘受管树C:/Users/maxzr/.codex/worktrees/8e-transition-20261017/piliexo detached于正式源码，保留缓存/签名配置。诊断工作先stash保存（preserve 8e diagnostic source before v26.10.18.1 formal build）。所有构建在本机离线Gradle执行，无Actions产物。
@@ -1500,3 +1502,150 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 双ABI正式构建全部本机完成。手测候选两项AAudio音量实验被撤销，不纳入AOT/原生库。用户要求停止音量调查，保留直出与原音调。
 - 仓库Actions禁用并复核，标签后无新增任务；根AGENTS/发布流程/README固化本地构建要求。main仅README同步提交8609b01375f4455444ac5361b767cd5e66b64334，应用源码不合入main。
 - 当前收尾只提交README、AGENTS、发布流程与状态记录；正式源码标签不改写，用户tmp/保留。
+
+## 2026-10-18 17:32 老机长按后持续卡顿回归（人工验收未通过）
+
+- 用户反馈v26.10.18.1在老机AudioTrack首选，长按期间仍卡顿，松手后持续数十秒，暂停并缓冲后才恢复；洞察摘要只有“检测到播放掉帧”缺少数量。此前8e满意不能代表旧设备，不能继续称老机倍速问题已解决。
+- ADB5037由游戏模拟器C:/Program Files/YXArkNights-12.0/shell/adb.exe占用，未发现USB设备；未杀服务。另启SDK独立5038后，用户重插已连接AEFUUT1715006716/NTH-AN00/SM7325，确认31/26.10.18；活动硬解c2.qti.hevc.decoder，AudioTrack历史有欠载，尚不能断言硬件解码瓶颈。基线资料本机piliexo-old-device-20261018。
+- 候选修改：协调器在旧回复未返回时也能提交最新恢复目标；同一事件循环合并请求、迟到确认/错误不覆盖最新状态；mpv speed设置不再持有seek/open操作锁等待回复。不是已证实的完整根因，仍需区分命令等待与同步/队列追赶。
+- 洞察摘要改显示近期/累计帧数，恢复后仍显示累计数但不保持异常颜色；视频详情显示原始及未计入异常的计数。既有过渡过滤未改，不伪造零掉帧。
+- 新回归直接验证旧命令未回复时已发送并确认1倍速；协调器12项、洞察11项共23通过，定向Analyze无error/warning、4info。仅本机构建手测候选，测试版本保持当前18.1/code31。
+- 候选仅PILI_RATE_TRACE记录手势/异步回复及复用进度事件（最多每秒1次、手势后45秒），不启动实验采样timer，不做同步原生查询，不开启播放矩阵。待构建/安装后让用户复现验收；未发布新Release。
+
+## 2026-10-18 17:36 老机手测候选已安装，等待人工结果
+
+- 原签名候选9e019075837439e86af1bccbe497434cb84393217d29854789fbfa9bc4c8d63f已覆盖老机成功，仍26.10.18/code31，构建标记b23dc9580-manual-rate-restore，播放器原生库仍d822d86b…；没有改音调、输出首选、分辨率、过渡计数过滤或视频同步设置。
+- 候选只启用被动PILI_RATE_TRACE，已核对AOT有rate_position、无decoder_ready/transition_variant，未启用通用诊断采样与自动矩阵。持久副本dist/manual/2026-10-18/PiliExo-OldDevice-RateRestore-arm64.apk。
+- 已请用户同视频同画质长按5秒、松手观察，失败时先不暂停以保留现场，同时反馈画质/帧率和数字计数是否可见。尚未收到结果，不得宣称修复或发布。
+
+## 2026-10-18 18:33 老机积压定位、直接同步与长按倍率设置
+
+- 已读根AGENTS/STATUS（INDEX不存在），git pull --ff-only无更新；延续脏工作树，保留既有协调器/洞察数字改动和tmp/，未提交推送、发布或触发Actions。
+- 旧候选恢复1倍约3ms确认，但继续每秒约54输出丢帧。新增PILI_RATE_TRACE属性观察仅复用已有每秒poll，无同步查询/新采样timer；video-pts不支持仍保留null，使用原生avsync。4K60、3840×2160、MediaCodec、实际OpenSL ES，正常12样本零丢帧；3倍时音频PTS每秒约+3秒，avsync升至3.987秒；恢复1倍后4.808/4.762/4.714秒，输出累计169/223/277、解码计数0，证明积压缓慢追赶，不能把解码计数0当流畅或将问题只归咎AudioTrack。
+- 自动恢复实验：退出长按后短窗内连续严重落后和新增丢帧才seek到audio-pts，两次恢复同步。用户确认短暂缓冲后流畅，但明确拒绝该代价；已从正式源码撤销，辅助类与4项通过测试仅留本机归档，最终AOT无自动seek。
+- autosync0原签名对照07e6e833…无自动seek、同原生库，用户反馈“可以，基本上立即恢复流畅了”。日志仍有累计1025输出丢帧及音频PTS不可用窗口，不能外推全程零丢帧或完全根治；最终组合包尚无新增播放人工验收。
+- 原版B站实用c2.qti.hevc.decoder.low_latency，PiliExo为普通c2.qti.hevc.decoder。用户仅见“倍速中”；原版采集有decoder重建、30/s正常段和60/s加速段，倾向2倍但也有60/s正常段，尚未精确确认倍率/帧率完全相同，不作为同负载根因证明。已向用户说明Android官方低延迟可能增加功耗，不等于降画质或提升吞吐，未测功耗。低延迟探索只在C盘FFmpeg条件低延迟标志下试选QTI组件，静态编译后未链接/打包/安装，已恢复源码与备份字节一致且make/install回滚缓存；所有APK native仍d822d86b…。
+- 收敛源码：Pref.autosync默认0并显式传给mpv，设置说明0为直接同步推荐，仍尊重用户手动值。长按默认3改2，保留原存储键和已有自定义值；倍速设置页长按倍率行可直接点击输入有限正数，取消不保存，动态长按模式保留。固定倍率每次手势读取Pref，已打开播放器下次长按即生效，当前手势由协调器保持稳定。
+- 验证：协调器12+metrics4、C盘独立洞察11、新设置3项，合计30项相关测试通过；非全仓全量。恢复实验4项通过但已撤销。D盘组合测试编译卡住后停止，洞察C盘独立通过；新设置首版widget真实Hive写盘在fakeAsync里等待，改为真实持久化单测+UI校验/取消后3项通过。最终7文件Analyze无error/warning、4项既有info，diff --check通过。
+- 最终包本机Gradle --offline成功1m20s，原V2证书、16KB对齐、唯一arm64、26.10.18/code31，Dart标记b23dc9580-manual-speed2-direct。AOT无rate_native/rate_position/rate_resync/transition_variant/decoder_ready，诊断/自动矩阵均关闭，无low_latency视频或音频会话/增益实验。
+- dist/manual/2026-10-18/PiliExo-OldDevice-Speed2-Direct-arm64.apk：SHA256=8e42b029e2cc4aa280b4eaf159c4522475b7d6932b55498dfb5624f24eeff495，33329272字节，native d822d86b…；老机覆盖Success、回拉hash一致、启动PID8947。仍需用户最终组合包复核2倍/自定义3倍及声音、长期播放，不发布。
+- ADB断线重连后旧机AEFUUT1715006716由默认5037接管，后续-s明确设备，未杀模拟器服务或改系统安全/音量/息屏。日志/JSON/metadata和实验撤回文件在C:/Users/maxzr/AppData/Local/piliexo-old-device-20261018。Windows Python缺tzdata，记录用显式UTC+8写入，不安装额外依赖。
+- 改动包含controller、observer、experiment、Pref、两设置页、新设置测试，及延续的协调器/洞察文件。下一步收集最终包反馈，区分默认2倍负载下降和autosync0改善；手动同步值>0保留，若重现先核对设置。当前工作树不干净，待验收后建议git add+commit；正式版本/标签不变，禁Actions，功耗/图标暂停。
+
+## 2026-10-18 19:20 4K60 长按后持续丢帧根因确认
+
+- 复核时发现老机实际安装的是 C 盘受管树的 PILI_RATE_TRACE 诊断包，不是归档的 Speed2-Direct 8e42b029；不能把该诊断包的表现等同于正式包。测试结束已恢复安装 8e42b029，并把临时改成的 video-sync=audio 恢复为 display-resample。
+- 复现素材为 3840×2160 HEVC 60fps、OpenSL ES、autosync=0。长按 2 倍时 audio-pts 每秒约 +2s，视频实际只前进约 1.05s，4～5 秒后 avsync 达 4.5s；松手后 speed 在 10ms 内回到 1.0，但 VO 每秒丢约 54 帧、avsync 只回收约 0.05s/s，因此会持续数十秒。暂停/缓冲后解码器重置才恢复。根因是 4K60 在 SM7325 上的解码吞吐不足，不是恢复命令未执行。
+- 已对照并排除：autosync=0、video-sync=audio、framedrop=decoder+vo/vd-lavc-framedrop=nonref、协调器不等待旧回复。它们都不能阻止音频时钟先跑出去。
+- 松手后 seek 到 audio-pts 能在一秒内把 avsync 清零：keyframes 模式会回跳约 3.5s；exact 模式约 2s 无 audio-pts/重新缓冲。两种都违反用户“不要缓冲/不要回跳”的要求，相关诊断代码已从主源码删除，不作为修复。
+- 自适应降速原型可在长按期间从 2x 逐步降到 1x，但当前 0.5s/0.25 步进仍会积累约 2.5s 落后，松手后仍丢帧；若采用自适应，4K60 实际只能稳定在约 1x。1080P60 此前实测 3x 可送显约 177fps，是可用档位。下一步需在“4K/8K 禁用或限制长按加速”和“长按自动切 1080P（重载可能缓冲）”之间由用户选择，不能再用 seek 掩盖。
+
+## 2026-10-18 19:45 4K60 瓶颈与低延迟解码器能力核对
+
+- 在 NTH-AN00 上用 MediaCodecList 直接读取厂商声明的可达到帧率（3840×2160）：`c2.qti.hevc.decoder` 为 65～75fps，`c2.qti.hevc.decoder.low_latency` 为 30～66fps；同分辨率 AVC 仅 10～42fps。低延迟组件在 1920×1080 为 118～259fps，明显是 1080P 优化，不是 4K 提升。
+- 因此 4K60 长按 2 倍要求 120 帧/秒，普通 HEVC 硬解和低延迟 HEVC 都达不到；实测视频只能前进约 1.05 倍、音频按 2 倍前进，和该能力范围一致。瓶颈是 4K HEVC 硬解吞吐，不是 Flutter UI、恢复命令或低延迟组件的选择。
+- 原版 B 站此前抓到的加速段约 60 帧/秒，不能证明它在 4K60 上真的解出了 120 帧；低延迟组件不能作为 4K60 2 倍的修复依据。若要套用，只能改 FFmpeg 的 MediaCodec 组件选择，属于原生补丁，收益主要在 1080P/1440P；对本次 4K60 场景反而可能更差。
+
+## 2026-10-18 19:50 原版 B 站同视频对照：实际是 1080P30
+
+- 在同一台老机、同一 BV 上抓取原版 B 站（tv.danmaku.bili 9.15.0）的 CCodecConfig：解码器为 `c2.qti.hevc.decoder.low_latency`，实际流为 `raw.size.width=1920`、`raw.size.height=1080`、`frame-rate=30`，输出到 SurfaceView，`format had no operating-rate`。不是 4K60。
+- PiliExo 同一视频实际为 3840×2160、60fps、`c2.qti.hevc.decoder`、mpv→Flutter 纹理。原版长按 2 倍只需约 60 帧/秒解码；PiliExo 需要 120 帧/秒，超过该机 4K HEVC 65～75fps 的能力。两者不是同一负载，不能把原版流畅直接归因于低延迟组件。
+- 这也解释了“原版平滑丢帧”：原版解码器仍有余量，可以在 2 倍下稳定输出约 30/60fps；PiliExo 在 4K60 下解码器已饱和，mpv 的 VO 丢帧会掉到约 6fps 并形成数秒积压，所以不平滑。
+- 若要让 PiliExo 在同视频上达到原版手感，优先让长按使用 1080P/1080P30 档，或按画质限制长按倍率；单独换 low_latency 组件不能把 4K60 2 倍变成 120fps。
+
+## 2026-10-18 19:55 1080P60 对照通过
+
+- 将 PiliExo 默认画质从 8K 改为 1080P 60帧后，同一视频实际为 1920×1080/60fps；长按 2 倍时 avsync 保持约 0.00001，整段仅新增 9 个输出丢帧，松手后立即恢复 0 丢帧，没有缓冲或持续追帧。该结果直接证明问题来自 4K60 负载，而不是长按恢复逻辑。
+- 原版 B 站同视频实际为 1920×1080/30fps + low_latency + SurfaceView；PiliExo 原设置为 8K，实际取到 4K60。两者不是同一负载。1080P60 下普通 HEVC 解码已足够，low_latency 不是必需。
+- 当前老机已恢复 8e42b029 干净包，默认画质保留为 1080P 60帧（用户可在设置改回 4K/8K）。4K60 下若坚持 2 倍，仍会因 120fps 超过该机 65～75fps 的解码能力而无法平滑；仅换 low_latency 组件不能解决。自适应降速/跳帧参数（framedrop=decoder+vo、vd-lavc-skipframe=nonref）在 4K60 下均不能阻止 avsync 增长。
+
+## 2026-10-18 19:42 原版“4K”实际解码为 1080P60
+
+- 用户确认 B 站界面显示 4K 清晰度并在播放时，读取当前 B 站进程的 `dumpsys media.metrics`：`android.media.mediacodec.codec=OMX.qcom.video.decoder.hevc.low_latency`，`width=1920`，`height=1080`，`lifetimeMs=50624`；同时 TraceLog 连续显示 Rendered 约 58～60/s。即实际送进解码器的是 1080P60，不是 4K。
+- PiliExo 的 media.metrics 记录为 `c2.qti.hevc.decoder`、`width=3840`、`height=2160`。因此此前“同视频原版丝滑、PiliExo卡”的对照不是同一负载：原版实际 1080P60，PiliExo 是 4K60。
+- 可能原因是 B 站账号无 4K 权限、清晰度菜单显示与实际回退不一致，或起播预览/网络回退。不能继续用该次原版表现证明 4K60 2 倍可平滑；需要在确认原版实际 width=3840、height=2160 后再对照。
+- 已实测 PiliExo 1080P60 2 倍：avsync 约 0.00001、整段仅新增 9 帧、松手立即恢复，说明 1080P 档是当前可用的平滑方案。4K60 仍受该机 65～75fps 解码上限约束。
+
+## 2026-10-18 20:25 长按音画差 0.3 秒保护实现
+
+- 按用户要求实现一次性 AvSyncGuard：长按期间不读取、不重定位，保持真实倍速；松手恢复 1 倍并等待 80ms 后只检查一次 avsync。不超过 0.3 秒交给播放器追帧，超过 0.3 秒按 audio-pts 做一次 `absolute+keyframes` 重定位。不改画质、不暂停、不做 exact seek，也不在长按期间循环 seek。
+- 4K60 2 倍此前周期版实测会在长按期间反复回跳、卡在同一时间段，已按用户反馈撤销；一次性版本只保留松手后的那一次重定位。keyframes 模式没有 exact seek 的约 2 秒无 audio-pts/缓冲，但单次仍可能有约 0.3～0.9 秒回跳。
+- 已移除此前的降倍率、framedrop、skipframe、video-sync 诊断开关；新增 `AvSyncGuard` 纯逻辑和 3 项边界测试（0.3 内、超过 0.3、null/NaN/负值）。定向 Analyze 无 error/warning，仅 4 项既有 info。
+- 干净 arm64 包已安装，默认画质仍为 8K，当前视频重载后实际 3840×2160；未开启诊断采样。长按体感（回跳频率/幅度）待用户复核，未发布。
+
+## 2026-10-18 20:41 一次性重定位包安装
+
+- 用户指出周期重定位会让长按卡在同一时间段、失去倍速；已删除长按期间的定时检查，改为只在松手恢复 1 倍后等待 80ms 检查一次 avsync：≤0.3 秒追帧，>0.3 秒执行一次 `absolute+keyframes` 重定位。
+- 干净 arm64 包已覆盖安装：26.10.18/code31，45,894,745 字节，SHA256=62E3D11FAD3BDD496E02B11DDF84662210687FFF02901540DF3123ED31C95CB0；设备回拉 base.apk 哈希一致，PID 10409 启动正常，无致命异常。
+- 3 项 AvSyncGuard 边界测试通过，定向 Analyze 无 error/warning（4 项既有 info）。未开启诊断采样；默认画质仍为 8K。长按期间不再回跳，松手后仅一次重定位，待用户手感复核。
+
+## 2026-10-18 20:50 一次性 seek 对照与回退
+
+- 一次性 keyframes 重定位仍会落到前一个关键帧：4K60 短按 1.2 秒、松手 avsync 0.974 秒时，播放位置会回到长按起点之前；用户明确要求不能倒流。
+- 改为一次性 `absolute+exact` 后，同样短按在 0.974 秒落后时触发，`audio-pts` 连续约 3 秒为 null，之后才恢复到目标位置；这是解码器/音频输出重建的停顿，不可接受。
+- 结论：mpv 在 4K60 上不存在“既不倒流、又不停顿”的 seek 方式。要不 seek，只能把落后控制在 0.3 秒内；这等价于 4K60 长按时按设备可持续倍率限速（约 1x），不改画质、不缓冲、不倒流。1080P60 仍可完整 2x/3x。
+- 已回退安装 8e42b029 干净包（26.10.18/code31），当前不存在一次性 seek 的倒流/3 秒停顿；长按后的长时间追帧问题暂时回到原状，等待用户在“4K60 长按限速”与“允许向前跳一小段”之间选择。
+
+## 2026-10-18 21:03 exact 一次性重定位与长按底部占位修复
+
+- 用户确认接受短时本地停顿，选择 `absolute+exact` 一次性重定位，优先避免松手后长时间大幅丢帧。当前实现：长按期间不 seek；松手恢复 1 倍并等待 80ms，只检查一次；≤0.3 秒追帧，>0.3 秒按 audio-pts 执行一次 exact seek。
+- 用户反馈 8e42b029 长按时视频底部出现疑似进度条的灰色占位块。定位到播放器底部进度条内的 SegmentProgressBar 灰色底（15px，`Colors.grey[600]` 45% 透明）；已在 longPressStatus 为 true 时隐藏整个底部进度条，避免灰色分段底块露出。
+- 干净 arm64 包已覆盖安装：26.10.18/code31，45,894,742 字节，SHA256=4DFFE64AE43305F259FDF9B0E8C007662BA6613D2E17E4C1CFD2B7A00B83E8E4；设备回拉哈希一致，PID 15029 启动正常，无致命异常。
+- 3 项 AvSyncGuard 边界测试通过，定向 Analyze 无 error/warning（4 项既有 info）。exact seek 在 0.974 秒落后场景实测约 3 秒本地解码/音频输出重建停顿，非网络加载；用户已知并接受。长按底部灰块与松手恢复待用户复核。
+
+## 2026-10-18 22:12 长按倍速实验代码清理与最终包
+
+- 清理本轮诊断专用代码：移除 `PILI_RATE_TRACE`、`MpvRuntimeObserver.rateDiagnostics` 及 23 项时钟属性订阅、`tracePosition`、`rate_native/rate_position/rate_config/rate_queued/rate_dispatch/rate_ack/rate_skipped`、`_rateCommandSequence` 与对应 command 计时包装；`mpv_runtime_observer.dart`、`playback_experiment.dart` 已回到不含这些实验改动的状态。
+- 保留正式实现：`PlaybackRateCoordinator` 不等待旧回复、长按倍率设置/默认2倍、autosync0、洞察数字与过渡计数、`AvSyncGuard` 一次 exact 重定位、长按期间隐藏底部进度条（修复 SegmentProgressBar 灰块）。
+- 验证：AvSyncGuard 3 项、协调器12项、洞察/计数/倍速提示24项、倍速设置3项，共42项相关测试通过；全量 Analyze 0 error/0 warning、62项既有info；`git diff --check` 无空白错误。合并批量测试曾在窗口/Hive相关用例长时间无输出，已停止该批，未把中断计作通过。
+- 清理后干净 arm64 包已覆盖安装：26.10.18/code31，45,893,306字节，SHA256=C9D6E6B86C4F18CF5654D627CB8A13E84DB3E105456FD7B90560726F827E3767；设备回拉base.apk哈希一致，lastUpdateTime 22:12:01。
+
+
+## 2026-10-18 23:17 音频/长按方案确认后的计数恢复与实验清理
+
+- 用户确认音频和长按倍速方案，并要求恢复长按丢帧统计：起播、进入长按倍速、退出倍速各允许5帧正常切换丢弃。后续补充要求摘要显示“近1秒丢帧 xx · 总丢帧 xx”，近期恢复为0后仍显示总数与原黄色警示灯。
+- PlaybackDropAccounting移除整段时间排除、跨边界整次排除和孤立/连续性证据过滤，改为每个过渡最多5帧的累计额度；第6帧起立即计入，稳定播放和长按持续期间也计数。沿用首帧后3秒/切速后2秒的短窗口，边界延迟上报仍受同一5帧额度限制，未用完额度过期作废；进入/退出不叠加旧余额。首帧前后起播共用5帧，暂停/缓冲不新增过渡额度，后端计数回退和切源按既有会话重置规则重新计数。
+- 切速发送前通过现有独立mpv客户端排空已报告的计数并结算，再开启新过渡；不在迟到的确认回调中补满额度，避免把长按期间的已有丢帧算成松手正常切换。不添加高频定时器或同步丢帧属性查询。
+- 洞察摘要和详情使用近1秒/总数，警示灯在累计丢帧>0时保持原黄色；近期归零不清空历史。保留智能模式既有显示窗口和控制条接管规则，未计入总数的切换丢帧不触发智能提示。保留后端原始与排除数量以便核对。
+- 删除应用内playback_experiment.dart、playback_transition_probe.dart、playback_power_probe.dart及控制器/视图/视频路由的接线，移除高频采样、自动音频参数矩阵、自动切速、诊断日志、研究视频强制走Media3 SDR等入口。正常解码吞吐参数生成移至DecoderOperatingRate，不再附带实验强制覆盖；已确认AudioTrack配置直接进入正式路径，去掉PILI_AUDIO_TRACK_CANDIDATE依赖。tool/历史采集脚本保留并加停用说明，patches/mpv/README.md同步正式构建要求。暂停的UI/环境光研究未继续推进。
+- 保留已确认的音频输出顺序、原音调、Hi-Res保护、AAudio原直出路线；保留最新请求不等旧回复、长按默认2倍和自定义设置、autosync=0、松手一次absolute+exact保护及长按隐藏底部进度条。未重新引入已否决的AAudio会话/媒体类型、周期seek、keyframes、限速或解码跳帧参数。
+- 一次性重定位增加手势修订号、播放器/数据源身份检查及销毁守卫，旧的80ms延迟任务在再次长按、手动切速、切源或退出后失效；等待seek命令并捕获失败，避免未处理的异步异常。仍仅在音画差>0.3秒时检查一次，不新增循环重定位。
+- 验证：29个Dart测试文件逐文件全部通过，共143项；包括13项计数边界、12项洞察及持续黄灯、12项倍速协调、3项AvSyncGuard和3项倍速设置。PATH补入C:/msys64/ucrt64/bin后，test/native/test_audiotrack_rate_policy.py的5项实际C策略测试通过。Dart analyze退出0、0 error/0 warning、59 info；UTF-8解码及git diff --check通过。
+- Windows测试工具链：启动时仍有22:00遗留的测试进程，已核对命令行后停止；共享增量缓存再次停在编译，改用每文件PILI_TEST_CACHE定义隔离缓存。一次Flutter/Dart启动脚本同时更新engine stamp发生Move-Item冲突，该次测试未进入；后续直接调用相同SDK的dart.exe+flutter_tools.snapshot串行完成全部文件，不把中断轮次计为通过。日志与汇总在本机C:/Users/maxzr/AppData/Local/piliexo-cleanup-20261018。
+- Git：启动git pull --ff-only已同步，HEAD仍b23dc9580；工作树包含前一轮已确认但未提交的方案及本轮清理，未commit/push，建议整体审阅后提交。未变更版本号、原生补丁或原生库，未构建/签名/安装/发布新APK，未调用或开启GitHub Actions；手机仍为此前22:12安装的C9D6E6B8…包。用户tmp/保留。
+- 下一步：如需把本轮源码部署到手机，按本地流程构建并配套已验证原生artifact、原正式证书和完整Dart版本元数据，再覆盖安装验收；当前测试结果不代表本轮APK真机验收。
+
+
+## 2026-10-18 23:26 本轮洞察恢复/清理包安装到测试机
+
+- 用户要求“安装到我的测试机”。确认唯一USB设备为老测试机AEFUUT1715006716/NTH-AN00，支持arm64；安装前系统为26.10.18/code31、22:12:01包，回拉SHA256=c9d6e6b86c4f18cf5654d627cb8a13e84db3e105456fd7b90560726f827e3767，备份在dist/manual/2026-10-18/insight-cleanup/before-install.apk。此次5037服务已连接该机，无需使用另启的5038服务。
+- 安装前原包实际libmpv.so为e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98（14,869,024字节）；本轮正式Dart路径已直接使用AudioTrack适配选项，必须配套支持这些选项的已验证库。由v26.10.18.1正式APK提取并核对d822d86b8655845b275735eb9b7d804e9c8c1f9ae027520980db5c3570d41ab2（16,498,608字节），未使用受污染的外部native prefix或重新编译原生实验。
+- 现有C盘受管构建树保留，按主工作区同步相关tracked lib/android/assets及版本配置，清除已删除的三个探针并补AvSyncGuard；保留ignored签名和本地路径配置。运行lib/scripts/build.ps1 android，README/29插件检查通过，完整pili.name/code/releaseBuild/hash/time注入，hash标记为b23dc95808da8b6153fb934364ca8a321f471a33-manual-insight-cleanup，并记录关键源码SHA256。未变更版本号。
+- 本机Gradle --offline --no-daemon app:assembleRelease成功，耗时3m26s。使用lib/scripts/package_android_native.py替换为上述已验证arm64库并移除其余ABI，再以原正式证书签名；其余673个文件与新编译base包一致。未使用或触发GitHub Actions。
+- 新APK：dist/manual/2026-10-18/insight-cleanup/PiliExo-Insight-Cleanup-arm64.apk，33,329,272字节，SHA256=f230ac4e606ff04a0a3b8d4dfe07c26a38c3b00f11bc3bc522f83eafde91ad3a；26.10.18/code31，包名com.maxzrb.piliexo，唯一arm64。V2证书SHA256仍b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51，与安装前和原正式包一致。zipalign -P16以及全部8个ELF的16KB LOAD段对齐/架构检查通过。
+- AOT正向检查audiotrack-adaptive-rate、absolute+exact、手测构建标记及“近1秒丢帧 / 总丢帧”通过；不存在PILI_PLAYBACK、transition_variant、rate_native、decoder_ready和被否决的AAudio会话/媒体类型参数。源码manifest与C盘构建源码逐字节相同。
+- ADB install -r返回Success；安装后回拉base.apk与新包SHA256完全一致。系统lastUpdateTime=2026-10-18 23:24:49，启动MainActivity，PID22760稳定，未发现FATAL EXCEPTION/Fatal signal/dlopen failed/Unhandled Exception。唤醒屏幕后当前焦点为NotificationShade、Activity被遮挡，未绕过锁屏，未宣称可见首页或播放效果验收。
+- 用户数据和设置保留，未自动播放/切速/录屏或采集性能矩阵；实际起播/长按/退出各5帧容差、计数和持续黄色警示由用户手测。本轮不重跑刚通过的29文件143项测试及5项原生测试，构建后通过签名/版本/ABI/AOT/对齐和覆盖安装门禁。
+- 所有构建请求、源码指纹、构建日志、原包/新包、安装日志和verification.json在ignored dist/manual/2026-10-18/insight-cleanup。未commit/push或发布，HEAD仍b23dc9580；主工作树仍含本轮及上轮未提交方案，tmp/不动。建议手测确认后整体提交。
+
+
+## 2026-10-18 23:42 用户反馈松手持续追帧，恢复22:12播放组合
+
+- 用户明确反馈f230ac4e…清理包出现松手后画面持续卡顿/追帧，不只是新增总数和黄色警示灯持续显示。重申方案不变：长按期间不读avsync、不seek；松手恢复基础速度后80ms检查一次，avsync≤0.3秒追帧，>0.3秒按audio-pts发一次absolute+exact，保留底部灰块修复。
+- 对照实际APK确认上次清理部署引入了额外变量：22:12可用包c9d6e6b8…的libmpv为e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98（14,869,024字节，v0.41.0-dirty），AOT不含audiotrack-adaptive-rate/low-latency/buffer-ms/chunk-ms；23:24清理包改为d822d86b…（16,498,608字节，v0.41.0）并启用上述选项。两包均含absolute+exact，均无周期诊断标记，不能说exact已被撤销，也不能仅凭字面参数存在宣称运行效果保持。
+- 已向用户说明上次擅自把清理扩展为原生库与音频配置切换是疏漏；目前只确认组合不同，尚不能区分具体由哪项导致复发，不继续开展额外音频研究。
+- 最小恢复：MpvAudioOptions恢复22:12包实际生效配置，AudioTrack只保留AO顺序及原音调，不开启候选驱动参数；OpenSL/AAudio已通过手测配置保持原样。当前controller.dart、view.dart、AvSyncGuard、洞察模型/计数/警示代码与上一轮清理源码不变；不再增加新的重定位条件或策略。更新音频测试断言和patches/mpv/README.md，明确不能因原生策略单测通过就在洞察清理时替换播放核心。
+- 针对音频配置5项、AvSyncGuard3项、倍速协调12项、掉帧计数13项、洞察界面12项，共45项全部通过；改动文件Dart analyze No issues found。未重跑无关的全量143项，也未把历史定制库的5项C策略测试当成此次实际播放验收。
+- 本机受管C盘离线Gradle构建成功2m11s，版本仍26.10.18/code31，完整Dart元数据hash标记b23dc95808da8b6153fb934364ca8a321f471a33-manual-exact-baseline-restore。原V2证书，APK路径D:\pyprogram\piliexo\dist\manual\2026-10-18\exact-baseline-restore\PiliExo-Exact-Baseline-Restore-arm64.apk，32,764,024字节，SHA256=b26ccb1be8a44bd85b4926c9579d161d6b1dadfae024b7770dff02510ec50c48。
+- 门禁：原签名、版本、唯一arm64、全部8个ELF的16KB对齐通过；除libapp.so外7个原生库与22:12包逐字节一致。AOT含absolute+exact/当前标记/新洞察文本，不含四项AudioTrack候选参数或已删除的自动矩阵/高频诊断/被否决的AAudio参数。打包后673个非替换文件与此次新编译base一致。
+- 用户重新连接解锁测试机后，ADB install -r成功；回拉base.apk哈希一致，系统安装时间2026-10-18 23:40:47，PID25208，未发现启动致命异常。未自动播放/切速、未改变用户设置；已通过异步问题请用户按同视频同画质手测，反馈待答。
+- 当前结论仅为“恢复已通过手测的播放组合并覆盖成功”，尚不能宣称回归已解决。若仍复发，再针对松手80ms的一次检查是否被跳过/avsync取值/seek执行结果做窄范围核验，不能擅自改为周期seek或继续切换音频/原生路线。
+- Git启动pull已同步，HEAD仍b23dc9580，源码和记录未提交/未推送；用户tmp/不动。未发布、未触发/启用GitHub Actions；构建、校验、安装日志和源码指纹保存在ignored dist/manual/2026-10-18/exact-baseline-restore。旧包与回归包保留以便对照。
+
+
+## 2026-10-18 23:43 用户确认恢复包通过同场景手测
+
+- 用户对已安装b26ccb1be8a44bd85b4926c9579d161d6b1dadfae024b7770dff02510ec50c48恢复包明确反馈：“短暂停顿后恢复正常，不再持续追帧”。本轮恢复在用户报告的同视频/同画质长按场景通过人工复核，不能把此前失败包f230ac4e…作为验收包。
+- 固定当前已验收组合：libmpv e03d7145…以及其他6个非Dart原生库与22:12包一致；AudioTrack不额外开启候选驱动选项，OpenSL/AAudio原参数和AO顺序保持；保留当前controller的一次80ms/0.3秒/absolute+exact方案、长按底部灰块修复以及洞察三阶段各5帧容差和持续总数/黄灯。
+- 证据支持恢复原播放组合后同场景症状消失；本轮未分别隔离验证新原生库与候选音频参数，不能将问题单独归因于其中一项。停止继续更换音频/核心或增加诊断、周期重定位。未来只做洞察清理时，不得顺带替换原生库或启用候选参数。
+- 当前已安装版本26.10.18/code31，原签名、回拉哈希一致，45项相关测试、静态检查和打包门禁均通过。源码/状态/中文进度仍未提交，建议按这份已确认组合统一提交；未发布、未推送、无GitHub Actions。版本号不变，不更新版本迭代记录。

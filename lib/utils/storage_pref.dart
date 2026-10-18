@@ -316,7 +316,7 @@ abstract final class Pref {
 
   static String get autosync => _setting.get(
     SettingBoxKey.autosync,
-    defaultValue: Platform.isAndroid ? '30' : '0',
+    defaultValue: '0',
   );
 
   static CDNService get defaultCDNService {
@@ -968,7 +968,7 @@ abstract final class Pref {
       _video.get(VideoBoxKey.playSpeedDefault, defaultValue: 1.0);
 
   static double get longPressSpeedDefault =>
-      _video.get(VideoBoxKey.longPressSpeedDefault, defaultValue: 3.0);
+      _video.get(VideoBoxKey.longPressSpeedDefault, defaultValue: 2.0);
 
   static bool get defaultShowComment =>
       _setting.get(SettingBoxKey.defaultShowComment, defaultValue: false);

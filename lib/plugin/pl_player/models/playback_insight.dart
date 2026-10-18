@@ -128,7 +128,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   final bool firstFrame;
   final int excludedDroppedFrames;
 
-  /// 原始诊断和功耗对照仍使用后端计数，不受洞察展示规则影响。
+  /// 保留后端原始计数，便于与起播和切速排除的数量核对。
   int get rawDroppedFrames => droppedFrames + excludedDroppedFrames;
 
   PlaybackInsightSnapshot withDropCounts({
@@ -189,7 +189,9 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   String get statusText {
     if (lastError.isNotEmpty) return '播放出现错误';
     if (fallbackReason.isNotEmpty) return '已执行编码回退';
-    if (recentDroppedFrames > 0) return '检测到播放掉帧';
+    if (recentDroppedFrames > 0 || droppedFrames > 0) {
+      return '近1秒丢帧 $recentDroppedFrames · 总丢帧 $droppedFrames';
+    }
     if (isBuffering && playWhenReady) return '缓冲中';
     if (!hasMeasuredData) return '等待播放器数据';
     return '实时数据';
@@ -224,12 +226,20 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     PlaybackInsightRow('视频解码器', videoDecoder),
     PlaybackInsightRow('硬/软解', videoDecoderType),
     PlaybackInsightRow(
-      '累计异常掉帧',
+      '总丢帧',
       droppedFramesAvailable ? '$droppedFrames' : '暂不可用',
     ),
     PlaybackInsightRow(
-      '近期异常掉帧',
+      '近1秒丢帧',
       droppedFramesAvailable ? '$recentDroppedFrames' : '暂不可用',
+    ),
+    PlaybackInsightRow(
+      '后端原始掉帧',
+      droppedFramesAvailable ? '$rawDroppedFrames' : '暂不可用',
+    ),
+    PlaybackInsightRow(
+      '起播/切速等排除的丢帧',
+      droppedFramesAvailable ? '$excludedDroppedFrames' : '暂不可用',
     ),
   ]);
 

@@ -6,122 +6,154 @@ PlaybackDropAccounting stable() => PlaybackDropAccounting()
   ..sample(0, nowMs: 4000, finishInterval: true);
 
 void main() {
-  test('起播三帧和延迟上报的过渡计数不触发异常', () {
+  test('首帧前后起播共用五帧，第六帧开始计数', () {
     final c = PlaybackDropAccounting()
-      ..sample(1, nowMs: 100)
+      ..sample(2, nowMs: 100)
       ..firstFrame(500)
-      ..sample(3, nowMs: 1000, finishInterval: true)
-      ..sample(4, nowMs: 4000, finishInterval: true);
+      ..sample(5, nowMs: 1000, finishInterval: true);
     expect(c.droppedFrames, 0);
-    expect(c.rawDroppedFrames, 4);
-    expect(c.excludedDroppedFrames, 4);
-  });
-  test('切速结束的短暂重对齐不因超过两帧而突然全部报回', () {
-    final c = stable()
-      ..speedTransition(5000)
-      ..sample(3, nowMs: 6000, finishInterval: true)
-      ..sample(8, nowMs: 7500, finishInterval: true)
-      ..sample(8, nowMs: 8500, finishInterval: true);
-    expect(c.droppedFrames, 0);
-    expect(c.rawDroppedFrames, 8);
-  });
-  test('稳定区间孤立三帧不会弹出提示，下一正常区间清除候选', () {
-    final c = stable()..sample(3, nowMs: 5000, finishInterval: true);
-    expect(c.droppedFrames, 0);
-    c.sample(3, nowMs: 6000, finishInterval: true);
-    expect(c.droppedFrames, 0);
-    expect(c.excludedDroppedFrames, 3);
-  });
-  test('稳定播放连续掉帧会补记首次证据并通知', () {
-    final c = stable()
-      ..sample(3, nowMs: 5000, finishInterval: true)
-      ..sample(7, nowMs: 6000, finishInterval: true);
-    expect(c.droppedFrames, 7);
-    expect(c.recentDroppedFrames, 7);
-    c.sample(8, nowMs: 7000, finishInterval: true);
-    expect(c.droppedFrames, 8);
-    expect(c.recentDroppedFrames, 1);
-  });
-  test('严重突发立即报告，不等待第二个区间', () {
-    final c = stable()..sample(15, nowMs: 5000, finishInterval: true);
-    expect(c.droppedFrames, 15);
-    expect(c.recentDroppedFrames, 15);
-  });
-  test('恢复后继续掉帧仍可被捕获，过渡历史不倒灌', () {
-    final c = stable()
-      ..speedTransition(5000)
-      ..sample(20, nowMs: 6000, finishInterval: true)
-      ..sample(22, nowMs: 7500, finishInterval: true)
-      ..sample(25, nowMs: 8500, finishInterval: true)
-      ..sample(28, nowMs: 9500, finishInterval: true);
-    expect(c.droppedFrames, 6);
-    expect(c.excludedDroppedFrames, 22);
-  });
-  test('连续长按不能无限延长屏蔽窗口', () {
-    final c = stable()..speedTransition(5000);
-    for (final time in [6500, 8000, 9500, 11000]) {
-      c.speedTransition(time);
-    }
-    c
-      ..sample(3, nowMs: 11001, finishInterval: true)
-      ..speedTransition(11500)
-      ..sample(4, nowMs: 12000, finishInterval: true)
-      ..speedTransition(12500)
-      ..sample(5, nowMs: 13000, finishInterval: true);
+    c.sample(7, nowMs: 2000, finishInterval: true);
     expect(c.droppedFrames, 2);
+    expect(c.recentDroppedFrames, 2);
+    expect(c.excludedDroppedFrames, 5);
   });
-  test('新过渡清除孤立候选，不与过渡后无关计数组合报警', () {
+
+  test('进入和退出长按倍速各允许五帧，倍速期间持续计数', () {
     final c = stable()
-      ..sample(3, nowMs: 5000, finishInterval: true)
-      ..speedTransition(5500)
-      ..sample(6, nowMs: 8000, finishInterval: true)
-      ..sample(7, nowMs: 9000, finishInterval: true)
-      ..sample(7, nowMs: 10000, finishInterval: true);
+      ..speedTransition(5000)
+      ..sample(5, nowMs: 5500, finishInterval: true);
     expect(c.droppedFrames, 0);
+    c.sample(9, nowMs: 6000, finishInterval: true);
+    expect(c.droppedFrames, 4);
+    expect(c.recentDroppedFrames, 4);
+    c
+      ..sample(11, nowMs: 7500, finishInterval: true)
+      ..sample(14, nowMs: 8500, finishInterval: true);
+    expect(c.droppedFrames, 9);
+    c
+      ..speedTransition(9000)
+      ..sample(19, nowMs: 9500, finishInterval: true);
+    expect(c.droppedFrames, 9);
+    c.sample(22, nowMs: 10000, finishInterval: true);
+    expect(c.droppedFrames, 12);
+    expect(c.recentDroppedFrames, 3);
+    expect(c.excludedDroppedFrames, 10);
   });
+
+  test('短按进入和退出的窗口重叠时仍各有五帧', () {
+    final c = stable()
+      ..speedTransition(5000)
+      ..sample(5, nowMs: 5100)
+      ..speedTransition(5200)
+      ..sample(10, nowMs: 5300, finishInterval: true)
+      ..sample(11, nowMs: 5500, finishInterval: true);
+    expect(c.droppedFrames, 1);
+    expect(c.excludedDroppedFrames, 10);
+  });
+
+  test('单次切速的五帧额度跨采样累计，不能每秒重新排除', () {
+    final c = stable()
+      ..speedTransition(5000)
+      ..sample(3, nowMs: 5500, finishInterval: true)
+      ..sample(7, nowMs: 6500, finishInterval: true);
+    expect(c.droppedFrames, 2);
+    expect(c.excludedDroppedFrames, 5);
+  });
+
+  test('大幅丢帧只减去五帧，不再整段屏蔽或等待连续异常', () {
+    final c = stable()
+      ..speedTransition(5000)
+      ..sample(60, nowMs: 5500, finishInterval: true);
+    expect(c.droppedFrames, 55);
+    expect(c.recentDroppedFrames, 55);
+    expect(c.excludedDroppedFrames, 5);
+  });
+
+  test('稳定播放孤立一帧也正常计入，不被持续性过滤吞掉', () {
+    final c = stable()..sample(1, nowMs: 5000, finishInterval: true);
+    expect(c.droppedFrames, 1);
+    expect(c.recentDroppedFrames, 1);
+    c.sample(1, nowMs: 6000, finishInterval: true);
+    expect(c.droppedFrames, 1);
+    expect(c.recentDroppedFrames, 0);
+  });
+
+  test('过渡结束后未用完的额度失效，不抵扣后续稳定丢帧', () {
+    final c = stable()
+      ..speedTransition(5000)
+      ..sample(2, nowMs: 5500, finishInterval: true)
+      ..sample(2, nowMs: 7500, finishInterval: true)
+      ..sample(5, nowMs: 8500, finishInterval: true);
+    expect(c.droppedFrames, 3);
+    expect(c.excludedDroppedFrames, 2);
+  });
+
+  test('跨边界延迟上报也只能排除五帧，不能整次采样丢弃', () {
+    final c = stable()
+      ..speedTransition(5000)
+      ..sample(8, nowMs: 7500, finishInterval: true)
+      ..sample(9, nowMs: 8500, finishInterval: true);
+    expect(c.droppedFrames, 4);
+    expect(c.excludedDroppedFrames, 5);
+  });
+
+  test('连续切速不叠加未使用的额度', () {
+    final c = stable()
+      ..speedTransition(5000)
+      ..speedTransition(5100)
+      ..speedTransition(5200)
+      ..sample(12, nowMs: 5500, finishInterval: true);
+    expect(c.droppedFrames, 7);
+    expect(c.excludedDroppedFrames, 5);
+  });
+
   for (final buffering in [false, true]) {
-    test('暂停或网络缓冲清除未确认计数，不伪报设备性能不足：$buffering', () {
+    test('暂停或缓冲不计播放丢帧，恢复后不额外屏蔽：$buffering', () {
       final c = stable()
-        ..sample(3, nowMs: 5000, finishInterval: true)
+        ..sample(2, nowMs: 5000, finishInterval: true)
         ..sample(
           20,
           nowMs: 6000,
           finishInterval: true,
           isPlaying: buffering,
           isBuffering: buffering,
-        )
-        ..sample(21, nowMs: 7000, finishInterval: true)
-        ..sample(22, nowMs: 8000, finishInterval: true)
-        ..sample(22, nowMs: 9000, finishInterval: true);
-      expect(c.droppedFrames, 0);
-      expect(c.rawDroppedFrames, 22);
+        );
+      expect(c.droppedFrames, 2);
+      expect(c.recentDroppedFrames, 0);
+      c.sample(21, nowMs: 7000, finishInterval: true);
+      expect(c.droppedFrames, 3);
+      expect(c.recentDroppedFrames, 1);
+      expect(c.rawDroppedFrames, c.droppedFrames + c.excludedDroppedFrames);
     });
   }
-  test('计数回退不会产生负数或继承旧异常', () {
+
+  test('计数回退或主动切源会清除旧异常，重新给予五帧起播容差', () {
     final c = stable()
       ..sample(15, nowMs: 5000, finishInterval: true)
       ..sample(0, nowMs: 6000, finishInterval: true)
-      ..sample(1, nowMs: 7000, finishInterval: true);
-    expect(c.droppedFrames, 0);
-    expect(c.excludedDroppedFrames, 1);
+      ..sample(6, nowMs: 7000, finishInterval: true);
+    expect(c.droppedFrames, 1);
+    expect(c.excludedDroppedFrames, 5);
     c
       ..reset()
-      ..sample(3, nowMs: 9000, finishInterval: true);
+      ..firstFrame(8000)
+      ..sample(5, nowMs: 9000, finishInterval: true);
     expect(c.droppedFrames, 0);
-    expect(c.rawDroppedFrames, 3);
+    expect(c.rawDroppedFrames, 5);
+    expect(c.recentDroppedFrames, 0);
   });
-  test('普通快照刷新不伪造连续区间，也不消耗告警', () {
+
+  test('重复界面快照不重复计数或消耗近期告警，下一秒正常归零', () {
     final c = stable()
       ..sample(3, nowMs: 4500)
       ..sample(3, nowMs: 4600)
-      ..sample(3, nowMs: 5000, finishInterval: true);
-    expect(c.droppedFrames, 0);
+      ..sample(4, nowMs: 5000, finishInterval: true);
+    expect(c.droppedFrames, 4);
+    expect(c.recentDroppedFrames, 4);
+    c.sample(4, nowMs: 5100);
+    expect(c.recentDroppedFrames, 4);
     c.sample(4, nowMs: 6000, finishInterval: true);
-    expect(c.recentDroppedFrames, 4);
-    c.sample(4, nowMs: 6100);
-    expect(c.recentDroppedFrames, 4);
-    c.sample(4, nowMs: 7000, finishInterval: true);
     expect(c.recentDroppedFrames, 0);
-    expect(c.rawDroppedFrames, c.droppedFrames + c.excludedDroppedFrames);
+    expect(c.droppedFrames, 4);
   });
 }
