@@ -4,7 +4,7 @@
 - 当前发布：v26.10.31.1已公开且为GitHub latest，源码19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc，annotated tag固定。GitHub三资产digest/长度、ModelScope三文件完整回读SHA256通过；仅本机构建/打包/签名，Actions仍关闭且运行数保持4。
 - 当前任务：67项整体适配、统一验证及新Release发布完成，README首页同步独立提交ed44da301；用户追加图标检查本轮未复现。正式包覆盖安装被手机拒绝后，用户明确免除并要求沿用独立dev启动结果发布，不能宣称新正式包安装已验收。
 - 当前源码：正式发布19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc（版本26.10.31+1/code34）；产品行为来自cff93f2d7主体+d75b16c13备份导入修正，19f0fe0a8仅改版本与发布文档。研究/审查601f09cf3，回退codex/backup-before-upstream-20261031=bec0b851e。
-- 工作分支：merge/upstream-2.1.4-20260913，源码/标签已推送；收尾记录提交后也须推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
+- 工作分支：merge/upstream-2.1.4-20260913，源码/标签与收尾记录均已推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
 - 上游边界：已处理至cb17739448a73dc829e55a134ad6cf28400c814d。本轮88eca305d..cb1773944共72项：67项适配来源（62功能/修复+5工具链）、4项平台排除、1项等价覆盖；不是67次原样cherry-pick。完整来源映射和取舍见docs/PiliPlus上游审查-2026-10-31.md，下轮不得重复应用这些来源。
 - 已整合：评论开关迁移/过滤/定位/折叠、全量备份与导入回滚/持久化、缓存音质、PGC/分P/合集最终面板、图文/主页、直播缓冲/SC/分区、账号buvid与Hive、输入面板、键盘/滚轮/字号、网络编码、Android17投屏权限及vivo限定会话。保留Media3/mpv、HDR/FLAC、混合推荐、文章分享、画质语义顺序和AudioTrackSelector；不引入上游无关gzip/brotli、Linux nm/MPRIS或全Android remote/fixed策略。
 - 统一验证：整体源码177/177 Flutter、Analyze 0error/0warning（75info）、Android JVM17/17、C策略5/5；本次发布元数据下版本/音频9/9通过。发布重新本机离线双ABI构建3m22s；1561文件一致，较已测产品仅pubspec版本和Android版本配置变化。原证书V2/manifest/AOT/JNI/R8/FFmpeg/ABI/适用ELF与ZIP16KB门禁通过，全部七个非Dart库与已测候选相同。
@@ -1120,8 +1120,8 @@ f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_androi
 
 以下为本地未提交的 2026-09-28 15:36 快照，恢复时保留作历史补记；当前版本、工具链与工作状态以文件顶部为准。
 
-- 更新时间：2026-10-31 11:49 (+08:00)
-- 工作分支：merge/upstream-2.1.4-20260913，源码/标签已推送；收尾记录提交后也须推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
+- 更新时间：2026-10-17 22:17 (+08:00)
+- 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
 - 分析基线：`f79be53d9`（`v26.9.28.2` 发布提交）；此前 `0b0717212` 升级工具链与依赖，`ca683a327` 定向移植文本选择菜单。
 - 发布状态：`v26.9.28.2` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.2/` 镜像；两份正式 APK 和校验清单均已上传并核验。应用版本 `26.9.28+2`，Android `versionCode=25`。
 - 当前工作：`c61777333` 的默认站内搜索菜单与 `483a423be` 的自定义菜单保留修复已成对定向移植；未带入前置提交中无关的图片保存弹窗路由变化。Flutter 3.47.5、`material_ui 1.4.0` 与相关依赖升级由先前的 `0b0717212` 一并进入新正式版。
