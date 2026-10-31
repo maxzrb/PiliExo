@@ -7,6 +7,10 @@ import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/utils/config_archive.dart';
+import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/models/user/info.dart';
+import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/reply_filter_preferences.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -14,6 +18,8 @@ import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:PiliPlus/grpc/bilibili/main/community/reply/v1.pb.dart';
+import 'package:fixnum/fixnum.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -22,9 +28,17 @@ void main() {
 
   setUpAll(() async {
     directory = await Directory.systemTemp.createTemp('piliexo-upstream-');
+    appSupportDirPath = directory.path;
     Hive.init(directory.path);
+    GStorage.regAdapter();
     box = await Hive.openBox('setting');
     GStorage.setting = box;
+    GStorage.video = await Hive.openBox('video');
+    GStorage.localCache = await Hive.openBox('localCache');
+    GStorage.historyWord = await Hive.openBox('historyWord');
+    GStorage.userInfo = await Hive.openBox<UserInfoData>('userInfo');
+    Accounts.account = await Hive.openBox<LoginAccount>('account');
+    GStorage.reply = null;
   });
   setUp(() => box.clear());
   tearDownAll(() async {
@@ -141,5 +155,68 @@ void main() {
       throwsA(anything),
     );
     expect(box.get('preserved'), 'original');
+  });
+  test('合法备份完成落盘并清理恢复副本，设置及搜索记录同时生效', () async {
+    await box.put('preserved', 'original');
+    final archive = Archive()
+      ..add(
+        ArchiveFile.string(
+          'meta.json',
+          jsonEncode({
+            'type': 'data_archive',
+            'formatVersion': 65536,
+            'appName': Constants.appName,
+          }),
+        ),
+      )
+      ..add(
+        ArchiveFile.string(
+          'setting.json',
+          '{"setting":{"preserved":"new"},"video":{"speed":1.5}}',
+        ),
+      )
+      ..add(ArchiveFile.string('account.json', '{}'))
+      ..add(ArchiveFile.string('blacklist.json', '[123]'))
+      ..add(ArchiveFile.string('search.json', '["query"]'));
+    final result = await ConfigArchive.import(
+      Uint8List.fromList(ZipEncoder().encode(archive)),
+      onWarning: (_) async => true,
+    );
+    expect(result, contains('请重启'));
+    expect(box.get('preserved'), 'new');
+    expect(GStorage.video.get('speed'), 1.5);
+    expect(GStorage.historyWord.get('cacheList'), ['query']);
+    expect(GStorage.localCache.get(LocalCacheKey.blackMids), {123});
+    expect(
+      File('${directory.path}/config-import-recovery.zip').existsSync(),
+      isFalse,
+    );
+  });
+  test('原先未记录评论时仍恢复备份评论到重启可读的存储', () async {
+    final reply = ReplyInfo(id: Int64(123), oid: Int64(456), type: Int64(1));
+    final archive = Archive()
+      ..add(
+        ArchiveFile.string(
+          'meta.json',
+          jsonEncode({
+            'type': 'data_archive',
+            'formatVersion': 65536,
+            'appName': Constants.appName,
+          }),
+        ),
+      )
+      ..add(
+        ArchiveFile.string('reply.json', jsonEncode([reply.toProto3Json()])),
+      );
+    expect(GStorage.reply, isNull);
+    await ConfigArchive.import(
+      Uint8List.fromList(ZipEncoder().encode(archive)),
+      onWarning: (_) async => true,
+    );
+    var restored = await Hive.openBox<Uint8List>('reply');
+    await restored.close();
+    restored = await Hive.openBox<Uint8List>('reply');
+    expect(ReplyInfo.fromBuffer(restored.get('123')!).oid.toInt(), 456);
+    await restored.close();
   });
 }

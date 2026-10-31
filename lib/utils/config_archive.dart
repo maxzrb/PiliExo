@@ -26,6 +26,7 @@ import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:archive/archive.dart';
 import 'package:get/get.dart';
+import 'package:hive_ce/hive.dart';
 
 class ImportResult {
   const ImportResult({required this.applied, this.message});
@@ -127,6 +128,12 @@ abstract final class ConfigArchive {
 
     // 所有条目先校验，再写入；内存快照用于写入异常回滚。
     final staged = preflight(archive);
+    // 原先未开启评论记录时，也将备份中的评论恢复到独立存储，重启后可读取。
+    final replyBox =
+        GStorage.reply ??
+        (staged.containsKey(replyFileName)
+            ? await Hive.openBox<Uint8List>('reply')
+            : null);
     final boxes = [
       GStorage.setting,
       GStorage.video,
@@ -134,7 +141,7 @@ abstract final class ConfigArchive {
       GStorage.localCache,
       GStorage.historyWord,
       GStorage.userInfo,
-      if (GStorage.reply != null) GStorage.reply!,
+      if (replyBox != null) replyBox,
     ];
     final snapshots = [for (final box in boxes) box.toMap()];
     final oldFont = FontUtils.appFont;
@@ -164,7 +171,7 @@ abstract final class ConfigArchive {
       if (staged[blacklistFileName] case final List<dynamic> list)
         await _importBlacklist(list);
       if (staged[replyFileName] case final List<dynamic> list)
-        await _importReply(list);
+        await _importReply(list, replyBox);
       if (staged[searchFileName] case final List<dynamic> list)
         await _importSearch(list);
       if (staged[fontFileName] case final Uint8List font) {
@@ -384,8 +391,10 @@ abstract final class ConfigArchive {
     await GStorage.localCache.put(LocalCacheKey.blackMids, set);
   }
 
-  static Future<void> _importReply(List<dynamic> list) async {
-    final box = GStorage.reply;
+  static Future<void> _importReply(
+    List<dynamic> list,
+    Box<Uint8List>? box,
+  ) async {
     if (box == null) return;
     await box.clear();
     await box.putAll(MyReply.json2ReplyProto(list));
