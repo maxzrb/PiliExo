@@ -4,11 +4,11 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.10.19.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.19.1)（2026-10-19 发布）。
+- 当前正式版本：[v26.10.31.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.31.1)（2026-10-31 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游已处理至 `88eca305d`；本轮从 20 个近期提交中合入或适配 12 项 Android/共享功能与修复，保留 PiliExo 的播放器与界面定制，纯平台更新不重复核验。
+- PiliPlus 上游已处理至 `cb1773944`；本轮整体适配 67 项来源的 Android/共享功能、修复及必要工具链，保留 PiliExo 的播放器与界面定制，纯平台更新不重复核验。
 
 ## PiliExo 的实际修改
 
@@ -30,6 +30,10 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 修复部分 Android 设备长按加速后松手持续追帧：恢复基础倍速 80 毫秒后仅检查一次音画差，超过 1 秒时精确重定位，可能出现短暂停顿；长按期间隐藏底部灰色进度块，洞察隐藏时仍监测丢帧。
 - 优化首页固定背景顶栏的磨砂绘制；设置重新分类，新增纯 @ 评论与数量过滤，并保留原有自定义选项。
 
+- 全量 ZIP 备份与安全导入、缓存音质选择、评论独立过滤开关及来源定位；番剧/分 P/合集采用更新后的面板与同步逻辑。
+- 直播独立缓冲、SC 和固定分区入口；更新图文、用户主页及发布输入面板，支持惊吓片段跳过、外接键盘连续后退和系统大字体。
+- 适配 Android 17 局域网投屏权限，修复签名播放地址、设置搜索与账号设备标识迁移，兼容 vivo 媒体会话音量键。
+
 ## 下载与更新
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
@@ -40,7 +44,7 @@ APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armea
 
 ## 构建与发布维护
 
-当前发布使用 Flutter `3.47.7` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
+当前发布使用 Flutter `3.47.9` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
 
 每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。本项目仅在本机构建、打包和签名，不使用 GitHub Actions。本地预构建脚本会校验版本与 Flutter 工具链；发布后同步默认分支的 README。
 
