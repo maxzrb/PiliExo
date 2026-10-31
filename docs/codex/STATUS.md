@@ -1,22 +1,22 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-31 11:34 (+08:00)
-- 当前发布：用户明确授权发布新 Release；已核对远端最新v26.10.19.1，拟发布v26.10.31.1、26.10.31+1/code34。沿用原正式密钥，本机重新构建签名并同步GitHub/ModelScope；Actions enabled=false、历史运行数4。当前尚未发布。
-- 当前任务：用户授权的67项上游来源已一次性整体适配并本地提交，统一自动化/构建/签名/启动验证已完成；并补查原正式包桌面图标。本轮未推送或发布，未改版本/正式标签，未使用或启用GitHub Actions。
-- 当前源码：d75b16c135d460676668f243a84026c3dd9547bc；主体cff93f2d741310e819ea9a46174b149e485b9c74，备份恢复补正d75b16c13。研究/审查记录601f09cf3；回退分支codex/backup-before-upstream-20261031=bec0b851e。
-- 工作分支：merge/upstream-2.1.4-20260913，本轮最终记录提交后较origin领先4个本地提交；用户tmp/继续保留未跟踪，其余任务文件应已提交。开始时git pull --ff-only已同步，收尾不再pull混入新来源。
+- 更新时间：2026-10-31 11:49 (+08:00)
+- 当前发布：v26.10.31.1已公开且为GitHub latest，源码19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc，annotated tag固定。GitHub三资产digest/长度、ModelScope三文件完整回读SHA256通过；仅本机构建/打包/签名，Actions仍关闭且运行数保持4。
+- 当前任务：67项整体适配、统一验证及新Release发布完成，README首页同步独立提交ed44da301；用户追加图标检查本轮未复现。正式包覆盖安装被手机拒绝后，用户明确免除并要求沿用独立dev启动结果发布，不能宣称新正式包安装已验收。
+- 当前源码：正式发布19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc（版本26.10.31+1/code34）；产品行为来自cff93f2d7主体+d75b16c13备份导入修正，19f0fe0a8仅改版本与发布文档。研究/审查601f09cf3，回退codex/backup-before-upstream-20261031=bec0b851e。
+- 工作分支：merge/upstream-2.1.4-20260913，源码/标签已推送；收尾记录提交后也须推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
 - 上游边界：已处理至cb17739448a73dc829e55a134ad6cf28400c814d。本轮88eca305d..cb1773944共72项：67项适配来源（62功能/修复+5工具链）、4项平台排除、1项等价覆盖；不是67次原样cherry-pick。完整来源映射和取舍见docs/PiliPlus上游审查-2026-10-31.md，下轮不得重复应用这些来源。
 - 已整合：评论开关迁移/过滤/定位/折叠、全量备份与导入回滚/持久化、缓存音质、PGC/分P/合集最终面板、图文/主页、直播缓冲/SC/分区、账号buvid与Hive、输入面板、键盘/滚轮/字号、网络编码、Android17投屏权限及vivo限定会话。保留Media3/mpv、HDR/FLAC、混合推荐、文章分享、画质语义顺序和AudioTrackSelector；不引入上游无关gzip/brotli、Linux nm/MPRIS或全Android remote/fixed策略。
-- 统一验证：177/177 Flutter；Analyze 0error/0warning、75info；Android JVM 17/17（FLAC4、HDR源13）；本机C策略5/5。README/SDK/29原生插件注册、脚本语法、1561文件源码一致性、双ABI本机离线Release及原证书V2/manifest/AOT/JNI/R8/FFmpeg/唯一ABI/适用ELF与ZIP16KB门禁通过。
-- 真机启动：MEP-AN00 Android17，独立com.maxzrb.piliexo.dev与候选相同Dart AOT，用户允许USB安装后成功冷启动563ms，PID32392，51应用节点、无启动致命异常，进程存活；随后移除测试包。原正式包版本/安装时间前后不变。device-smoke.json在候选目录。没有用启动检查代替完整功能矩阵。
+- 统一验证：整体源码177/177 Flutter、Analyze 0error/0warning（75info）、Android JVM17/17、C策略5/5；本次发布元数据下版本/音频9/9通过。发布重新本机离线双ABI构建3m22s；1561文件一致，较已测产品仅pubspec版本和Android版本配置变化。原证书V2/manifest/AOT/JNI/R8/FFmpeg/ABI/适用ELF与ZIP16KB门禁通过，全部七个非Dart库与已测候选相同。
+- 真机启动：此前MEP-AN00 Android17独立dev与d75候选Dart AOT一致，冷启动563ms、PID32392、51应用节点、无启动致命异常且进程存活，测试包已卸载。本次正式包覆盖被手机INSTALL_FAILED_ABORTED拒绝后用户明确免除；原正式包仍26.10.19/code33、安装时间2026-10-19 00:33:04，未清数据/卸载正式版。新正式包未进行新真机启动检查。
 - 未覆盖：vivo专属行为、32位实体设备、实际昼夜定时图标切换，以及账号/会员/片源/网络/离线/PGC/课程/直播/双后端播放、PiP/通知/DLNA与输入交互完整人工矩阵；后续发布前需按实际需要验收，不能宣称全部运行通过。
 - 图标调查：原正式包与候选编译图标资源一致。手机资源随深浅正确解析，用户解锁后的原包桌面截图显示深灰底浅P/浅底深P正常切换，在图标可见时深色返回白天auto也正常。本轮未复现，不确定此前根因，不修改图标或清桌面数据；系统已恢复原auto。证据在dist/integration/upstream-20261031/icon-investigation/。此前“忽略图标”决定已被本轮用户重新调查请求替代。
 - 候选产物：dist/integration/upstream-20261031/，arm64 APK 33051087字节/SHA256 68522da5aa567fdb0811aa753119fdce846772b420b32d98f4e893d7accc27da；v7 APK 32670175字节/SHA256 3d51a5bc5cf4f6bfd453f5118d08c76b3e9a8c6fafed5e41b8d21885aa17ecf0。包含SHA256SUMS.txt、metadata.json、build-request.json、verification.json及日志；不是新Release，版本仍26.10.19+1/code33。
 - 稳定播放基线：MpvAudioOptions/PlaybackRateCoordinator/AvSyncGuard源码保持原样；libmpv/FFmpeg JNI/两个media-kit辅助库与已发布包逐字节一致。arm64 mpv=e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98，v7=a310c26214decfa37a515a20b308ea512b002dab26bc16a8e7b76d4be9761f0d。Flutter引擎/Dart JNI/共享计数器库随本轮工具链升级，不能说所有原生库未变。
 - 保留用户验收的倍速路线：默认2倍/可自定义，不等待旧倍速回复；autosync=0，松手恢复基础倍速80ms后仅检查一次avsync，>1秒absolute+exact。保留切换5帧容差与洞察总丢帧。AAudio候选会话/媒体类型及AudioTrack候选参数、周期seek、跳帧/降倍率实验不恢复；音量差异未解决且不主动继续。
-- 当前公开版本：v26.10.19.1，源码002855a340b44f7f3a795d3452f9dba672c7eebf，annotated tag固定；仍是本轮开始前公开版本。其双APK在dist/release/v26.10.19.1，arm64 SHA256 c33e147d4c290d696106b9c928d35549fc6a19266b2a283c534f0d06e7337d8f，v7 b87e54504082870f2cf852f302f65fa9e4d0c185a0becdcffa7d99d917ddb392。正式证书SHA256 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。
+- 当前公开版本：v26.10.31.1（26.10.31+1 / code34），源码19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc，URL https://github.com/maxzrb/PiliExo/releases/tag/v26.10.31.1；双APK及SHA256SUMS在dist/release/v26.10.31.1/。原证书SHA256 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。旧v26.10.19.1及历史草稿/产物保留。
 - 工具链：Flutter3.47.9/Dart3.13.7独立SDK C:/Users/maxzr/.codex/vendor_imports/flutter-3.47.9，tag c197ca5199e9ee5661e865596c9c07294dfab51c，engine89c39edfdfae2949f6806e4a315c0c08522238b7；25个framework和Material1.9.0的9个补丁全部应用。NDK28.2.13676358、Java21。原3.47.7 SDK和旧C盘构建树不动。
-- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3、实际产品文件与根d75b16c13逐字节一致；pili.hash必须显式使用根源码SHA，不能从该树HEAD生成。构建树release输出已被独立dev构建覆盖，交付生产候选以D盘dist/integration目录为准。日志另在C:/Users/maxzr/.codex/vendor_imports/piliexo-upstream-20261031-*.log。
+- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3、实际产品文件与正式19f0fe0a8逐字节一致；显式用根发布SHA生成pili.*，不能用构建树旧HEAD。本次生产base APK与mapping已固定保存到dist/release/v26.10.31.1/，正式交付使用同目录签名重打包文件。
 - 环境处理：D盘Flutter测试停滞迁到独立C盘；Java PKIX下载失败时从旧缓存复用3个JAR并核对插件声明SHA256，没有关闭TLS。直接离线Gradle须核对local.properties版本和pili.*定义；签名输入仅本机ignored文件，禁止提交。不得触发/重新启用仓库Actions。
 - 官方B站画质/长按研究已保存（docs/原版B站画质策略调查-2026-10-19.md、docs/原版B站长按倍速逻辑调查-2026-10-19.md），含高帧率钳制/跳帧/2.4秒输出间隔等证据边界；这些仍仅调查，不据此改本地播放策略。功耗/GPU研究继续暂停。
 
@@ -1120,8 +1120,8 @@ f83eae8fd9bff174c4a6ce18a904d002000bbac38e923ac6cd13329ac40a49bb  PiliExo_androi
 
 以下为本地未提交的 2026-09-28 15:36 快照，恢复时保留作历史补记；当前版本、工具链与工作状态以文件顶部为准。
 
-- 更新时间：2026-10-17 22:17 (+08:00)
-- 工作分支：`merge/upstream-2.1.4-20260913`（跟踪 `origin/merge/upstream-2.1.4-20260913`）
+- 更新时间：2026-10-31 11:49 (+08:00)
+- 工作分支：merge/upstream-2.1.4-20260913，源码/标签已推送；收尾记录提交后也须推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
 - 分析基线：`f79be53d9`（`v26.9.28.2` 发布提交）；此前 `0b0717212` 升级工具链与依赖，`ca683a327` 定向移植文本选择菜单。
 - 发布状态：`v26.9.28.2` 已发布 GitHub Release 与 ModelScope `AerithDream/PiliExo/releases/v26.9.28.2/` 镜像；两份正式 APK 和校验清单均已上传并核验。应用版本 `26.9.28+2`，Android `versionCode=25`。
 - 当前工作：`c61777333` 的默认站内搜索菜单与 `483a423be` 的自定义菜单保留修复已成对定向移植；未带入前置提交中无关的图片保存弹窗路由变化。Flutter 3.47.5、`material_ui 1.4.0` 与相关依赖升级由先前的 `0b0717212` 一并进入新正式版。
@@ -1757,3 +1757,13 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 已答复正式密钥在android/piliexo-release.jks、密码配置在android/key.properties，隔离构建树有本机副本；仅核对路径、存在与Git忽略状态，没有展示凭据内容。
 - pull --ff-only已同步；远端今日无Release/tag，当前正式v26.10.19.1/code33。新版本固定v26.10.31.1、pubspec26.10.31+1、Android code34；准备更新README、版本迭代及用户可感知Release Note。
 - Actions仍关闭，历史4次运行；GitHub连接器缺少Release/资产工具，按本机CLI/API发布并同步ModelScope，完成前必须校验最终包与源码/版本/原签名/原生基线及远端文件。未授权关机，不继承上次发布关机安排。
+
+## 2026-10-31 11:49 v26.10.31.1 发布与镜像收尾
+
+- 用户明确授权“发布新release”，并在正式包USB安装拒绝后明确“免除本次正式包覆盖检查，沿用刚通过的独立包启动结果并发布”。正式包未安装成功，原包code33/安装时间不变，未清数据或卸载。豁免和此前独立启动证据在本机产物目录，不将该项写为新正式包覆盖通过。
+- 正式源码19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc，tag v26.10.31.1为annotated tag并固定指向该提交；应用26.10.31+1、全局code34。67项适配代码未再改动，只有发布版本及文档更新；README、迭代记录、Release Note与工具链说明同步。元数据版本/音频9项通过，本机双ABI构建3m22s，源码1561份逐文件核对；签名、AOT元数据、JNI/R8/FFmpeg、ABI/ELF/ZIP对齐通过。
+- PiliExo_android_v26.10.31.1_arm64-v8a.apk：33051087字节，SHA256 `de1add2324c0e30a9db780267d6631527d7ad851a0a626e10d600d9e58699619`。
+- PiliExo_android_v26.10.31.1_armeabi-v7a.apk：32670175字节，SHA256 `0dc679f6e5bb7b7a75d1e54f8a08a5d5d04f60e4ca85905c0af622e0a9ac5077`。
+- GitHub Release https://github.com/maxzrb/PiliExo/releases/tag/v26.10.31.1 已公开、非prerelease且为latest；两个APK与SHA256SUMS三资产digest/长度一致。ModelScope AerithDream/PiliExo releases/v26.10.31.1/三个文件均完整下载回读，SHA256和长度与本机一致。
+- 默认main首页README独立提交ed44da301，内容与发布源码README相同，未将应用代码合入main。源码分支及tag已推送，收尾日志提交后继续推送并最终回读。Actions始终enabled=false、历史运行数4，无新构建运行，所有打包和签名均本机完成。
+- 未覆盖vivo专属、32位设备、完整播放/账号权限/交互矩阵及图标实际定时切换，保持此前边界。图标原包手动深浅及白天auto正常，未声称修复。原密钥与密码只在本机ignored android文件及构建树副本，未入Git/Release；本轮没有关机请求，不执行历史关机安排。tmp/和旧发布/草稿保留，无本轮P盘映射。
