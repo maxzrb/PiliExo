@@ -2,10 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/grpc/reply.dart';
-import 'package:PiliPlus/models/common/reply/reply_at_match_type.dart';
 import 'package:PiliPlus/models/common/reply/reply_sort_type.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
-import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -40,14 +38,6 @@ List<SettingsModel> get replySettings => [
     ),
     onTap: _showReplyLengthDialog,
   ),
-  getBanWordModel(
-    title: '评论关键词过滤',
-    key: SettingBoxKey.banWordForReply,
-    onChanged: (value) {
-      ReplyGrpc.replyRegExp = value;
-      ReplyGrpc.enableFilter = value.pattern.isNotEmpty;
-    },
-  ),
   const SwitchModel(
     title: '记录评论',
     leading: Icon(Icons.message_outlined),
@@ -79,21 +69,31 @@ List<SettingsModel> get replySettings => [
     defaultVal: false,
     onChanged: (value) => ReplyGrpc.antiGoodsReply = value,
   ),
-  NormalModel(
-    title: '屏蔽@评论',
-    getSubtitle: () {
-      final replyAtBlockType = Pref.replyAtBlockType;
-      switch (replyAtBlockType.$2) {
-        case .disable:
-          return '禁用';
-        case .count:
-          return '屏蔽${replyAtBlockType.$1}个@及以上的评论';
-        case .atOnly:
-          return '屏蔽只包含@评论';
-      }
-    },
-    leading: const Icon(Icons.alternate_email),
+  const NormalModel(
+    title: '屏蔽评论@数量',
+    getSubtitle: _replyAtBlockSubtitle,
+    leading: Icon(Icons.pin_outlined),
     onTap: _showReplyAtBlockDialog,
+  ),
+  const SwitchModel(
+    title: '屏蔽只包含@的评论',
+    leading: Icon(Icons.alternate_email),
+    setKey: SettingBoxKey.blockAtOnlyReply,
+    onChanged: _onBlockAtOnlyReplyChanged,
+  ),
+  const SwitchModel(
+    title: '屏蔽复制简介评论',
+    leading: Icon(Icons.summarize),
+    setKey: SettingBoxKey.filterIntro,
+    defaultVal: false,
+  ),
+  getBanWordModel(
+    title: '评论关键词过滤',
+    key: SettingBoxKey.banWordForReply,
+    onChanged: (value) {
+      ReplyGrpc.replyRegExp = value;
+      ReplyGrpc.enableFilter = value.pattern.isNotEmpty;
+    },
   ),
   SwitchModel(
     title: '评论区搜索关键词',
@@ -171,69 +171,65 @@ void _showReplyLengthDialog(BuildContext context, VoidCallback setState) {
   );
 }
 
+String _replyAtBlockSubtitle() {
+  final blockReplyAtCount = Pref.blockReplyAtCount;
+  if (blockReplyAtCount == null) {
+    return '禁用';
+  }
+  return '屏蔽$blockReplyAtCount个@及以上的评论';
+}
+
 Future<void> _showReplyAtBlockDialog(
   BuildContext context,
   VoidCallback setState,
 ) async {
-  final replyAtBlockType = Pref.replyAtBlockType;
-  final res = await showDialog<int>(
+  void onChanged([int? value]) {
+    Get.back();
+    ReplyGrpc.blockReplyAtCount = value;
+    GStorage.setting
+        .put(SettingBoxKey.blockReplyAtCount, value)
+        .whenComplete(setState);
+  }
+
+  var countStr = Pref.blockReplyAtCount?.toString();
+  await showDialog<String>(
     context: context,
-    builder: (context) => SelectDialog<int>(
-      title: '屏蔽@评论',
-      value: replyAtBlockType.$1 ?? replyAtBlockType.$2.value,
-      values: [
-        ...ReplyAtBlockType.values.map((e) => (e.value, e.label)),
-        if (replyAtBlockType.$1 case final count? when count > 0)
-          (count, '屏蔽$count个及以上'),
+    builder: (context) => AlertDialog(
+      title: const Text('屏蔽@的数量'),
+      content: TextFormField(
+        autofocus: true,
+        keyboardType: .number,
+        initialValue: countStr,
+        onChanged: (value) => countStr = value,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      ),
+      actions: [
+        TextButton(
+          onPressed: onChanged,
+          child: const Text('禁用'),
+        ),
+        TextButton(
+          onPressed: Get.back,
+          child: Text(
+            '取消',
+            style: TextStyle(color: ColorScheme.of(context).outline),
+          ),
+        ),
+        TextButton(
+          onPressed: () {
+            try {
+              final count = int.parse(countStr!);
+              onChanged(count > 0 ? count : null);
+            } catch (e) {
+              SmartDialog.showToast(e.toString());
+            }
+          },
+          child: const Text('确认'),
+        ),
       ],
     ),
   );
-  if (res == null) return;
-  if (res == ReplyAtBlockType.disable.value) {
-    await Pref.updateReplyAtBlockType(res, .disable);
-    setState();
-  } else if (res == ReplyAtBlockType.atOnly.value) {
-    await Pref.updateReplyAtBlockType(res, .atOnly);
-    setState();
-  } else {
-    if (!context.mounted) return;
-    String countStr = replyAtBlockType.$1?.toString() ?? '';
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('屏蔽@的数量'),
-        content: TextFormField(
-          autofocus: true,
-          keyboardType: .number,
-          initialValue: countStr,
-          onChanged: (value) => countStr = value,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        ),
-        actions: [
-          TextButton(
-            onPressed: Get.back,
-            child: Text(
-              '取消',
-              style: TextStyle(color: ColorScheme.of(context).outline),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('确认'),
-          ),
-        ],
-      ),
-    );
-    if (accepted == true && context.mounted) {
-      try {
-        final count = int.parse(countStr);
-        if (count > 0) {
-          await Pref.updateReplyAtBlockType(count, .count);
-          setState();
-        }
-      } catch (e) {
-        SmartDialog.showToast(e.toString());
-      }
-    }
-  }
 }
+
+void _onBlockAtOnlyReplyChanged(bool value) =>
+    ReplyGrpc.blockAtOnlyReply = value;

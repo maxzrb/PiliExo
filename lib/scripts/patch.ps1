@@ -2,8 +2,18 @@ param(
     [string]$platform = ""
 )
 
-git config --global user.name "ci"
-git config --global user.email "example@example.com"
+# 本机补丁操作不修改全局身份，临时值在结束后恢复。
+$IdentityKeys = @('GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL')
+$PreviousIdentity = @{}
+$OriginalLocation = Get-Location
+foreach ($key in $IdentityKeys) {
+    $PreviousIdentity[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+    if (-not $PreviousIdentity[$key]) {
+        $fallback = if ($key.EndsWith('EMAIL')) { 'local-patch@example.invalid' } else { 'local-patch' }
+        [Environment]::SetEnvironmentVariable($key, $fallback, 'Process')
+    }
+}
+try {
 
 # TODO: remove
 # https://github.com/flutter/flutter/issues/182281
@@ -337,4 +347,11 @@ foreach ($patch in $patches_cupertino) {
     } else {
         throw "$LASTEXITCODE"
     }
+}
+
+} finally {
+    foreach ($key in $IdentityKeys) {
+        [Environment]::SetEnvironmentVariable($key, $PreviousIdentity[$key], 'Process')
+    }
+    Set-Location $OriginalLocation
 }

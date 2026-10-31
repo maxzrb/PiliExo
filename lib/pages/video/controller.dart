@@ -22,10 +22,9 @@ import 'package:PiliPlus/models/common/sponsor_block/action_type.dart';
 import 'package:PiliPlus/models/common/sponsor_block/post_segment_model.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_model.dart';
 import 'package:PiliPlus/models/common/sponsor_block/segment_type.dart';
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/source_type.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
@@ -171,9 +170,6 @@ class VideoDetailController extends GetxController
   ScrollController? introScrollCtr;
   ScrollController get effectiveIntroScrollCtr =>
       introScrollCtr ??= ScrollController();
-
-  int? seasonCid;
-  late final RxInt seasonIndex = 0.obs;
 
   PlayerStatus? playerStatus;
 
@@ -376,8 +372,6 @@ class VideoDetailController extends GetxController
       if (!isLoginVideo) {
         _actualVideoType = VideoType.ugc;
       }
-    } else if (args['pgcApi'] == true) {
-      _actualVideoType = VideoType.pgc;
     }
 
     bvid = args['bvid'];
@@ -494,9 +488,7 @@ class VideoDetailController extends GetxController
                 (sourceType == SourceType.fav && args['isOwner'] == true)
             ? (item, index) async {
                 if (sourceType == SourceType.watchLater) {
-                  final res = await UserHttp.toViewDel(
-                    aids: item.aid.toString(),
-                  );
+                  final res = await UserHttp.toViewDel(aids: item.aid!);
                   if (res.isSuccess) {
                     mediaList.removeAt(index);
                   }
@@ -677,12 +669,12 @@ class VideoDetailController extends GetxController
     VideoItem? bestVideo;
     int bestIndex = preferCodecs.length;
     for (final video in videoList) {
-      final c = video.codecs!;
-      if (currentCodes.any(c.startsWith)) {
+      final codecs = video.codecs!;
+      if (currentCodes.any(codecs.startsWith)) {
         return video;
       }
       for (int i = 0; i < bestIndex; i++) {
-        if (preferCodecs[i].codes.any(c.startsWith)) {
+        if (preferCodecs[i].codes.any(codecs.startsWith)) {
           bestIndex = i;
           bestVideo = video;
           break;
@@ -990,15 +982,17 @@ class VideoDetailController extends GetxController
     if (plPlayerController.enableSponsorBlock && isBlock && !fromReset) {
       querySponsorBlock(bvid: bvid, cid: cid.value);
     }
-    if (plPlayerController.cacheVideoQa == null) {
+    if (PlatformUtils.isMobile) {
       final isWiFi = await ConnectivityUtils.isWiFi;
-      plPlayerController
-        ..cacheVideoQa = isWiFi
-            ? Pref.defaultVideoQa
-            : Pref.defaultVideoQaCellular
-        ..cacheAudioQa = isWiFi
-            ? Pref.defaultAudioQa
-            : Pref.defaultAudioQaCellular;
+      if (plPlayerController.cacheVideoQa == null) {
+        plPlayerController
+          ..cacheVideoQa = isWiFi
+              ? Pref.defaultVideoQa
+              : Pref.defaultVideoQaCellular
+          ..cacheAudioQa = isWiFi
+              ? Pref.defaultAudioQa
+              : Pref.defaultAudioQaCellular;
+      }
       preferCodecs = isWiFi ? Pref.preferCodecs : Pref.preferCodecsCellular;
     }
 
@@ -1036,7 +1030,8 @@ class VideoDetailController extends GetxController
           displayTime: const Duration(seconds: 3),
         );
       }
-      if (data.dash == null) {
+      final dash = data.dash;
+      if (dash == null) {
         if (data.durl case final durl?) {
           // it will cause all files to be opened simultaneously
           if (durl.length > 1) {
@@ -1083,38 +1078,23 @@ class VideoDetailController extends GetxController
         }
       }
 
-      final List<VideoItem> videoList = data.dash!.video!;
-      // if (kDebugMode) debugPrint("allVideosList:${allVideosList}");
       final cacheVideoQa = plPlayerController.cacheVideoQa!;
-      final targetVideoQa = data.findAvailableVideoQuality(cacheVideoQa);
-      currentVideoQa.value = VideoQuality.fromCode(targetVideoQa);
-
-      /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
-      final supportFormats = data.supportFormats!;
-
-      // 根据画质选编码格式
-      currentDecodeFormats = VideoUtils.selectCodec(
-        supportFormats
-            .firstWhere(
-              (e) => e.quality == targetVideoQa,
-              orElse: () => supportFormats.first,
-            )
-            .codecs!,
+      final (
+        int targetQuality,
+        FormatItem targetFormat,
+        VideoDecodeFormatType targetDecode,
+        VideoItem targetVideo,
+      ) = VideoUtils.findTargetVideo(
+        dash.video!,
+        cacheVideoQa,
+        response.acceptQuality,
+        response.supportFormats,
         preferCodecs,
       );
-
-      /// 取出符合当前画质的videoList
-      final videosList = videoList
-          .where((e) => e.quality.code == targetVideoQa)
-          .toList();
-
-      /// 取出符合当前解码格式的videoItem
-      firstVideo = videosList.firstWhere(
-        (e) => currentDecodeFormats.codes.any(e.codecs!.startsWith),
-        orElse: () => videosList.first,
-      );
+      firstVideo = targetVideo;
+      currentDecodeFormats = targetDecode;
+      currentVideoQa.value = VideoQuality.fromCode(targetQuality);
       _setVideoHeight();
-
       videoUrl = VideoUtils.getCdnUrl(firstVideo.playUrls);
 
       /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
@@ -1643,9 +1623,8 @@ class VideoDetailController extends GetxController
           .followedBy(downloadService.waitDownloadQueue)
           .map((e) => e.cid)
           .toSet();
-      final index = episodes.indexWhere(
-        (e) => e.cid == (seasonCid ?? cid.value),
-      );
+      final targetCid = isUgc ? ugcIntroCtr.seasonCid ?? cid.value : cid.value;
+      final index = episodes.indexWhere((e) => e.cid == targetCid);
 
       showModalBottomSheet(
         context: context,

@@ -22,7 +22,7 @@ version: 26.10.19+1
 
 environment:
   sdk: ">=3.13.0"
-  flutter: 3.47.7
+  flutter: 3.47.9
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -131,7 +131,7 @@ dependencies:
       url: https://github.com/bggRGjQaUbCoE/material_design_icons_flutter.git
       ref: const
   material_new_shapes: ^1.0.0
-  material_ui: 1.6.0
+  material_ui: 1.9.0
   media_kit: 1.1.11
   media_kit_libs_video: 1.0.5
   media_kit_video: 1.2.5
@@ -145,7 +145,7 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler_android: ^14.0.0
   permission_handler_apple: ^9.4.7
-  permission_handler_platform_interface: ^4.3.0
+  permission_handler_platform_interface: ^4.4.0
   pretty_qr_code: ^3.3.0
   protobuf: ^6.0.0
   re_highlight: ^0.0.3
@@ -191,37 +191,37 @@ dependency_overrides:
     git:
       url: https://github.com/My-Responsitories/media-kit.git
       path: media_kit
-      ref: native
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_android_video:
     git:
       url: https://github.com/My-Responsitories/media-kit.git
       path: libs/android/media_kit_libs_android_video
-      ref: native
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_ios_video:
     git:
       url: https://github.com/My-Responsitories/media-kit.git
       path: libs/ios/media_kit_libs_ios_video
-      ref: native
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_video:
     git:
       url: https://github.com/My-Responsitories/media-kit.git
       path: libs/universal/media_kit_libs_video
-      ref: native
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_windows_video:
     git:
       url: https://github.com/My-Responsitories/media-kit.git
       path: libs/windows/media_kit_libs_windows_video
-      ref: native
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_native_event_loop:
     git:
       url: https://github.com/My-Responsitories/media-kit.git
       path: media_kit_native_event_loop
-      ref: native
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_video:
     git:
       url: https://github.com/bggRGjQaUbCoE/media-kit.git
       path: media_kit_video
-      ref: native
+      ref: fd8421d21eade4d6d12de137fa7df902fec20292
 
 dev_dependencies:
   flutter_test:

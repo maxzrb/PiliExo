@@ -23,6 +23,7 @@ abstract final class FontUtils {
   static final _fonts = <String>{};
   static bool _initialized = false;
 
+  static const kFontName = 'customFont.otf';
   static const _kFontExts = ['ttf', 'ttc', 'otf'];
 
   /// 新版将当前自定义字体统一保存为一个文件；该文件名用于兼容迁移。

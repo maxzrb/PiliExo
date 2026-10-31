@@ -1,5 +1,10 @@
+import 'package:collection/collection.dart';
+import 'package:PiliPlus/utils/audio_track_selector.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/cdn_type.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
+import 'package:PiliPlus/models/video/play/url.dart'
+    show AudioItem, VideoItem, FormatItem;
 import 'package:PiliPlus/models_new/live/live_room_play_info/codec.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -29,6 +34,15 @@ abstract final class VideoUtils {
 
     if (defaultCDNService == CDNService.baseUrl) {
       return urls.first;
+    }
+
+    if (defaultCDNService == CDNService.akamai &&
+        !(isAudio && disableAudioCDN)) {
+      // Akamai签名绑定原地址，必须保留接口提供的完整URL及编码查询串。
+      return urls.firstWhere(
+        (url) => Uri.tryParse(url)?.host == CDNService.akamai.host,
+        orElse: () => urls.first,
+      );
     }
 
     String? mcdnTf;
@@ -146,6 +160,93 @@ abstract final class VideoUtils {
         return preferCodecs[bestIndex];
       }
     }
-    return VideoDecodeFormatType.fromString(codecs.first);
+    for (final codec in codecs) {
+      for (final value in VideoDecodeFormatType.values) {
+        if (value.codes.any(codec.startsWith)) return value;
+      }
+    }
+    return preferCodecs.firstOrNull ?? VideoDecodeFormatType.AVC;
+  }
+
+  /// 从实际轨道按设置页顺序选择，画质编号本身不表示质量高低。
+  static int _findAvailableVideoQuality(
+    List<VideoItem> videoList,
+    List<int>? acceptQuality,
+    int preferQuality,
+  ) {
+    final available = videoList.map((e) => e.quality.code).toSet();
+    const qualities = VideoQuality.values;
+    final preferredIndex = qualities.indexWhere((e) => e.code == preferQuality);
+    if (preferredIndex >= 0) {
+      for (var i = preferredIndex; i < qualities.length; i++) {
+        if (available.contains(qualities[i].code)) return qualities[i].code;
+      }
+    } else if (available.contains(preferQuality)) {
+      return preferQuality;
+    }
+    for (final quality in qualities) {
+      if (available.contains(quality.code)) return quality.code;
+    }
+    return videoList.first.quality.code;
+  }
+
+  static (
+    int targetQuality,
+    FormatItem targetFormat,
+    VideoDecodeFormatType targetDecode,
+    VideoItem targetVideo,
+  )
+  findTargetVideo(
+    List<VideoItem> videoList,
+    int preferQuality,
+    List<int>? acceptQuality,
+    List<FormatItem>? supportFormats,
+    List<VideoDecodeFormatType> preferCodecs,
+  ) {
+    if (videoList.isEmpty) throw StateError('没有可用视频轨道');
+
+    final targetQuality = _findAvailableVideoQuality(
+      videoList,
+      acceptQuality,
+      preferQuality,
+    );
+
+    final targetQaVideoList = videoList
+        .where((e) => e.quality.code == targetQuality)
+        .toList();
+    final targetFormat =
+        supportFormats?.firstWhereOrNull((e) => e.quality == targetQuality) ??
+        FormatItem(
+          quality: targetQuality,
+          codecs: targetQaVideoList
+              .map((e) => e.codecs)
+              .whereType<String>()
+              .toList(),
+        );
+    final codecs = targetFormat.codecs?.where((e) => e.isNotEmpty).toList();
+    final targetDecode = VideoUtils.selectCodec(
+      codecs != null && codecs.isNotEmpty
+          ? codecs
+          : targetQaVideoList.map((e) => e.codecs).whereType<String>(),
+      preferCodecs,
+    );
+
+    final targetVideo = targetQaVideoList.firstWhere(
+      (e) => e.codecs != null && targetDecode.codes.any(e.codecs!.startsWith),
+      orElse: () => targetQaVideoList.first,
+    );
+
+    return (targetVideo.quality.code, targetFormat, targetDecode, targetVideo);
+  }
+
+  static AudioItem findTargetAudio(
+    List<AudioItem> audioList,
+    int preferQuality,
+  ) {
+    return AudioTrackSelector.select(
+      tracks: audioList,
+      preferredId: preferQuality,
+      idOf: (track) => track.id,
+    );
   }
 }

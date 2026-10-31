@@ -100,6 +100,9 @@ mixin ReplyLocateMixin<T>
 abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   ReplyController({int count = -1}) : count = RxInt(count);
 
+  int get oid;
+  int get replyType;
+
   Int64? rootRpId;
   late final RxInt count;
 
@@ -115,7 +118,7 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   late bool hasUpTop = false;
 
   @override
-  bool? get hasFooter => true;
+  bool get hasFooter => true;
 
   // comment antifraud
   late final _enableCommAntifraud = Pref.enableCommAntifraud;
@@ -142,6 +145,31 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
     }
   }
 
+  late final _filterIntro = Pref.filterIntro;
+  String? _intro;
+  String? get intro => _intro;
+  set intro(String? value) {
+    _intro = value?.trim();
+    if (_filterIntro && _intro?.isNotEmpty == true) {
+      final list = loadingState.value.data;
+      if (list != null) {
+        list.removeWhere((reply) => reply.content.message.trim() == _intro);
+        loadingState.refresh();
+      }
+    }
+  }
+
+  @pragma('vm:prefer-inline')
+  void _removeIntro(MainListReply data) {
+    final intro = this.intro;
+    if (intro != null &&
+        intro.isNotEmpty &&
+        _filterIntro &&
+        data.replies.isNotEmpty) {
+      data.replies.removeWhere((i) => i.content.message.trim() == intro);
+    }
+  }
+
   @override
   bool customHandleResponse(bool isRefresh, Success<R> response) {
     final data = response.response as MainListReply;
@@ -159,6 +187,9 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
       }
     }
     isEnd = data.cursor.isEnd;
+
+    _removeIntro(data);
+
     return false;
   }
 

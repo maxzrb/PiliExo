@@ -1,13 +1,13 @@
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
+import 'package:PiliPlus/models/common/video/video_decode_type.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
 import 'package:PiliPlus/models_new/download/bili_download_media_file_info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
-import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:collection/collection.dart';
@@ -44,45 +44,27 @@ abstract final class DownloadHttp {
       entry.segments = response.clipInfoList;
 
       if (dash != null) {
-        final videoList = dash.video!;
-        final preferVideoQa = entry.preferedVideoQuality;
-        final targetVideoQa = response.findAvailableVideoQuality(
-          preferVideoQa,
-        );
-
-        /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
-        final supportFormats = response.supportFormats!;
-        // 根据画质选编码格式
-        final targetSupportFormats = supportFormats.firstWhere(
-          (e) => e.quality == targetVideoQa,
-          orElse: () => supportFormats.first,
-        );
-
-        final currentDecodeFormats = VideoUtils.selectCodec(
-          targetSupportFormats.codecs!,
+        final (
+          int targetQuality,
+          FormatItem targetFormat,
+          VideoDecodeFormatType targetDecode,
+          VideoItem videoDash,
+        ) = VideoUtils.findTargetVideo(
+          dash.video!,
+          entry.preferedVideoQuality,
+          response.acceptQuality,
+          response.supportFormats,
           Pref.preferCodecs,
         );
+        final videoUrl = VideoUtils.getCdnUrl(videoDash.playUrls);
 
         entry
-          ..typeTag = targetVideoQa.toString()
-          ..videoQuality = targetVideoQa
-          ..preferedVideoQuality = targetVideoQa
+          ..typeTag = targetQuality.toString()
+          ..videoQuality = targetQuality
+          ..preferedVideoQuality = targetQuality
           ..qualityPithyDescription =
-              targetSupportFormats.displayDesc ??
-              VideoQuality.fromCode(targetVideoQa).shortDesc;
-
-        /// 取出符合当前画质的videoList
-        final videosList = videoList
-            .where((e) => e.quality.code == targetVideoQa)
-            .toList();
-
-        /// 取出符合当前解码格式的videoItem
-        final videoDash = videosList.firstWhere(
-          (e) => currentDecodeFormats.codes.any(e.codecs!.startsWith),
-          orElse: () => videosList.first,
-        );
-
-        final videoUrl = VideoUtils.getCdnUrl(videoDash.playUrls);
+              targetFormat.displayDesc ??
+              VideoQuality.fromCode(targetQuality).shortDesc;
 
         final Type2File videoFile = Type2File(
           id: videoDash.id!,
@@ -98,13 +80,13 @@ abstract final class DownloadHttp {
           dashDrmType: 0,
         );
         List<Type2File>? audioFileList;
-        final List<AudioItem>? audioDashList = dash.audio;
-        if (audioDashList != null && audioDashList.isNotEmpty) {
-          final preferAudioQa = Pref.defaultAudioQa;
-          final AudioItem audioDash = AudioTrackSelector.select(
-            tracks: audioDashList,
-            preferredId: preferAudioQa,
-            idOf: (track) => track.id,
+        final List<AudioItem>? audioList = dash.audio;
+        if (audioList != null && audioList.isNotEmpty) {
+          final preferAudioQa =
+              entry.preferedAudioQuality ?? Pref.defaultAudioQa;
+          final audioDash = VideoUtils.findTargetAudio(
+            audioList,
+            preferAudioQa,
           );
           final audioUrl = VideoUtils.getCdnUrl(
             audioDash.playUrls,

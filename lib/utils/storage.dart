@@ -5,6 +5,7 @@ import 'package:PiliPlus/models/model_owner.dart';
 import 'package:PiliPlus/models/user/danmaku_rule_adapter.dart';
 import 'package:PiliPlus/models/user/info.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/reply_filter_preferences.dart';
 import 'package:PiliPlus/utils/accounts/account_adapter.dart';
 import 'package:PiliPlus/utils/accounts/account_type_adapter.dart';
 import 'package:PiliPlus/utils/accounts/cookie_jar_adapter.dart';
@@ -63,6 +64,8 @@ abstract final class GStorage {
         },
       ).then((res) => watchProgress = res),
     ]);
+
+    await migrateReplyFilterPreferences(setting);
 
     if (Pref.saveReply) {
       reply = await Hive.openBox<Uint8List>(

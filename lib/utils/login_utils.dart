@@ -7,7 +7,6 @@ import 'package:PiliPlus/main.dart' show webViewEnvironment;
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
-import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -100,18 +99,12 @@ abstract final class LoginUtils {
     return 'XY${md5Str[2]}${md5Str[12]}${md5Str[22]}$md5Str';
   }
 
-  static String buvid = Pref.buvid;
+  static String get buvid => AnonymousAccount().buvid;
 
-  /// 保存标识后同步已缓存的账户请求头，避免同一请求混用新旧 buvid。
+  /// 更新匿名标识时同步持久化及缓存请求头。
   static Future<void> setBuvid(String value) async {
+    AnonymousAccount().buvid = value;
     await GStorage.setting.put(SettingBoxKey.buvid, value);
-    buvid = value;
-    for (final account in {
-      ...Accounts.account.values,
-      ...Accounts.accountMode,
-    }) {
-      account.grpcHeaders.addAll(GrpcHeaders.newHeaders(account.accessKey));
-    }
   }
 
   // static String getUUID() {

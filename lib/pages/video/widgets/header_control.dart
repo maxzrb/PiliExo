@@ -17,10 +17,9 @@ import 'package:PiliPlus/http/live.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/super_resolution_type.dart';
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/cdn_type.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/models/video/play/url.dart';
 import 'package:PiliPlus/models_new/video/video_play_info/subtitle.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart';
@@ -1263,11 +1262,7 @@ class HeaderControlState extends State<HeaderControl>
                             '_',
                           );
                   // Reserved characters may not be used in file names. See: https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
-                  StorageUtils.saveBytes2File(
-                    name: name,
-                    bytes: bytes,
-                    allowedExtensions: [format.name],
-                  );
+                  StorageUtils.saveBytes2File(name: name, bytes: bytes);
                 } catch (e, s) {
                   Utils.reportError(e, s);
                   SmartDialog.showToast(e.toString());
@@ -2005,26 +2000,6 @@ class HeaderControlState extends State<HeaderControl>
                     ),
                   ),
                 ),
-                if (introController case final UgcIntroController ugc)
-                  SizedBox(
-                    width: btnWidth,
-                    height: btnHeight,
-                    child: Obx(
-                      () => ActionItem(
-                        expand: false,
-                        icon: const Icon(
-                          FontAwesomeIcons.thumbsDown,
-                          color: Colors.white,
-                        ),
-                        selectIcon: const Icon(
-                          FontAwesomeIcons.solidThumbsDown,
-                        ),
-                        onTap: () => ugc.handleAction(ugc.actionDislikeVideo),
-                        selectStatus: ugc.hasDislike.value,
-                        semanticsLabel: '点踩',
-                      ),
-                    ),
-                  ),
                 SizedBox(
                   width: btnWidth,
                   height: btnHeight,
@@ -2063,6 +2038,17 @@ class HeaderControlState extends State<HeaderControl>
                       selectStatus: introController.hasFav.value,
                       semanticsLabel: '收藏',
                     ),
+                  ),
+                ),
+                SizedBox(
+                  width: btnWidth,
+                  height: btnHeight,
+                  child: ActionItem(
+                    expand: false,
+                    icon: const Icon(CustomIcons.download, color: Colors.white),
+                    onTap: () => videoDetailCtr.onDownload(context),
+                    text: '缓存',
+                    semanticsLabel: '缓存',
                   ),
                 ),
                 SizedBox(

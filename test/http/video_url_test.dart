@@ -49,8 +49,8 @@ void main() {
   final adapter = _PlayUrlAdapter();
 
   setUpAll(() async {
-    // 使用项目内的临时存储，所有请求由内存适配器响应。
-    directory = await Directory('tools').createTemp('ogv-test-');
+    // 使用临时存储，所有请求由内存适配器响应。
+    directory = await Directory.systemTemp.createTemp('ogv-test-');
     Hive.init(directory.path);
     GStorage.regAdapter();
     Accounts.account = await Hive.openBox<LoginAccount>('account');
@@ -150,7 +150,7 @@ void main() {
     expect((result as Error).errMsg, '未获取到播放信息');
   });
 
-  test('修改 buvid 同步登录头及已有账户的 gRPC 元数据', () async {
+  test('匿名与视频账号的 buvid 独立且各自同步 gRPC 元数据', () async {
     final account = LoginAccount(
       BiliCookieJar.fromJson({'DedeUserID': '123', 'bili_jct': 'csrf'}),
       'access-key',
@@ -161,17 +161,23 @@ void main() {
     await LoginUtils.setBuvid('XY-NEW-DEVICE-ID');
     expect(oldBuvid, isNot('XY-NEW-DEVICE-ID'));
     expect(LoginHttp.headers['buvid'], 'XY-NEW-DEVICE-ID');
+    expect(account.grpcHeaders['buvid'], oldBuvid);
+    account.buvid = 'XY-VIDEO-DEVICE-ID';
+    await account.onChange();
     for (final current in {account, AnonymousAccount()}) {
+      final expected = current == account
+          ? 'XY-VIDEO-DEVICE-ID'
+          : 'XY-NEW-DEVICE-ID';
       final headers = current.grpcHeaders;
-      expect(headers['buvid'], 'XY-NEW-DEVICE-ID');
+      expect(headers['buvid'], expected);
       expect(
         Device.fromBuffer(base64Decode(headers['x-bili-device-bin']!)).buvid,
-        'XY-NEW-DEVICE-ID',
+        expected,
       );
       expect(
         Metadata.fromBuffer(base64Decode(headers['x-bili-metadata-bin']!))
             .buvid,
-        'XY-NEW-DEVICE-ID',
+        expected,
       );
     }
     expect(GStorage.setting.get(SettingBoxKey.buvid), 'XY-NEW-DEVICE-ID');

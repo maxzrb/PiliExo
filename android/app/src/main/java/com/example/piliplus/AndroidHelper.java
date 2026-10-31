@@ -348,6 +348,10 @@ public final class AndroidHelper {
         }
     }
 
+    public static String manufacturer() {
+        return Build.MANUFACTURER;
+    }
+
     @Keep
     public static final class ToDart {
         public static volatile Runnable onUserLeaveHint;

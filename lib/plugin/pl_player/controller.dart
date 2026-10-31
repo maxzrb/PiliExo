@@ -83,7 +83,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 typedef PlayCallback = Future<void>? Function();
-typedef PlayOwner = ({String tag, Type type});
+typedef PlayOwner = ({String tag, Type? type});
 
 class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Player? _videoPlayerController;
@@ -856,6 +856,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   late double subtitleFontScale = Pref.subtitleFontScale;
   late double subtitleFontScaleFS = Pref.subtitleFontScaleFS;
   late int subtitlePaddingH = Pref.subtitlePaddingH;
+  int? tmpSubtitlePaddingB;
   late int subtitlePaddingB = Pref.subtitlePaddingB;
   late double subtitleBgOpacity = Pref.subtitleBgOpacity;
   final bool showVipDanmaku = Pref.showVipDanmaku; // loop unswitching
@@ -868,9 +869,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   late final darkVideoPage = Pref.darkVideoPage;
   late final enableSlideVolumeBrightness = Pref.enableSlideVolumeBrightness;
   late final enableSlideFS = Pref.enableSlideFS;
+  late final enableScrollVolume = Pref.enableScrollVolume;
   late final enableDragSubtitle = Pref.enableDragSubtitle;
+  late final fastForBackwardInSeconds = Pref.fastForBackwardDuration;
   late final fastForBackwardDuration = Duration(
-    seconds: Pref.fastForBackwardDuration,
+    seconds: fastForBackwardInSeconds,
   );
 
   late final horizontalSeasonPanel = Pref.horizontalSeasonPanel;
@@ -993,7 +996,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void onUpdatePadding(EdgeInsets padding) {
+    tmpSubtitlePaddingB = null;
     subtitlePaddingB = padding.bottom.round().clamp(0, 200);
+    updateSubtitleStyle();
     putSubtitleSettings();
   }
 
@@ -1067,6 +1072,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   void _onOrientationChanged(OrientationParams param) {
     _orientation = param.orientation;
     if (Platform.isIOS && !visible) return;
+    if (controlsLock.value) return;
     final orientation = param.orientation;
     final isFullScreen = this.isFullScreen.value;
     if (checkIsAutoRotate &&
@@ -1079,7 +1085,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
     switch (orientation) {
       case .portraitUp:
-        if (!_isVertical && controlsLock.value) return;
         if (!horizontalScreen && !_isVertical && isFullScreen) {
           if (!isManualFS) {
             triggerFullScreen(status: false, orientation: orientation);
@@ -1089,7 +1094,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         }
       case .portraitDown:
         if (!horizontalScreen) return;
-        if (!_isVertical && controlsLock.value) return;
         portraitDownMode();
       case .landscapeLeft:
         if (!horizontalScreen && !isFullScreen) {
@@ -2409,6 +2413,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   Timer? longPressTimer;
   void cancelLongPressTimer() {
+    endKeyboardBackward(cancel: true);
     longPressTimer?.cancel();
     longPressTimer = null;
   }
@@ -2520,6 +2525,40 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void onBackward(Duration duration) {
     onForwardBackward(currentPosition - duration);
+  }
+
+  Timer? _keyboardBackwardTimer;
+  bool _keyboardBackwardActive = false;
+
+  /// 后退预览从当前播放位置开始，使用独立计时器。
+  void beginKeyboardBackward() {
+    if (_keyboardBackwardActive || isLive || controlsLock.value) return;
+    _keyboardBackwardActive = true;
+    seekPosition.value = position.value;
+    _keyboardBackwardTimer = Timer.periodic(const Duration(milliseconds: 200), (
+      _,
+    ) {
+      isSeeking.value = true;
+      seekPosition.value = max(
+        0,
+        seekPosition.value - fastForBackwardInSeconds,
+      );
+    });
+  }
+
+  void endKeyboardBackward({bool cancel = false}) {
+    if (!_keyboardBackwardActive) return;
+    _keyboardBackwardTimer?.cancel();
+    _keyboardBackwardTimer = null;
+    _keyboardBackwardActive = false;
+    final previewing = isSeeking.value;
+    isSeeking.value = false;
+    if (cancel || (videoPlayerController == null && !isMedia3Hdr)) return;
+    if (previewing) {
+      onForwardBackward(Duration(seconds: seekPosition.value));
+    } else {
+      onBackward(fastForBackwardDuration);
+    }
   }
 
   void onForwardBackward(Duration duration) {
