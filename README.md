@@ -4,11 +4,11 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.10.31.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.10.31.1)（2026-10-31 发布）。
+- 当前正式版本：[v26.11.1.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.1.1)（2026-11-01 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游已处理至 `cb1773944`；本轮整体适配 67 项来源的 Android/共享功能、修复及必要工具链，保留 PiliExo 的播放器与界面定制，纯平台更新不重复核验。
+- PiliPlus 2.2.0 上游已处理至 `265f879fa`；本轮适配 5 项 Android 功能/修复来源及备份依赖兼容调整，保留 PiliExo 的播放器与界面定制，纯平台更新不重复核验。
 
 ## PiliExo 的实际修改
 
@@ -33,6 +33,8 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 全量 ZIP 备份与安全导入、缓存音质选择、评论独立过滤开关及来源定位；番剧/分 P/合集采用更新后的面板与同步逻辑。
 - 直播独立缓冲、SC 和固定分区入口；更新图文、用户主页及发布输入面板，支持惊吓片段跳过、外接键盘连续后退和系统大字体。
 - 适配 Android 17 局域网投屏权限，修复签名播放地址、设置搜索与账号设备标识迁移，兼容 vivo 媒体会话音量键。
+
+- 跟进 2.2.0：番剧分区选集和滚动定位、订阅倒序切换、搜索请求与文集收起修正；备份导入增加 ZIP 完整性校验。
 
 ## 下载与更新
 
