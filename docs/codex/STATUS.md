@@ -5,7 +5,7 @@
 - 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
 - 当前任务：PiliPlus2.2.0安全适配、提交及正式发布完成。5项Android功能/修复+archive兼容已落地；185项固定样例及既有测试通过，正式包在MEP-AN00覆盖安装并进入首页通过。其余5项平台/版本来源排除。
 - 当前源码：正式发布a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8（26.11.1+1/code35）；产品实现b33932856，固定输入/参考输出样例随a3ae6892c纳入；初次发布准备bddf36888。回退codex/backup-before-upstream-20261101=5ad6c9cd5，审查记录8cbb12609。
-- 工作分支：merge/upstream-2.1.4-20260913，正式源码/标签已推送；收尾记录随后提交推送并核对。默认main只同步本次README，不合入应用源码；tmp/保留未跟踪。
+- 工作分支：merge/upstream-2.1.4-20260913，正式源码/标签与收尾记录均已推送并核对origin。默认main只同步本次README，不合入应用源码；tmp/保留未跟踪。
 - 上游边界：已处理至265f879fa85973b4bf885bde2562f1007f1013b8（PiliPlus2.2.0）。本轮cb1773944..265f879fa共11项：5项功能/修复适配、1项依赖选择性适配、5项排除。完整实际来源映射见docs/PiliPlus上游审查-2026-11-01.md，不再重复应用这些来源。
 - 已整合：本轮追加番剧分区大选集/滚动、订阅倒序、搜索UA、文集收起和archive严格校验；此前评论开关迁移/过滤/定位/折叠、全量备份与导入回滚/持久化、缓存音质、PGC/分P/合集最终面板、图文/主页、直播缓冲/SC/分区、账号buvid与Hive、输入面板、键盘/滚轮/字号、网络编码、Android17投屏权限及vivo限定会话。保留Media3/mpv、HDR/FLAC、混合推荐、文章分享、画质语义顺序和AudioTrackSelector；不引入上游无关gzip/brotli、Linux nm/MPRIS或全Android remote/fixed策略。
 - 统一验证：185/185 Flutter通过，FATE式固定样例输入与参考输出（现有Flutter运行器，无测试App）；Analyze退出0、0error/0warning、77info，正式元数据/音频9/9。工具链3.47.9、README/29插件门禁通过。双ABI本机离线构建，1563份产品源码逐字节同步；原证书V2、manifest/AOT/JNI/R8/FFmpeg、ABI/ELF/ZIP对齐通过。7个非Dart库均与v26.10.31.1相同；本轮无Android原生源码改动，未重复此前JVM/C测试。
@@ -1807,3 +1807,8 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 手机MEP-AN00从code34覆盖至code35并进入首页通过，包名/首次安装时间保留（覆盖前UID未采集）；无检查范围内启动致命异常且进程存活。首次安装被手机拒绝，用户解锁允许后重试成功；旧脚本因Android17使用appId而未采集覆盖前UID，已保留原安装结果并续做首页检查，不重复安装、不宣称UID实测一致。仅覆盖安装/首页启动，未扩大为真实账号搜索风控、全部PV/订阅/播放交互或32位实体设备完整验收。
 - GitHub https://github.com/maxzrb/PiliExo/releases/tag/v26.11.1.1 已公开、非预发布且为latest；双APK与SHA256SUMS三资产digest/长度一致。ModelScope三个文件完整下载回读SHA256/长度一致。正式源码分支/tag已推送；默认main仅README独立提交5cf15f8b00ab39f80e05f8df2b4430d8c7d99190已推送。
 - Actions保持enabled=false、历史运行数4，全程本机构建/签名；密钥/密码/令牌未提交或上传。原tmp/及历史版本保留，无本次关机安排。收尾三份记录随后提交并推送核对。
+
+## 2026-11-01 20:25 远端发布最终复核
+
+- GitHub latest/title/tag均v26.11.1.1，非草稿/非预发布，三资产digest与长度再次匹配本机；annotated tag peeled固定a3ae6892c，源码分支及main独立README与远端一致。Actions仍关闭，运行数4。
+- 85a2e2fab收尾三份记录已推送；本条补记与工作分支快照随后提交推送。产品源码和正式tag不变，工作区仅原tmp/未跟踪。
