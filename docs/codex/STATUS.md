@@ -1,8 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-10-31 11:49 (+08:00)
+- 更新时间：2026-11-01 19:57 (+08:00)
 - 当前发布：v26.10.31.1已公开且为GitHub latest，源码19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc，annotated tag固定。GitHub三资产digest/长度、ModelScope三文件完整回读SHA256通过；仅本机构建/打包/签名，Actions仍关闭且运行数保持4。
-- 当前任务：67项整体适配、统一验证及新Release发布完成，README首页同步独立提交ed44da301；用户追加图标检查本轮未复现。正式包覆盖安装被手机拒绝后，用户明确免除并要求沿用独立dev启动结果发布，不能宣称新正式包安装已验收。
+- 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
+- 当前任务：PiliPlus2.2.0差量审查完成（仅审查）。cb1773944..265f879fa共11项：建议5项Android功能/修复、1项依赖选择性适配、5项桌面/Linux/版本号排除。详见docs/PiliPlus上游审查-2026-11-01.md；实际合并边界仍cb1773944，产品/版本与发布不变。
 - 当前源码：正式发布19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc（版本26.10.31+1/code34）；产品行为来自cff93f2d7主体+d75b16c13备份导入修正，19f0fe0a8仅改版本与发布文档。研究/审查601f09cf3，回退codex/backup-before-upstream-20261031=bec0b851e。
 - 工作分支：merge/upstream-2.1.4-20260913，源码/标签与收尾记录均已推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
 - 上游边界：已处理至cb17739448a73dc829e55a134ad6cf28400c814d。本轮88eca305d..cb1773944共72项：67项适配来源（62功能/修复+5工具链）、4项平台排除、1项等价覆盖；不是67次原样cherry-pick。完整来源映射和取舍见docs/PiliPlus上游审查-2026-10-31.md，下轮不得重复应用这些来源。
@@ -1767,3 +1768,21 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - GitHub Release https://github.com/maxzrb/PiliExo/releases/tag/v26.10.31.1 已公开、非prerelease且为latest；两个APK与SHA256SUMS三资产digest/长度一致。ModelScope AerithDream/PiliExo releases/v26.10.31.1/三个文件均完整下载回读，SHA256和长度与本机一致。
 - 默认main首页README独立提交ed44da301，内容与发布源码README相同，未将应用代码合入main。源码分支及tag已推送，收尾日志提交后继续推送并最终回读。Actions始终enabled=false、历史运行数4，无新构建运行，所有打包和签名均本机完成。
 - 未覆盖vivo专属、32位设备、完整播放/账号权限/交互矩阵及图标实际定时切换，保持此前边界。图标原包手动深浅及白天auto正常，未声称修复。原密钥与密码只在本机ignored android文件及构建树副本，未入Git/Release；本轮没有关机请求，不执行历史关机安排。tmp/和旧发布/草稿保留，无本轮P盘映射。
+
+## 2026-10-31 20:06 动态页UP栏显示与底部空缺调查
+
+- 用户询问左侧竖向UP栏的人选逻辑及滑到底仍有空缺。读取AGENTS.md、STATUS及动态页控制器/视图/UP模型/HTTP/设置/通用分页控制器；INDEX.md不存在。git pull --ff-only确认与origin同步，HEAD为5ad6c9cd5，原有未跟踪tmp/保留。
+- 显示顺序：Live入口、可展开直播UP、全部动态、我、服务端UP列表。客户端未对动态UP列表另做排序或按has_update筛人；has_update只控制小圆点，点击清除本地标记。
+- dynamicsShowAllFollowedUp默认false：首屏portal(up_list_more=1)，后续uplist按offset分页，has_more不为true或offset空即终止。开启后首屏仍portal，再以attention/desc每页50人补关注列表，按mid去除首屏重复项，空原始页终止。开关需重启。
+- 竖向UP面板末尾明确追加SizedBox(height: 200)，因此最后头像后仍有固定200逻辑像素空白；顶部横栏无此项。分页仅在ScrollEndNotification距末端300内触发；没有页尾加载/失败/结束提示，续页Error不会更新现有成功态，故缺少UP也可能与设置/接口结束/续页失败有关。未采集用户设置和实时接口，不认定具体账号缺人的原因。
+- 仅更新本状态与中文工作进度，未修改应用源码、版本、构建、安装、发布、提交或推送，未调用GitHub Actions。验证限源码静态检查及git diff --check；没有宣称真机复现或修复。
+
+## 2026-11-01 19:57 PiliPlus 2.2.0 差量审查（仅审查）
+
+- 读取AGENTS.md、STATUS和10-31来源映射；INDEX.md不存在。pull --ff-only同步，fetch/ls-remote确认2.2.0/main均265f879fa，较实际边界cb1773944新增11提交/40文件。Release API确认北京时间11-01 15:33:43发布。
+- 建议5项：fbb6ba013文集收起、9f8f49a87搜索UA（保留验证码）、29dae90ca番剧分区大选集、875afd08e滚动定位、c74127908订阅倒序/切换。当前仅审查，后续选定范围一次适配并统一验证，不重复昨日已覆盖内容。
+- 36d3cb2e7仅选择性适配archive4.6.0；官方包SHA256核对后读CHANGELOG，损坏数据默认错误契约改变。本地decodeBytes无显式verify/throwOnError，升级须校验及损坏ZIP回归，未认定现版数据丢失。桌面依赖不追随。
+- 悬停bdf2859b3/ac08e8ac3/51d2d5f56入口isDesktop，Android不纳入；0fa4323cb检查共享文件后确认为Linux逻辑，排除不重复试合；265f879fa仅版本号排除。Flutter3.47.9与本地原生播放库无需因本差量升级。
+- 补丁check独立4项通过（fbb/9f/875/c741）；29及29^..875组合在episode_panel/video本地上下文失败，需人工适配。仅静态预检，无产品/index写入，无测试构建/设备验收/Actions调用。
+- 新增11-01报告，更新本快照并追加本条及中文进度，保留此前未提交10-31动态调查。仅三份记录变动与原tmp/，未提交推送/改版本。实际已处理边界仍cb1773944，审查边界265f879fa不能当合并完成；未见必须紧急重发证据。
+- 记录脚本首次因本机Python缺tzdata在任何写入前退出，随后用显式UTC+08:00生成时间完成，不安装依赖或改环境。
