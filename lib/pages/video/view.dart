@@ -19,6 +19,7 @@ import 'package:PiliPlus/common/widgets/sliver/video_header.dart';
 import 'package:PiliPlus/common/widgets/svg/play_icon.dart';
 import 'package:PiliPlus/common/widgets/video_status_bar_ambient.dart';
 import 'package:PiliPlus/models/common/episode_panel_type.dart';
+import 'package:PiliPlus/models/common/pgc_episode_type.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/result.dart';
 import 'package:PiliPlus/models_new/video/video_tag/data.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart';
@@ -1884,7 +1885,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     );
   }
 
-  void showEpisodes({EpisodeType? type}) {
+  void showEpisodes({EpisodeType? type, PgcEpisodeType? episodeType}) {
     if (type == null) {
       videoDetailController.showMediaListPanel(context);
       return;
@@ -1892,6 +1893,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     final isModal = isFullScreen || videoDetailController.showVideoSheet;
     final child = EpisodePanel(
       type: type,
+      episodeType: episodeType,
       isSidePanel: false,
       enableSlide: !isModal,
       onReverse: () => onReversePlay(isSeason: type == .season),

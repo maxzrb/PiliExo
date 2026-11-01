@@ -95,7 +95,11 @@ abstract final class ConfigArchive {
       throw UnsupportedError('数据包过大');
     }
 
-    final archive = ZipDecoder().decodeBytes(bytes);
+    final archive = ZipDecoder().decodeBytes(
+      bytes,
+      verify: true,
+      throwOnError: true,
+    );
     var declaredSize = 0;
     for (final file in archive) {
       declaredSize += file.size;

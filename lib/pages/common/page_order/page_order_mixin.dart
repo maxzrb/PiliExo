@@ -8,8 +8,7 @@ mixin PageOrderMixin<R, T> on CommonListController<R, T> {
   bool get pageDesc => _pageDesc;
 
   @override
-  // page++;
-  // page = 1;
+  // 倒序从最后一页开始，后续请求向前翻页。
   set page(int value) {
     if (pageDesc) {
       if (value == 1) {
@@ -23,8 +22,13 @@ mixin PageOrderMixin<R, T> on CommonListController<R, T> {
   }
 
   void updatePageOrder(bool value) {
-    if (count == 0) return;
-    _pageDesc = value;
+    if (updatePageOrderOnly(value)) return;
     onReload();
+  }
+
+  bool updatePageOrderOnly(bool value) {
+    if (count == 0) return true;
+    _pageDesc = value;
+    return false;
   }
 }
