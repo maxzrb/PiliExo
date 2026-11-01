@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-11-01 19:57 (+08:00)
+- 更新时间：2026-11-01 20:14 (+08:00)
 - 当前发布：v26.10.31.1已公开且为GitHub latest，源码19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc，annotated tag固定。GitHub三资产digest/长度、ModelScope三文件完整回读SHA256通过；仅本机构建/打包/签名，Actions仍关闭且运行数保持4。
 - 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
-- 当前任务：PiliPlus2.2.0差量审查完成（仅审查）。cb1773944..265f879fa共11项：建议5项Android功能/修复、1项依赖选择性适配、5项桌面/Linux/版本号排除。详见docs/PiliPlus上游审查-2026-11-01.md；实际合并边界仍cb1773944，产品/版本与发布不变。
+- 当前任务：用户授权安全合并并发布v26.11.1.1/code35。5项功能+archive兼容已提交，FATE式固定输入/参考输出回归185项通过；双ABI首次构建成功。为将新增测试纳入正式标签，准备重新生成最终提交元数据并本机构建；正式覆盖安装、签名/远端发布校验待完成。
 - 当前源码：正式发布19f0fe0a8f6f1dfb98931b40e646c5f47409d5bc（版本26.10.31+1/code34）；产品行为来自cff93f2d7主体+d75b16c13备份导入修正，19f0fe0a8仅改版本与发布文档。研究/审查601f09cf3，回退codex/backup-before-upstream-20261031=bec0b851e。
 - 工作分支：merge/upstream-2.1.4-20260913，源码/标签与收尾记录均已推送并核对origin。用户tmp/仍未跟踪保留；其余跟踪文件应无差异。默认main仅独立README提交，不合入应用源码。
 - 上游边界：已处理至cb17739448a73dc829e55a134ad6cf28400c814d。本轮88eca305d..cb1773944共72项：67项适配来源（62功能/修复+5工具链）、4项平台排除、1项等价覆盖；不是67次原样cherry-pick。完整来源映射和取舍见docs/PiliPlus上游审查-2026-10-31.md，下轮不得重复应用这些来源。
@@ -20,7 +20,6 @@
 - 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3、实际产品文件与正式19f0fe0a8逐字节一致；显式用根发布SHA生成pili.*，不能用构建树旧HEAD。本次生产base APK与mapping已固定保存到dist/release/v26.10.31.1/，正式交付使用同目录签名重打包文件。
 - 环境处理：D盘Flutter测试停滞迁到独立C盘；Java PKIX下载失败时从旧缓存复用3个JAR并核对插件声明SHA256，没有关闭TLS。直接离线Gradle须核对local.properties版本和pili.*定义；签名输入仅本机ignored文件，禁止提交。不得触发/重新启用仓库Actions。
 - 官方B站画质/长按研究已保存（docs/原版B站画质策略调查-2026-10-19.md、docs/原版B站长按倍速逻辑调查-2026-10-19.md），含高帧率钳制/跳帧/2.4秒输出间隔等证据边界；这些仍仅调查，不据此改本地播放策略。功耗/GPU研究继续暂停。
-
 ## 当前上游同步结果（2026-10-14）
 
 - 用户授权安全合并全部 Android 适用项，24 项已逐项处理至 `bd5e04e5d`：Android 修复/功能和工具链已落地，两个纯平台提交永久排除；Surface 撤回参数在本地原已满足，无须单独应用。完整映射见 `docs/PiliPlus上游审查-2026-10-13.md` 的“用户授权后的实际合并”。
@@ -1791,3 +1790,9 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 
 - 产品提交b3393285676ba86bc0155e357fd844988c578f0c，回退codex/backup-before-upstream-20261101保留5ad6c9cd5，审查记录独立8cbb12609。5项功能与archive严格校验已完成，5项排除；来源映射见11-01报告。184测试通过，Analyze0error/0warning、77info。
 - 手机MEP-AN00已连接，用户明确选本次覆盖安装，不沿用上轮豁免。准备v26.11.1.1/code35及本机双ABI，原密钥仅核对存在/一致、无输出凭据。Actions仍关闭，未构建CI。发布/真机/镜像校验尚待完成。
+
+## 2026-11-01 20:14 固定样例/参考输出回归与正式构建
+
+- 用户更新AGENTS要求标准FATE样式的sample input/reference output，不制作测试App。新增test/fixtures/upstream_220/input.json/reference.json及说明，订阅使用固定接口响应，滚动对照固定参数，ZIP使用固定时间的标准旧格式样例及CRC/截断变体；参考输出由预期行为确定，不由实际运行自动更新。由现有Flutter测试运行器执行，不冒称FFmpeg原生FATE框架。
+- 整理后185/185测试通过，新增正常标准ZIP兼容样例。首次双ABI本机构建成功4m16s，原始产物与日志保存在dist/release/v26.11.1.1/initial-build-before-fixed-fixtures/；首次元数据对应bddf36888。
+- 为将新增样例/测试一并纳入正式标签，将重新生成最终提交哈希元数据和构建正式包。产品实现仍b33932856，未引入测试App，手机MEP-AN00在线；尚未安装或公开发布。

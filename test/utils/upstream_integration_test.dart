@@ -192,49 +192,27 @@ void main() {
       isFalse,
     );
   });
-  for (final kind in ['crc', 'truncated']) {
-    test('损坏ZIP被拒绝且不改写设置：$kind', () async {
+  final zipInputs = jsonDecode(
+    File('test/fixtures/upstream_220/input.json').readAsStringSync(),
+  )['archives'];
+  final zipReference = jsonDecode(
+    File('test/fixtures/upstream_220/reference.json').readAsStringSync(),
+  )['archives'];
+  for (final kind in ['normal', 'crc', 'truncated']) {
+    test('ZIP固定样例与参考状态：$kind', () async {
       await box.put('preserved', 'original');
-      final archive = Archive()
-        ..add(
-          ArchiveFile.string(
-            'meta.json',
-            jsonEncode({
-              'type': 'data_archive',
-              'formatVersion': 65536,
-              'appName': Constants.appName,
-            }),
-          ),
-        )
-        ..add(
-          ArchiveFile.string(
-            'setting.json',
-            '{"setting":{"preserved":"changed"},"video":{}}',
-          ),
-        );
-      var bytes = Uint8List.fromList(ZipEncoder().encode(archive));
-      if (kind == 'crc') {
-        // 修改首个中央目录CRC，保持JSON内容合法以专门验证ZIP校验。
-        var found = false;
-        for (var i = 0; i + 46 < bytes.length; i++) {
-          if (bytes[i] == 0x50 &&
-              bytes[i + 1] == 0x4b &&
-              bytes[i + 2] == 0x01 &&
-              bytes[i + 3] == 0x02) {
-            bytes[i + 16] ^= 0xff;
-            found = true;
-            break;
-          }
-        }
-        expect(found, isTrue);
-      } else {
-        bytes = Uint8List.sublistView(bytes, 0, bytes.length ~/ 2);
-      }
-      await expectLater(
-        ConfigArchive.import(bytes, onWarning: (_) async => true),
-        throwsA(anything),
+      final bytes = base64Decode(zipInputs[kind]);
+      final expected = zipReference[kind];
+      final operation = ConfigArchive.import(
+        bytes,
+        onWarning: (_) async => true,
       );
-      expect(box.get('preserved'), 'original');
+      if (expected['error'] == true) {
+        await expectLater(operation, throwsA(anything));
+      } else {
+        await operation;
+      }
+      expect(box.get('preserved'), expected['preserved']);
       expect(
         File('${directory.path}/config-import-recovery.zip').existsSync(),
         isFalse,
