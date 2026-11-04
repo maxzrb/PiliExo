@@ -1,24 +1,24 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-11-01 20:24 (+08:00)
-- 当前发布：v26.11.1.1已公开且为GitHub latest，源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，annotated tag固定。双APK及SHA256SUMS的GitHub digest/长度、ModelScope完整回读SHA256通过；本机打包签名，Actions保持关闭且总运行数4。
+- 更新时间：2026-11-04 20:58 (+08:00)
+- 当前发布：v26.11.1.1（2026-11-01已核对公开且为GitHub latest），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，annotated tag固定。上轮双APK/SHA256SUMS的GitHub digest/长度及ModelScope完整回读SHA256通过，Actions当日核对关闭/历史运行4次；本轮未调用发布或Actions服务。
 - 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
-- 当前任务：PiliPlus2.2.0安全适配、提交及正式发布完成。5项Android功能/修复+archive兼容已落地；185项固定样例及既有测试通过，正式包在MEP-AN00覆盖安装并进入首页通过。其余5项平台/版本来源排除。
-- 当前源码：正式发布a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8（26.11.1+1/code35）；产品实现b33932856，固定输入/参考输出样例随a3ae6892c纳入；初次发布准备bddf36888。回退codex/backup-before-upstream-20261101=5ad6c9cd5，审查记录8cbb12609。
-- 工作分支：merge/upstream-2.1.4-20260913，正式源码/标签与收尾记录均已推送并核对origin。默认main只同步本次README，不合入应用源码；tmp/保留未跟踪。
-- 上游边界：已处理至265f879fa85973b4bf885bde2562f1007f1013b8（PiliPlus2.2.0）。本轮cb1773944..265f879fa共11项：5项功能/修复适配、1项依赖选择性适配、5项排除。完整实际来源映射见docs/PiliPlus上游审查-2026-11-01.md，不再重复应用这些来源。
-- 已整合：本轮追加番剧分区大选集/滚动、订阅倒序、搜索UA、文集收起和archive严格校验；此前评论开关迁移/过滤/定位/折叠、全量备份与导入回滚/持久化、缓存音质、PGC/分P/合集最终面板、图文/主页、直播缓冲/SC/分区、账号buvid与Hive、输入面板、键盘/滚轮/字号、网络编码、Android17投屏权限及vivo限定会话。保留Media3/mpv、HDR/FLAC、混合推荐、文章分享、画质语义顺序和AudioTrackSelector；不引入上游无关gzip/brotli、Linux nm/MPRIS或全Android remote/fixed策略。
-- 统一验证：185/185 Flutter通过，FATE式固定样例输入与参考输出（现有Flutter运行器，无测试App）；Analyze退出0、0error/0warning、77info，正式元数据/音频9/9。工具链3.47.9、README/29插件门禁通过。双ABI本机离线构建，1563份产品源码逐字节同步；原证书V2、manifest/AOT/JNI/R8/FFmpeg、ABI/ELF/ZIP对齐通过。7个非Dart库均与v26.10.31.1相同；本轮无Android原生源码改动，未重复此前JVM/C测试。
-- 真机启动：本次MEP-AN00正式包从26.10.31/code34保留数据覆盖到26.11.1/code35成功，包名与firstInstallTime保持一致（覆盖前UID未采集），首页可见52应用节点，进程存活，无检查范围内FATAL/Unhandled/MissingPlugin/dlopen异常。证据dist/release/v26.11.1.1/device-release-check.json及截图。未沿用上轮豁免或制作独立dev App。
-- 未覆盖：vivo专属行为、32位实体设备、实际昼夜定时图标切换，以及账号/会员/片源/网络/离线/PGC/课程/直播/双后端播放、PiP/通知/DLNA与输入交互完整人工矩阵；后续发布前需按实际需要验收，不能宣称全部运行通过。
+- 当前任务：HDR播放页mpv/ExoPlayer双向热切换与PiliPlus近期Android适用更新安全适配、本地验证已完成；209 Flutter、17 Android JVM、Analyze及原证书双ABI候选检查通过。真实设备热切换尚未实播；未发布、推送或安装。
+- 当前源码：本地候选9d751a4754c365bfbf96cfb1586da87e117a25bd；热切换23bdb80。当前公开发布仍a3ae6892c/v26.11.1.1（26.11.1+1/code35），本轮不改版本。回退codex/backup-before-hdr-switch-upstream-20261104=db143d184；本轮收尾记录另作文档提交。
+- 工作分支：merge/upstream-2.1.4-20260913；本轮两个源码提交与收尾记录均仅本地，origin仍db143d184，最终领先3提交；跟踪文件收尾后干净，原tmp/保留未跟踪。
+- 上游边界：已处理至c7ff9683c0e64e74abe89df75fa49b10f8666664。本轮265f879fa..c7ff9683c共19项：16功能/修复适配、1依赖选择性适配、2纯平台排除（Linux07e2906cd/macOS9746fbc9c）；完整映射docs/PiliPlus上游审查-2026-11-04.md，后续不重复应用这些来源。
+- 已整合：本轮新增当前页mpv/ExoPlayer热切换（HDR125/126/129，保留毫秒进度/播放意图/基础倍速，不改全局设置）、选集/番剧缓存/接口回退、图文封面/文本对齐/大标题、评论分页与时间验证、匿名网页Cookie、弹幕提前定位、ChromeOS旋转、av复制、签名空值及隐藏刷新停止空转；依赖DLNA固定fe347512和Android文件选择器/矢量图修复。保留本地双后端/HDR/FLAC/混合推荐/文章分享/音轨画质及稳定倍速策略。
+- 统一验证：209/209 Flutter、17/17 Android JVM（无失败/错误/跳过）通过；固定input.json/reference.json复用现有Flutter运行器，无测试App。Analyze退出0、0error/0warning、77info，工具链3.47.9/README/29插件门禁通过。本地离线双ABI Release、原证书V2/manifest/AOT提交/JNI/R8/FFmpeg/ABI/适用ELF和ZIP16KB检查通过；每ABI7个非Dart原生库与v26.11.1.1一致。
+- 历史真机启动（2026-11-01，非本轮候选）：当时MEP-AN00正式包从26.10.31/code34保留数据覆盖到26.11.1/code35成功，包名与firstInstallTime保持一致（覆盖前UID未采集），首页可见52应用节点，进程存活，无检查范围内FATAL/Unhandled/MissingPlugin/dlopen异常。证据dist/release/v26.11.1.1/device-release-check.json及截图。未沿用上轮豁免或制作独立dev App。
+- 未覆盖：本轮未进行手机HDR双向实播、横竖屏/全屏/字幕/音轨/通知/后台/PiP矩阵；vivo专属、ChromeOS、32位实体设备、真实账号会员权限/片源与电视发现均未实测。前轮正式包覆盖/首页启动结果不替代本轮热切换验收。
 - 图标调查：原正式包与候选编译图标资源一致。手机资源随深浅正确解析，用户解锁后的原包桌面截图显示深灰底浅P/浅底深P正常切换，在图标可见时深色返回白天auto也正常。本轮未复现，不确定此前根因，不修改图标或清桌面数据；系统已恢复原auto。证据在dist/integration/upstream-20261031/icon-investigation/。此前“忽略图标”决定已被本轮用户重新调查请求替代。
 - 历史候选产物（10-31，非当前发布）：dist/integration/upstream-20261031/，arm64 APK 33051087字节/SHA256 68522da5aa567fdb0811aa753119fdce846772b420b32d98f4e893d7accc27da；v7 APK 32670175字节/SHA256 3d51a5bc5cf4f6bfd453f5118d08c76b3e9a8c6fafed5e41b8d21885aa17ecf0。包含SHA256SUMS.txt、metadata.json、build-request.json、verification.json及日志；不是新Release，版本仍26.10.19+1/code33。
-- 稳定播放基线：MpvAudioOptions/PlaybackRateCoordinator/AvSyncGuard源码保持原样；libmpv/FFmpeg JNI/两个media-kit辅助库与已发布包逐字节一致。arm64 mpv=e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98，v7=a310c26214decfa37a515a20b308ea512b002dab26bc16a8e7b76d4be9761f0d。Flutter引擎/Dart JNI/共享计数器库随本轮工具链升级，不能说所有原生库未变。
+- 稳定播放基线：MpvAudioOptions/PlaybackRateCoordinator/AvSyncGuard源码与会话前一致；本轮每ABI全部7个非Dart原生库（含Flutter引擎/JNI/共享计数器、mpv/FFmpeg与media-kit辅助库）均与v26.11.1.1逐字节相同。arm64 mpv=e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98，v7=a310c26214decfa37a515a20b308ea512b002dab26bc16a8e7b76d4be9761f0d；本轮仅Dart AOT随源码更新。
 - 保留用户验收的倍速路线：默认2倍/可自定义，不等待旧倍速回复；autosync=0，松手恢复基础倍速80ms后仅检查一次avsync，>1秒absolute+exact。保留切换5帧容差与洞察总丢帧。AAudio候选会话/媒体类型及AudioTrack候选参数、周期seek、跳帧/降倍率实验不恢复；音量差异未解决且不主动继续。
 - 当前公开版本：v26.11.1.1（26.11.1+1/code35），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，URL https://github.com/maxzrb/PiliExo/releases/tag/v26.11.1.1；双APK与SHA256SUMS在dist/release/v26.11.1.1/。原正式证书SHA256 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。历史发布和草稿保留。
 - 工具链：Flutter3.47.9/Dart3.13.7独立SDK C:/Users/maxzr/.codex/vendor_imports/flutter-3.47.9，tag c197ca5199e9ee5661e865596c9c07294dfab51c，engine89c39edfdfae2949f6806e4a315c0c08522238b7；25个framework和Material1.9.0的9个补丁全部应用。NDK28.2.13676358、Java21。原3.47.7 SDK和旧C盘构建树不动。
-- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，隔离树Git HEAD仍601f09cf3，产品文件与正式a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8逐字节一致；元数据显式来自主源码提交。4个过期残留文件已备份移出，证据在本次dist目录。正式base APK、mapping、最终签名包及全部日志保存在dist/release/v26.11.1.1/。
-- 环境处理：D盘Flutter测试停滞迁到独立C盘；Java PKIX下载失败时从旧缓存复用3个JAR并核对插件声明SHA256，没有关闭TLS。直接离线Gradle须核对local.properties版本和pili.*定义；签名输入仅本机ignored文件，禁止提交。不得触发/重新启用仓库Actions。
+- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3；已核对1564产品输入逐字节与9d751a4754c365bfbf96cfb1586da87e117a25bd一致，ignored元数据显式来自canonical源码提交。候选证据dist/integration/hdr-switch-upstream-20261104/，包含build-request/verification/SHA256SUMS/签名与manifest/mapping/日志。当前公开v26.11.1.1及历史产物不变。
+- 环境处理：D盘旧package_config仍指archive4.5.2，测试/构建在既有C盘pub get并逐文件同步。文件选择器升级时Windows symlink权限问题以C盘ignored生成目录junction解决，未改系统设置。Gradle引擎JAR虽已缓存，但仓库来源身份需当前进程FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn才能离线复用；最终assembleRelease --offline通过。签名输入仅本机ignored文件，禁止Actions/未经指定的computer use。
 - 官方B站画质/长按研究已保存（docs/原版B站画质策略调查-2026-10-19.md、docs/原版B站长按倍速逻辑调查-2026-10-19.md），含高帧率钳制/跳帧/2.4秒输出间隔等证据边界；这些仍仅调查，不据此改本地播放策略。功耗/GPU研究继续暂停。
 ## 当前上游同步结果（2026-10-14）
 
@@ -41,6 +41,8 @@
 | `682ada6c4d2592ff876ffec7bc2019935514c6b7` | 历史 iOS Geetest 补丁 | 永久排除、不再核验 |
 | `2f4a50200fdb96e1bca161d7d1f1182fa95001fa` | 历史 Linux WebView 调整 | 永久排除、不再核验 |
 | `a0e6148e928bf2d7f6e14599cab01bde2a0630f7` | 历史 iOS 音频类别 | 永久排除、不再核验 |
+| `07e2906cd9552d7f0336c37cda389cf1f4bbdcde` | Linux MPRIS DesktopEntry/identity | 2026-11-04永久排除、不再核验原提交 |
+| `9746fbc9cadd13fa1ce52763d058966f2bbade75` | macOS隐藏标题栏拖动 | 2026-11-04永久排除、不再核验原提交 |
 
 历史已被用户要求合入的桌面/iOS 项（如 bdca06f2b、901dc2b9c、8f2af3c09）按既有本地映射视为已处理，不回滚也不重复核验。所有本轮已合入或适配的原提交同样不重复 cherry-pick，下一轮从 bd5e04e5d 之后开始。
 
@@ -1812,3 +1814,23 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 
 - GitHub latest/title/tag均v26.11.1.1，非草稿/非预发布，三资产digest与长度再次匹配本机；annotated tag peeled固定a3ae6892c，源码分支及main独立README与远端一致。Actions仍关闭，运行数4。
 - 85a2e2fab收尾三份记录已推送；本条补记与工作分支快照随后提交推送。产品源码和正式tag不变，工作区仅原tmp/未跟踪。
+
+## 2026-11-04 20:44 HDR热切换与近期上游源码适配完成，构建验证中
+
+- 新会话读取AGENTS.md、STATUS和11-01上游映射；INDEX不存在。pull --ff-only同步，fetch上游从265f879fa更新至c7ff9683c，共19项。原HEAD db143d184创建回退分支，未跟踪tmp/不动。用户明确禁止未经指定使用computer use，本轮完全未使用。
+- 第1步热切换已单独提交23bdb80；第2步上游适配83f3d246f，来源16功能/修复+1依赖选择性适配/2排除，完整映射在11-04报告。两个本地提交暂未push，应用仍26.11.1+1/code35，不改tag/Release。
+- 当前页HDR更多菜单按实际后端双向切换；保存毫秒进度与播放意图，零进度不应用片头跳过/路由起点；不改全局默认，沿用既有基础倍速。重复点击/加载中保护、失败回退与锁清理已用固定样例验证；不宣称无缝切换或真实设备解码已验收。
+- 209/209 Flutter通过（较185基线新增24），Analyze0error/0warning、77info，工具链/README/29插件门禁通过。首次全量208过/1失败为测试首帧调度采样，补充稳定帧后同一参考值通过。主D盘旧依赖导致archive编译失败后转既有C盘测试；未修改归档实现来迁就旧依赖。
+- 依赖仅升级固定DLNA fe347512、文件选择器13.3.2及必要插件族（Android2.1.3、darwin2.4.2、linux2.0.3、web4.2.0）和vector_graphics1.2.6。保留media_kit全部hash/版本、Flutter3.47.9/Material1.9.0。C盘Windows插件symlink失败通过ignored生成目录junction解决，不改变系统权限。
+- 本地双ABI Release及Android JVM验证进行中，1564产品输入已与83f3d246f逐字节核对，元数据显式记录canonical提交；证据dist/integration/hdr-switch-upstream-20261104/。未安装手机、推送或发布，未调用Actions/Computer Use。
+
+## 2026-11-04 20:58 HDR热切换与上游安全适配最终收尾
+
+- 最终源码9d751a4754c365bfbf96cfb1586da87e117a25bd；末次将4处上游注释中文化后固定该提交，功能与209项通过时一致。23bdb80为热切换，9d751a475为上游适配；上游实际处理边界c7ff9683c，完整19项映射无重复，2项纯平台永久排除已登记。
+- 209 Flutter通过，Analyze0error/0warning（77info），工具链/README/29插件门禁与UTF-8/diff检查通过。Android JVM17/17，0失败/错误/跳过。本机离线assembleRelease1m59s、JVM任务1m38s通过，未构建独立测试App。
+- 初次在线构建停在Gradle引擎JAR下载，终止本任务进程后改离线；首轮离线未命中io.flutter仓库来源缓存。核对JAR实际存在，恢复此前构建进程FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn后离线成功，没有关闭TLS或改仓库产品配置。初次83f3d246f元数据和未完成构建仅作历史诊断，不作为最终交付。
+- 最终1564产品输入逐字节与canonical匹配；原正式证书V2、包名/26.11.1/code35、双ABI/AOT嵌入提交/ChromeOS JNI/R8 FFmpeg/适用ELF和ZIP16KB验证通过；每ABI7个非Dart库与上次正式发布相同。倍速/音画同步/音频参数核心文件与会话前一致，GitHub workflows与版本code未改。
+- PiliExo_hdr-switch-upstream-20261104_arm64-v8a.apk：33317327字节，SHA256 06605f9a2cb5cfe0e42b4a6f998ae491813c17b169801093765dffe2f0c2c5b4。
+- PiliExo_hdr-switch-upstream-20261104_armeabi-v7a.apk：33051103字节，SHA256 71bab14558ff9c3924c4d30b95394481a1fd3aae527ffa2e964514a9f1d3e7ee。
+- 证据dist/integration/hdr-switch-upstream-20261104/verification.json与build-request.json及完整日志；APK为本地验证候选，尚未在手机安装或实播。当前正式v26.11.1.1和tag保持不变，不沿用旧发布设备豁免或首页启动结果充当本次热切换验收。
+- 收尾更新审查报告、STATUS及中文进度，未改版本迭代记录；三个本地提交不push，原tmp/不动，跟踪文件收尾后干净。未触发Actions、未使用computer use，密钥/密码/令牌未入Git。
