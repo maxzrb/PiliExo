@@ -1,4 +1,5 @@
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
@@ -7,6 +8,7 @@ import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:hive_ce/hive.dart';
 
 sealed class Account {
@@ -173,7 +175,7 @@ class AnonymousAccount extends Account {
   late final Map<String, String> grpcHeaders = GrpcHeaders.newHeaders(this);
 
   @override
-  bool activated = false;
+  bool activated = true;
 
   late String _buvid = Pref.buvid;
   @override
@@ -203,6 +205,40 @@ class AnonymousAccount extends Account {
   static final _instance = AnonymousAccount._();
 
   AnonymousAccount._();
+
+  /// 请求层就绪后获取匿名网页标识，避免在单例构造时递归初始化请求层。
+  Future<void> refreshWebCookies() async {
+    try {
+      final res = await Request().get(
+        '/x/frontend/finger/spi',
+        options: Options(extra: {'account': const NoAccount()}),
+      );
+      final response = res.data;
+      if (response['code'] != 0) return;
+      final data = response['data'];
+      final b3 = data['b_3'];
+      final b4 = data['b_4'];
+      if (b3 is! String || b3.isEmpty || b4 is! String || b4.isEmpty) return;
+      final cookies = cookieJar.domainCookies
+          .putIfAbsent(
+            'bilibili.com',
+            () => {'/': {}},
+          )
+          .putIfAbsent('/', () => {});
+      final values = {
+        'buvid3': b3,
+        'buvid4': b4,
+        'b_nut': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      };
+      for (final entry in values.entries) {
+        cookies[entry.key] = SerializableCookie(
+          Cookie(entry.key, entry.value)..setBiliDomain(),
+        );
+      }
+    } catch (_) {
+      // 网络失败时保留已有随机标识，不能破坏账号独立的 APP/gRPC 标识。
+    }
+  }
 
   factory AnonymousAccount() => _instance;
 

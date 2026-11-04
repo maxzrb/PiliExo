@@ -15,6 +15,7 @@ import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
+import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -46,7 +47,8 @@ typedef _StatusConfig = (PlayerStatus, bool, bool, double);
 
 class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
   VideoPlayerServiceHandler() {
-    if (Platform.isAndroid) {
+    // Android 14 的固定远程会话会吞掉音量键，仅在已验证的 vivo Android 16 及以上启用。
+    if (Platform.isAndroid && DeviceUtils.sdkInt >= 36) {
       final jStr = AndroidHelper.manufacturer();
       if (jStr != null &&
           jStr.toDartString(releaseOriginal: true).toLowerCase() == 'vivo') {

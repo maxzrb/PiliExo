@@ -1,13 +1,14 @@
 import 'dart:convert' show utf8;
 
 import 'package:PiliPlus/common/constants.dart';
-import 'package:crypto/crypto.dart';
+import 'package:crypto/crypto.dart' show md5;
 
 abstract final class AppSign {
   static void appSign(
     Map<String, dynamic> params, {
     String appkey = Constants.appKey,
     String appsec = Constants.appSec,
+    int? timestamp,
   }) {
     // retry error
     // assert(
@@ -15,7 +16,8 @@ abstract final class AppSign {
     //   'appkey-appsec should be provided in appSign',
     // );
     params['appkey'] = appkey;
-    params['ts'] = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+    params['ts'] = (timestamp ?? DateTime.now().millisecondsSinceEpoch ~/ 1000)
+        .toString();
     final sorted = params.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     params['sign'] = md5
@@ -36,7 +38,7 @@ abstract final class AppSign {
       result.write(separator);
       separator = '&';
       result.write(Uri.encodeComponent(key));
-      if (value != null && value.isNotEmpty) {
+      if (value != null) {
         result
           ..write('=')
           ..write(Uri.encodeComponent(value));

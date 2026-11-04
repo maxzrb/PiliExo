@@ -26,6 +26,7 @@ import 'package:PiliPlus/utils/reply_scheme_helper.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/url_utils.dart';
 import 'package:PiliPlus/utils/utils.dart';
+import 'package:PiliPlus/utils/video_link_progress.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -45,18 +46,6 @@ abstract final class PiliScheme {
 
     listener?.cancel();
     listener = appLinks.uriLinkStream.listen(routePush);
-  }
-
-  static int? _videoProgress(Map<String, String> queryParameters) {
-    if ((queryParameters['start_progress'] ?? queryParameters['dm_progress'])
-        case final p?) {
-      return int.tryParse(p);
-    } else if (queryParameters['t'] case final t0?) {
-      if (double.tryParse(t0) case final t1?) {
-        return (t1 * 1000).toInt();
-      }
-    }
-    return null;
   }
 
   static Future<bool> routePushFromUrl(
@@ -117,7 +106,7 @@ abstract final class PiliScheme {
               PageUtils.viewPgc(
                 seasonId: isEp ? null : id,
                 epId: isEp ? .parse(id) : null,
-                progress: _videoProgress(uri.queryParameters),
+                progress: parseVideoLinkProgress(uri.queryParameters),
               );
               return true;
             }
@@ -149,7 +138,7 @@ abstract final class PiliScheme {
                   aid: aid != null ? int.parse(aid) : null,
                   bvid: bvid,
                   cid: int.parse(cid),
-                  progress: _videoProgress(queryParameters),
+                  progress: parseVideoLinkProgress(queryParameters),
                   off: off,
                   rootRpId: rootRpId,
                   secondRpId: secondRpId,
@@ -159,7 +148,7 @@ abstract final class PiliScheme {
                   aid != null ? int.parse(aid) : null,
                   bvid,
                   off: off,
-                  progress: _videoProgress(queryParameters),
+                  progress: parseVideoLinkProgress(queryParameters),
                   rootRpId: rootRpId,
                   secondRpId: secondRpId,
                 );
@@ -670,7 +659,7 @@ abstract final class PiliScheme {
         // if (kDebugMode) debugPrint('番剧');
         bool hasMatch = PageUtils.viewPgcFromUri(
           path,
-          progress: _videoProgress(uri.queryParameters),
+          progress: parseVideoLinkProgress(uri.queryParameters),
         );
         if (hasMatch) {
           return true;
@@ -688,7 +677,7 @@ abstract final class PiliScheme {
             res.av,
             res.bv,
             off: off,
-            progress: _videoProgress(queryParameters),
+            progress: parseVideoLinkProgress(queryParameters),
             part: part,
             rootRpId: rootRpId,
             secondRpId: secondRpId,
@@ -850,6 +839,20 @@ abstract final class PiliScheme {
           return true;
         }
         launchURL();
+        return false;
+      case 'vote':
+        // 投票链接：www.bilibili.com/h5/vote?vote_id=***&dynamic_id=***。
+        final queryParameters = uri.queryParameters;
+        final voteId = parseIntOrNull(queryParameters['vote_id']);
+        final dynamicId = queryParameters['dynamic_id'];
+        if (voteId != null) {
+          showVoteDialog(
+            Get.context!,
+            voteId,
+            dynamicId: parseIntOrNull(dynamicId),
+          );
+          return true;
+        }
         return false;
       default:
         final res = IdUtils.matchAvorBv(input: area?.split('?').first);

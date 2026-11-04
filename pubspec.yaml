@@ -77,7 +77,11 @@ dependencies:
   device_info_plus: ^13.1.0
   dio: ^5.9.1
   dio_http2_adapter: ^2.7.1
-  dlna_dart: ^0.1.0
+  dlna_dart:
+    git:
+      url: https://github.com/suconghou/dlna-dart.git
+      # 固定本轮已审查的上游提交，避免后续解析时静默引入新重构。
+      ref: fe347512768400a4309dd73269f104ba65668f07
   dynamic_color: ^2.1.0
   easy_debounce: ^2.0.3
   encrypt: ^5.0.3

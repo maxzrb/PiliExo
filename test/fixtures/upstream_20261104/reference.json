@@ -1,0 +1,309 @@
+{
+  "video": [
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "ogv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": 129,
+      "progress": 12000,
+      "error": null
+    },
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "pugv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": 80,
+      "progress": 9000,
+      "error": null
+    },
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "ogv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        },
+        {
+          "path": "/pgc/player/web/v2/playurl",
+          "method": "GET",
+          "bizType": null,
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": 125,
+      "progress": 7000,
+      "error": null
+    },
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "pugv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        },
+        {
+          "path": "/pugv/player/web/playurl",
+          "method": "GET",
+          "bizType": null,
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": 80,
+      "progress": 6000,
+      "error": null
+    },
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "ogv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": null,
+      "progress": null,
+      "error": "视频不存在或已被删除"
+    },
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "ogv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": null,
+      "progress": null,
+      "error": "未获取到播放信息"
+    },
+    {
+      "requests": [
+        {
+          "path": "/x/player/wbi/playurl",
+          "method": "GET",
+          "bizType": null,
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        },
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "ogv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": 129,
+      "progress": 11000,
+      "error": null
+    },
+    {
+      "requests": [
+        {
+          "path": "/ogv/player/playview",
+          "method": "GET",
+          "bizType": "ogv",
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        },
+        {
+          "path": "/pgc/player/web/v2/playurl",
+          "method": "GET",
+          "bizType": null,
+          "epid": 456,
+          "qn": 129,
+          "language": "zh-Hans",
+          "voiceBalance": 1,
+          "hasBody": false,
+          "fnval": 4048
+        }
+      ],
+      "quality": null,
+      "progress": null,
+      "error": "视频不存在或已被删除"
+    }
+  ],
+  "sign": [
+    "c5ec7b6f984e5b0d1e2ddaa0c8842046"
+  ],
+  "progress": [
+    6000,
+    0,
+    0,
+    7000,
+    1250,
+    null,
+    null
+  ],
+  "scroll": [
+    120,
+    200,
+    [
+      224,
+      224
+    ]
+  ],
+  "pagination": [
+    [
+      {
+        "ids": [],
+        "offset": "next",
+        "end": false,
+        "requests": 1
+      },
+      {
+        "ids": [
+          2
+        ],
+        "offset": "last",
+        "end": false,
+        "requests": 2
+      },
+      {
+        "ids": [
+          2,
+          3
+        ],
+        "offset": "",
+        "end": true,
+        "requests": 3
+      }
+    ],
+    [
+      {
+        "ids": [
+          1
+        ],
+        "offset": "ignored",
+        "end": true,
+        "requests": 1
+      }
+    ],
+    [
+      {
+        "ids": [],
+        "offset": "",
+        "end": true,
+        "requests": 1
+      }
+    ]
+  ],
+  "refresh": [
+    [
+      [
+        0,
+        false
+      ],
+      [
+        1,
+        true
+      ],
+      [
+        0,
+        false
+      ],
+      [
+        1,
+        true
+      ],
+      [
+        0,
+        false
+      ]
+    ],
+    [
+      [
+        1,
+        true
+      ],
+      [
+        0,
+        false
+      ],
+      [
+        1,
+        true
+      ],
+      [
+        0,
+        false
+      ]
+    ]
+  ],
+  "word": [
+    28,
+    24,
+    16
+  ],
+  "dlna": [
+    "http://192.0.2.1:8080/upnp/av",
+    "http://192.0.2.1:8080/root/av",
+    "http://192.0.2.2/control"
+  ]
+}

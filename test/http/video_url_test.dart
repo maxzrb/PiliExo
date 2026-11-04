@@ -15,13 +15,14 @@ import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 
 class _PlayUrlAdapter implements HttpClientAdapter {
-  Map<String, dynamic> response = {};
-  late RequestOptions request;
+  final responses = <Map<String, dynamic>>[];
+  final requests = <RequestOptions>[];
 
   @override
   Future<ResponseBody> fetch(
@@ -29,9 +30,10 @@ class _PlayUrlAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    request = options;
+    requests.add(options);
+    if (responses.isEmpty) throw StateError('固定响应已用完，禁止额外请求');
     return ResponseBody.fromString(
-      jsonEncode(response),
+      jsonEncode(responses.removeAt(0)),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -67,6 +69,8 @@ void main() {
   });
 
   setUp(() {
+    adapter.responses.clear();
+    adapter.requests.clear();
     Accounts.accountMode[AccountType.video.index] = AnonymousAccount();
   });
 
@@ -76,78 +80,80 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  Future<LoadingState<dynamic>> load(VideoType type) => VideoHttp.videoUrl(
-    cid: 123,
-    qn: 120,
-    epid: 456,
-    seasonId: 789,
-    tryLook: false,
-    videoType: type,
+  final input = jsonDecode(
+    File('test/fixtures/upstream_20261104/input.json')
+        .readAsStringSync(encoding: utf8),
   );
+  final reference = jsonDecode(
+    File('test/fixtures/upstream_20261104/reference.json')
+        .readAsStringSync(encoding: utf8),
+  );
+  for (var i = 0; i < (input['video'] as List).length; i++) {
+    final sample = input['video'][i];
+    test('固定样例：${sample['name']}', () async {
+      adapter.responses.addAll(
+        (sample['responses'] as List).cast<Map<String, dynamic>>(),
+      );
+      final result = await VideoHttp.videoUrl(
+        cid: 123,
+        qn: 129,
+        epid: 456,
+        seasonId: 789,
+        tryLook: false,
+        videoType: VideoType.values.byName(sample['type']),
+        language: 'zh-Hans',
+        voiceBalance: true,
+      );
+      expect({
+        'requests': adapter.requests
+            .map(
+              (request) => {
+                'path': request.path,
+                'method': request.method,
+                'bizType': request.queryParameters['biz_type'],
+                'epid': request.queryParameters['ep_id'],
+                'qn': request.queryParameters['qn'],
+                'language': request.queryParameters['cur_language'],
+                'voiceBalance': request.queryParameters['voice_balance'],
+                'hasBody': request.data != null,
+                'fnval': request.queryParameters['fnval'],
+              },
+            )
+            .toList(),
+        'quality': result.dataOrNull?.quality,
+        'progress': result.dataOrNull?.lastPlayTime,
+        'error': result is Error ? result.errMsg : null,
+      }, reference['video'][i]);
+      expect(adapter.responses, isEmpty);
+    });
+  }
 
-  test('番剧使用 POST 和 JSON 参数，恢复新接口的续播进度', () async {
-    adapter.response = {
+  test('匿名网页 Cookie 获取成功或失败均保留 APP/gRPC 独立标识', () async {
+    final anonymous = AnonymousAccount();
+    final originalBuvid = anonymous.buvid;
+    final originalHeaders = Map<String, String>.from(anonymous.grpcHeaders);
+    adapter.responses.add({
       'code': 0,
-      'data': {
-        'video_info': {'quality': 120},
-        'watch_progress': {'current_watch_progress': 12000},
+      'data': {'b_3': 'web-b3', 'b_4': 'web-b4'},
+    });
+    await anonymous.refreshWebCookies();
+    expect(anonymous.cookieJar.toJson(), containsPair('buvid3', 'web-b3'));
+    expect(anonymous.cookieJar.toJson(), containsPair('buvid4', 'web-b4'));
+    expect(adapter.requests.single.extra['account'], isA<NoAccount>());
+    for (final response in [
+      {'code': -1, 'message': '固定失败'},
+      {
+        'code': 0,
+        'data': {'b_3': '', 'b_4': 'bad'},
       },
-    };
-    final result = await load(.pgc);
-    expect(adapter.request.method, 'POST');
-    expect(adapter.request.path, '/ogv/player/playview');
-    expect(adapter.request.data['video_index']['ogv_episode_id'], 456);
-    expect(adapter.request.data['video_param']['qn'], 120);
-    expect(
-      jsonDecode(adapter.request.queryParameters['x-bili-device-req-json']),
-      containsPair('platform', 'web'),
-    );
-    expect(adapter.request.queryParameters.containsKey('csrf'), isFalse);
-    expect(result.dataOrNull?.quality, 120);
-    expect(result.dataOrNull?.lastPlayTime, 12000);
-  });
-
-  test('课程保留 GET，兼容另一种续播字段', () async {
-    adapter.response = {
-      'code': 0,
-      'data': {
-        'video_info': {'quality': 80},
-        'watch_progress': {'current_progress': 9000},
-      },
-    };
-    final result = await load(.pugv);
-    expect(adapter.request.method, 'GET');
-    expect(adapter.request.queryParameters['biz_type'], 'pugv');
-    expect(adapter.request.data, isNull);
-    expect(result.dataOrNull?.lastPlayTime, 9000);
-  });
-
-  test('登录时番剧请求携带视频账户 csrf', () async {
-    Accounts.accountMode[AccountType.video.index] = LoginAccount(
-      BiliCookieJar.fromJson({'DedeUserID': '123', 'bili_jct': 'video-csrf'}),
-      'access-key',
-      'refresh-token',
-    );
-    adapter.response = {
-      'code': 0,
-      'data': {'video_info': <String, dynamic>{}},
-    };
-    await load(.pgc);
-    expect(adapter.request.queryParameters['csrf'], 'video-csrf');
-  });
-
-  test('无播放权限和缺失播放信息均返回业务错误', () async {
-    adapter.response = {
-      'code': 0,
-      'data': {
-        'not_playable_reason': {'code': -404, 'message': '不可播放'},
-      },
-    };
-    expect(await load(.pgc), isA<Error>());
-    adapter.response = {'code': 0, 'data': <String, dynamic>{}};
-    final result = await load(.pgc);
-    expect(result, isA<Error>());
-    expect((result as Error).errMsg, '未获取到播放信息');
+    ]) {
+      adapter.responses.add(response);
+      await anonymous.refreshWebCookies();
+      expect(anonymous.cookieJar.toJson(), containsPair('buvid3', 'web-b3'));
+    }
+    expect(anonymous.buvid, originalBuvid);
+    expect(anonymous.grpcHeaders, originalHeaders);
+    expect(Pref.buvid, originalBuvid);
   });
 
   test('匿名与视频账号的 buvid 独立且各自同步 gRPC 元数据', () async {

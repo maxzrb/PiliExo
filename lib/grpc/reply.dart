@@ -73,7 +73,6 @@ abstract final class ReplyGrpc {
     Int64? rpid,
     required Mode mode,
     required String? offset,
-    required Int64? cursorNext,
   }) async {
     final res = await GrpcReq.request(
       GrpcUrl.mainList,

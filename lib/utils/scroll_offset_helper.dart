@@ -67,18 +67,12 @@ double calcItemHeight(ugc.BaseEpisodeItem episode) {
   required int index,
   required int itemCount,
   double extent = _kItemHeight,
-  bool isReversed = false,
-  double topPadding = _kTopPadding,
-  double bottomPadding = _kBottomPadding,
 }) {
   if (itemCount <= 0) return (0.0, 0.0);
   index = index.clamp(0, itemCount - 1);
-  double offset = extent * index;
+  final offset = extent * index;
   final remain = (itemCount - index - 1) * extent;
-  return (
-    offset + (isReversed ? bottomPadding : topPadding),
-    remain + (isReversed ? topPadding : bottomPadding),
-  );
+  return (offset, remain);
 }
 
 const double kPageItemExtent = 150;
@@ -87,13 +81,12 @@ double calcPageItemOffset({
   required int index,
   required int itemCount,
   double extent = kPageItemExtent,
-  double itemExtent = kPageItemExtent,
   required double viewportDimension,
 }) {
   if (itemCount <= 0 || index <= 0) return 0.0;
   index = index.clamp(0, itemCount - 1);
-  final halfExtent = itemExtent / 2.0;
-  final offset = math.max(0.0, index * itemExtent - halfExtent);
+  final halfExtent = extent / 2.0;
+  final offset = math.max(0.0, index * extent - halfExtent);
   final remain = (itemCount - index - 1) * extent;
   final total = remain + extent + halfExtent;
   if (total < viewportDimension) {
@@ -107,7 +100,6 @@ double calcPageItemOffsetSeparated({
   required int itemCount,
   required double extent,
   required double separator,
-  double itemExtent = kPageItemExtent,
   required double viewportDimension,
 }) {
   if (itemCount <= 0 || index <= 0) return 0.0;

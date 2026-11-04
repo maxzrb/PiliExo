@@ -41,6 +41,7 @@ class Request {
     dio.interceptors.add(accountManager);
     Accounts.refresh();
     LoginUtils.setWebCookie();
+    unawaited(AnonymousAccount().refreshWebCookies());
 
     if (Accounts.main.isLogin) {
       final coin = Pref.userInfoCache?.money;
