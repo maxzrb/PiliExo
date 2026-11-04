@@ -1,23 +1,23 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-11-04 20:58 (+08:00)
+- 更新时间：2026-11-04 23:12 (+08:00)
 - 当前发布：v26.11.1.1（2026-11-01已核对公开且为GitHub latest），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，annotated tag固定。上轮双APK/SHA256SUMS的GitHub digest/长度及ModelScope完整回读SHA256通过，Actions当日核对关闭/历史运行4次；本轮未调用发布或Actions服务。
 - 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
-- 当前任务：HDR播放页mpv/ExoPlayer双向热切换与PiliPlus近期Android适用更新安全适配、本地验证已完成；209 Flutter、17 Android JVM、Analyze及原证书双ABI候选检查通过。真实设备热切换尚未实播；未发布、推送或安装。
-- 当前源码：本地候选9d751a4754c365bfbf96cfb1586da87e117a25bd；热切换23bdb80。当前公开发布仍a3ae6892c/v26.11.1.1（26.11.1+1/code35），本轮不改版本。回退codex/backup-before-hdr-switch-upstream-20261104=db143d184；本轮收尾记录另作文档提交。
-- 工作分支：merge/upstream-2.1.4-20260913；本轮两个源码提交与收尾记录均仅本地，origin仍db143d184，最终领先3提交；跟踪文件收尾后干净，原tmp/保留未跟踪。
+- 当前任务：HDR页热切换、近期上游适配及用户追加ADB测试已完成。MEP-AN00/API37的Dolby Vision画质126实播7项通过（竖屏暂停/播放双向4、片尾拖回续播1、全屏暂停双向2）。两处真实边界已修复，最终3afd双ABI本机原证书候选完成；仅arm64包真机覆盖，未发布/推送。
+- 当前源码：最新修复3afd7fa1cc76b5d2c3d99317f411467216590dcf（等待输出尺寸后仅在暂停HDR→mpv交接重绘一次，并检查来源/播放器仍有效），续播意图修复25658abea。原候选9d751a475不作为最终验收包；当前公开v26.11.1.1不变。
+- 工作分支：merge/upstream-2.1.4-20260913；源码5个本地提交未push，随后本轮ADB收尾记录单独提交（合计6个）；原tmp/保留未跟踪。
 - 上游边界：已处理至c7ff9683c0e64e74abe89df75fa49b10f8666664。本轮265f879fa..c7ff9683c共19项：16功能/修复适配、1依赖选择性适配、2纯平台排除（Linux07e2906cd/macOS9746fbc9c）；完整映射docs/PiliPlus上游审查-2026-11-04.md，后续不重复应用这些来源。
 - 已整合：本轮新增当前页mpv/ExoPlayer热切换（HDR125/126/129，保留毫秒进度/播放意图/基础倍速，不改全局设置）、选集/番剧缓存/接口回退、图文封面/文本对齐/大标题、评论分页与时间验证、匿名网页Cookie、弹幕提前定位、ChromeOS旋转、av复制、签名空值及隐藏刷新停止空转；依赖DLNA固定fe347512和Android文件选择器/矢量图修复。保留本地双后端/HDR/FLAC/混合推荐/文章分享/音轨画质及稳定倍速策略。
-- 统一验证：209/209 Flutter、17/17 Android JVM（无失败/错误/跳过）通过；固定input.json/reference.json复用现有Flutter运行器，无测试App。Analyze退出0、0error/0warning、77info，工具链3.47.9/README/29插件门禁通过。本地离线双ABI Release、原证书V2/manifest/AOT提交/JNI/R8/FFmpeg/ABI/适用ELF和ZIP16KB检查通过；每ABI7个非Dart原生库与v26.11.1.1一致。
+- 统一验证：210/210 Flutter、17/17 Android JVM（无失败/错误/跳过）通过；固定input.json/reference.json复用现有Flutter运行器，无测试App。Analyze退出0、0error/0warning、77info，工具链3.47.9/README/29插件门禁通过。本地离线双ABI Release、原证书V2/manifest/AOT提交/JNI/R8/FFmpeg/ABI/适用ELF和ZIP16KB检查通过；每ABI7个非Dart原生库与v26.11.1.1一致。
 - 历史真机启动（2026-11-01，非本轮候选）：当时MEP-AN00正式包从26.10.31/code34保留数据覆盖到26.11.1/code35成功，包名与firstInstallTime保持一致（覆盖前UID未采集），首页可见52应用节点，进程存活，无检查范围内FATAL/Unhandled/MissingPlugin/dlopen异常。证据dist/release/v26.11.1.1/device-release-check.json及截图。未沿用上轮豁免或制作独立dev App。
-- 未覆盖：本轮未进行手机HDR双向实播、横竖屏/全屏/字幕/音轨/通知/后台/PiP矩阵；vivo专属、ChromeOS、32位实体设备、真实账号会员权限/片源与电视发现均未实测。前轮正式包覆盖/首页启动结果不替代本轮热切换验收。
+- 设备验收边界：本轮仅Honor MEP-AN00 arm64/API37、3840×2160 Dolby Vision/23.976fps片源实播。7项切换均核对系统播放状态/进度/1.5x、洞察实际后端与截图正常画面；未测无HDR能力手机、HDR10/HDR Vivid、32位、字幕音轨切换、后台/PiP、音量音质/色彩精度、vivo/ChromeOS/会员课程权限或电视发现。最终安装APK完整回读SHA256匹配，appId10406及首次安装时间保留；日志未见检查范围内致命异常。测试播放已停止，临时USB常亮恢复原值0。
 - 图标调查：原正式包与候选编译图标资源一致。手机资源随深浅正确解析，用户解锁后的原包桌面截图显示深灰底浅P/浅底深P正常切换，在图标可见时深色返回白天auto也正常。本轮未复现，不确定此前根因，不修改图标或清桌面数据；系统已恢复原auto。证据在dist/integration/upstream-20261031/icon-investigation/。此前“忽略图标”决定已被本轮用户重新调查请求替代。
 - 历史候选产物（10-31，非当前发布）：dist/integration/upstream-20261031/，arm64 APK 33051087字节/SHA256 68522da5aa567fdb0811aa753119fdce846772b420b32d98f4e893d7accc27da；v7 APK 32670175字节/SHA256 3d51a5bc5cf4f6bfd453f5118d08c76b3e9a8c6fafed5e41b8d21885aa17ecf0。包含SHA256SUMS.txt、metadata.json、build-request.json、verification.json及日志；不是新Release，版本仍26.10.19+1/code33。
 - 稳定播放基线：MpvAudioOptions/PlaybackRateCoordinator/AvSyncGuard源码与会话前一致；本轮每ABI全部7个非Dart原生库（含Flutter引擎/JNI/共享计数器、mpv/FFmpeg与media-kit辅助库）均与v26.11.1.1逐字节相同。arm64 mpv=e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98，v7=a310c26214decfa37a515a20b308ea512b002dab26bc16a8e7b76d4be9761f0d；本轮仅Dart AOT随源码更新。
 - 保留用户验收的倍速路线：默认2倍/可自定义，不等待旧倍速回复；autosync=0，松手恢复基础倍速80ms后仅检查一次avsync，>1秒absolute+exact。保留切换5帧容差与洞察总丢帧。AAudio候选会话/媒体类型及AudioTrack候选参数、周期seek、跳帧/降倍率实验不恢复；音量差异未解决且不主动继续。
 - 当前公开版本：v26.11.1.1（26.11.1+1/code35），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，URL https://github.com/maxzrb/PiliExo/releases/tag/v26.11.1.1；双APK与SHA256SUMS在dist/release/v26.11.1.1/。原正式证书SHA256 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。历史发布和草稿保留。
 - 工具链：Flutter3.47.9/Dart3.13.7独立SDK C:/Users/maxzr/.codex/vendor_imports/flutter-3.47.9，tag c197ca5199e9ee5661e865596c9c07294dfab51c，engine89c39edfdfae2949f6806e4a315c0c08522238b7；25个framework和Material1.9.0的9个补丁全部应用。NDK28.2.13676358、Java21。原3.47.7 SDK和旧C盘构建树不动。
-- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3；已核对1564产品输入逐字节与9d751a4754c365bfbf96cfb1586da87e117a25bd一致，ignored元数据显式来自canonical源码提交。候选证据dist/integration/hdr-switch-upstream-20261104/，包含build-request/verification/SHA256SUMS/签名与manifest/mapping/日志。当前公开v26.11.1.1及历史产物不变。
+- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3；已核对1564产品输入逐字节与3afd7fa1cc76b5d2c3d99317f411467216590dcf一致，ignored元数据显式来自canonical源码提交。最终候选证据dist/integration/hdr-switch-upstream-20261104/adb-final/，包含build-request/verification/SHA256SUMS/签名与manifest/mapping/日志；实播证据在同级device-adb/，根目录9d及adb-fix/256包仅作历史诊断。当前公开v26.11.1.1及历史产物不变。
 - 环境处理：D盘旧package_config仍指archive4.5.2，测试/构建在既有C盘pub get并逐文件同步。文件选择器升级时Windows symlink权限问题以C盘ignored生成目录junction解决，未改系统设置。Gradle引擎JAR虽已缓存，但仓库来源身份需当前进程FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn才能离线复用；最终assembleRelease --offline通过。签名输入仅本机ignored文件，禁止Actions/未经指定的computer use。
 - 官方B站画质/长按研究已保存（docs/原版B站画质策略调查-2026-10-19.md、docs/原版B站长按倍速逻辑调查-2026-10-19.md），含高帧率钳制/跳帧/2.4秒输出间隔等证据边界；这些仍仅调查，不据此改本地播放策略。功耗/GPU研究继续暂停。
 ## 当前上游同步结果（2026-10-14）
@@ -1834,3 +1834,25 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - PiliExo_hdr-switch-upstream-20261104_armeabi-v7a.apk：33051103字节，SHA256 71bab14558ff9c3924c4d30b95394481a1fd3aae527ffa2e964514a9f1d3e7ee。
 - 证据dist/integration/hdr-switch-upstream-20261104/verification.json与build-request.json及完整日志；APK为本地验证候选，尚未在手机安装或实播。当前正式v26.11.1.1和tag保持不变，不沿用旧发布设备豁免或首页启动结果充当本次热切换验收。
 - 收尾更新审查报告、STATUS及中文进度，未改版本迭代记录；三个本地提交不push，原tmp/不动，跟踪文件收尾后干净。未触发Actions、未使用computer use，密钥/密码/令牌未入Git。
+
+## 2026-11-04 22:44 用户追加ADB实播，发现并修复两个交接边界（验证中）
+
+- 用户明确“adb测试一下/继续”；不使用computer use，仅ADB shell/UI XML/截图/媒体会话。MEP-AN00（序列AN5UUT6225004417）arm64/API37在线。覆盖前原正式APK完整拉取，SHA256与v26.11.1.1的7d153ff1...一致；appId10406、firstInstallTime2026-09-02 15:19:05已采集。
+- 手机多次拒绝streamed install（INSTALL_FAILED_ABORTED/User rejected permissions）；用户明确允许后原候选9d成功覆盖。修复256包流式仍被直接拒绝，改ADB原生--no-streaming -r成功，不绕过权限、不清数据/卸载。设备当前安装25658abea包，SHA2567f77fbc6ac98286feb24f6bb0f74a3f9ec066f40006e3a122868d85249831def完整回读匹配；新3afd尚在构建。
+- 固定片源BV1tfei6MEMn，真实126/DolbyVision/3840×2160/23.976fps，已观察c2.qti.hevc.decoder硬解。原候选正常播放E→mpv实测107033→108099ms、1.5x继续；暂停mpv→E实测54928→54929ms、1.5x保持并有画面。首次片尾拖回实际续播但旧playWhenReady仍false，切换误暂停；256在入口合并实际isPlaying与意图，并新增固定参考样例，210/210通过。
+- 暂停E→mpv则进度228003ms/1.5x保持，但视频区域全黑；提前挂载纹理仍未通过真实首帧检查。确认暂停下滑动进度能重绘且不播放。3afd补等待VideoController.rect有效后精确seek同一位置一次，检查播放器、来源及暂停意图有效；不是周期seek、不改倍速/AV同步策略。5秒无尺寸超时保留加载，不当作解码失败。
+- 固定ADB输入/参考值/实际输出、菜单/洞察/截图/媒体会话证据在dist/integration/hdr-switch-upstream-20261104/device-adb/；fixed-output.json当前含失败样例，不能当全部通过。最终3afd候选目录adb-final/，中间256目录adb-fix/、原9d根目录均保留作诊断。
+- 设备在暂停检查中曾息屏导致全黑截图；已区分全屏息屏与产品视频区域黑屏。临时svc power stayon usb，原stay_on_while_plugged_in=0保存在device-adb/power-setting-before.json，收尾必须恢复0，不强制息屏。原生代码/依赖与同日17 JVM基线一致；当前最终构建与实播进行中，不推送、发布或改版本。
+
+
+## 2026-11-04 23:12 ADB最终修复包覆盖与7项实播收尾
+
+- 最终源码3afd7fa1cc76b5d2c3d99317f411467216590dcf；25658abea修正片尾拖回实际续播而旧意图false时误暂停，3afd修正暂停Media3→mpv首帧黑屏（等待有效输出尺寸后向原位置精确seek一次，仅限同播放器/同来源且仍暂停）。原倍速/音画同步/音频参数核心策略不变。
+- 最新210/210 Flutter通过、Analyze0error/0warning、77info；本机离线双ABIRelease3m10s通过。1564输入、AOT提交/manifest/原证书V2/JNI/R8/FFmpeg/目标ABI/适用ELF与ZIP16KB再次核对；每ABI7个非Dart原生库与正式v26.11.1.1相同。Android17项JVM复用同日原生未变基线，未将其宣称为最后Dart修改后重跑。
+- 最终arm64 APK SHA256 4bf3543f8f7811e2b6cdeda12eaaa38b8e6b1f1bac50e98515aa73577761ce78，33317327字节；v7 e5b65f34a540b28a1d656eb96693cb27cd1edef0c4014b94dbdd51c5d4a80295，33051103字节。最终产物仅使用adb-final/目录，旧候选保留但已被替代。
+- 用户允许重试后，--no-streaming -r进入手机原生继续/继续安装及指纹验证；普通确认经ADB执行，指纹由用户本人完成，未改变系统安全开关。安装Success，完整拉回installed-final.apk与4bf...匹配；覆盖前后appId10406、firstInstallTime2026-09-02 15:19:05相同，未卸载或清数据，版本仍26.11.1/code35。
+- 固定片源BV1tfei6MEMn/画质126：竖屏暂停E→mpv 120798→120798ms、mpv→E 120798→120829ms；播放E→mpv 132094→134008ms、mpv→E 168001→170040ms，均保持原状态及1.5x，实际后端正确、画面正常。片尾279571ms暂停后拖回到55089ms实际自动续播，再E→mpv 111001→113029ms保持PLAYING/1.5x。全屏暂停mpv→E及E→mpv都152861→152861ms、1.5x且正常画面。合计7项通过。
+- 脚本输入前置与判读问题均保留证据：媒体遥控暂停未建立输入，改产品按钮+会话核对；一次uiautomator返回旧树导致洞察假阴性，原final-output-first-attempt.json保留，新鲜XML/实际截图确认Media3后补记，不将旧树当产品失败；全屏菜单滚动后找到切换入口。无独立测试App、不从实际结果生成参考答案。
+- 最终证据device-adb/device-verification.json、final/fullscreen/ended-switch-input/reference/output及截图/XML；adb-final/verification.json已标记设备范围仅arm64。全部应用PID日志19416行未命中FATAL EXCEPTION/Fatal signal/Unhandled Exception/MissingPluginException/dlopen failed；不扩大为全系统无错误、音质或色彩测量通过。
+- 测试后am force-stop结束测试播放；临时stay_on_while_plugged_in从USB常亮恢复原0并回读确认，不强制息屏。没有继续操作账号/点赞/关注等交互。测试结束的额外导航不计入固定7项验收，不宣称逐页持久化、全部横竖屏或后台矩阵完成。
+- 更新STATUS、11-04审查报告、中文工作进度；不改版本迭代记录。原公开版本/tag、GitHub Actions保持不动；不push/发布、不使用computer use，原tmp/保留。收尾记录随后本地提交，目标跟踪文件干净。
