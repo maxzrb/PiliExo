@@ -49,6 +49,7 @@ import 'package:PiliPlus/pages/video/send_danmaku/view.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
+import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
@@ -81,6 +82,12 @@ import 'package:media_kit/media_kit.dart' hide Subtitle;
 
 class VideoDetailController extends GetxController
     with GetTickerProviderStateMixin, BlockMixin {
+  VideoDetailController({PlPlayerController? playerController})
+    : plPlayerController =
+          playerController ?? PlPlayerController.getInstance() {
+    plPlayerController.brightness.value = -1;
+  }
+
   /// 路由传参
   late final Map args;
   late String bvid;
@@ -119,6 +126,57 @@ class VideoDetailController extends GetxController
 
   /// 播放器配置 画质 音质 解码格式
   final Rxn<VideoQuality> currentVideoQa = Rxn<VideoQuality>();
+  final RxBool switchingPlayer = false.obs;
+  bool? _media3HdrOverride;
+  bool get useMedia3Hdr => _media3HdrOverride ?? Pref.enableMedia3Hdr;
+
+  bool get canSwitchHdrPlayer =>
+      !isClosed &&
+      videoState.value &&
+      HdrPlaybackPolicy.shouldUseMedia3(
+        isAndroid: Platform.isAndroid,
+        isLive: false,
+        isFile: isFileSource,
+        enabled: true,
+        qualityCode: currentVideoQa.value?.code ?? 0,
+      ) &&
+      data.dash?.video?.isNotEmpty == true;
+
+  /// 只改变当前播放页的后端选择，切换时保留进度和播放意图。
+  Future<void> switchHdrPlayer() async {
+    if (!canSwitchHdrPlayer || switchingPlayer.value) return;
+    if (isQuerying || plPlayerController.processing) {
+      SmartDialog.showToast('视频加载中，请稍后切换');
+      return;
+    }
+    final useMedia3 = !plPlayerController.isMedia3Hdr;
+    final previousOverride = _media3HdrOverride;
+    final position = plPlayerController.currentPosition;
+    final autoplay = plPlayerController.playWhenReady;
+    switchingPlayer.value = true;
+    _media3HdrOverride = useMedia3;
+    try {
+      await playerInit(autoplay: autoplay, resumePosition: position);
+      if (isClosed) return;
+      if (plPlayerController.dataStatus.value == DataStatus.error) {
+        _media3HdrOverride = previousOverride;
+        SmartDialog.showToast('播放器切换失败，请重载视频后重试');
+      } else {
+        // 原生 HDR 初始化失败可能自动回退，后续切画质仍沿用实际后端。
+        _media3HdrOverride = plPlayerController.isMedia3Hdr;
+        if (plPlayerController.isMedia3Hdr == useMedia3) {
+          SmartDialog.showToast('已切换为 ${useMedia3 ? 'ExoPlayer' : 'mpv'} 播放器');
+        }
+      }
+    } catch (error) {
+      _media3HdrOverride = previousOverride;
+      if (!isClosed) SmartDialog.showToast('播放器切换失败，请重试');
+      if (kDebugMode) debugPrint('切换播放器失败：$error');
+    } finally {
+      switchingPlayer.value = false;
+    }
+  }
+
   AudioQuality? currentAudioQa;
   late VideoDecodeFormatType currentDecodeFormats;
 
@@ -128,8 +186,7 @@ class VideoDetailController extends GetxController
   final videoPlayerKey = GlobalKey();
   final childKey = GlobalKey<MiniScaffoldState>();
 
-  final plPlayerController = PlPlayerController.getInstance()
-    ..brightness.value = -1;
+  final PlPlayerController plPlayerController;
   bool get setSystemBrightness => plPlayerController.setSystemBrightness;
   bool get removeSafeArea => plPlayerController.removeSafeArea;
   double get uiScale => plPlayerController.uiScale;
@@ -811,10 +868,14 @@ class VideoDetailController extends GetxController
   Future<void> playerInit({
     bool? autoplay,
     bool autoFullScreenFlag = false,
+    Duration? resumePosition,
   }) async {
-    Duration? seek = defaultST ?? playedTime;
-    if (seek == .zero) seek = null;
-    seek ??= getFirstSegment();
+    Duration? seek = resumePosition ?? defaultST ?? playedTime;
+    // 热切换时零进度也必须原样恢复，不能重新应用片头跳过或路由起点。
+    if (resumePosition == null) {
+      if (seek == .zero) seek = null;
+      seek ??= getFirstSegment();
+    }
 
     final DataSource source;
     if (isFileSource) {
@@ -828,7 +889,7 @@ class VideoDetailController extends GetxController
           isAndroid: Platform.isAndroid,
           isLive: false,
           isFile: isFileSource,
-          enabled: Pref.enableMedia3Hdr,
+          enabled: useMedia3Hdr,
           qualityCode: currentVideoQa.value?.code ?? 0,
         ) &&
         data.dash != null) {

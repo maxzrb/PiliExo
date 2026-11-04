@@ -484,6 +484,28 @@ class HeaderControlState extends State<HeaderControl>
                   leading: const Icon(Icons.info_outline, size: 20),
                   title: const Text('播放器洞察', style: titleStyle),
                 ),
+                Obx(() {
+                  if (!videoDetailCtr.canSwitchHdrPlayer) {
+                    return const SizedBox.shrink();
+                  }
+                  final target = plPlayerController.media3HdrActive.value
+                      ? 'mpv'
+                      : 'ExoPlayer';
+                  final switching = videoDetailCtr.switchingPlayer.value;
+                  return ListTile(
+                    dense: true,
+                    enabled: !switching,
+                    leading: const Icon(Icons.swap_horiz, size: 20),
+                    title: Text(
+                      switching ? '正在切换播放器…' : '切换为 $target 播放器',
+                      style: titleStyle,
+                    ),
+                    onTap: () {
+                      Get.back();
+                      videoDetailCtr.switchHdrPlayer();
+                    },
+                  );
+                }),
                 if (!plPlayerController.isMedia3Hdr)
                   PopupListTile<SuperResolutionType>(
                     dense: true,

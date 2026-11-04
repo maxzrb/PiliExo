@@ -1,0 +1,68 @@
+[
+  {
+    "name": "ExoPlayer播放中切mpv",
+    "active": true,
+    "position": 123456,
+    "autoplay": true,
+    "outcome": "success"
+  },
+  {
+    "name": "mpv暂停时切ExoPlayer",
+    "active": false,
+    "position": 65432,
+    "autoplay": false,
+    "outcome": "success"
+  },
+  {
+    "name": "零进度保留暂停状态",
+    "active": true,
+    "position": 0,
+    "autoplay": false,
+    "outcome": "success"
+  },
+  {
+    "name": "加载中拒绝切换",
+    "active": true,
+    "position": 9000,
+    "autoplay": true,
+    "processing": true,
+    "outcome": "success"
+  },
+  {
+    "name": "请求中拒绝切换",
+    "active": false,
+    "position": 8000,
+    "autoplay": true,
+    "querying": true,
+    "outcome": "success"
+  },
+  {
+    "name": "重复点击只加载一次",
+    "active": true,
+    "position": 7777,
+    "autoplay": true,
+    "repeat": true,
+    "outcome": "success"
+  },
+  {
+    "name": "原生失败回退mpv",
+    "active": false,
+    "position": 5000,
+    "autoplay": true,
+    "outcome": "fallback"
+  },
+  {
+    "name": "切换加载失败后可重试",
+    "active": true,
+    "position": 4000,
+    "autoplay": false,
+    "outcome": "error"
+  },
+  {
+    "name": "切换异常后释放锁",
+    "active": true,
+    "position": 3000,
+    "autoplay": true,
+    "outcome": "throw"
+  }
+]

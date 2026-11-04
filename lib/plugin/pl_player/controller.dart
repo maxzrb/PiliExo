@@ -1376,7 +1376,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   bool _canUseMedia3Hdr(DataSource source) =>
       Platform.isAndroid &&
       !isLive &&
-      Pref.enableMedia3Hdr &&
+      // 播放页创建 HDR 源前已应用全局设置或本页覆盖，不再覆盖用户热切换。
       source is HdrNetworkSource;
 
   Future<void> _disposeHdrController() async {
