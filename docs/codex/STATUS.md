@@ -1,9 +1,9 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-11-04 23:24 (+08:00)
+- 更新时间：2026-11-04 23:30 (+08:00)
 - 当前发布：v26.11.1.1（2026-11-01已核对公开且为GitHub latest），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，annotated tag固定。上轮双APK/SHA256SUMS的GitHub digest/长度及ModelScope完整回读SHA256通过，Actions当日核对关闭/历史运行4次；本轮未调用发布或Actions服务。
 - 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
-- 当前任务：用户要求不计松手退出长按快进时短暂恢复丢帧，已改为释放后500ms全部排除，在边界主动收取一次mpv计数后关闭窗口。219项Flutter回归通过，Analyze0error/0warning（77info）。本轮只改源码与统计回归，未重新构建或覆盖安装；上轮HDR热切换/上游适配/7项实播结果保留为历史验收。
+- 当前任务：用户明确授权发布Release，准备v26.11.4.1/26.11.4+1/code36，包含HDR热切换、19项上游来源处理及500ms松手丢帧排除。远端当天尚无正式版本，最新仍v26.11.1.1；Actions关闭且历史运行4。正在生成正式元数据与本机双ABI包，发布前需最终原证书覆盖首页检查及资产/镜像校验。
 - 当前源码：本轮长按松手恢复期统计修复（本次提交，见git log）；最近已打包并安装的源码仍3afd7fa1cc76b5d2c3d99317f411467216590dcf，不含本次500ms统计调整。公开v26.11.1.1不变。
 - 工作分支：merge/upstream-2.1.4-20260913；前轮6个本地提交未push，本轮统计修复另作提交（合计7个）；原tmp/保留未跟踪。
 - 上游边界：已处理至c7ff9683c0e64e74abe89df75fa49b10f8666664。本轮265f879fa..c7ff9683c共19项：16功能/修复适配、1依赖选择性适配、2纯平台排除（Linux07e2906cd/macOS9746fbc9c）；完整映射docs/PiliPlus上游审查-2026-11-04.md，后续不重复应用这些来源。
@@ -1867,3 +1867,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 既有C盘树同步本轮文件后flutter test --no-pub全量219/219通过。flutter analyze --no-pub --no-fatal-infos退出0、0error/0warning、77info；最初不带no-fatal-infos退出1仅因已有info，保留初次日志，未改产品代码压制分析。日志在C:/Users/maxzr/.codex/vendor_imports/piliexo-long-press-drop-{test,analyze,analyze-infos}-20261104.log。最后只澄清注释/旧普通切速样例名称，不改已测行为。
 - 本次未重新构建APK或进行新的设备长按实测。手机仍为上轮3afd的已验收HDR切换候选，不能说手机已应用本次500ms统计调整；原双ABI构建/7项实播记录仍只对应3afd。无版本更改、Actions、computer use、推送或发布。
 - 更新STATUS及中文工作进度，本轮代码/固定样例/记录随后本地独立提交，预计领先origin7提交，跟踪文件收尾后干净，仅原tmp/未跟踪。
+
+
+## 2026-11-04 23:30 用户授权正式发布v26.11.4.1，准备源码与本机构建
+
+- gh读取远端Release确认当天尚无v26.11.4.N，上一正式v26.11.1.1/code35；pull --ff-only显示已同步。Actions enabled=false/历史运行4，保留已有草稿与历史标签，不触发Actions。GitHub连接器无Release资产上传接口，使用已有本机gh及既有发布助手。
+- 正式版本更新为26.11.4+1/code36，README/版本迭代/七条用户可感知发布说明同步。上一219项回归和77info基线有效，将在正式元数据下验证并本机离线双ABI构建/原证书签名。正式包覆盖首页成功后才公开发布；不把旧3afd实播当最终code36已安装。
+- 当前7项本地改动提交及版本准备提交均待本轮发布时推送；原tmp/保留。凭据仅从本机ignored签名配置和已有发布凭据管理器读取，不进入Git/输出/Release。
