@@ -152,7 +152,9 @@ class VideoDetailController extends GetxController
     final useMedia3 = !plPlayerController.isMedia3Hdr;
     final previousOverride = _media3HdrOverride;
     final position = plPlayerController.currentPosition;
-    final autoplay = plPlayerController.playWhenReady;
+    // 片尾拖回后后端可能已续播，实际播放中不能沿用片尾清除的旧意图。
+    final autoplay =
+        plPlayerController.playWhenReady || plPlayerController.isPlaying;
     switchingPlayer.value = true;
     _media3HdrOverride = useMedia3;
     try {

@@ -1475,6 +1475,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         return;
       }
       _videoPlayerController = player;
+      // 先挂载已创建的纹理，再打开媒体，避免暂停切换时首帧早于视图挂载。
+      videoOutputReady.value = true;
       if (isAnim && superResolutionType.value != .disable) {
         await setShader();
       }

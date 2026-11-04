@@ -64,5 +64,13 @@
     "position": 3000,
     "autoplay": true,
     "outcome": "throw"
+  },
+  {
+    "name": "片尾拖回后实际续播覆盖旧暂停意图",
+    "active": true,
+    "position": 60000,
+    "autoplay": false,
+    "playing": true,
+    "outcome": "success"
   }
 ]

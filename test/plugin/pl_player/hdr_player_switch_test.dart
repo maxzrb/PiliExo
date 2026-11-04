@@ -18,6 +18,7 @@ class _Player extends Fake implements PlPlayerController {
     : isMedia3Hdr = input['active'],
       currentPosition = Duration(milliseconds: input['position']),
       playWhenReady = input['autoplay'],
+      isPlaying = input['playing'] ?? input['autoplay'],
       processing = input['processing'] ?? false;
 
   @override
@@ -30,6 +31,8 @@ class _Player extends Fake implements PlPlayerController {
   final Duration currentPosition;
   @override
   final bool playWhenReady;
+  @override
+  final bool isPlaying;
   @override
   final bool processing;
 }

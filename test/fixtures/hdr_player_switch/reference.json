@@ -85,5 +85,16 @@
     ],
     "active": true,
     "useMedia3": false
+  },
+  {
+    "calls": [
+      [
+        false,
+        60000,
+        true
+      ]
+    ],
+    "active": false,
+    "useMedia3": false
   }
 ]
