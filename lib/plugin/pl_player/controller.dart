@@ -113,6 +113,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   MpvMediaBitrateSampler? _mpvMediaBitrateSampler;
   MpvRuntimeObserver? _mpvRuntimeObserver;
   Timer? _bandwidthRefreshTimer;
+  Timer? _longPressDropRecoveryTimer;
+  static const _longPressDropRecoveryDuration = Duration(milliseconds: 500);
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
   VoidCallback? _onInitCallback;
@@ -193,6 +195,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void _resetPlaybackInsight() {
+    _longPressDropRecoveryTimer?.cancel();
+    _longPressDropRecoveryTimer = null;
     _stopBandwidthRefresh();
     _dropAccounting.reset();
     _playbackTelemetry = const PlaybackTelemetry();
@@ -2282,6 +2286,28 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _publishPlaybackInsight();
   }
 
+  void _beginLongPressDropRecovery() {
+    // 先结清松手前的丢帧，正常播放及长按期间的统计不能被恢复窗口吞掉。
+    _finishLongPressDropRecovery();
+    _mpvRuntimeObserver?.poll();
+    _publishPlaybackInsight();
+    _dropAccounting.beginLongPressRecovery();
+    _longPressDropRecoveryTimer = Timer(
+      _longPressDropRecoveryDuration,
+      _finishLongPressDropRecovery,
+    );
+  }
+
+  void _finishLongPressDropRecovery() {
+    if (_longPressDropRecoveryTimer == null) return;
+    _longPressDropRecoveryTimer?.cancel();
+    _longPressDropRecoveryTimer = null;
+    // 在边界主动收取一次，避免每秒采样在窗口关闭后补算恢复期间的丢帧。
+    _mpvRuntimeObserver?.poll();
+    _publishPlaybackInsight();
+    _dropAccounting.endLongPressRecovery();
+  }
+
   void _onPlaybackRateConfirmed(double speed) {
     if (!isLive) _playbackSpeed.value = speed;
     _updatePlaybackState();
@@ -2299,6 +2325,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 用户选择的基础倍速不会被长按请求改写。
   Future<void> setPlaybackSpeed(double speed) {
+    _finishLongPressDropRecovery();
     _longPressRevision++;
     longPressStatus.value = false;
     return _rateCoordinator.setBaseRate(
@@ -2465,6 +2492,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       final revision = ++_longPressRevision;
       final player = _videoPlayerController;
       final source = dataSource;
+      _beginLongPressDropRecovery();
       longPressStatus.value = false;
       await _rateCoordinator.endTemporary();
       unawaited(_resyncAfterLongPress(revision, player, source));
@@ -2473,6 +2501,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (isLive || controlsLock.value || longPressStatus.value) return;
     if (val) {
       if (playerStatus.isPlaying) {
+        _finishLongPressDropRecovery();
         _longPressRevision++;
         final target = longPressTargetSpeed;
         final applied = _rateCoordinator.beginTemporary(
@@ -2845,6 +2874,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _playerCount = 0;
     longPressStatus.value = false;
     _rateCoordinator.dispose();
+    _longPressDropRecoveryTimer?.cancel();
+    _longPressDropRecoveryTimer = null;
     _stopBandwidthRefresh();
     if (removeSafeArea) {
       showSystemBar();

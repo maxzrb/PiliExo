@@ -18,7 +18,7 @@ void main() {
     expect(c.excludedDroppedFrames, 5);
   });
 
-  test('进入和退出长按倍速各允许五帧，倍速期间持续计数', () {
+  test('普通切速各允许五帧，倍速期间持续计数', () {
     final c = stable()
       ..speedTransition(5000)
       ..sample(5, nowMs: 5500, finishInterval: true);
@@ -40,7 +40,7 @@ void main() {
     expect(c.excludedDroppedFrames, 10);
   });
 
-  test('短按进入和退出的窗口重叠时仍各有五帧', () {
+  test('连续普通切速的窗口重叠时仍各有五帧', () {
     final c = stable()
       ..speedTransition(5000)
       ..sample(5, nowMs: 5100)
@@ -151,7 +151,7 @@ void main() {
     expect(c.recentDroppedFrames, 0);
   });
 
-  test('预先开启退出容差：后端清零与被排除的帧均不清历史或先计入再扣回', () {
+  test('预先开启普通切速容差：后端清零与被排除的帧均不清历史或先计入再扣回', () {
     final c = stable()..sample(12, nowMs: 4500, finishInterval: true);
     final totals = [c.droppedFrames];
     c.speedTransition(5000);
@@ -168,7 +168,7 @@ void main() {
     expect(c.excludedDroppedFrames, 5);
   });
 
-  test('松手后exact复用已消耗的额度，不能多排除五帧', () {
+  test('普通切速后重定位复用已消耗的额度，不能多排除五帧', () {
     final c = stable()
       ..sample(12, nowMs: 4500, finishInterval: true)
       ..speedTransition(5000)

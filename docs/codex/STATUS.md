@@ -1,23 +1,23 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-11-04 23:12 (+08:00)
+- 更新时间：2026-11-04 23:24 (+08:00)
 - 当前发布：v26.11.1.1（2026-11-01已核对公开且为GitHub latest），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，annotated tag固定。上轮双APK/SHA256SUMS的GitHub digest/长度及ModelScope完整回读SHA256通过，Actions当日核对关闭/历史运行4次；本轮未调用发布或Actions服务。
 - 最近调查：动态页竖向UP栏末尾固定200逻辑像素留白；默认走动态portal/uplist，开启“动态页显示所有已关注UP主”后首屏portal、后续按最常访问每页50人补关注列表。仅静态调查，未改产品代码或实测账号分页。
-- 当前任务：HDR页热切换、近期上游适配及用户追加ADB测试已完成。MEP-AN00/API37的Dolby Vision画质126实播7项通过（竖屏暂停/播放双向4、片尾拖回续播1、全屏暂停双向2）。两处真实边界已修复，最终3afd双ABI本机原证书候选完成；仅arm64包真机覆盖，未发布/推送。
-- 当前源码：最新修复3afd7fa1cc76b5d2c3d99317f411467216590dcf（等待输出尺寸后仅在暂停HDR→mpv交接重绘一次，并检查来源/播放器仍有效），续播意图修复25658abea。原候选9d751a475不作为最终验收包；当前公开v26.11.1.1不变。
-- 工作分支：merge/upstream-2.1.4-20260913；源码5个本地提交未push，随后本轮ADB收尾记录单独提交（合计6个）；原tmp/保留未跟踪。
+- 当前任务：用户要求不计松手退出长按快进时短暂恢复丢帧，已改为释放后500ms全部排除，在边界主动收取一次mpv计数后关闭窗口。219项Flutter回归通过，Analyze0error/0warning（77info）。本轮只改源码与统计回归，未重新构建或覆盖安装；上轮HDR热切换/上游适配/7项实播结果保留为历史验收。
+- 当前源码：本轮长按松手恢复期统计修复（本次提交，见git log）；最近已打包并安装的源码仍3afd7fa1cc76b5d2c3d99317f411467216590dcf，不含本次500ms统计调整。公开v26.11.1.1不变。
+- 工作分支：merge/upstream-2.1.4-20260913；前轮6个本地提交未push，本轮统计修复另作提交（合计7个）；原tmp/保留未跟踪。
 - 上游边界：已处理至c7ff9683c0e64e74abe89df75fa49b10f8666664。本轮265f879fa..c7ff9683c共19项：16功能/修复适配、1依赖选择性适配、2纯平台排除（Linux07e2906cd/macOS9746fbc9c）；完整映射docs/PiliPlus上游审查-2026-11-04.md，后续不重复应用这些来源。
 - 已整合：本轮新增当前页mpv/ExoPlayer热切换（HDR125/126/129，保留毫秒进度/播放意图/基础倍速，不改全局设置）、选集/番剧缓存/接口回退、图文封面/文本对齐/大标题、评论分页与时间验证、匿名网页Cookie、弹幕提前定位、ChromeOS旋转、av复制、签名空值及隐藏刷新停止空转；依赖DLNA固定fe347512和Android文件选择器/矢量图修复。保留本地双后端/HDR/FLAC/混合推荐/文章分享/音轨画质及稳定倍速策略。
-- 统一验证：210/210 Flutter、17/17 Android JVM（无失败/错误/跳过）通过；固定input.json/reference.json复用现有Flutter运行器，无测试App。Analyze退出0、0error/0warning、77info，工具链3.47.9/README/29插件门禁通过。本地离线双ABI Release、原证书V2/manifest/AOT提交/JNI/R8/FFmpeg/ABI/适用ELF和ZIP16KB检查通过；每ABI7个非Dart原生库与v26.11.1.1一致。
+- 统一验证：本轮219/219 Flutter、Analyze0error/0warning及77info；以下双ABI产物/JVM均为上一轮3afd候选，不是本轮重新打包或实播结果：17/17 Android JVM（无失败/错误/跳过）通过；固定input.json/reference.json复用现有Flutter运行器，无测试App。Analyze退出0、0error/0warning、77info，工具链3.47.9/README/29插件门禁通过。本地离线双ABI Release、原证书V2/manifest/AOT提交/JNI/R8/FFmpeg/ABI/适用ELF和ZIP16KB检查通过；每ABI7个非Dart原生库与v26.11.1.1一致。
 - 历史真机启动（2026-11-01，非本轮候选）：当时MEP-AN00正式包从26.10.31/code34保留数据覆盖到26.11.1/code35成功，包名与firstInstallTime保持一致（覆盖前UID未采集），首页可见52应用节点，进程存活，无检查范围内FATAL/Unhandled/MissingPlugin/dlopen异常。证据dist/release/v26.11.1.1/device-release-check.json及截图。未沿用上轮豁免或制作独立dev App。
 - 设备验收边界：本轮仅Honor MEP-AN00 arm64/API37、3840×2160 Dolby Vision/23.976fps片源实播。7项切换均核对系统播放状态/进度/1.5x、洞察实际后端与截图正常画面；未测无HDR能力手机、HDR10/HDR Vivid、32位、字幕音轨切换、后台/PiP、音量音质/色彩精度、vivo/ChromeOS/会员课程权限或电视发现。最终安装APK完整回读SHA256匹配，appId10406及首次安装时间保留；日志未见检查范围内致命异常。测试播放已停止，临时USB常亮恢复原值0。
 - 图标调查：原正式包与候选编译图标资源一致。手机资源随深浅正确解析，用户解锁后的原包桌面截图显示深灰底浅P/浅底深P正常切换，在图标可见时深色返回白天auto也正常。本轮未复现，不确定此前根因，不修改图标或清桌面数据；系统已恢复原auto。证据在dist/integration/upstream-20261031/icon-investigation/。此前“忽略图标”决定已被本轮用户重新调查请求替代。
 - 历史候选产物（10-31，非当前发布）：dist/integration/upstream-20261031/，arm64 APK 33051087字节/SHA256 68522da5aa567fdb0811aa753119fdce846772b420b32d98f4e893d7accc27da；v7 APK 32670175字节/SHA256 3d51a5bc5cf4f6bfd453f5118d08c76b3e9a8c6fafed5e41b8d21885aa17ecf0。包含SHA256SUMS.txt、metadata.json、build-request.json、verification.json及日志；不是新Release，版本仍26.10.19+1/code33。
 - 稳定播放基线：MpvAudioOptions/PlaybackRateCoordinator/AvSyncGuard源码与会话前一致；本轮每ABI全部7个非Dart原生库（含Flutter引擎/JNI/共享计数器、mpv/FFmpeg与media-kit辅助库）均与v26.11.1.1逐字节相同。arm64 mpv=e03d7145209d82791048674bd07cd95ce88115dd7cb77524b63bdf0ddf44ae98，v7=a310c26214decfa37a515a20b308ea512b002dab26bc16a8e7b76d4be9761f0d；本轮仅Dart AOT随源码更新。
-- 保留用户验收的倍速路线：默认2倍/可自定义，不等待旧倍速回复；autosync=0，松手恢复基础倍速80ms后仅检查一次avsync，>1秒absolute+exact。保留切换5帧容差与洞察总丢帧。AAudio候选会话/媒体类型及AudioTrack候选参数、周期seek、跳帧/降倍率实验不恢复；音量差异未解决且不主动继续。
+- 保留用户验收的倍速路线：默认2倍/可自定义，不等待旧倍速回复；autosync=0，松手恢复基础倍速80ms后仅检查一次avsync，>1秒absolute+exact。保留起播/普通切速5帧容差与洞察历史总丢帧；按用户最新要求，长按松手后500ms恢复期全部排除，边界采样后立即恢复计数，再次长按/手动切速提前结清窗口。AAudio候选会话/媒体类型及AudioTrack候选参数、周期seek、跳帧/降倍率实验不恢复；音量差异未解决且不主动继续。
 - 当前公开版本：v26.11.1.1（26.11.1+1/code35），源码a3ae6892c554ddcfcd1eb8b87f34c46423d9b5e8，URL https://github.com/maxzrb/PiliExo/releases/tag/v26.11.1.1；双APK与SHA256SUMS在dist/release/v26.11.1.1/。原正式证书SHA256 b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51。历史发布和草稿保留。
 - 工具链：Flutter3.47.9/Dart3.13.7独立SDK C:/Users/maxzr/.codex/vendor_imports/flutter-3.47.9，tag c197ca5199e9ee5661e865596c9c07294dfab51c，engine89c39edfdfae2949f6806e4a315c0c08522238b7；25个framework和Material1.9.0的9个补丁全部应用。NDK28.2.13676358、Java21。原3.47.7 SDK和旧C盘构建树不动。
-- 本轮构建树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3；已核对1564产品输入逐字节与3afd7fa1cc76b5d2c3d99317f411467216590dcf一致，ignored元数据显式来自canonical源码提交。最终候选证据dist/integration/hdr-switch-upstream-20261104/adb-final/，包含build-request/verification/SHA256SUMS/签名与manifest/mapping/日志；实播证据在同级device-adb/，根目录9d及adb-fix/256包仅作历史诊断。当前公开v26.11.1.1及历史产物不变。
+- 构建/测试树：C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo，Git HEAD仍601f09cf3；上轮构建曾核对1564产品输入逐字节与3afd7fa1cc76b5d2c3d99317f411467216590dcf一致。本轮已同步两处Dart实现及测试运行219项回归，未重新生成APK，ignored元数据显式来自canonical源码提交。最终候选证据dist/integration/hdr-switch-upstream-20261104/adb-final/，包含build-request/verification/SHA256SUMS/签名与manifest/mapping/日志；实播证据在同级device-adb/，根目录9d及adb-fix/256包仅作历史诊断。当前公开v26.11.1.1及历史产物不变。
 - 环境处理：D盘旧package_config仍指archive4.5.2，测试/构建在既有C盘pub get并逐文件同步。文件选择器升级时Windows symlink权限问题以C盘ignored生成目录junction解决，未改系统设置。Gradle引擎JAR虽已缓存，但仓库来源身份需当前进程FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn才能离线复用；最终assembleRelease --offline通过。签名输入仅本机ignored文件，禁止Actions/未经指定的computer use。
 - 官方B站画质/长按研究已保存（docs/原版B站画质策略调查-2026-10-19.md、docs/原版B站长按倍速逻辑调查-2026-10-19.md），含高帧率钳制/跳帧/2.4秒输出间隔等证据边界；这些仍仅调查，不据此改本地播放策略。功耗/GPU研究继续暂停。
 ## 当前上游同步结果（2026-10-14）
@@ -1856,3 +1856,14 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 最终证据device-adb/device-verification.json、final/fullscreen/ended-switch-input/reference/output及截图/XML；adb-final/verification.json已标记设备范围仅arm64。全部应用PID日志19416行未命中FATAL EXCEPTION/Fatal signal/Unhandled Exception/MissingPluginException/dlopen failed；不扩大为全系统无错误、音质或色彩测量通过。
 - 测试后am force-stop结束测试播放；临时stay_on_while_plugged_in从USB常亮恢复原0并回读确认，不强制息屏。没有继续操作账号/点赞/关注等交互。测试结束的额外导航不计入固定7项验收，不宣称逐页持久化、全部横竖屏或后台矩阵完成。
 - 更新STATUS、11-04审查报告、中文工作进度；不改版本迭代记录。原公开版本/tag、GitHub Actions保持不动；不push/发布、不使用computer use，原tmp/保留。收尾记录随后本地提交，目标跟踪文件干净。
+
+
+## 2026-11-04 23:24 长按松手后半秒恢复丢帧排除
+
+- 用户明确要求松开手指退出长按快进时的零点几秒丢帧不再记录。本轮仅修改洞察统计口径：setLongPressStatus(false)在恢复基础速度前开启500ms排除窗口，先结清之前真实丢帧，窗口结束时主动poll一次mpv并发布过滤快照，再关闭排除，防止每秒采样延迟补算。
+- PlaybackDropAccounting新增恢复期状态，窗口内全部增量只进入原始/排除诊断数，不进入总丢帧、近期丢帧或新增告警；之前真实累计不清除，窗口结束后第一帧即正常计入，不再沿用退出切速的剩余五帧额度。普通切速/进入快进仍保留原五帧规则。
+- 再次长按和手动选择倍速提前结清旧窗口；切源和最终销毁取消一次性计时器。只新增松手时的一次500ms边界采样，不增加周期采样或seek，不修改PlaybackRateCoordinator/MpvAudioOptions/AvSyncGuard及80ms一次同步恢复策略。
+- 新增test/fixtures/long_press_drop_recovery固定input.json/reference.json/README与现有Flutter运行器测试，共9组：恢复期80帧全排除、历史保留、exact/后端清零、剩余额度关闭、恢复后立即计数、再次长按、切源、跨秒和普通切速不变。参考值手工确定，不由实际结果生成，无测试App。
+- 既有C盘树同步本轮文件后flutter test --no-pub全量219/219通过。flutter analyze --no-pub --no-fatal-infos退出0、0error/0warning、77info；最初不带no-fatal-infos退出1仅因已有info，保留初次日志，未改产品代码压制分析。日志在C:/Users/maxzr/.codex/vendor_imports/piliexo-long-press-drop-{test,analyze,analyze-infos}-20261104.log。最后只澄清注释/旧普通切速样例名称，不改已测行为。
+- 本次未重新构建APK或进行新的设备长按实测。手机仍为上轮3afd的已验收HDR切换候选，不能说手机已应用本次500ms统计调整；原双ABI构建/7项实播记录仍只对应3afd。无版本更改、Actions、computer use、推送或发布。
+- 更新STATUS及中文工作进度，本轮代码/固定样例/记录随后本地独立提交，预计领先origin7提交，跟踪文件收尾后干净，仅原tmp/未跟踪。
