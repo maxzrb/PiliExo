@@ -1459,7 +1459,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       return;
     }
 
-    if (_hdrMedia3Controller != null) {
+    final wasMedia3 = _hdrMedia3Controller != null;
+    if (wasMedia3) {
       await _disposeHdrController();
     }
 
@@ -1529,12 +1530,48 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       ),
       play: false,
     );
+    if (wasMedia3 && !_autoPlay) {
+      await _restorePausedMpvFrame(player, dataSource, seekTo ?? Duration.zero);
+    }
     if (Platform.isAndroid) {
       _mpvRuntimeObserver?.dispose();
       _mpvRuntimeObserver = MpvRuntimeObserver.create(player);
     }
     videoOutputReady.value = true;
     _notifyPlaybackInsight();
+  }
+
+  /// 暂停热切换时，纹理调整尺寸后的新输出需要重新绘制当前位置。
+  Future<void> _restorePausedMpvFrame(
+    Player player,
+    DataSource source,
+    Duration target,
+  ) async {
+    final output = _videoController;
+    if (output == null) return;
+    final ready = Completer<void>();
+    void checkSize() {
+      if (output.rect.value?.isEmpty == false && !ready.isCompleted) {
+        ready.complete();
+      }
+    }
+
+    output.rect.addListener(checkSize);
+    checkSize();
+    try {
+      await ready.future.timeout(const Duration(seconds: 5));
+      if (identical(player, _videoPlayerController) &&
+          identical(source, dataSource) &&
+          !playWhenReady &&
+          !isPlaying) {
+        // 只在这一次暂停交接时精确重绘，不启动播放或加入周期性 seek。
+        await player.seek(target);
+      }
+    } on TimeoutException {
+      // 网络尚未给出尺寸时保留原有加载流程，不能把等待超时当作解码失败。
+    } finally {
+      output.rect.removeListener(checkSize);
+    }
   }
 
   Future<void>? refreshPlayer() {
