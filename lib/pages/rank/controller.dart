@@ -35,5 +35,5 @@ class RankController extends GetxController
   Future<void> onRefresh() => controller.onRefresh();
 
   @override
-  Future<void> refreshWithIndicator() => controller.refreshWithIndicator();
+  Future<void> showRefresh() => controller.showRefresh();
 }

@@ -104,12 +104,13 @@ class DynamicsController
   }
 
   @override
-  Future<void> refreshWithIndicator() {
+  Future<void> showRefresh() {
     final controller = this.controller;
-    if (controller?.refreshIndicatorKey.currentState case final state?) {
-      return state.show();
+    if (controller != null) {
+      singleRefresh();
+      return controller.showRefresh();
     }
-    return onRefresh();
+    return singleRefresh();
   }
 
   @override
@@ -130,35 +131,13 @@ class DynamicsController
         EasyThrottle.throttle(
           'topOrRefresh',
           const Duration(milliseconds: 500),
-          onRefresh,
+          showRefresh,
         );
       } else {
         animateToTop();
       }
     } else {
       super.toTopOrRefresh();
-    }
-  }
-
-  @override
-  void toTopOrRefreshWithIndicator() {
-    final ctr = controller;
-    if (ctr?.scrollController.hasClients == true) {
-      if (ctr!.scrollController.position.pixels == 0) {
-        if (scrollController.hasClients &&
-            scrollController.position.pixels != 0) {
-          scrollController.animToTop();
-        }
-        EasyThrottle.throttle(
-          'topOrRefresh',
-          const Duration(milliseconds: 500),
-          refreshWithIndicator,
-        );
-      } else {
-        animateToTop();
-      }
-    } else {
-      super.toTopOrRefreshWithIndicator();
     }
   }
 

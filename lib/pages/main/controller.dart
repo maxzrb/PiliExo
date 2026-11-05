@@ -316,19 +316,17 @@ class MainController extends GetxController
         EasyThrottle.throttle(
           'topOrRefresh',
           const Duration(milliseconds: 500),
-          () {
-            if (currentNav == NavigationBarType.home) {
-              homeController.refreshWithIndicator();
-            } else if (currentNav == NavigationBarType.dynamics) {
-              dynamicController.refreshWithIndicator();
-            }
+          () => switch (currentNav) {
+            .home => homeController.showRefresh(),
+            .dynamics => dynamicController.showRefresh(),
+            .mine => null,
           },
         );
       } else {
         if (currentNav == NavigationBarType.home) {
-          homeController.toTopOrRefreshWithIndicator();
+          homeController.toTopOrRefresh();
         } else if (currentNav == NavigationBarType.dynamics) {
-          dynamicController.toTopOrRefreshWithIndicator();
+          dynamicController.toTopOrRefresh();
         }
       }
       _lastSelectTime = now;
@@ -345,7 +343,7 @@ class MainController extends GetxController
     if (navigationBars[selectedIndex.value] == NavigationBarType.home &&
         homeController.tabs[homeController.tabController.index] ==
             HomeTabType.rcmd) {
-      homeController.onRefresh();
+      homeController.showRefresh();
       return true;
     }
     return false;
