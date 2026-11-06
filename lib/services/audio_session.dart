@@ -1,5 +1,6 @@
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
+import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:audio_session/audio_session.dart';
 
@@ -38,57 +39,13 @@ class AudioSessionHandler {
         _playInterrupted = false;
         return;
       }
-      final playerStatus = PlPlayerController.getPlayerStatusIfExists();
-      // final player = PlPlayerController.getInstance();
-      if (event.begin) {
-        if (playerStatus != PlayerStatus.playing) return;
-        // if (!player.playerStatus.playing) return;
-        switch (event.type) {
-          case AudioInterruptionType.duck:
-            PlPlayerController.setVolumeIfExists(
-              (PlPlayerController.getVolumeIfExists() ?? 0) * 0.5,
-              showIndicator: false,
-            );
-            // player.setVolume(player.volume.value * 0.5);
-            break;
-          case AudioInterruptionType.pause:
-            PlPlayerController.pauseIfExists(isInterrupt: true);
-            // player.pause(isInterrupt: true);
-            _playInterrupted = true;
-            break;
-          case AudioInterruptionType.unknown:
-            PlPlayerController.pauseIfExists(isInterrupt: true);
-            // player.pause(isInterrupt: true);
-            _playInterrupted = true;
-            break;
-        }
-      } else {
-        switch (event.type) {
-          case AudioInterruptionType.duck:
-            PlPlayerController.setVolumeIfExists(
-              (PlPlayerController.getVolumeIfExists() ?? 0) * 2,
-              showIndicator: false,
-            );
-            // player.setVolume(player.volume.value * 2);
-            break;
-          case AudioInterruptionType.pause:
-            if (_playInterrupted) PlPlayerController.playIfExists();
-            //player.play();
-            break;
-          case AudioInterruptionType.unknown:
-            break;
-        }
-        _playInterrupted = false;
-      }
+      _onInterrupted(event);
     });
 
     // 耳机拔出暂停
     session.becomingNoisyEventStream.listen((_) {
-      PlPlayerController.pauseIfExists();
-      // final player = PlPlayerController.getInstance();
-      // if (player.playerStatus.playing) {
-      //   player.pause();
-      // }
+      videoPlayerServiceHandler?.onPause?.call() ??
+          PlPlayerController.pauseIfExists();
     });
 
     return session;
@@ -107,6 +64,49 @@ class AudioSessionHandler {
     if (_focusActive) {
       _focusActive = false;
       await session.setActive(false);
+    }
+  }
+
+  void _onInterrupted(AudioInterruptionEvent event) {
+    final player = PlPlayerController.instance;
+    final servicePlaying = videoPlayerServiceHandler?.isPlaying?.call() ?? false;
+    final playerPlaying = player?.playerStatus.isPlaying ?? false;
+
+    if (event.begin) {
+      switch (event.type) {
+        case .duck:
+          if (playerPlaying) {
+            player!.setVolume(
+              player.volume.value * 0.5,
+              showIndicator: false,
+            );
+          }
+        case .pause:
+        case .unknown:
+          if (servicePlaying) {
+            _playInterrupted = true;
+            videoPlayerServiceHandler?.onPause?.call();
+          } else if (playerPlaying) {
+            _playInterrupted = true;
+            player!.pause(isInterrupt: true);
+          }
+      }
+    } else {
+      switch (event.type) {
+        case .duck:
+          if (playerPlaying) {
+            player!.setVolume(
+              player.volume.value * 2,
+              showIndicator: false,
+            );
+          }
+        case .pause:
+          if (_playInterrupted) {
+            _playInterrupted = false;
+            videoPlayerServiceHandler?.onPlay?.call() ?? player?.play();
+          }
+        case .unknown:
+      }
     }
   }
 }

@@ -2345,7 +2345,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (_playerCount == 0) return;
     _playWhenReady = true;
     // 播放时自动隐藏控制条
-    controls = !hideControls;
+    if (hideControls) controls = false;
     // repeat为true，将从头播放
     if (repeat) {
       // await seekTo(Duration.zero);
@@ -2569,13 +2569,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Future<void> onDoubleTapCenter() async {
     if (!isLive && isCompleted) {
       await seekTo(Duration.zero, isSeek: false);
-      await play();
+      await play(hideControls: false);
+    } else if (isPlaying) {
+      await pause();
     } else {
-      if (isPlaying) {
-        await pause();
-      } else {
-        await play();
-      }
+      await play(hideControls: false);
     }
   }
 
