@@ -69,7 +69,7 @@ class AudioSessionHandler {
 
   void _onInterrupted(AudioInterruptionEvent event) {
     final player = PlPlayerController.instance;
-    final servicePlaying = videoPlayerServiceHandler?.isPlaying?.call() ?? false;
+    final serviceIsPlaying = videoPlayerServiceHandler?.isPlaying;
     final playerPlaying = player?.playerStatus.isPlaying ?? false;
 
     if (event.begin) {
@@ -83,9 +83,11 @@ class AudioSessionHandler {
           }
         case .pause:
         case .unknown:
-          if (servicePlaying) {
-            _playInterrupted = true;
-            videoPlayerServiceHandler?.onPause?.call();
+          if (serviceIsPlaying != null) {
+            if (serviceIsPlaying()) {
+              _playInterrupted = true;
+              videoPlayerServiceHandler?.onPause?.call();
+            }
           } else if (playerPlaying) {
             _playInterrupted = true;
             player!.pause(isInterrupt: true);
