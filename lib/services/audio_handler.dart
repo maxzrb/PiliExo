@@ -123,8 +123,8 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
     _lastPositionSeconds = position.inSeconds;
     playbackState.add(playbackState.value.copyWith(updatePosition: position));
     return (onSeek?.call(position) ??
-        PlPlayerController.seekToIfExists(position, isSeek: false));
-    // await player.seekTo(position);
+        PlPlayerController.seekToIfExists(position) ??
+        Future.syncValue(null));
   }
 
   @override

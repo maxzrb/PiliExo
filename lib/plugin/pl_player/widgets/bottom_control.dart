@@ -41,7 +41,7 @@ class BottomControl extends StatelessWidget {
     controller
       ..position.value = milliseconds ~/ 1000
       ..onSeekEnd()
-      ..seekTo(Duration(milliseconds: milliseconds), isSeek: false);
+      ..seekTo(Duration(milliseconds: milliseconds));
   }
 
   @override
@@ -103,8 +103,7 @@ class BottomControl extends StatelessWidget {
                         child: ViewPointSegmentProgressBar(
                           segments: videoDetailController.viewPointList,
                           onSeek: PlatformUtils.isDesktop
-                              ? (position) =>
-                                    controller.seekTo(position, isSeek: false)
+                              ? controller.seekTo
                               : null,
                         ),
                       ),

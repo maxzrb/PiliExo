@@ -586,7 +586,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   late DataSource dataSource;
 
   Timer? _timer;
-  StreamSubscription? _subForSeek;
 
   Box setting = GStorage.setting;
 
@@ -1042,11 +1041,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
-  static Future<void> seekToIfExists(
-    Duration position, {
-    bool isSeek = true,
-  }) async {
-    await _instance?.seekTo(position, isSeek: isSeek);
+  static Future<void>? seekToIfExists(Duration position) {
+    return _instance?.seekTo(position);
   }
 
   static double? getVolumeIfExists() {
@@ -2195,18 +2191,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _subscriptions = null;
   }
 
-  void _cancelSubForSeek() {
-    if (_subForSeek != null) {
-      _subForSeek!.cancel();
-      _subForSeek = null;
-    }
-  }
-
   /// 跳转至指定位置
-  Future<void> seekTo(Duration position, {bool isSeek = true}) async {
-    if (_playerCount == 0) {
-      return;
-    }
+  Future<void> seekTo(Duration position) async {
+    if (_playerCount == 0) return;
     if (position < Duration.zero) {
       position = Duration.zero;
     }
@@ -2225,32 +2212,13 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
 
     _mpvMediaBitrateSampler?.reset();
-
-    Future<void> seek() async {
-      if (isSeek) {
-        /// 拖动进度条调节时，不等待第一帧，防止抖动
-        await _videoPlayerController?.stream.buffer.first;
-      }
-      danmakuController?.clear();
-      try {
-        // 等待缓冲结束后、真正发送 seek 前再开启容差，避免等待期间额度过期。
-        _beginDropTransition();
-        await _videoPlayerController?.seek(position);
-        _updateIOSPip(position);
-      } catch (e) {
-        if (kDebugMode) debugPrint('seek failed: $e');
-      }
-    }
-
-    if (duration.value != 0) {
-      seek();
-    } else {
-      // if (kDebugMode) debugPrint('seek duration else');
-      _subForSeek?.cancel();
-      _subForSeek = duration.listen((_) {
-        seek();
-        _cancelSubForSeek();
-      });
+    danmakuController?.clear();
+    try {
+      _beginDropTransition();
+      await _videoPlayerController?.seek(position);
+      _updateIOSPip(position);
+    } catch (e) {
+      if (kDebugMode) debugPrint('seek failed: $e');
     }
   }
 
@@ -2348,8 +2316,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (hideControls) controls = false;
     // repeat为true，将从头播放
     if (repeat) {
-      // await seekTo(Duration.zero);
-      await seekTo(Duration.zero, isSeek: false);
+      await seekTo(Duration.zero);
     }
 
     if (!isPlaying) _beginDropTransition(reuseAllowance: repeat);
@@ -2568,7 +2535,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   // 双击播放、暂停
   Future<void> onDoubleTapCenter() async {
     if (!isLive && isCompleted) {
-      await seekTo(Duration.zero, isSeek: false);
+      await seekTo(Duration.zero);
       await play(hideControls: false);
     } else if (isPlaying) {
       await pause();
@@ -2631,10 +2598,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void onForwardBackward(Duration duration) {
-    seekTo(
-      duration.clamp(Duration.zero, currentDuration),
-      isSeek: false,
-    ).whenComplete(play);
+    seekTo(duration.clamp(Duration.zero, currentDuration)).whenComplete(play);
   }
 
   void doubleTapFuc(DoubleTapType type) {
@@ -2864,7 +2828,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     // 每次减1，最后销毁
     resetScreenRotation();
     cancelLongPressTimer();
-    _cancelSubForSeek();
     if (!_isCloseAll && _playerCount > 1) {
       _playerCount -= 1;
       _heartDuration = 0;

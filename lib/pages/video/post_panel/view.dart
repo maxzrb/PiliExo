@@ -521,7 +521,6 @@ class _PostPanelState extends State<PostPanel>
                 final seek = max(0, start - 2000);
                 await plPlayerController.seekTo(
                   Duration(milliseconds: seek),
-                  isSeek: false,
                 );
                 if (!plPlayerController.isPlaying) {
                   await plPlayerController.play();
@@ -533,7 +532,6 @@ class _PostPanelState extends State<PostPanel>
                     if (position.inMilliseconds >= start) {
                       plPlayerController.seekTo(
                         Duration(milliseconds: end),
-                        isSeek: false,
                       );
                       plPlayerController.removePositionListener(listener);
                       timer.cancel();
@@ -547,7 +545,6 @@ class _PostPanelState extends State<PostPanel>
                 } else {
                   await plPlayerController.seekTo(
                     Duration(milliseconds: end),
-                    isSeek: false,
                   );
                 }
                 return;
