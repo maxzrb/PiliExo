@@ -233,8 +233,8 @@ class BiliDownloadEntryInfo with MultiSelectData {
     guessedTotalBytes: json['guessed_total_bytes'] as int,
     totalTimeMilli: json['total_time_milli'] as int,
     danmakuCount: json['danmaku_count'] as int,
-    timeUpdateStamp: json['time_update_stamp'] as int,
-    timeCreateStamp: json['time_create_stamp'] as int,
+    timeUpdateStamp: _normalizeTimestamp(json['time_update_stamp'] as int),
+    timeCreateStamp: _normalizeTimestamp(json['time_create_stamp'] as int),
     canPlayInAdvance: json['can_play_in_advance'] as bool,
     interruptTransformTempFile: json['interrupt_transform_temp_file'] as bool,
     avid: json['avid'] as int,
@@ -296,6 +296,10 @@ class BiliDownloadEntryInfo with MultiSelectData {
     'subtitles': ?subtitles?.map((e) => e.toJson()).toList(),
     'view_points': ?viewPoints?.map((e) => e.toJson()).toList(),
   };
+
+  /// 旧缓存以秒保存时间戳，新缓存改为毫秒；读取时统一为毫秒。
+  static int _normalizeTimestamp(int value) =>
+      value > 0 && value < 100000000000 ? value * 1000 : value;
 
   @override
   bool operator ==(Object other) {
