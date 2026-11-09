@@ -23,6 +23,8 @@ import android.media.session.PlaybackState;
 import android.os.Build;
 import android.view.KeyEvent;
 
+import com.ryanheise.audioservice.AudioService;
+
 class MediaHelper {
     static PendingIntent buildMediaButtonPendingIntent(Context context, int action) {
         int keyCode = PlaybackStateCompat_toKeyCode(action);

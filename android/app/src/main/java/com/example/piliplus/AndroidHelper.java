@@ -35,6 +35,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 import com.github.dart_lang.jni_flutter.JniFlutterPlugin;
+import com.ryanheise.audioservice.AudioService;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -193,7 +194,9 @@ public final class AndroidHelper {
     @RequiresApi(api = Build.VERSION_CODES.O)
     private static void setPipActions(Activity activity, PictureInPictureParams.Builder builder, boolean isLive, boolean isPlaying) {
         ArrayList<RemoteAction> actionList = new ArrayList<>(3);
-        if (!isLive) {
+        if (isLive) {
+            actionList.add(getCustomRemoteAction(activity, R.drawable.ic_player_refresh, 0, "ACTION_REFRESH"));
+        } else {
             actionList.add(getRemoteAction(activity, R.drawable.ic_player_rewind_10s, "ACTION_REWIND", (int) PlaybackState.ACTION_REWIND));
         }
         if (isPlaying) {
@@ -201,7 +204,9 @@ public final class AndroidHelper {
         } else {
             actionList.add(getRemoteAction(activity, R.drawable.ic_player_play, "ACTION_PLAY", (int) PlaybackState.ACTION_PLAY));
         }
-        if (!isLive) {
+        if (isLive) {
+            actionList.add(getCustomRemoteAction(activity, R.drawable.ic_state_danmaku, 1, "ACTION_DM"));
+        } else {
             actionList.add(getRemoteAction(activity, R.drawable.ic_player_fast_forward_10s, "ACTION_FAST_FORWARD", (int) PlaybackState.ACTION_FAST_FORWARD));
         }
         builder.setActions(actionList);
@@ -214,6 +219,26 @@ public final class AndroidHelper {
                 title,
                 title,
                 MediaHelper.buildMediaButtonPendingIntent(activity, action)
+        );
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private static RemoteAction getCustomRemoteAction(Activity activity, @DrawableRes int resId, int code, String customAction) {
+        Intent intent = new Intent(activity, com.ryanheise.audioservice.MediaButtonReceiver.class);
+        intent.setAction(AudioService.NOTIFICATION_CUSTOM_ACTION);
+        intent.putExtra(AudioService.NOTIFICATION_CUSTOM_ACTION_NAME, customAction);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                activity,
+                code,
+                intent,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0
+        );
+        return new RemoteAction(
+                Icon.createWithResource(activity, resId),
+                customAction,
+                customAction,
+                pendingIntent
         );
     }
 
