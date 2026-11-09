@@ -4,11 +4,11 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.4.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.4.1)（2026-11-04 发布）。
+- 当前正式版本：[v26.11.9.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.9.1)（2026-11-09 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 2.2.0 上游已处理至 `c7ff9683c`；本轮适配 16 项 Android 功能/修复来源及 1 项依赖更新，保留 PiliExo 定制，排除 2 项纯平台改动。
+- PiliPlus 上游已处理至 `86f4759d4`；本轮适配 25 项 Android 功能/修复来源，排除 9 项桌面/iOS/依赖来源，保留 PiliExo 定制。
 
 ## PiliExo 的实际修改
 
@@ -38,6 +38,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 跟进 2.2.0：番剧分区选集和滚动定位、订阅倒序切换、搜索请求与文集收起修正；备份导入增加 ZIP 完整性校验。
 
 - 跟进近期上游：改善选集、番剧缓存和播放接口回退、图文排版、评论分页与匿名访问，适配 ChromeOS 旋转及投屏/文件选择兼容修复。
+- 离线视频支持缓存字幕与分段信息；评论支持线程式展示及自动折叠阈值。
+- 直播画中画/媒体通知支持刷新与弹幕按钮；音频焦点和音量超过 100% 的播放处理更稳定。
+- 网络图片偶发失败会自动有限重试，避免永久停留在占位图。
 
 ## 下载与更新
 
