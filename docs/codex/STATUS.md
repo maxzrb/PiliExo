@@ -3,12 +3,15 @@
 - 更新时间：2026-11-09 (+08:00)
 - 当前发布：v26.11.4.1（2026-11-04已公开且为GitHub latest），正式源码cf153d117bb9565d710f67891ba6ecbcc2628022，annotated tag固定。26.11.4+1/code36，原证书双ABI本机构建；GitHub三资产digest/长度与ModelScope完整回读SHA256一致。Actions关闭/历史运行4次，默认main的README更新dd518a1a3已推送。
 - 最近调查：上游c7ff9683c..86f4759d4新增34项，已一次性完成25项Android适用适配、9项平台/依赖/产品取舍排除；完整映射见docs/PiliPlus上游审查-2026-11-09.md。
-- 当前任务：本轮上游审查与一次性适配已完成，新增离线字幕/看点、线程式评论、音频焦点修复、直播PiP控制、刷新指示器统一、seek清理及动态“全文”等；228项Flutter测试通过、Analyze 0error/0warning（74info）。未构建APK、未安装真机、未推送或发布。
-- 当前源码：功能适配收尾dce1b78f6，基于49ded6f23；回退分支backup/pre-upstream-20261109固定49ded6f23。当前正式发布仍为v26.11.4.1，正式标签和版本号未改。
-- 工作分支：merge/upstream-2.1.4-20260913；本轮源码/测试26个提交（25项上游来源加1项兼容/固定样例修正），文档收尾另计，尚未推送；原tmp/保留未跟踪。
+- 当前任务：上游审查与一次性适配、图片瞬时失败重试及发布测试候选已完成；新增离线字幕/看点、线程式评论、音频焦点修复、直播PiP控制、刷新指示器统一、seek清理、动态“全文”等。双ABI Release候选已构建并覆盖安装到MEP-AN00，冷启动、首页、视频页、评论页冒烟通过；未推送、未发布。
+- 当前源码：功能源码5ff8a251e，基于49ded6f23；其中a73af2c12把audio_service定向固定到b531c62以支持PiP自定义动作。回退分支backup/pre-upstream-20261109固定49ded6f23。当前正式发布仍为v26.11.4.1，正式标签和版本号未改。
+- 工作分支：merge/upstream-2.1.4-20260913；本轮源码/测试28个提交（25项上游来源加audio_service定向固定、图片重试及固定样例），文档收尾另计，尚未推送；原tmp/保留未跟踪。
 - 上游边界：已处理至86f4759d4。c7ff9683c..86f4759d4共34项：25项纳入、9项排除（iOS ab8baae38；桌面窗口bcb55d268/86f4759d4；桌面推荐源e3aff4435/4fce4bb5a；桌面FAB3997f132f；Linux niri依赖737163c53；批量依赖b94e1fc05；Windows键盘seek dc829bf26）。后续不重复应用这些来源。
 - 已整合：离线字幕/看点及下载元数据毫秒迁移、线程式评论与折叠阈值、音频焦点/音频会话修复、音量>100%限幅、直播PiP刷新/弹幕、刷新指示器统一、seek统一入口、选集/看点定位、DLNA乐播旧地址、图文空卡片、动态“全文”、评论置顶过滤和分页修复。保留本地HDR双后端/FLAC/混合推荐/长按倍速/丢帧统计/正式签名策略。
-- 统一验证：228/228 Flutter通过；Analyze退出0、0error/0warning、74info；新增5项固定样例覆盖旧时间戳、离线字幕/看点、评论树折叠和选集边距；相关既有62项回归通过。Android Java编译尝试未完成：Gradle在插件/Flutter debug资产阶段因debug embedding缓存缺失、百度云临时文件及executionHistory拒绝访问失败，未进入本应用Java编译；未构建APK、未安装真机。
+- 统一验证：此前完整Flutter套件228/228通过；加入图片重试后新增1项固定样例通过，HDR/音频焦点/播放状态12项通过；Analyze 0error/0warning（74info），改动文件单独分析无问题。最后一次全量单进程复跑在测试文件加载阶段停滞，单独运行该文件通过，未计为全量通过。
+- 发布测试候选：本机双ABI Release构建94s成功，包名com.maxzrb.piliexo、版本26.11.4/code36、compileSdk37；arm64包SHA256 670d528426798cd9382494d2037f20d35fee14c9dd3889b41e20b69d023fee5c（32222988字节），v7包SHA256 8be437be28d611a1d137428e9a2d8e955eb9df39cc2bbbfa8c1dcf326ff5b617（32340294字节），原正式证书V2签名。候选在dist/integration/upstream-20261109/。
+- 本轮设备冒烟（发布测试，非正式发布）：MEP-AN00/Android17/API37覆盖安装成功，firstInstallTime保持2026-09-02 15:19:05，安装包完整回读SHA256与arm64候选一致；冷启动379–386ms，首页52个语义节点，视频页/评论页正常，检查范围无FATAL/MissingPlugin/dlopen。未完成音频焦点、线程式评论完整交互、离线、DLNA/HDR实播矩阵。
+- 封面问题：两个偶发失败样本的接口封面URL及@1q.webp缩略图均返回200且可解码，不是死链；失败时显示TV占位图。已给NetworkImgLayer增加350ms/1.2s两次重试，成功后可恢复。首页滑动卡顿受连续ADB截图/UIAutomator/logcat干扰，未据此声称设备性能问题。
 - 历史真机启动（2026-11-01，非本轮候选）：当时MEP-AN00正式包从26.10.31/code34保留数据覆盖到26.11.1/code35成功，包名与firstInstallTime保持一致（覆盖前UID未采集），首页可见52应用节点，进程存活，无检查范围内FATAL/Unhandled/MissingPlugin/dlopen异常。证据dist/release/v26.11.1.1/device-release-check.json及截图。未沿用上轮豁免或制作独立dev App。
 - 设备验收边界：本轮仅Honor MEP-AN00 arm64/API37、3840×2160 Dolby Vision/23.976fps片源实播。7项切换均核对系统播放状态/进度/1.5x、洞察实际后端与截图正常画面；未测无HDR能力手机、HDR10/HDR Vivid、32位、字幕音轨切换、后台/PiP、音量音质/色彩精度、vivo/ChromeOS/会员课程权限或电视发现。最终安装APK完整回读SHA256匹配，appId10406及首次安装时间保留；日志未见检查范围内致命异常。测试播放已停止，临时USB常亮恢复原值0。
 - 图标调查：原正式包与候选编译图标资源一致。手机资源随深浅正确解析，用户解锁后的原包桌面截图显示深灰底浅P/浅底深P正常切换，在图标可见时深色返回白天auto也正常。本轮未复现，不确定此前根因，不修改图标或清桌面数据；系统已恢复原auto。证据在dist/integration/upstream-20261031/icon-investigation/。此前“忽略图标”决定已被本轮用户重新调查请求替代。
