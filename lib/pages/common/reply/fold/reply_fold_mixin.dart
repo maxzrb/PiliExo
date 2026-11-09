@@ -15,9 +15,10 @@ mixin BaseReplyFoldMixin<R> on ReplyController<R> {
     foldCard = mixedCards.firstWhereOrNull((e) => e.type == .FOLD)?.fold;
   }
 
-  Future<void> loadFoldList() async {
-    if (isLoading || foldCard == null || loadingState.value.data == null)
+  Future<void> loadFoldList({bool toast = true}) async {
+    if (isLoading || foldCard == null || loadingState.value.data == null) {
       return;
+    }
     isLoading = true;
     try {
       final res = await ReplyGrpc.foldList(
@@ -33,10 +34,11 @@ mixin BaseReplyFoldMixin<R> on ReplyController<R> {
             (reply) => reply.content.message.trim() == intro,
           );
         }
+        count.value += response.replies.length;
         loadingState
           ..value.data!.addAll(response.replies)
           ..refresh();
-        if (response.hasTitle()) {
+        if (toast && response.hasTitle()) {
           SmartDialog.showToast(response.title);
         }
       } else {
