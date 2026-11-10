@@ -1,0 +1,6 @@
+[
+  {"id":"hdr-hardware","profile5":false,"hardwareEnabled":true},
+  {"id":"hdr-software","profile5":false,"hardwareEnabled":false},
+  {"id":"p5-hardware-setting","profile5":true,"hardwareEnabled":true},
+  {"id":"p5-software-setting","profile5":true,"hardwareEnabled":false}
+]

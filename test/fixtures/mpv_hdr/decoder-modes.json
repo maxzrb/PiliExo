@@ -1,0 +1,7 @@
+[
+  {"id":"initial","current":null,"hwPixelFormat":null},
+  {"id":"not-ready","current":"","hwPixelFormat":null},
+  {"id":"software","current":"no","hwPixelFormat":null},
+  {"id":"hardware-without-pixel-hint","current":"mediacodec","hwPixelFormat":null},
+  {"id":"copy-without-pixel-hint","current":"mediacodec-copy","hwPixelFormat":null}
+]

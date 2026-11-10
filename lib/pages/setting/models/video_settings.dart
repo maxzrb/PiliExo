@@ -6,6 +6,7 @@ import 'package:PiliPlus/models/common/video/video_decode_type.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/widgets/ordered_multi_select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
+import 'package:PiliPlus/pages/setting/widgets/hdr_route_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/models/audio_output_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/utils/filtering_text.dart';
@@ -29,12 +30,23 @@ List<SettingsModel> get videoSettings => [
     defaultVal: true,
   ),
   if (Platform.isAndroid)
-    const SwitchModel(
-      title: 'HDR 播放器',
-      subtitle: 'Media3 原生 HDR（关闭后 HDR 使用兼容播放器）',
-      leading: Icon(Icons.hdr_auto_outlined),
-      setKey: SettingBoxKey.enableMedia3Hdr,
-      defaultVal: true,
+    NormalModel(
+      title: 'HDR 播放路线',
+      getSubtitle: () =>
+          '${Pref.hdrPlaybackRoute.title}：${Pref.hdrPlaybackRoute.summary}。仅影响在线 HDR，重开视频后生效。',
+      leading: const Icon(Icons.hdr_auto_outlined),
+      onTap: (context, setState) async {
+        final route = await showHdrRouteDialog(
+          context,
+          value: Pref.hdrPlaybackRoute,
+        );
+        if (route == null) return;
+        await GStorage.setting.put(
+          SettingBoxKey.hdrPlaybackRoute,
+          route.storageValue,
+        );
+        setState();
+      },
     ),
   const SwitchModel(
     title: '免登录1080P',

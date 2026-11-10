@@ -1,0 +1,7 @@
+codec=hevc size=1920x1080 pixel=yuv420p10le
+profile=5 level=5 rpu=1 el=0 bl=1 compatible=0
+frame=0 rpu=1 metadata=1 baseBits=10 signalBits=12 colorSpace=2
+frame=1 rpu=1 metadata=1 baseBits=10 signalBits=12 colorSpace=2
+frame=2 rpu=1 metadata=1 baseBits=10 signalBits=12 colorSpace=2
+frame=3 rpu=1 metadata=1 baseBits=10 signalBits=12 colorSpace=2
+frame=4 rpu=1 metadata=1 baseBits=10 signalBits=12 colorSpace=2

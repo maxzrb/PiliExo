@@ -1,0 +1,4 @@
+opaque-red FF0000FF
+half-alpha-green 00800080
+low-alpha-blue 00007F7F
+transparent 00000000

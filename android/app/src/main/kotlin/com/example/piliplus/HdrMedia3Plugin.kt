@@ -63,6 +63,21 @@ import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 
+/** 将 PixelCopy 的 ARGB 颜色整数编码为明确的 RGBA8888 字节，避免平台字节序差异。 */
+internal fun ambientArgbToRgba(colors: IntArray): ByteArray {
+    val pixels = ByteArray(colors.size * 4)
+    for (index in colors.indices) {
+        val color = colors[index]
+        val alpha = color ushr 24
+        val offset = index * 4
+        pixels[offset] = ((((color ushr 16) and 255) * alpha + 127) / 255).toByte()
+        pixels[offset + 1] = ((((color ushr 8) and 255) * alpha + 127) / 255).toByte()
+        pixels[offset + 2] = (((color and 255) * alpha + 127) / 255).toByte()
+        pixels[offset + 3] = alpha.toByte()
+    }
+    return pixels
+}
+
 /** Android 原生 HDR 播放器的 Flutter 桥接层。 */
 @UnstableApi
 class HdrMedia3Plugin(
@@ -835,16 +850,7 @@ private class HdrMedia3Session(
                         val message = try {
                             val colors = IntArray(width * height)
                             bitmap.getPixels(colors, 0, width, 0, 0, width, height)
-                            val pixels = ByteArray(width * height * 4)
-                            for (index in colors.indices) {
-                                val color = colors[index]
-                                val alpha = color ushr 24
-                                val offset = index * 4
-                                pixels[offset] = ((((color ushr 16) and 255) * alpha + 127) / 255).toByte()
-                                pixels[offset + 1] = ((((color ushr 8) and 255) * alpha + 127) / 255).toByte()
-                                pixels[offset + 2] = (((color and 255) * alpha + 127) / 255).toByte()
-                                pixels[offset + 3] = alpha.toByte()
-                            }
+                            val pixels = ambientArgbToRgba(colors)
                             mapOf("format" to "rgba8888", "width" to width,
                                 "height" to height, "rowBytes" to width * 4, "pixels" to pixels)
                         } catch (_: Throwable) {

@@ -1,0 +1,9 @@
+default=media3-native
+old-compatible=mpv-compatible
+old-native=mpv-native
+old-both=mpv-native
+explicit-compatible=mpv-compatible
+explicit-mpv=mpv-native
+explicit-media3=media3-native
+unknown=mpv-compatible
+invalid-type=media3-native

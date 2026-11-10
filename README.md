@@ -4,16 +4,18 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.9.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.9.1)（2026-11-09 发布）。
+- 当前正式版本：[v26.11.10.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.1)（2026-11-10 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码分支：[`merge/upstream-2.1.4-20260913`](https://github.com/maxzrb/PiliExo/tree/merge/upstream-2.1.4-20260913)。编译当前版本请使用该分支或对应 Release 标签。
+- 发布源码：[`v26.11.10.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.10.1)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游已处理至 `86f4759d4`；本轮适配 25 项 Android 功能/修复来源，排除 9 项桌面/iOS/依赖来源，保留 PiliExo 定制。
 
 ## PiliExo 的实际修改
 
-- HDR 播放页更多菜单可在 ExoPlayer 与 mpv 之间双向切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
-- Android 在线 UGC/PGC 的 HDR 播放使用 Media3 原生 `SurfaceView`；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，播放失败时保留 mpv 回退。
+- HDR 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
+- Android 在线 UGC/PGC 的 HDR 播放支持 Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，失败时保留回退。
+- mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
+- 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留视频缩小动画，原生 HDR 路线固定视频层并裁剪。
 - 修复高采样率 FLAC 音轨导致 HDR 播放失败的问题：从音轨元数据补齐真实采样率，按每条音轨的最大帧大小配置输入缓冲。
 - 播放器洞察提供概览、视频、音频、播放和事件详情，显示编码、解码器、分辨率、码率、音频参数和回退原因。
 - 顶栏、底栏和浮动底栏支持磨砂半透明，可关闭或选择轻薄、标准、浓厚效果；设置页面状态栏图标随顶栏背景明暗适配。
@@ -46,7 +48,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.10.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.10.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.10.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 

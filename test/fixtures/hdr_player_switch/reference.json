@@ -2,99 +2,99 @@
   {
     "calls": [
       [
-        false,
+        "mpv-native",
         123456,
         true
       ]
     ],
     "active": false,
-    "useMedia3": false
+    "mpvActive": true
   },
   {
     "calls": [
       [
-        true,
+        "media3-native",
         65432,
         false
       ]
     ],
     "active": true,
-    "useMedia3": true
+    "mpvActive": false
   },
   {
     "calls": [
       [
-        false,
+        "mpv-native",
         0,
         false
       ]
     ],
     "active": false,
-    "useMedia3": false
+    "mpvActive": true
   },
   {
     "calls": [],
     "active": true,
-    "useMedia3": false
+    "mpvActive": false
   },
   {
     "calls": [],
     "active": false,
-    "useMedia3": false
+    "mpvActive": false
   },
   {
     "calls": [
       [
-        false,
+        "mpv-native",
         7777,
         true
       ]
     ],
     "active": false,
-    "useMedia3": false
+    "mpvActive": true
   },
   {
     "calls": [
       [
-        true,
+        "media3-native",
         5000,
         true
       ]
     ],
     "active": false,
-    "useMedia3": false
+    "mpvActive": false
   },
   {
     "calls": [
       [
-        false,
+        "mpv-native",
         4000,
         false
       ]
     ],
     "active": true,
-    "useMedia3": false
+    "mpvActive": false
   },
   {
     "calls": [
       [
-        false,
+        "mpv-native",
         3000,
         true
       ]
     ],
     "active": true,
-    "useMedia3": false
+    "mpvActive": false
   },
   {
     "calls": [
       [
-        false,
+        "mpv-native",
         60000,
         true
       ]
     ],
     "active": false,
-    "useMedia3": false
+    "mpvActive": true
   }
 ]

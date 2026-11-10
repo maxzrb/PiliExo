@@ -1,0 +1,4 @@
+[
+  {"id":"mpv-compatible","animateShrink":true,"offsets":[0,100,800,0]},
+  {"id":"native-hdr","animateShrink":false,"offsets":[0,100,800,0]}
+]

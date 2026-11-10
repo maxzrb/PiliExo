@@ -1,11 +1,24 @@
 # PiliExo AI 工作状态
 
-- 更新时间：2026-11-09 (+08:00)
+- 2026-11-10 21:23 当前候选：`PiliExo-ambient-hdr-arm64-v8a.apk` / `armeabi-v7a.apk`，为 mpv 原生 HDR SurfaceView 增加 PixelCopy 低分辨率取帧，状态栏虚化复用 Media3 的 ARGB→RGBA 函数；未新增生产 Kotlin 类。双ABI在 C 盘隔离树成功构建，本地 Maven 引擎源绕过 Google 下载；arm64 `6c7512dd…` 已覆盖安装、回读一致并冷启动通过。状态栏观感待用户实播确认。
+- 2026-11-10 20:36 当前候选 v2：mpv 原生路线文案改为只保留“直出模式不支持 mpv 视频着色器”，不再描述关闭硬解后的 10 位 GPU 渲染。已重编译 AOT、替换并重签双ABI；arm64 `b86bd9e4…` 已覆盖安装且回读一致，v7 `9fdead9f…`。产物与verification-routes-anim-v2.json在dist/integration/mpv-hdr-gray-20261110/。未提交/推送/发布。
+- 2026-11-10 20:30 当前候选：`PiliExo-dynamic-hdr-routes-anim-arm64-v8a.apk` / `armeabi-v7a.apk`，版本26.11.9/code37，原证书V2签名、16KB对齐。仅替换重编译并strip的`libapp.so`；`libmpv.so`/`libpiliexo_mpv_surface.so`逐字节不变。arm64已覆盖安装、回读SHA一致、冷启动无检查范围致命异常。Gradle在线解析停滞且离线误报引擎JAR未缓存，故在19:37候选底包上替换AOT后重签；详情见dist候选README与verification-routes-anim.json。未提交/推送/发布。
+- 2026-11-10 20:02 当前任务：mpv 兼容路线恢复下拉评论时的视频缩小动画，Media3/mpv 原生 HDR 继续固定视频层裁剪；三条 HDR 路线设置说明精简为 1-2 句。定向 3 项测试通过、5 个 Dart 文件 Analyze 无问题；`test/plugin/pl_player` 全目录再次在加载阶段停滞，已中断且不计通过。未提交/推送/发布/构建。
+- 2026-11-10 18:30 当前任务：修复mpv直出误回退。direct-fixed双ABI本机构建/原证书签名，arm64已覆盖且完整回读SHA8f80b2f3…；用户确认mpv原生HDR，系统原生4K硬解层BT2020_ITU_PQ/types1。详细VO诊断、灰度观感和回顶反馈待补；研究FFmpeg补偿未生效，选定核心不含它。25项定向测试、分析无error/warning；未提交/推送/发布。
+
+- 2026-11-10 17:45 当前任务：HDR偏灰、硬解标签及评论区快速回顶修正。最终合并候选PiliExo-hdr-scroll-*已本机双ABI构建/原证书签名，arm64=8339bc6c…、v7=4dd0b5a2…；24项定向Flutter、GPU固定样例及7例MediaCodec字节解析通过。真机确认高通HEVC硬解（洞察旧版误报软解），Media3元数据=1、初版mpv硬解=0/软解=1，仅补MediaFormat后硬解仍=0；最终又补容器ff_decode_frame_props，尚未在新会话验证。手机现断开ADB，最终合并候选未安装，禁止宣称HDR观感或回顶已通过；详见docs/mpv-HDR偏灰修正与数值回归-2026-11-10.md。
+- 历史实验阶段（2026-11-10，13:13候选；非本轮偏灰修正候选）：`codex/mpv-native-hdr`，基于77e7e0ffb，新增默认关闭的mpv原生HDR输出；正式mpv核心不替换。双ABI本机构建、原证书签名/覆盖安装和arm64实播通过；MEP-AN00已验证gpu-next/RGBA1010102/BT2020_PQ、HDR10/PQ、DV Profile8→PQ、固定P5软件RPU修正，以及字幕/弹幕/控制层。在线DV样本实际为Profile8，不能冒充P5验收。详见docs/mpv原生HDR迁移与P5验证-2026-11-10.md。
+- 历史13:13候选（非本轮偏灰修正候选）：arm64 SHA256 04ffad8bc873137cefc03694af5fdf2dd9b24d7550781e74cf76c13eb64ed83f；v7 SHA256 43d45e7cb2af9f0a58be92f25ac11b9617fcfd63d7226b10d1f7898fb2eb2d87。产物/证据/README在dist/integration/mpv-hdr-20261110/。手机已装普通arm64候选，实验开关已恢复关闭；ADB reverse和本地服务器已清理。
+- 本轮Git边界：无提交/推送/发布/改版；上游只读fetch至2dd24225b，不代表合并。旧调查文档和tmp保留。用户暂停手机后已明确回复“adb已连接”“已解锁”，现已恢复授权范围内ADB验证。
+
+- 最近只读诊断：2026-11-10 ADB下采样核验完成；Media3为本机SDE/DPU缩小、mpv为4K纹理在Flutter内缩小；滤波核未被系统dump暴露。详见docs/视频下采样ADB核验-2026-11-10.md。
+
+- 更新时间：2026-11-10 (+08:00)
 - 当前发布：v26.11.9.1（2026-11-09已公开且为GitHub latest），正式源码959c3b825b67cc22ae8c8a9a7da2c0cc6fb3de2e，annotated tag固定。26.11.9+1/code37，原证书双ABI本机构建；GitHub三资产digest/长度与ModelScope完整下载回读SHA256一致。Actions保持禁用，本轮全程本机构建/签名；默认main的README更新dd3485a52已推送。
 - 最近调查：上游c7ff9683c..86f4759d4新增34项，已一次性完成25项Android适用适配、9项平台/依赖/产品取舍排除；完整映射见docs/PiliPlus上游审查-2026-11-09.md。
 - 当前任务：v26.11.9.1已完成正式发布、GitHub/ModelScope双端校验和MEP-AN00正式包冷启动验收，无待上传或待发布项；发布收尾文档随本次提交推送。新增离线字幕/看点、线程式评论、音频焦点修复、直播PiP控制、刷新指示器统一、seek清理、动态“全文”等。
 - 当前源码：正式源码959c3b825b67cc22ae8c8a9a7da2c0cc6fb3de2e；功能源码5ff8a251e，基于49ded6f23，其中a73af2c12把audio_service定向固定到b531c62以支持PiP自定义动作。回退分支backup/pre-upstream-20261109固定49ded6f23。v26.11.9.1标签固定959c3b825，不要移动或重打。
-- 工作分支：merge/upstream-2.1.4-20260913；发布提交959c3b825及annotated tag已推送origin，收尾文档提交另计；原tmp/保留未跟踪。
+- 当前工作分支：codex/mpv-native-hdr（基于77e7e0ffb）；正式发布源码仍为959c3b825，当前实验改动未提交/推送/发布。原tmp/保留未跟踪。
 - 上游边界：已处理至86f4759d4。c7ff9683c..86f4759d4共34项：25项纳入、9项排除（iOS ab8baae38；桌面窗口bcb55d268/86f4759d4；桌面推荐源e3aff4435/4fce4bb5a；桌面FAB3997f132f；Linux niri依赖737163c53；批量依赖b94e1fc05；Windows键盘seek dc829bf26）。后续不重复应用这些来源。
 - 已整合：离线字幕/看点及下载元数据毫秒迁移、线程式评论与折叠阈值、音频焦点/音频会话修复、音量>100%限幅、直播PiP刷新/弹幕、刷新指示器统一、seek统一入口、选集/看点定位、DLNA乐播旧地址、图文空卡片、动态“全文”、评论置顶过滤和分页修复。保留本地HDR双后端/FLAC/混合推荐/长按倍速/丢帧统计/正式签名策略。
 - 统一验证：此前完整Flutter套件228/228通过；加入图片重试后新增1项固定样例通过，HDR/音频焦点/播放状态12项通过；Analyze 0error/0warning（74info），改动文件单独分析无问题。最后一次全量单进程复跑在测试文件加载阶段停滞，单独运行该文件通过，未计为全量通过。
@@ -1902,3 +1915,107 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 默认main的README独立提交dd3485a52已推送；Actions保持enabled=false，本轮无GitHub Actions构建。签名密钥、密码和访问令牌未提交或上传；原tmp/保留，误生成的仓库根目录空文件$null与$png已清理。
 - 测试边界：此前完整Flutter套件228/228通过；加入图片重试后新增固定样例1项及HDR/音频焦点/播放状态12项通过，Analyze 0error/0warning（74info）。最后一次全量单进程复跑在测试文件加载阶段停滞，单独运行该文件通过，因此不宣称最终全量为229/229。未完成真实音频焦点抢占、线程式评论完整交互、离线播放或DLNA/HDR完整实播矩阵。
 - 本轮发布记录随后以独立docs提交推送，正式tag和已公开资产不重打；发布源码与tag固定959c3b825。
+
+## 2026-11-10 10:41 ADB 视频下采样核验
+
+- 已通过 ADB 核验 MEP-AN00 / Android17 上 v26.11.9.1 正式包的视频缩小链路。固定片源 BV1Z6W46AELH / 3840×2160 HEVC60 HDR：Media3 独立视频层 sourceCrop=3840×2160，竖屏 displayFrame=1263×710、composition=DEVICE；高通 Composer 视频管线为 SDE/DPU。mpv 在竖屏和横屏均保留3840×2160 SurfaceTexture，最终在 Flutter 图层内缩小。
+- 系统 dump 未暴露滤波核，正式包 run-as 报 package not debuggable；没有直接读取 mpv 运行时 dscale 或 GPU sampler。双线性仍根据对应源码 FilterQuality.low / dscale=bilinear 判断，不表述成 ADB 独立测量。安装包完整回读 SHA256 与正式 arm64 包97ec2e19…a8d17一致。测试播放已停止并返回桌面，未修改系统设置、应用源码或安装包；未构建、未触发Actions。
+- 报告：docs/视频下采样ADB核验-2026-11-10.md；原始dump/截图/XML/安装包在tmp/downscale-20261110/。只运行真实正式应用与固定片源，未新建测试应用。
+- git pull --ff-only显示Already up to date；会前仅tmp/未跟踪。新增核验报告并更新STATUS/中文进度，未提交、未推送、未改版本或正式标签。
+
+## 2026-11-10 10:54 Hills mpv HDR原理与迁移评估
+
+- ADB回读本机Hills com.mountains.hills 1.11.0/code4139并静态核查：MPVView为原生SurfaceView；HDR有效时设置gpu-next、target-colorspace-hint=yes和定制android-hdr-probe=yes。原生库包含NativeWindow dataspace设置/读回、BT.2020/PQ目标、失败回退与原dataspace恢复；代码及日志表明使用同一EGLSurface，未发送HDR元数据。
+- 可在PiliExo独立实现该路线，但必须同时修改原生mpv与SurfaceView输出，绕开普通Flutter Texture；不能只复制配置或直接替换含宿主授权检查的Hills库。未启动Hills实播、未改变其设置、未绕过授权，未证明其实际输出位深/色准/DV或HDR10+完整直通。未改应用代码、未构建安装、未触发Actions。
+- 报告：docs/Hills-mpv-HDR原理与迁移评估-2026-11-10.md；样本与反编译证据在tmp/hills-hdr-20261110/，不加入应用源码或发布包。
+- 保留前一轮下采样诊断文档改动，本轮追加报告/状态/中文进度；未提交、未推送、版本保持v26.11.9.1。
+
+## 2026-11-10 13:13 mpv原生HDR与Dolby Vision Profile 5迁移验收
+
+- 当前分支`codex/mpv-native-hdr`，基于`77e7e0ffb`；正式mpv核心和音频策略不替换。新增默认关闭的实验设置、独立SurfaceView、dyn-load libmpv client、NativeWindow dataspace配对、gpu-next/RGB10_A2/BT2020_PQ输出、P5软件解码策略和Media3自动回退。正式v26.11.9.1版本/tag未变，改动未提交或推送。
+- 本轮先修复两处真机阻断：`target-peak=460.0`改为整数；mpv HDR初始失败回退到Media3时补传页面onInit，避免实际已播放但控制层不挂载。后续验证所有路径均使用正式应用入口和固定片源，没有独立测试App。
+- MEP-AN00/Android17/API37 arm64确认：在线BV1tfei6MEMn为DV Profile8/HLG输入转PQ，BV1Z6W46AELH为HDR10/PQ 4K60；SurfaceFlinger均为RGBA_1010102_UBWC、dataspace `0x09c60000`，洞察显示“mpv 原生 HDR / PQ / 10-bit”。BV1rp4y1e745 4K120有明显丢帧，未通过流畅性要求。
+- 固定`dv-p5-five-frames.mp4`（5帧/约0.083秒）真机输出`profile=5`、`hwdec=no`、`colormatrix=dolbyvision`、`gpu-next`、参数43和BT2020/PQ；紫蓝色画面与桌面libplacebo参考一致。为避免短样本频繁起止导致加载遮罩，另以600次无损流循环生成10.033秒/602帧诊断输入，dvcC与每帧RPU保留、软件解码无错误，设备连续播放未再出现加载遮罩。
+- 全屏和竖屏返回后，双行字幕、滚动弹幕、进度条、暂停按钮同时显示；按钮实际把系统媒体会话切到PAUSED。退出播放页后活动SurfaceView消失。测试后实验开关恢复关闭，ADB reverse和本地HTTP服务器已清理。
+- 本地FATE/组件/回归：P5 metadata、软件解码帧校验和、libplacebo RGB参考通过；policy2、HDR routing5、subtitle2、playback state1、audio options5、rate12、avsync3、drop17通过。`lib test tool` Analyze为0 error/0 warning/74 info。测试缓存曾出现Flutter PathExists竞态，移走生成缓存后重跑通过，不是产品失败。
+- 双ABI本机Release构建成功，普通arm64候选32480971字节/SHA256 `04ffad8bc873137cefc03694af5fdf2dd9b24d7550781e74cf76c13eb64ed83f`；v7候选32555244字节/SHA256 `43d45e7cb2af9f0a58be92f25ac11b9617fcfd63d7226b10d1f7898fb2eb2d87`。两包原正式证书V2签名、16KB对齐通过。正式核心`libmpv.so`、FFmpeg JNI、Flutter、media-kit helper/event loop及datastore库逐字节未变；新增`libpiliexo_mpv_surface.so`，Dart AOT与重建的`libdartjni.so`变化。
+- 普通arm64候选最终覆盖安装成功，`pm path`完整回读SHA256与候选一致，firstInstallTime仍为2026-09-02 15:19:05，冷启动288ms；随后在线HDR再次确认mpv原生PQ输出。已force-stop测试播放并回桌面，未改系统常亮设置。
+- 产物与证据：`dist/integration/mpv-hdr-20261110/`含双ABI候选、SHA256SUMS、native-comparison、verification、README及diagnostics固定P5包；原始截图/日志/XML在`tmp/mpv-hdr-native-20261110/`。报告：`docs/mpv原生HDR迁移与P5验证-2026-11-10.md`。
+- 边界：在线DV样本是Profile8，不能记为P5；普通MediaCodec P5硬件RPU修正未实现，P5走软件解码。4K P5长片性能、4K120流畅性、API28-36、PiP/后台、仪器色准、DV/HDR10+/HDR Vivid动态元数据完整直通未通过或未覆盖。
+
+## 2026-11-10 15:55 mpv HDR 偏灰定位与 EGL PQ 候选
+
+- 用户反馈同一 HDR 画面下 mpv 原生输出比 Media3 偏灰。复核 Hills 调查：Hills 也只设置 BT2020/PQ dataspace，日志明确 `no HDR metadata`；Android NDK 对 GPU 渲染层没有公开的 mastering/MaxCLL 提交接口，Media3 的静态元数据来自 MediaCodec 输出格式而非应用层。不能把“未提交元数据”单独当作迁移遗漏。
+- 当前候选有两个偏差：`MpvHdrPolicy` 固定 `target-peak=1000`，而设备 `desiredMaxLuminance=460`；最终普通候选又使用未打 `android-egl-bt2020-pq.patch` 的正式 libmpv，只做了 NativeWindow dataspace 标记，EGLSurface 仍是默认色彩空间。
+- 已修改：默认不写死 target-peak，由原生读取显示器 HDR 峰值（本机 460）；正式核心不支持 `android-hdr-probe` 时降级为 dataspace-only 而不让整条原生输出回退；峰值无效时回退 1000。`MpvHdrPolicy` 单测 2/2 通过，改动文件 Analyze 无问题。
+- 已用带 EGL PQ 补丁的 arm64 libmpv（SHA256 `b895a6c5a26b5e170a7e61787495ee53cb4a5aba6fbb88a5c3a192f93f9c8daa`）打包候选 `tmp/mpv-hdr-native-20261110/PiliExo-egl-hdr-arm64-peakfix.apk`，SHA256 `3da9316947275bd66ba00b712d9868724373e18e2b1b9d993889a8f4c0016b79`；该包已覆盖安装成功且 `pm path` 回读一致。补上可选选项/峰值回退后另构建源码完整候选 SHA256 `ee4d84d3b215cce344f2b0f7b9291ff12876cf9ed7485e5506dd5757767fc414`（未安装）。
+- 设备日志确认原生会话 `target-peak=460`、`format=43`、`dataspace=0x09c60000`、`android-hdr-probe=yes`、`gpu-next`；但同帧 Media3/mpv A/B 截图被微信通知打断，未取得干净对照，不能宣称偏灰已修复。待用户不占用手机时补做暂停同帧截图与像素统计。
+- 本轮未重新跑全量测试，未提交/推送/发布；正式版本仍 v26.11.9.1。
+
+## 2026-11-10 16:52 mpv HDR 偏灰接手修正与 FATE 数值回归
+
+- 读取 AGENTS.md、STATUS.md 和现有两份 HDR 报告，INDEX.md 不存在。分支 codex/mpv-native-hdr 原有大量未提交改动全部保留；git pull --ff-only 因没有 tracking branch 未合并，未自行改变分支或远端。
+- 纠正15:55结论：target-peak=460 会在 mpv 内部映射，不是只告知面板亮度；“GPU 无元数据接口”过宽，设备提供 EGL SMPTE2086/CTA861.3 扩展。此前同帧验证未完成，不能当作已修复。
+- 本轮实现：PQ完整范围10000、tone/gamut clip、禁动态峰值/逆映射/对比度恢复；Kotlin删除面板峰值覆盖。配套核心新增 android-hdr-signal-passthrough（默认关闭），HLG保留编码及1000参考条件并切换HLG EGLSurface；PQ可用静态元数据按EGL单位提交/查询，未知字段不伪造，源切换清理旧值。JNI按video-target-params核对PQ/HLG及dataspace，旧核心拒绝新选项时回退Media3。
+- FATE：同一份libplacebo静态库、MEP-AN00/API37离屏EGL；PQ20点误差≤0.000606147、HLG7点≤0.000024，元数据5行整数完全匹配独立参考。旧460自动策略100/203/460/1000nit灰阶分别约71.713/128.186/248.799/457.417nit。输入/ref、C命令行运行器及Python构建运行命令均入仓，不创建测试App。
+- 验证：policy2、routing5、player_switch10、audio_options5共22项通过；测试缓存先出现加载停滞/PathExistsException，隔离生成缓存并逐文件重跑通过。改动Dart分析0error/0warning/4既有info；双ABI mpv编译成功、55个导出含JavaVM、无RPATH、ELF 16KB对齐；最终Flutter Release双ABI本机构建成功。原证书打包/对齐和最终哈希见dist/integration/mpv-hdr-gray-20261110/verification.json。
+- 原生源码仅应用JavaVM兼容及本轮HDR补丁，未应用AudioTrack实验补丁；静态依赖复用C:/Users/maxzr/AppData/Local/piliexo-native-audio-20261018/prefix。隔离mpv源码/构建在tmp/mpv-hdr-gray-source与tmp/mpv-hdr-gray-build。arm64构建安装步骤更新了该本地prefix中的libmpv，不影响历史APK；候选实际用隔离构建产物，源码/补丁哈希记录随候选保存。
+- 边界：手机在首次FATE通过后断开ADB；第二次重复调用设备不存在，未计为通过。运行器首次通过后已删除设备二进制；早期手动输入文件/data/local/tmp/piliexo-hdr-color-input的清理因设备断开未执行，下次连接可删除。未操作手机界面、未用computer use；新候选未覆盖安装、未同帧Media3 A/B、未核验App实际EGL元数据接收或仪器色准。P5/动态元数据/倍速听感及新核心长期稳定性没有新增真机结论。
+- 记录：新增 docs/mpv-HDR偏灰修正与数值回归-2026-11-10.md，更新patch README/sources、样例README、STATUS及中文进度。正式版本不变，未提交/推送/发布；工作树仍不干净，确认屏幕效果后再考虑独立提交，暂不把候选当正式发布。
+
+## 2026-11-10 17:45 真机元数据分流、软解误报与评论区回顶修正
+
+- 用户恢复ADB后，signal候选覆盖成功且完整回读SHA ca125645…，firstInstallTime保持。自动审批拦截包含APK回读/启动视频/临时清理的组合命令，仅返回blocked by policy；改为独立只读回读成功，后续视频操作由用户手动完成，未重试自动启动或用computer use。
+- 同源52.824秒暂停对照存在解码帧差，不能直接做屏幕像素色准结论。SurfaceFlinger：Media3 BT2020_ITU_PQ/types1，mpv GPU硬解BT2020_PQ/types0；用户临时关闭硬解后mpv/types1。证实静态元数据在硬解链路上缺失，不能把此前峰值改动视作完全修复。
+- 新增FFmpeg补丁ffmpeg-mediacodec-hdr-static-info.patch（原基线与归档字节一致，patch check通过）：25字节CTA Type1输出格式转AVFrame；7组独立输入/参考在设备CLI通过。双ABI重链本机原证书static候选安装成功，但硬解metadata仍0，因此继续补硬件帧ff_decode_frame_props以保留容器coded/decoded side data。未改音频/倍速策略。此最终补偿尚未取得新会话验收。
+- 本地构建修复：复制libavcodec.pc后曾被Meson缓存选回旧库；显式pkg_config_path与clearcache后已核对build.ninja绝对引用隔离libavcodec.a。CONFIGURATION的旧反斜杠替换破坏数组引号，改用json.dumps生成合法C字符串；另保留原Libs依赖，解决webp/dav1d静态重链。一次失败后打包误读旧库被哈希检查识别，未安装该旧库包。最终库arm64 f8f4f121…，v7 f5b563a3…，55导出/JavaVM、无RPATH与16KB ELF对齐通过。
+- 用户“还是软解”对应洞察误报：PID5818系统组件c2.qti.hevc.decoder及hw-video-codec已确认，原生日志hwdec-current=mediacodec；旧UI只看hwPixelformat为空便标软解。已改用实际hwdec-current，空值保持未知，固定输入/ref新增回归。
+- 用户追加评论区快速回顶抽动/变糊：VideoHeader折叠约束会缩小原生播放窗口，返回时反复放大。新增FixedVideoViewport，在Media3/mpv原生路径只裁剪可视区域，保持完整视频布局；真实VideoHeader的6阶段固定滚动输入/ref通过，视频400x225和元素身份稳定。新增fixed_video_viewport.dart、对应测试/fixture/ref，修改pages/video/view.dart。
+- 本地验证：policy3、routing5、player_switch10、audio_options5、viewport1，累计24项定向通过；7文件Analyze 0error/0warning/4既有info。最新Flutter双ABI Release构建105.8s通过，最终原证书候选PiliExo-hdr-scroll-arm64-v8a.apk SHA8339bc6cbd3ff0ed659c3dd8de5a055545982d325f371d9159638dae7f963b32、v7 SHA4dd0b5a2cb74f05245567306365d226c9208076a04797842304258fa97979e8c。dist/integration/mpv-hdr-gray-20261110/含SHA256SUMS/verification/README，历史阶段包保留。
+- 当前设备边界：context阶段安装命令Success，但未获取新会话/完整APK回读；手机随后断开ADB。最新scroll合并候选未安装，已异步请用户恢复连接；另一问“回顶发生在哪个后端”未答，按当前原生路径复现线索同时覆盖Media3/mpv。硬解已由用户重新开启，实验HDR由用户开启，未擅自重置。
+- 下一步：连接后安装scroll候选并回读hash，核对实际hwdec、源max/min-luma/primaries与SurfaceFlinger metadata types；确认洞察不误报及手动快速回顶。若元数据仍缺失，继续查输入容器/码流SEI到MediaCodec的缺口，不把样例通过冒充实播修复。若元数据齐全仍有观感差异，再查RGB GPU与厂商YUV视频处理路径。
+- 未提交/推送/发布或改版本。工作树原有改动保留、仍不干净；正式版v26.11.9.1不变。详细新报告已修正15:55旧假设并记录各阶段失败边界，version/工作进度追加本条用户摘要。
+
+## 2026-11-10 18:30 直出误判修正与安装验收
+
+- 继续用户“mpv直出不可用”，沿用AGENTS/STATUS与HandShake；INDEX不存在，分支/原有工作树保留。此前无tracking pull失败边界不变，没有合并或重置。
+- context阶段完整回读后仍GPU硬解types0；首版direct已用MediaCodec但本地NativeWindow dataspace0被错误门槛拒绝并回退Media3。修正版检查VO/硬解/源传递函数并标decoder-managed，不用GPU本地查询误判解码器提交缓冲；GPU严格检查保留。
+- direct-fixed双ABI本机构建115.7s成功；包内JNI decoder-managed标记确认，分析0error/0warning/4既有info。policy4+routing5+switch10+audio5+viewport1累计25项定向通过；不重复跑已通过且未变化的GPU FATE。
+- 普通HDR硬解直出，P5/关闭硬解保留GPU；直出隐藏shader超分控制，保存偏好不变。选定mpv核心arm64=4229c1d2…、v7=dfe5dedb…，只含JavaVM/EGL补丁，FFmpeg研究补偿未纳入。sources.json改为researchPatches以匹配实际核心。
+- 首次ADB安装返回INSTALL_FAILED_ABORTED/User rejected permissions，用户回复“可以安装”后成功；18:26:45安装direct-fixed，完整回读APK SHA8f80b2f3810366b7ad80710de1c0cecad02c19255254988844304d2f38855e31，首次安装时间保留。v7 SHAe40998e36f498042b50cca6e8b9e9f0f56c0828ff1f8ee2b0aeb6dbb04a87fd3。
+- 用户已暂停并明确确认mpv原生HDR；SurfaceFlinger当前层BT2020_ITU_PQ/types1、4K源裁剪、高通硬解，暂停63.716s。专用logcat当前无VO诊断，洞察截图也未显示，详细current-vo仍待确认；不能冒充已读取。已询问输出行/偏灰观感及快速回顶两项反馈。
+- 证据tmp/mpv-hdr-gray-device/direct-fixed-*；更新报告、patch清单、候选README/SHA256SUMS/verification，旧scroll清单存为历史。仍未提交/推送/发布/改版，工作树不干净，待验收后考虑独立提交。
+
+## 2026-11-10 20:02 mpv 兼容折叠动画与路线文案精简
+
+- 用户确认刚做的 HDR 效果不错，要求 mpv 兼容路线保留下拉评论区时的视频缩小动画，并把三条路线设置说明压缩为 1-2 句短句。
+- 新增 CollapsingVideoViewport：Media3/mpv 原生 HDR 继续用 FixedVideoViewport 固定视频层裁剪；mpv 兼容路线直接随 VideoHeader 缩小。调用处用 Obx 跟随实际 HDR 后端。
+- 路线 summary/details 与设置副标题已精简，删除防御性长说明。
+- 新增 FATE 固定输入 test/fixtures/mpv_hdr/viewport-routes.json、参考输出 test/ref/fate/mpv-hdr-viewport-routes；fixed_video_viewport_test 2 项、hdr_playback_route_test 1 项通过，5 个 Dart 文件 Analyze 无问题。
+- 尝试运行 test/plugin/pl_player 全目录时再次在测试文件加载阶段停滞，已中断，未计为失败或通过；定向测试通过。未提交、未推送、未发布、未构建。
+
+## 2026-11-10 20:30 动态 HDR 路线动画候选包
+
+- 用户要求不改缓存编码并生成测试候选包。缓存下载代码未改。
+- Gradle在线构建在 Flutter AOT 完成后长时间停在依赖下载；线程栈确认在 HTTPS 资源读取。停止 daemon 后重试仍在同一阶段。离线 Gradle 构建失败，误报 `io.flutter:armeabi_v7a_release:1.0.0-89c39ed...` 无缓存，尽管对应 JAR 已存在于 `~/.gradle/caches`。
+- 由于本轮只有 Dart 代码和文案变化，Android/Kotlin/native 层未变，采用 19:37 `PiliExo-dynamic-hdr-routes` 候选为底包；用 NDK `llvm-strip --strip-unneeded` 处理新 AOT，分别替换 `lib/arm64-v8a/libapp.so`、`lib/armeabi-v7a/libapp.so`，清理旧签名后 zipalign 16KB 并用原正式证书 V2 重签。
+- 新候选：arm64 `PiliExo-dynamic-hdr-routes-anim-arm64-v8a.apk`，45396791字节，SHA256 `d4978970cabb44a06ca931813637df1f091daae5ae6de33c22bbf3de49653ead`；v7 `PiliExo-dynamic-hdr-routes-anim-armeabi-v7a.apk`，45011789字节，SHA256 `c71dbba9d543ca83aec10d6de4fdc5946dce286d3baebff67cd149128d81ffcd`。两者签名证书SHA256均为 `b96dcddf19e446c391c25002ac1d3098fbfad0248ebe6f7a2384b4f67dbb8f51`，`zipalign -c -P 16 4` 通过。
+- 逐项回读确认：arm64 `libapp.so` SHA `8a0ca23e...`、`libmpv.so` `87dc8954...`、`libpiliexo_mpv_surface.so` `5d5d30ee...`；v7 `libapp.so` `1946aa3f...`、`libmpv.so` `454c4fcc...`、surface `ca6e06fb...`。新旧候选的 `libmpv.so` 与 surface 库逐字节一致，仅 app.so 变化。
+- arm64候选已通过ADB覆盖安装，安装包完整回读SHA256与本地一致，versionCode37/versionName26.11.9，firstInstallTime保持2026-09-02 15:19:05；冷启动进程存活，检查范围无FATAL/AndroidRuntime/UnsatisfiedLinkError/MissingPlugin/dlopen异常。用户实际动画与文案观感尚未验收。
+- 产物与校验：dist/integration/mpv-hdr-gray-20261110/；README、SHA256SUMS.txt、verification-routes-anim.json已更新。未提交、未推送、未发布、未改版本。
+
+## 2026-11-10 20:36 路线文案精简与候选 v2
+
+- 用户确认：关闭硬解后的 10 位 GPU 渲染不影响观看，不必写入设置说明；直出模式不支持 mpv 视频着色器可保留。`mpvNative.details` 改为“HDR 由原生 Surface 输出，系统负责亮度适配。直出模式不支持 mpv 视频着色器。”
+- 重新运行 `flutter assemble` 生成两 ABI AOT，`llvm-strip --strip-unneeded` 后替换底包 `libapp.so`，原证书重签。arm64 `PiliExo-dynamic-hdr-routes-anim-v2-arm64-v8a.apk`，45396791字节，SHA256 `b86bd9e4224f17eebcfe86189e419537737daae336408bb3f2e2d9e067227ebb`；v7 `...anim-v2-armeabi-v7a.apk`，45011789字节，SHA256 `9fdead9f13bf8f7e3f29c8103801824578c8c6bab654c25be8ab48258e019952`。
+- 两包 V2 原证书验证和 `zipalign -c -P 16 4` 均通过；arm64 已覆盖安装，完整回读 SHA256 一致，versionCode37/versionName26.11.9，firstInstallTime 保持。native mpv/surface 与底包逐字节一致，仅 libapp.so 变化。
+- v1 候选和 verification-routes-anim.json 保留；最新校验为 SHA256SUMS.txt 和 verification-routes-anim-v2.json。未提交、未推送、未发布、未改版本。
+
+## 2026-11-10 21:23 mpv 原生 HDR 状态栏虚化
+
+- 用户要求给 mpv 原生 HDR 补状态栏虚化。实现：`MpvHdrPlugin.OutputView` 新增 `captureAmbientFrame`，用 `PixelCopy.request` 从原生 `SurfaceView` 复制 96×54 当前帧；Dart `MpvHdrController` 增加 `captureAmbientFrame`/`captureAmbientPixels`；`view.dart` 增加 `mpvHdrActive` 分支，和 Media3 HDR 共用 `_captureNativeAmbientFrame`。
+- 用户要求复用已有 Kotlin 代码，不新增生产类：删除 `AmbientFrameEncoding.kt`，把 `ambientArgbToRgba` 顶层函数放到现有 `HdrMedia3Plugin.kt`，Media3 与 mpv 共用。新增 FATE 固定输入/参考输出 `test/fixtures/ambient_frame/argb-colors.json`、`test/ref/fate/ambient-frame-rgba` 和 `AmbientFrameEncodingTest.kt`，覆盖 ARGB→RGBA 编码。
+- 构建环境：D盘 Gradle 多次被同步锁和 Flutter 引擎 JAR 下载阻塞。改用 `C:/Users/maxzr/AppData/Local/piliexo-ambient-20261110` 隔离树；在 `~/.gradle/init.d` 添加本地 Maven 引擎源，复用已验证引擎JAR；media-kit 三个 JAR 复用 D 盘缓存。Flutter Release split-per-abi 构建成功。
+- 双ABI原证书签名候选：arm64 `PiliExo-ambient-hdr-arm64-v8a.apk`，45413175字节，SHA256 `6c7512dddc47666dbf60d476c04a2e7d11c4785dd2595c26a31c0e5dbd4c0af3`；v7 `PiliExo-ambient-hdr-armeabi-v7a.apk`，45024077字节，SHA256 `a39d94d1a0f907529fe9f4491249c678398672afd701ade34422515cf7c65425`。`libmpv.so`仍为已验证的87dc8954…/454c4fcc…，zipalign 16KB与V2原证书验证通过。
+- arm64已覆盖安装，完整回读SHA256一致，versionCode37/versionName26.11.9，firstInstallTime保持；classes.dex确认包含`captureAmbientFrame`；冷启动进程存活，检查范围无FATAL/Unlink/MissingPlugin/dlopen/NoSuchMethod异常。状态栏实际虚化效果尚待用户播放HDR视频确认。
+- 产物：dist/integration/mpv-hdr-gray-20261110/；verification-ambient-hdr.json、README、SHA256SUMS已更新。未提交、未推送、未发布、未改版本。

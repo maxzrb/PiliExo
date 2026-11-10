@@ -23,6 +23,7 @@ import 'package:PiliPlus/pages/sponsor_block/block_mixin.dart';
 import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
+import 'package:PiliPlus/plugin/pl_player/backends/mpv_hdr.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/double_tap_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/duration.dart';
@@ -88,12 +89,24 @@ typedef PlayOwner = ({String tag, Type? type});
 class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Player? _videoPlayerController;
   VideoController? _videoController;
+  MpvHdrController? _mpvHdrController;
+  StreamSubscription<String>? _mpvHdrErrors;
+  final RxBool mpvHdrActive = false.obs;
+  String? _pendingMpvHdrError;
+  bool _mpvHdrFallbackInProgress = false;
+
+  MpvHdrController? get mpvHdrController => _mpvHdrController;
   HdrMedia3Controller? _hdrMedia3Controller;
   StreamSubscription<HdrMedia3Event>? _hdrSubscription;
   final RxBool media3HdrActive = false.obs;
 
   /// 播放页视频输出已经可以挂载；mpv 控制器创建完成后单独通知页面。
   final RxBool videoOutputReady = false.obs;
+
+  /// 退出前移除视频及底板，防止原生容器在返回动画中缩成黑窗。
+  final RxBool videoOutputHidden = false.obs;
+  Future<void>? _hideOutputFuture;
+  bool _routeExitPending = false;
 
   /// 播放页顶部系统状态栏使用的低分辨率视频环境帧。
   final ValueNotifier<ui.Image?> statusBarAmbientFrame = ValueNotifier(null);
@@ -168,6 +181,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   bool get playWhenReady => _playWhenReady;
 
   bool get isMedia3Hdr => _hdrMedia3Controller != null;
+  bool get supportsVideoShaders =>
+      !isMedia3Hdr && !(_mpvHdrController?.directOutput ?? false);
 
   HdrMedia3Controller? get hdrMedia3Controller => _hdrMedia3Controller;
 
@@ -280,7 +295,17 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       videoParams.pixelformat,
     ].whereType<String>().where((value) => value.isNotEmpty).toList();
     final telemetry = PlaybackTelemetry(
-      engine: 'mpv 兼容播放器',
+      engine: mpvHdrActive.value
+          ? (_mpvHdrController?.diagnostics.value['hdrActive'] == true
+                ? 'mpv 原生 HDR'
+                : 'mpv 原生输出')
+          : 'mpv 兼容播放器',
+      videoCodecString: dataSource is HdrNetworkSource
+          ? (dataSource as HdrNetworkSource).video.codecs ?? ''
+          : '',
+      dolbyVisionProfile:
+          _mpvHdrController?.detectedDolbyVisionProfile?.toString() ?? '',
+      hdrType: _mpvHdrController?.hdrType ?? '',
       droppedFramesAvailable:
           _mpvRuntimeObserver?.metrics.droppedFramesAvailable ?? false,
       droppedFrames: _mpvRuntimeObserver?.metrics.droppedFrames ?? 0,
@@ -291,9 +316,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       videoColor: colorParts.join(' / '),
       frameRate: _formatFrameRate(videoTrack.fps),
       videoDecoder: videoTrack.decoder ?? '',
-      videoDecoderType: videoParams.hwPixelformat?.isNotEmpty == true
-          ? '硬解'
-          : '',
+      videoDecoderType:
+          _mpvHdrController?.decoderType ??
+          (videoParams.hwPixelformat?.isNotEmpty == true ? '硬解' : ''),
       videoBitrate: videoBitrate.isNotEmpty
           ? videoBitrate
           : _formatBitrate(dataSource.videoBitrate),
@@ -990,12 +1015,19 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   // 路由退出前先清理 HDR 的独立 Surface，避免下一页显示期间暂留上一帧。
-  void hideHdrSurface() {
-    if (!Platform.isAndroid) return;
-    final controller = _hdrMedia3Controller;
-    if (controller != null) {
-      unawaited(controller.hideSurface());
+  Future<void> hideHdrSurface() => _hideOutputFuture ??= _hideVideoOutput();
+
+  Future<void> _hideVideoOutput() async {
+    videoOutputHidden.value = true;
+    if (Platform.isAndroid) {
+      await Future.wait([
+        if (_mpvHdrController case final controller?) controller.hideSurface(),
+        if (_hdrMedia3Controller case final controller?)
+          controller.hideSurface(),
+      ]);
     }
+    // 等 Flutter 和原生平台视图提交隐藏，再开始返回路由动画。
+    await WidgetsBinding.instance.endOfFrame;
   }
 
   void onUpdatePadding(EdgeInsets padding) {
@@ -1184,8 +1216,12 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     Volume? volume,
     bool autoFullScreenFlag = false,
   }) async {
+    videoOutputHidden.value = false;
+    _hideOutputFuture = null;
+    _routeExitPending = false;
     try {
       _processing = true;
+      _pendingMpvHdrError = null;
       _longPressRevision++;
       _rateCoordinator.resetForSource();
       longPressStatus.value = false;
@@ -1195,6 +1231,13 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       this.width = width;
       this.height = height;
       this.dataSource = dataSource;
+      if (const bool.fromEnvironment('PILIEXO_MPV_HDR_SOURCE_TRACE')) {
+        // 仅本机固定码流对照构建启用；普通构建不记录签名媒体地址。
+        debugPrint(
+          'PiliSourceTrace video=${dataSource.videoSource} '
+          'audio=${dataSource.audioSource}',
+        );
+      }
       clearStatusBarAmbientFrame();
       _resetPlaybackInsight();
       _autoPlay = autoplay;
@@ -1236,6 +1279,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
       if (_playerCount == 0) {
         await _disposeHdrController();
+        await _disposeMpvHdrController();
         _removeListeners();
         _videoPlayerController?.dispose();
         _videoPlayerController = null;
@@ -1256,6 +1300,15 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       if (_autoPlay) _startBandwidthRefresh();
       onInit?.call();
     } catch (err, stackTrace) {
+      if (dataSource is HdrNetworkSource && dataSource.useMpvHdr) {
+        await _fallbackMpvHdrToMedia3(
+          dataSource,
+          err.toString(),
+          initialPosition: seekTo,
+          initialDuration: duration,
+        );
+        return;
+      }
       if (dataSource is HdrNetworkSource) {
         if (!_hdrFallbackInProgress) await _fallbackHdrToMpv();
         return;
@@ -1267,6 +1320,13 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
     } finally {
       _processing = false;
+      if (_pendingMpvHdrError case final message?) {
+        _pendingMpvHdrError = null;
+        if (this.dataSource case final HdrNetworkSource source
+            when source.useMpvHdr) {
+          unawaited(_fallbackMpvHdrToMedia3(source, message));
+        }
+      }
     }
   }
 
@@ -1287,8 +1347,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   late final Rx<SuperResolutionType> superResolutionType =
       (isAnim ? Pref.superResolutionType : SuperResolutionType.disable).obs;
   Future<void> setShader([SuperResolutionType? type, NativePlayer? pp]) async {
-    // Media3 的 HDR Surface 不经过 mpv shader 管线，避免破坏原生色彩输出。
-    if (isMedia3Hdr) return;
+    // 原生解码 Surface 不经过 shader 管线；不修改超分偏好，GPU 路径仍使用原设置。
+    if (!supportsVideoShaders) return;
     if (type == null) {
       type = superResolutionType.value;
     } else {
@@ -1324,7 +1384,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
-  Future<Player> _initPlayer() async {
+  Future<Player> _initPlayer({HdrNetworkSource? nativeHdrSource}) async {
     assert(_videoPlayerController == null);
     final opt = {
       'video-sync': Pref.videoSync,
@@ -1333,6 +1393,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         output: Pref.audioOutput,
       ),
       'volume-max': kMaxVolume.toString(),
+      if (nativeHdrSource != null) 'hwdec': hwdec ?? 'no',
     };
     final autosync = Pref.autosync;
     opt['autosync'] = autosync;
@@ -1352,14 +1413,42 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     assert(_videoController == null);
 
-    _videoController = await VideoController.create(
-      player,
-      configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: hwdec != null,
-        androidAttachSurfaceAfterVideoParameters: false,
-        hwdec: hwdec,
-      ),
-    );
+    if (nativeHdrSource != null) {
+      final output = MpvHdrController(
+        player,
+        codecs: nativeHdrSource.video.codecs,
+        hardwareEnabled: hwdec != null,
+        qualityCode: nativeHdrSource.qualityCode,
+        width: nativeHdrSource.video.width,
+        height: nativeHdrSource.video.height,
+      );
+      _mpvHdrController = output;
+      _mpvHdrErrors = output.errors.listen((message) {
+        if (!identical(_mpvHdrController, output)) return;
+        if (processing) {
+          _pendingMpvHdrError = message;
+        } else if (dataSource case final HdrNetworkSource source) {
+          unawaited(_fallbackMpvHdrToMedia3(source, message));
+        }
+      });
+      try {
+        await output.initialize();
+        output.diagnostics.addListener(_notifyPlaybackInsight);
+      } catch (_) {
+        await _disposeMpvHdrController();
+        await player.dispose();
+        rethrow;
+      }
+    } else {
+      _videoController = await VideoController.create(
+        player,
+        configuration: VideoControllerConfiguration(
+          enableHardwareAcceleration: hwdec != null,
+          androidAttachSurfaceAfterVideoParameters: false,
+          hwdec: hwdec,
+        ),
+      );
+    }
 
     if (Platform.isAndroid) {
       // 避免切源期间的 mpv 空闲画面重设暂停视频的输出尺寸。
@@ -1380,7 +1469,72 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       Platform.isAndroid &&
       !isLive &&
       // 播放页创建 HDR 源前已应用全局设置或本页覆盖，不再覆盖用户热切换。
-      source is HdrNetworkSource;
+      source is HdrNetworkSource &&
+      !source.useMpvHdr;
+
+  Future<void> _disposeMpvHdrController() async {
+    final controller = _mpvHdrController;
+    _mpvHdrController = null;
+    mpvHdrActive.value = false;
+    await _mpvHdrErrors?.cancel();
+    _mpvHdrErrors = null;
+    if (controller != null) {
+      controller.diagnostics.removeListener(_notifyPlaybackInsight);
+      try {
+        await controller.hideSurface();
+      } finally {
+        await controller.dispose();
+      }
+    }
+  }
+
+  Future<void> _fallbackMpvHdrToMedia3(
+    HdrNetworkSource source,
+    String message, {
+    Duration? initialPosition,
+    Duration? initialDuration,
+  }) async {
+    if (_mpvHdrFallbackInProgress ||
+        _playerCount == 0 ||
+        !identical(dataSource, source)) {
+      return;
+    }
+    _mpvHdrFallbackInProgress = true;
+    final position = initialPosition ?? currentPosition;
+    final autoplay = playWhenReady || isPlaying;
+    final duration = initialDuration ?? currentDuration;
+    final rate = playbackSpeed;
+    try {
+      if (kDebugMode) debugPrint('mpv HDR 回退：$message');
+      SmartDialog.showToast('mpv HDR 输出不可用，已切换 ExoPlayer');
+      await setDataSource(
+        HdrNetworkSource(
+          qualityCode: source.qualityCode,
+          video: source.video,
+          audio: source.audio,
+          headers: source.headers,
+          videoRepresentations: source.videoRepresentations,
+        ),
+        seekTo: position,
+        duration: duration,
+        width: width,
+        height: height,
+        autoplay: autoplay,
+        speed: rate,
+        isVertical: _isVertical,
+        aid: _aid,
+        bvid: _bvid,
+        cid: cid,
+        epid: _epid,
+        seasonId: _seasonId,
+        pgcType: _pgcType,
+        videoType: _videoType,
+        onInit: _onInitCallback,
+      );
+    } finally {
+      _mpvHdrFallbackInProgress = false;
+    }
+  }
 
   Future<void> _disposeHdrController() async {
     videoOutputReady.value = false;
@@ -1411,6 +1565,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _initVideoFit();
 
     // HDR 与 mpv 切换时，先释放 mpv 的 Surface，避免两个解码器同时占用硬件。
+    await _disposeMpvHdrController();
     if (_videoPlayerController != null) {
       _removeListeners();
       await _videoPlayerController?.dispose();
@@ -1469,9 +1624,24 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     var player = _videoPlayerController;
 
+    final nativeSource = dataSource is HdrNetworkSource && dataSource.useMpvHdr
+        ? dataSource
+        : null;
+    if (player != null &&
+        ((nativeSource != null) != (_mpvHdrController != null) ||
+            nativeSource?.video.codecs != _mpvHdrController?.codecs)) {
+      await _disposeMpvHdrController();
+      _removeListeners();
+      await player.dispose();
+      player = null;
+      _videoPlayerController = null;
+      _videoController = null;
+    }
+
     if (player == null) {
-      player = await _initPlayer();
+      player = await _initPlayer(nativeHdrSource: nativeSource);
       if (_playerCount == 0) {
+        await _disposeMpvHdrController();
         _removeListeners();
         player.dispose();
         player = null;
@@ -1479,6 +1649,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         return;
       }
       _videoPlayerController = player;
+      mpvHdrActive.value = _mpvHdrController != null;
       // 先挂载已创建的纹理，再打开媒体，避免暂停切换时首帧早于视图挂载。
       videoOutputReady.value = true;
       if (isAnim && superResolutionType.value != .disable) {
@@ -1491,7 +1662,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       ...DecoderOperatingRate.options(
         plannedRate: DecoderOperatingRate.plan(
           isAndroid: Platform.isAndroid,
-          hardwareEnabled: hwdec != null,
+          hardwareEnabled:
+              hwdec != null && !(_mpvHdrController?.profile5 ?? false),
           isLive: isLive,
           audioOnly: onlyPlayAudio.value,
           frameRate: dataSource.videoFrameRate,
@@ -2816,8 +2988,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
-  void onCloseAll() {
-    hideHdrSurface();
+  Future<void> onCloseAll() async {
+    if (_routeExitPending) return;
+    _routeExitPending = true;
+    await hideHdrSurface();
     _isCloseAll = true;
     if (PlatformUtils.isDesktop) exitDesktopFullScreen();
     dispose();
@@ -2891,7 +3065,12 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
     videoOutputReady.value = false;
     unawaited(_disposeHdrController());
-    _videoPlayerController?.dispose();
+    final player = _videoPlayerController;
+    unawaited(
+      _disposeMpvHdrController().whenComplete(() async {
+        await player?.dispose();
+      }),
+    );
     _videoPlayerController = null;
     _videoController = null;
     _instance = null;
@@ -3039,9 +3218,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
   }
 
-  void onPopInvokedWithResult(bool didPop, Object? result) {
+  Future<void> onPopInvokedWithResult(bool didPop, Object? result) async {
     if (didPop) {
-      hideHdrSurface();
+      unawaited(hideHdrSurface());
       if (playerStatus.isPlaying) {
         pause();
       }
@@ -3070,7 +3249,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       triggerFullScreen(status: false);
       return;
     }
-    hideHdrSurface();
+    if (_routeExitPending) return;
+    _routeExitPending = true;
+    await hideHdrSurface();
     Get.back();
   }
 }

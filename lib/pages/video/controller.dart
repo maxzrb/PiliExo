@@ -52,6 +52,8 @@ import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
+import 'package:PiliPlus/plugin/pl_player/models/mpv_hdr_policy.dart';
+import 'package:PiliPlus/plugin/pl_player/models/hdr_playback_route.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
@@ -132,8 +134,14 @@ class VideoDetailController extends GetxController
   /// 播放器配置 画质 音质 解码格式
   final Rxn<VideoQuality> currentVideoQa = Rxn<VideoQuality>();
   final RxBool switchingPlayer = false.obs;
-  bool? _media3HdrOverride;
-  bool get useMedia3Hdr => _media3HdrOverride ?? Pref.enableMedia3Hdr;
+  HdrPlaybackRoute? _hdrRouteOverride;
+  HdrPlaybackRoute get hdrPlaybackRoute =>
+      _hdrRouteOverride ?? Pref.hdrPlaybackRoute;
+  HdrPlaybackRoute get actualHdrRoute => plPlayerController.isMedia3Hdr
+      ? HdrPlaybackRoute.media3Native
+      : plPlayerController.mpvHdrActive.value
+      ? HdrPlaybackRoute.mpvNative
+      : HdrPlaybackRoute.mpvCompatible;
 
   bool get canSwitchHdrPlayer =>
       !isClosed &&
@@ -148,35 +156,35 @@ class VideoDetailController extends GetxController
       data.dash?.video?.isNotEmpty == true;
 
   /// 只改变当前播放页的后端选择，切换时保留进度和播放意图。
-  Future<void> switchHdrPlayer() async {
+  Future<void> switchHdrPlayer(HdrPlaybackRoute route) async {
     if (!canSwitchHdrPlayer || switchingPlayer.value) return;
     if (isQuerying || plPlayerController.processing) {
       SmartDialog.showToast('视频加载中，请稍后切换');
       return;
     }
-    final useMedia3 = !plPlayerController.isMedia3Hdr;
-    final previousOverride = _media3HdrOverride;
+    if (actualHdrRoute == route) return;
+    final previousOverride = _hdrRouteOverride;
     final position = plPlayerController.currentPosition;
     // 片尾拖回后后端可能已续播，实际播放中不能沿用片尾清除的旧意图。
     final autoplay =
         plPlayerController.playWhenReady || plPlayerController.isPlaying;
     switchingPlayer.value = true;
-    _media3HdrOverride = useMedia3;
+    _hdrRouteOverride = route;
     try {
       await playerInit(autoplay: autoplay, resumePosition: position);
       if (isClosed) return;
       if (plPlayerController.dataStatus.value == DataStatus.error) {
-        _media3HdrOverride = previousOverride;
+        _hdrRouteOverride = previousOverride;
         SmartDialog.showToast('播放器切换失败，请重载视频后重试');
       } else {
         // 原生 HDR 初始化失败可能自动回退，后续切画质仍沿用实际后端。
-        _media3HdrOverride = plPlayerController.isMedia3Hdr;
-        if (plPlayerController.isMedia3Hdr == useMedia3) {
-          SmartDialog.showToast('已切换为 ${useMedia3 ? 'ExoPlayer' : 'mpv'} 播放器');
+        _hdrRouteOverride = actualHdrRoute;
+        if (actualHdrRoute == route) {
+          SmartDialog.showToast('已切换为 ${route.title}');
         }
       }
     } catch (error) {
-      _media3HdrOverride = previousOverride;
+      _hdrRouteOverride = previousOverride;
       if (!isClosed) SmartDialog.showToast('播放器切换失败，请重试');
       if (kDebugMode) debugPrint('切换播放器失败：$error');
     } finally {
@@ -916,7 +924,7 @@ class VideoDetailController extends GetxController
           isAndroid: Platform.isAndroid,
           isLive: false,
           isFile: isFileSource,
-          enabled: useMedia3Hdr,
+          enabled: hdrPlaybackRoute.isNative,
           qualityCode: currentVideoQa.value?.code ?? 0,
         ) &&
         data.dash != null) {
@@ -926,6 +934,7 @@ class VideoDetailController extends GetxController
           : VideoUtils.getCdnUrls(firstAudio!.playUrls, isAudio: true);
       if (videoUrls.isNotEmpty) {
         source = HdrNetworkSource(
+          useMpvHdr: hdrPlaybackRoute == HdrPlaybackRoute.mpvNative,
           qualityCode: currentVideoQa.value!.code,
           video: HdrTrackSource(
             urls: videoUrls,
@@ -971,9 +980,23 @@ class VideoDetailController extends GetxController
       );
     }
 
+    // FATE 构建只替换媒体输入，仍经过正式播放器、字幕和弹幕覆盖层。
+    final playbackSource = MpvHdrPolicy.fateInput.isEmpty
+        ? source
+        : HdrNetworkSource(
+            useMpvHdr: true,
+            qualityCode: 126,
+            video: HdrTrackSource(
+              urls: const [MpvHdrPolicy.fateInput],
+              codecs: 'dvh1.05.05',
+              width: 1920,
+              height: 1080,
+              frameRate: '24',
+            ),
+          );
     await plPlayerController.setDataSource(
-      source,
-      seekTo: seek,
+      playbackSource,
+      seekTo: MpvHdrPolicy.fateInput.isEmpty ? seek : Duration.zero,
       duration: data.timeLength == null
           ? null
           : Duration(milliseconds: data.timeLength!),

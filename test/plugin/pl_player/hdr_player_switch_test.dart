@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
+import 'package:PiliPlus/plugin/pl_player/models/hdr_playback_route.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -16,6 +17,7 @@ import 'package:material_ui/material_ui.dart';
 class _Player extends Fake implements PlPlayerController {
   _Player(Map<String, dynamic> input)
     : isMedia3Hdr = input['active'],
+      mpvHdrActive = (input['mpvActive'] == true).obs,
       currentPosition = Duration(milliseconds: input['position']),
       playWhenReady = input['autoplay'],
       isPlaying = input['playing'] ?? input['autoplay'],
@@ -27,6 +29,8 @@ class _Player extends Fake implements PlPlayerController {
   final dataStatus = DataStatus.loaded.obs;
   @override
   bool isMedia3Hdr;
+  @override
+  final RxBool mpvHdrActive;
   @override
   final Duration currentPosition;
   @override
@@ -57,13 +61,20 @@ class _Page extends VideoDetailController {
     bool autoFullScreenFlag = false,
     Duration? resumePosition,
   }) async {
-    calls.add([useMedia3Hdr, resumePosition?.inMilliseconds, autoplay]);
+    calls.add([
+      hdrPlaybackRoute.storageValue,
+      resumePosition?.inMilliseconds,
+      autoplay,
+    ]);
     await releaseLoad.future;
     switch (input['outcome']) {
       case 'success':
-        backend.isMedia3Hdr = !backend.isMedia3Hdr;
+        backend.isMedia3Hdr = hdrPlaybackRoute == HdrPlaybackRoute.media3Native;
+        backend.mpvHdrActive.value =
+            hdrPlaybackRoute == HdrPlaybackRoute.mpvNative;
       case 'fallback':
         backend.isMedia3Hdr = false;
+        backend.mpvHdrActive.value = false;
       case 'error':
         backend.dataStatus.value = DataStatus.error;
       case 'throw':
@@ -107,14 +118,19 @@ void main() {
       );
       final player = _Player(input);
       final page = _Page(player, input);
-      final pending = page.switchHdrPlayer();
-      if (input['repeat'] == true) await page.switchHdrPlayer();
+      final target = player.isMedia3Hdr
+          ? HdrPlaybackRoute.mpvNative
+          : HdrPlaybackRoute.media3Native;
+      final pending = page.switchHdrPlayer(target);
+      if (input['repeat'] == true) {
+        await page.switchHdrPlayer(target);
+      }
       page.releaseLoad.complete();
       await pending;
       expect({
         'calls': page.calls,
         'active': player.isMedia3Hdr,
-        'useMedia3': page.useMedia3Hdr,
+        'mpvActive': player.mpvHdrActive.value,
       }, references[i]);
       expect(page.switchingPlayer.value, isFalse);
       expect(GStorage.setting.get(SettingBoxKey.enableMedia3Hdr), isFalse);

@@ -4,14 +4,31 @@
     "repo": "mpv-player/mpv",
     "tag": "v0.41.0",
     "archiveSha256": "ee21092a5ee427353392360929dc64645c54479aefdb5babc5cfbb5fad626209",
-    "bytes": 7262018
+    "bytes": 7262018,
+    "patches": [
+      {
+        "file": "mpv-lavc-java-vm.patch",
+        "sha256": "e03a5ca2a64de75e0c8026e73344e9b72abd714c3acbf5df4dc1f20d47a6edf0"
+      },
+      {
+        "file": "android-egl-bt2020-pq.patch",
+        "sha256": "df5aaf0ef99b11e8583f2804d8b255827c291c6ba19d8357b18f4440ace8be5d"
+      }
+    ]
   },
   {
     "name": "ffmpeg",
     "repo": "FFmpeg/FFmpeg",
     "tag": "n9.0.1",
     "archiveSha256": "195d54bebe1a27f84d77f4b989d193466f305b355da92292766a69f16880b18a",
-    "bytes": 17306989
+    "bytes": 17306989,
+    "researchPatches": [
+      {
+        "file": "ffmpeg-mediacodec-hdr-static-info.patch",
+        "sha256": "f01e35acc099bbc52f622f2c774771bf4f7036b9c50187a899ab66972a15e0fd"
+      }
+    ],
+    "candidatePatchPolicy": "direct-fixed 候选使用未应用这些研究补丁的 FFmpeg 基线；GPU 硬解真机元数据仍为0，未纳入选定核心。"
   },
   {
     "name": "mbedtls",

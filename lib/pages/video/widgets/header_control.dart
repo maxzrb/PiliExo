@@ -27,6 +27,7 @@ import 'package:PiliPlus/pages/setting/models/play_settings.dart'
 import 'package:PiliPlus/pages/setting/widgets/popup_item.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
+import 'package:PiliPlus/pages/setting/widgets/hdr_route_dialog.dart';
 import 'package:PiliPlus/pages/video/introduction/local/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/pgc/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
@@ -483,25 +484,32 @@ class HeaderControlState extends State<HeaderControl>
                   if (!videoDetailCtr.canSwitchHdrPlayer) {
                     return const SizedBox.shrink();
                   }
-                  final target = plPlayerController.media3HdrActive.value
-                      ? 'mpv'
-                      : 'ExoPlayer';
+
                   final switching = videoDetailCtr.switchingPlayer.value;
                   return ListTile(
                     dense: true,
                     enabled: !switching,
                     leading: const Icon(Icons.swap_horiz, size: 20),
                     title: Text(
-                      switching ? '正在切换播放器…' : '切换为 $target 播放器',
+                      switching
+                          ? '正在切换播放器…'
+                          : 'HDR 路线：${videoDetailCtr.actualHdrRoute.title}',
                       style: titleStyle,
                     ),
-                    onTap: () {
+                    onTap: () async {
                       Get.back();
-                      videoDetailCtr.switchHdrPlayer();
+                      final route = await showHdrRouteDialog(
+                        this.context,
+                        value: videoDetailCtr.actualHdrRoute,
+                        currentVideo: true,
+                      );
+                      if (route != null) {
+                        await videoDetailCtr.switchHdrPlayer(route);
+                      }
                     },
                   );
                 }),
-                if (!plPlayerController.isMedia3Hdr)
+                if (plPlayerController.supportsVideoShaders)
                   PopupListTile<SuperResolutionType>(
                     dense: true,
                     leading: const Icon(

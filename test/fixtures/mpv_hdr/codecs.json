@@ -1,0 +1,11 @@
+[
+  {"codec": "dvhe.05.06", "profile": 5, "softwareCorrection": true},
+  {"codec": "dvh1.05.09", "profile": 5, "softwareCorrection": true},
+  {"codec": "DVHE.5.6", "profile": 5, "softwareCorrection": true},
+  {"codec": "dvhe.08.06", "profile": 8, "softwareCorrection": false},
+  {"codec": "dvh1.07.06", "profile": 7, "softwareCorrection": false},
+  {"codec": "hev1.2.4.L153.B0", "profile": null, "softwareCorrection": false},
+  {"codec": "av01.0.13M.10", "profile": null, "softwareCorrection": false},
+  {"codec": "dvhe.invalid", "profile": null, "softwareCorrection": false},
+  {"codec": null, "profile": null, "softwareCorrection": false}
+]

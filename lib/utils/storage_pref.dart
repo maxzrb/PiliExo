@@ -32,6 +32,7 @@ import 'package:PiliPlus/plugin/pl_player/models/audio_output_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
+import 'package:PiliPlus/plugin/pl_player/models/hdr_playback_route.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
@@ -873,8 +874,20 @@ abstract final class Pref {
   static bool get enableHA =>
       _setting.get(SettingBoxKey.enableHA, defaultValue: true);
 
+  static HdrPlaybackRoute get hdrPlaybackRoute => HdrPlaybackRoute.resolve(
+    stored: _setting.get(SettingBoxKey.hdrPlaybackRoute),
+    legacyMedia3: _setting.get(
+      SettingBoxKey.enableMedia3Hdr,
+      defaultValue: true,
+    ),
+    legacyMpv: _setting.get(SettingBoxKey.enableMpvHdr, defaultValue: false),
+  );
+
   static bool get enableMedia3Hdr =>
-      _setting.get(SettingBoxKey.enableMedia3Hdr, defaultValue: true);
+      hdrPlaybackRoute == HdrPlaybackRoute.media3Native;
+
+  static bool get enableMpvHdr =>
+      hdrPlaybackRoute == HdrPlaybackRoute.mpvNative;
 
   static bool get enableAudioFocus =>
       _setting.get(SettingBoxKey.enableAudioFocus, defaultValue: true);

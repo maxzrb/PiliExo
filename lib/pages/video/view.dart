@@ -55,6 +55,7 @@ import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/plugin/pl_player/view/view.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/fixed_video_viewport.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
@@ -587,10 +588,30 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                   child: Stack(
                     clipBehavior: .none,
                     children: [
-                      SizedBox(
-                        width: maxWidth,
-                        height: height,
-                        child: videoPlayer(width: maxWidth, height: height),
+                      Builder(
+                        builder: (context) {
+                          final video = SizedBox(
+                            width: maxWidth,
+                            height: height,
+                            child: videoPlayer(width: maxWidth, height: height),
+                          );
+                          return Obx(
+                            () {
+                              final plPlayer =
+                                  videoDetailController.plPlayerController;
+                              final nativeOutput =
+                                  plPlayer.media3HdrActive.value ||
+                                  plPlayer.mpvHdrActive.value;
+                              // 原生 HDR 保持视频层尺寸稳定；mpv 兼容路线保留下拉评论时的缩小动画。
+                              return CollapsingVideoViewport(
+                                animateShrink: !nativeOutput,
+                                width: maxWidth,
+                                height: height,
+                                child: video,
+                              );
+                            },
+                          );
+                        },
                       ),
                       _buildHeaderOverlay(),
                     ],
@@ -1221,9 +1242,13 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   }) => Obx(
     () => popScope(
       key: videoDetailController.videoPlayerKey,
-      // HDR 使用独立 SurfaceView，先拦截返回以便在路由动画前同步发起清屏。
+      // Android 三条路线都先完成视频层隐藏，再开始返回动画。
       canPop:
-          !videoDetailController.plPlayerController.media3HdrActive.value &&
+          (!Platform.isAndroid ||
+              videoDetailController
+                  .plPlayerController
+                  .videoOutputHidden
+                  .value) &&
           !isFullScreen &&
           !videoDetailController.plPlayerController.isDesktopPip &&
           (videoDetailController.horizontalScreen || isPortrait),
@@ -1240,12 +1265,12 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
             outputReady: outputReady,
             isMedia3Hdr: isHdr,
           );
-          return !shouldBuild
+          return !shouldBuild || controller!.videoOutputHidden.value
               ? const SizedBox.shrink()
               : PLVideoPlayer(
                   maxWidth: width,
                   maxHeight: height,
-                  plPlayerController: controller!,
+                  plPlayerController: controller,
                   videoDetailController: videoDetailController,
                   introController: introController,
                   headerControl: HeaderControl(
@@ -1480,10 +1505,12 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        const Positioned.fill(
-          child: ColoredBox(
-            color: Colors.black,
-            isAntiAlias: false,
+        Positioned.fill(
+          child: Obx(
+            () =>
+                videoDetailController.plPlayerController.videoOutputHidden.value
+                ? const SizedBox.shrink()
+                : const ColoredBox(color: Colors.black, isAntiAlias: false),
           ),
         ),
 

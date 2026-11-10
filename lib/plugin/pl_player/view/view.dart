@@ -36,6 +36,7 @@ import 'package:PiliPlus/pages/video/post_panel/popup_menu_text.dart';
 import 'package:PiliPlus/pages/video/post_panel/view.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/mpv_hdr_subtitle.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_control_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
@@ -478,34 +479,58 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     }
   }
 
+  Future<ui.Image?> _captureNativeAmbientFrame({
+    required Future<AmbientRgbaFrame?> Function() capturePixels,
+    required Future<Uint8List?> Function() captureBytes,
+  }) async {
+    if ((AmbientFramePolicy.compare || AmbientFramePolicy.rawPixels) &&
+        AmbientFramePolicy.optimized.value) {
+      final pixels = await capturePixels();
+      if (pixels != null) return await pixels.toImage();
+    }
+    final bytes = await captureBytes();
+    if (bytes == null || bytes.isEmpty) return null;
+    final codec = await ui.instantiateImageCodec(
+      bytes,
+      targetWidth: _ambientSampleWidth,
+      targetHeight: _ambientSampleHeight,
+    );
+    try {
+      return (await codec.getNextFrame()).image;
+    } finally {
+      codec.dispose();
+    }
+  }
+
   Future<ui.Image?> _captureAmbientFrame() async {
     try {
       if (plPlayerController.media3HdrActive.value) {
-        if ((AmbientFramePolicy.compare || AmbientFramePolicy.rawPixels) &&
-            AmbientFramePolicy.optimized.value) {
-          final pixels = await plPlayerController.hdrMedia3Controller
-              ?.captureAmbientPixels(
-                width: _ambientSampleWidth,
-                height: _ambientSampleHeight,
-              );
-          if (pixels != null) return await pixels.toImage();
-        }
-        final bytes = await plPlayerController.hdrMedia3Controller
-            ?.captureAmbientFrame(
-              width: _ambientSampleWidth,
-              height: _ambientSampleHeight,
-            );
-        if (bytes == null || bytes.isEmpty) return null;
-        final codec = await ui.instantiateImageCodec(
-          bytes,
-          targetWidth: _ambientSampleWidth,
-          targetHeight: _ambientSampleHeight,
+        final controller = plPlayerController.hdrMedia3Controller;
+        if (controller == null) return null;
+        return await _captureNativeAmbientFrame(
+          capturePixels: () => controller.captureAmbientPixels(
+            width: _ambientSampleWidth,
+            height: _ambientSampleHeight,
+          ),
+          captureBytes: () => controller.captureAmbientFrame(
+            width: _ambientSampleWidth,
+            height: _ambientSampleHeight,
+          ),
         );
-        try {
-          return (await codec.getNextFrame()).image;
-        } finally {
-          codec.dispose();
-        }
+      }
+      if (plPlayerController.mpvHdrActive.value) {
+        final controller = plPlayerController.mpvHdrController;
+        if (controller == null) return null;
+        return await _captureNativeAmbientFrame(
+          capturePixels: () => controller.captureAmbientPixels(
+            width: _ambientSampleWidth,
+            height: _ambientSampleHeight,
+          ),
+          captureBytes: () => controller.captureAmbientFrame(
+            width: _ambientSampleWidth,
+            height: _ambientSampleHeight,
+          ),
+        );
       }
 
       final renderObject = _videoKey.currentContext?.findRenderObject();
@@ -715,7 +740,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       /// 超分辨率
       BottomControlType.superResolution => Obx(
         () {
-          if (plPlayerController.media3HdrActive.value) {
+          if (plPlayerController.media3HdrActive.value ||
+              (plPlayerController.mpvHdrActive.value &&
+                  !plPlayerController.supportsVideoShaders)) {
             return const SizedBox.shrink();
           }
           final type = plPlayerController.superResolutionType.value;
@@ -1661,6 +1688,23 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             if (plPlayerController.media3HdrActive.value) {
               return const SizedBox.shrink();
             }
+            if (plPlayerController.mpvHdrActive.value) {
+              final player = plPlayerController.videoPlayerController;
+              if (player == null) return const SizedBox.shrink();
+              return Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: !plPlayerController.enableDragSubtitle,
+                  child: MpvHdrSubtitle(
+                    key: ObjectKey(player),
+                    subtitleStream: player.stream.subtitle,
+                    initialSubtitle: player.state.subtitle,
+                    configuration: plPlayerController.subtitleConfig.value,
+                    enableDrag: plPlayerController.enableDragSubtitle,
+                    onUpdatePadding: plPlayerController.onUpdatePadding,
+                  ),
+                ),
+              );
+            }
             final videoController = plPlayerController.videoController;
             if (videoController == null) return const SizedBox.shrink();
             return Positioned.fill(
@@ -2331,6 +2375,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       child: Obx(
         () {
           final isHdr = plPlayerController.media3HdrActive.value;
+          final nativeMpv = plPlayerController.mpvHdrActive.value
+              ? plPlayerController.mpvHdrController
+              : null;
+          final isNativeOutput = isHdr || nativeMpv != null;
           _bindAmbientTextureChanges();
           // 复用纹理时，缩放模式、镜像与视口变化也必须更新环境背景布局。
           WidgetsBinding.instance.addPostFrameCallback(
@@ -2350,7 +2398,18 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             }
           }
           final Widget videoChild;
-          if (isHdr) {
+          if (nativeMpv != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted &&
+                  identical(nativeMpv, plPlayerController.mpvHdrController)) {
+                unawaited(nativeMpv.setResizeMode(videoFit.hdrResizeMode));
+              }
+            });
+            videoChild = KeyedSubtree(
+              key: _videoKey,
+              child: nativeMpv.buildView(key: ValueKey(nativeMpv.sessionId)),
+            );
+          } else if (isHdr) {
             final Widget hdrView;
             if (hdrController case final controller?) {
               // 不与 mpv 的 RepaintBoundary 共用 GlobalKey，避免后端切换
@@ -2374,6 +2433,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               key: _videoKey,
               child: constrainedView,
             );
+          } else if (plPlayerController.videoController == null) {
+            videoChild = const SizedBox.shrink();
           } else {
             videoChild = RepaintBoundary(
               key: _videoKey,
@@ -2394,7 +2455,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           }
           return MouseInteractiveViewer(
             // HDR 由原生播放器处理适配，固定比例模式由 Flutter 外层约束。
-            scaleEnabled: !isHdr && !plPlayerController.controlsLock.value,
+            scaleEnabled:
+                !isNativeOutput && !plPlayerController.controlsLock.value,
             pointerSignalFallback: plPlayerController.enableScrollVolume
                 ? _onPointerSignal
                 : null,
@@ -2409,11 +2471,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             onScaleUpdate: _onScaleUpdate,
             scaleGestureRecognizer: _scaleGestureRecognizer,
             panEnabled: false,
-            minScale: !isHdr && plPlayerController.enableShrinkVideoSize
+            minScale:
+                !isNativeOutput && plPlayerController.enableShrinkVideoSize
                 ? 0.75
                 : 1,
-            maxScale: isHdr ? 1.0 : 2.0,
-            boundaryMargin: !isHdr && plPlayerController.enableShrinkVideoSize
+            maxScale: isNativeOutput ? 1.0 : 2.0,
+            boundaryMargin:
+                !isNativeOutput && plPlayerController.enableShrinkVideoSize
                 ? const .all(double.infinity)
                 : .zero,
             panAxis: .aligned,
