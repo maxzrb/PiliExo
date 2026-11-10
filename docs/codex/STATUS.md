@@ -1,5 +1,6 @@
 # PiliExo AI 工作状态
 
+- 2026-11-10 21:35 已发布 v26.11.10.1：源码/annotated tag `e7b55d26d6feaa35c58cd831163b7d53e0bd86c6`，应用 26.11.10+1 / code38。GitHub Release 已公开、latest，双APK资产 uploaded；ModelScope `releases/v26.11.10.1/` 三文件完整下载回读 SHA256/长度一致。238项测试、Analyze 0 error/0 warning。正式arm64包 SHA256 `83a6e3fe…`，v7 `7db2066f…`。设备锁屏导致覆盖安装被拒，最终安装/冷启动验收待用户解锁；正式资产已发布。
 - 2026-11-10 21:23 当前候选：`PiliExo-ambient-hdr-arm64-v8a.apk` / `armeabi-v7a.apk`，为 mpv 原生 HDR SurfaceView 增加 PixelCopy 低分辨率取帧，状态栏虚化复用 Media3 的 ARGB→RGBA 函数；未新增生产 Kotlin 类。双ABI在 C 盘隔离树成功构建，本地 Maven 引擎源绕过 Google 下载；arm64 `6c7512dd…` 已覆盖安装、回读一致并冷启动通过。状态栏观感待用户实播确认。
 - 2026-11-10 20:36 当前候选 v2：mpv 原生路线文案改为只保留“直出模式不支持 mpv 视频着色器”，不再描述关闭硬解后的 10 位 GPU 渲染。已重编译 AOT、替换并重签双ABI；arm64 `b86bd9e4…` 已覆盖安装且回读一致，v7 `9fdead9f…`。产物与verification-routes-anim-v2.json在dist/integration/mpv-hdr-gray-20261110/。未提交/推送/发布。
 - 2026-11-10 20:30 当前候选：`PiliExo-dynamic-hdr-routes-anim-arm64-v8a.apk` / `armeabi-v7a.apk`，版本26.11.9/code37，原证书V2签名、16KB对齐。仅替换重编译并strip的`libapp.so`；`libmpv.so`/`libpiliexo_mpv_surface.so`逐字节不变。arm64已覆盖安装、回读SHA一致、冷启动无检查范围致命异常。Gradle在线解析停滞且离线误报引擎JAR未缓存，故在19:37候选底包上替换AOT后重签；详情见dist候选README与verification-routes-anim.json。未提交/推送/发布。
@@ -2019,3 +2020,13 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 双ABI原证书签名候选：arm64 `PiliExo-ambient-hdr-arm64-v8a.apk`，45413175字节，SHA256 `6c7512dddc47666dbf60d476c04a2e7d11c4785dd2595c26a31c0e5dbd4c0af3`；v7 `PiliExo-ambient-hdr-armeabi-v7a.apk`，45024077字节，SHA256 `a39d94d1a0f907529fe9f4491249c678398672afd701ade34422515cf7c65425`。`libmpv.so`仍为已验证的87dc8954…/454c4fcc…，zipalign 16KB与V2原证书验证通过。
 - arm64已覆盖安装，完整回读SHA256一致，versionCode37/versionName26.11.9，firstInstallTime保持；classes.dex确认包含`captureAmbientFrame`；冷启动进程存活，检查范围无FATAL/Unlink/MissingPlugin/dlopen/NoSuchMethod异常。状态栏实际虚化效果尚待用户播放HDR视频确认。
 - 产物：dist/integration/mpv-hdr-gray-20261110/；verification-ambient-hdr.json、README、SHA256SUMS已更新。未提交、未推送、未发布、未改版本。
+
+## 2026-11-10 21:35 正式发布 v26.11.10.1
+
+- 按远端最新 `v26.11.9.1` 计算新标签 `v26.11.10.1`，应用 `26.11.10+1`，Android `versionCode=38`；README、版本迭代记录和 release-notes 已更新并通过发布信息校验。
+- 发布源码提交 `e7b55d26d6feaa35c58cd831163b7d53e0bd86c6`，分支 `codex/mpv-native-hdr` 与 annotated tag 已推送。完整 Flutter 测试 238/238 通过；Analyze 0 error/0 warning/75 info；29个Android插件注册校验通过。
+- C盘隔离树使用本地 Maven 引擎源和已验证 media-kit 缓存完成双ABI Release 构建；随后按原流程替换定制 libmpv、16KB对齐并用原证书V2签名。aapt2确认包名/版本/ABI，libffmpegJNI、GeneratedPluginRegistrant、captureAmbientFrame均在包内。
+- 正式产物：arm64 `PiliExo_android_v26.11.10.1_arm64-v8a.apk` 45413175字节 SHA256 `83a6e3feb1166d9b2225b89897224a97ba563664c79985a5288cab6515496676`；v7 `..._armeabi-v7a.apk` 45024077字节 SHA256 `7db2066faa1cb12c19961b473e42f5ea52749fdc7395064e2989b584f22150b7`；校验清单220字节 SHA256 `336e5d59956855a37665ca236e71ccbf713f371a6c7379ee853065346caabc0c`。
+- GitHub Release <https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.1> 已公开、非草稿/非预发布且为latest，两个APK资产digest和长度与本地一致。ModelScope `AerithDream/PiliExo` 的 `releases/v26.11.10.1/` 三文件上传成功，最终远端扫描3个文件、0孤儿；三个固定URL完整下载回读SHA256和长度一致。
+- 正式arm64包覆盖安装首次因设备锁屏返回 `INSTALL_FAILED_ABORTED: User rejected permissions`；当前设备仍 `mDreamingLockscreen=true`、`mScreenOn=false`，未继续自动操作。最终安装、正式包冷启动和HDR实播验收待用户解锁后完成。
+- 产物与验证记录：dist/release/v26.11.10.1/；未使用GitHub Actions/computer use。发布后工作树仅保留未跟踪 tmp/，需要在安装验收后补最终状态。
