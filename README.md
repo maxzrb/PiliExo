@@ -4,9 +4,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.10.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.1)（2026-11-10 发布）。
+- 当前正式版本：[v26.11.10.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.2)（2026-11-10 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.10.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.10.1)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`v26.11.10.2`](https://github.com/maxzrb/PiliExo/tree/v26.11.10.2)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游已处理至 `86f4759d4`；本轮适配 25 项 Android 功能/修复来源，排除 9 项桌面/iOS/依赖来源，保留 PiliExo 定制。
 
@@ -48,7 +48,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.10.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.10.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.10.1/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.10.2/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.10.2/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.10.2/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 

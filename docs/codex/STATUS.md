@@ -1,5 +1,6 @@
 # PiliExo AI 工作状态
 
+- 2026-11-10 22:23 正在验证 mpv 原生 HDR 返回首页迟钝：`_hideVideoOutput` 不再等待 Kotlin worker 的 `detach` 完成，只等待一帧完成视图隐藏；原生 detach/release 转到后台。测试候选 `dist/integration/back-lag-20261110/`，arm64 `4c024e2a…` 已覆盖安装、回读一致，versionCode38/26.11.10，firstInstallTime保持，冷启动无检查范围异常；v7 `135d1d73…`。返回动画实际手感待用户测试；未提交/发布。
 - 2026-11-10 21:48 已替换 v26.11.10.1 资产为 strip 后的 libmpv：包内无测试集；原45.4MB主要因定制libmpv含调试节（压缩后6.33→17.66MiB）。llvm-strip后libmpv 50.8→14.4MB、v7 42.6→12.8MB，55个mpv_*导出保留。新arm64 33,882,935字节 SHA `d6344c68…`，v7 33,493,837字节 SHA `b0e6640a…`；GitHub与ModelScope已覆盖并完整回读一致。设备已断开ADB，最终安装仍未完成。
 - 2026-11-10 21:35 已发布 v26.11.10.1：源码/annotated tag `e7b55d26d6feaa35c58cd831163b7d53e0bd86c6`，应用 26.11.10+1 / code38。GitHub Release 已公开、latest，双APK资产 uploaded；ModelScope `releases/v26.11.10.1/` 三文件完整下载回读 SHA256/长度一致。238项测试、Analyze 0 error/0 warning。正式arm64包 SHA256 `83a6e3fe…`，v7 `7db2066f…`。设备锁屏导致覆盖安装被拒，最终安装/冷启动验收待用户解锁；正式资产已发布。
 - 2026-11-10 21:23 当前候选：`PiliExo-ambient-hdr-arm64-v8a.apk` / `armeabi-v7a.apk`，为 mpv 原生 HDR SurfaceView 增加 PixelCopy 低分辨率取帧，状态栏虚化复用 Media3 的 ARGB→RGBA 函数；未新增生产 Kotlin 类。双ABI在 C 盘隔离树成功构建，本地 Maven 引擎源绕过 Google 下载；arm64 `6c7512dd…` 已覆盖安装、回读一致并冷启动通过。状态栏观感待用户实播确认。
@@ -2038,3 +2039,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - `llvm-strip --strip-unneeded` 后arm64 libmpv 50,762,656→14,362,624字节，v7 42,580,184→12,768,580字节；`llvm-readelf --dyn-syms` 仍保留55个 `mpv_*` 导出。strip版APK：arm64 33,882,935字节 SHA `d6344c685cc7276dbd29533b3fd1b7b382dd686bb529651a0d0ae922997f5b42`；v7 33,493,837字节 SHA `b0e6640a54ecf6ae583d900791e10ef3f2422ed0d9f138f1c29babe7ed62c934`；SHA256SUMS 220字节 SHA `3af3f80bb0618cfb75ab9a8592bf882f00a55b3b35209786676e46c5b7be9a97`。
 - 同一tag `v26.11.10.1` 的GitHub资产已用`gh release upload --clobber`覆盖，digest/长度更新为新值；ModelScope `releases/v26.11.10.1/` 用只含3个最终文件的staging目录`--sync`覆盖，远端扫描3文件、0孤儿，两个APK与校验清单完整下载回读SHA256一致。源码提交、tag、版本号和versionCode不变。
 - 设备已从ADB断开（`no devices/emulators found`），此前锁屏安装被拒；最终正式包覆盖安装、冷启动和HDR状态栏虚化实播验收仍未完成。dist/release/v26.11.10.1/verification.json已更新strip说明和新哈希。
+
+## 2026-11-10 22:23 mpv 原生 HDR 返回首页延迟修正候选
+
+- 用户反馈 mpv 原生 HDR 从视频页返回首页迟钝。链路中 `_hideVideoOutput` 原先 `await Future.wait([hideSurface])`，而 Kotlin `hide` 要等 worker 线程 `detach` 后才返回；worker 同时承担 500ms 轮询，可能导致返回动画等待。
+- 改为 `videoOutputHidden=true` 后同步发起 `hideSurface`，Dart 不再等待原生 detach 结果；只 `await WidgetsBinding.instance.endOfFrame` 让视图隐藏提交，detach/release 在后台继续。Media3 HDR 同样受益；回退/释放路径仍保留原有 await 语义。
+- 只改 Dart，因此用 `flutter assemble` 重编两 ABI AOT，strip 后替换进当前已签名 stripped 包。候选：arm64 `PiliExo-back-lag-arm64-v8a.apk`，33878839字节，SHA `4c024e2afe67a8bfe7e22a5ca35566d0bd7a8fb290d54b5fb45a87b4adb6f4c6`；v7 `PiliExo-back-lag-armeabi-v7a.apk`，33493837字节，SHA `135d1d738afd2e399c7e7eb3a064e3d2a95175d126243e74063b304647c18a48`。V2原证书和16KB对齐通过。
+- 设备重新连接后 arm64 候选覆盖安装成功，完整回读 SHA256 与候选一致，versionCode38/versionName26.11.10，firstInstallTime 保持 2026-09-02 15:19:05；冷启动进程存活，检查范围无 FATAL/Unlink/MissingPlugin/dlopen/NoSuchMethod。返回动画实际手感待用户测试；源码改动未提交、未发布。若候选通过，再决定是否发布 v26.11.10.2（versionCode 39）。

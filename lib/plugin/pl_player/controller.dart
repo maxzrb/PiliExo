@@ -1020,11 +1020,13 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Future<void> _hideVideoOutput() async {
     videoOutputHidden.value = true;
     if (Platform.isAndroid) {
-      await Future.wait([
-        if (_mpvHdrController case final controller?) controller.hideSurface(),
-        if (_hdrMedia3Controller case final controller?)
-          controller.hideSurface(),
-      ]);
+      // 视图先同步隐藏，原生 detach/release 在后台完成；返回动画不等待 worker。
+      if (_mpvHdrController case final controller?) {
+        unawaited(controller.hideSurface().catchError((_) {}));
+      }
+      if (_hdrMedia3Controller case final controller?) {
+        unawaited(controller.hideSurface().catchError((_) {}));
+      }
     }
     // 等 Flutter 和原生平台视图提交隐藏，再开始返回路由动画。
     await WidgetsBinding.instance.endOfFrame;
