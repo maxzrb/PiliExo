@@ -1,5 +1,6 @@
 # PiliExo AI 工作状态
 
+- 2026-11-10 22:41 已发布 v26.11.10.2：源码/annotated tag `57987ca6473e771fd889e51e41edb47ace9aa494`，应用26.11.10+2/code39。修复mpv原生HDR返回首页迟钝：视频层立即隐藏，detach/release转后台。双ABI正式包strip libmpv，arm64 `b05d4bc0…`、v7 `bec1161f…`；GitHub公开/latest、ModelScope三文件完整回读一致。13项定向测试通过。设备已断开ADB，最终安装验收待补；未使用Actions。
 - 2026-11-10 22:23 正在验证 mpv 原生 HDR 返回首页迟钝：`_hideVideoOutput` 不再等待 Kotlin worker 的 `detach` 完成，只等待一帧完成视图隐藏；原生 detach/release 转到后台。测试候选 `dist/integration/back-lag-20261110/`，arm64 `4c024e2a…` 已覆盖安装、回读一致，versionCode38/26.11.10，firstInstallTime保持，冷启动无检查范围异常；v7 `135d1d73…`。返回动画实际手感待用户测试；未提交/发布。
 - 2026-11-10 21:48 已替换 v26.11.10.1 资产为 strip 后的 libmpv：包内无测试集；原45.4MB主要因定制libmpv含调试节（压缩后6.33→17.66MiB）。llvm-strip后libmpv 50.8→14.4MB、v7 42.6→12.8MB，55个mpv_*导出保留。新arm64 33,882,935字节 SHA `d6344c68…`，v7 33,493,837字节 SHA `b0e6640a…`；GitHub与ModelScope已覆盖并完整回读一致。设备已断开ADB，最终安装仍未完成。
 - 2026-11-10 21:35 已发布 v26.11.10.1：源码/annotated tag `e7b55d26d6feaa35c58cd831163b7d53e0bd86c6`，应用 26.11.10+1 / code38。GitHub Release 已公开、latest，双APK资产 uploaded；ModelScope `releases/v26.11.10.1/` 三文件完整下载回读 SHA256/长度一致。238项测试、Analyze 0 error/0 warning。正式arm64包 SHA256 `83a6e3fe…`，v7 `7db2066f…`。设备锁屏导致覆盖安装被拒，最终安装/冷启动验收待用户解锁；正式资产已发布。
@@ -2046,3 +2047,12 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 改为 `videoOutputHidden=true` 后同步发起 `hideSurface`，Dart 不再等待原生 detach 结果；只 `await WidgetsBinding.instance.endOfFrame` 让视图隐藏提交，detach/release 在后台继续。Media3 HDR 同样受益；回退/释放路径仍保留原有 await 语义。
 - 只改 Dart，因此用 `flutter assemble` 重编两 ABI AOT，strip 后替换进当前已签名 stripped 包。候选：arm64 `PiliExo-back-lag-arm64-v8a.apk`，33878839字节，SHA `4c024e2afe67a8bfe7e22a5ca35566d0bd7a8fb290d54b5fb45a87b4adb6f4c6`；v7 `PiliExo-back-lag-armeabi-v7a.apk`，33493837字节，SHA `135d1d738afd2e399c7e7eb3a064e3d2a95175d126243e74063b304647c18a48`。V2原证书和16KB对齐通过。
 - 设备重新连接后 arm64 候选覆盖安装成功，完整回读 SHA256 与候选一致，versionCode38/versionName26.11.10，firstInstallTime 保持 2026-09-02 15:19:05；冷启动进程存活，检查范围无 FATAL/Unlink/MissingPlugin/dlopen/NoSuchMethod。返回动画实际手感待用户测试；源码改动未提交、未发布。若候选通过，再决定是否发布 v26.11.10.2（versionCode 39）。
+
+## 2026-11-10 22:41 正式发布 v26.11.10.2
+
+- 用户确认返回延迟候选后要求发布修复。新标签 `v26.11.10.2`，应用 `26.11.10+2`，Android `versionCode=39`；源码提交 `57987ca6473e771fd889e51e41edb47ace9aa494`，annotated tag已推送。
+- 修复：`_hideVideoOutput` 设置 `videoOutputHidden` 后立即发起 `hideSurface`，不再等待mpv worker完成detach；只等待一帧提交隐藏，detach/release后台继续。Media3 HDR共用该返回路径，回退/释放仍保留原await语义。
+- 验证：修复后13项播放器定向测试通过；改动文件Analyze无问题。正式包为本机完整Release构建，`versionCode=39`，双ABI原证书V2、16KB对齐；包内确认libffmpegJNI、GeneratedPluginRegistrant和captureAmbientFrame。libmpv使用strip版，55个导出保留。
+- 产物：arm64 `PiliExo_android_v26.11.10.2_arm64-v8a.apk` 33882935字节 SHA `b05d4bc0ea99324d88f1d1b7eec83ebca1e2b69948975c66eaceaa6f2cc2b2b2`；v7 `..._armeabi-v7a.apk` 33493837字节 SHA `bec1161f0510bb73a0f17b95fbfac51c1032fee2147d9d97ef577cd024a0b7ac`；SHA256SUMS 220字节 SHA `bcc1417469b6e495838fda60a24c06650b41d173ec57c0be84c9b45b51152ffb`。
+- GitHub <https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.2> 已公开、非草稿/非预发布且latest，两APK digest/长度一致；ModelScope `releases/v26.11.10.2/` 三文件上传后完整下载回读SHA256一致，远端扫描3文件0孤儿。验证记录在dist/release/v26.11.10.2/verification.json。
+- 设备在发布收尾前再次断开ADB（`adb devices`为空），最终正式包覆盖安装、冷启动和返回动画实播验收仍未完成。未使用GitHub Actions/computer use；工作树仅保留未跟踪tmp/。
