@@ -1,5 +1,6 @@
 # PiliExo AI 工作状态
 
+- 2026-11-10 21:48 已替换 v26.11.10.1 资产为 strip 后的 libmpv：包内无测试集；原45.4MB主要因定制libmpv含调试节（压缩后6.33→17.66MiB）。llvm-strip后libmpv 50.8→14.4MB、v7 42.6→12.8MB，55个mpv_*导出保留。新arm64 33,882,935字节 SHA `d6344c68…`，v7 33,493,837字节 SHA `b0e6640a…`；GitHub与ModelScope已覆盖并完整回读一致。设备已断开ADB，最终安装仍未完成。
 - 2026-11-10 21:35 已发布 v26.11.10.1：源码/annotated tag `e7b55d26d6feaa35c58cd831163b7d53e0bd86c6`，应用 26.11.10+1 / code38。GitHub Release 已公开、latest，双APK资产 uploaded；ModelScope `releases/v26.11.10.1/` 三文件完整下载回读 SHA256/长度一致。238项测试、Analyze 0 error/0 warning。正式arm64包 SHA256 `83a6e3fe…`，v7 `7db2066f…`。设备锁屏导致覆盖安装被拒，最终安装/冷启动验收待用户解锁；正式资产已发布。
 - 2026-11-10 21:23 当前候选：`PiliExo-ambient-hdr-arm64-v8a.apk` / `armeabi-v7a.apk`，为 mpv 原生 HDR SurfaceView 增加 PixelCopy 低分辨率取帧，状态栏虚化复用 Media3 的 ARGB→RGBA 函数；未新增生产 Kotlin 类。双ABI在 C 盘隔离树成功构建，本地 Maven 引擎源绕过 Google 下载；arm64 `6c7512dd…` 已覆盖安装、回读一致并冷启动通过。状态栏观感待用户实播确认。
 - 2026-11-10 20:36 当前候选 v2：mpv 原生路线文案改为只保留“直出模式不支持 mpv 视频着色器”，不再描述关闭硬解后的 10 位 GPU 渲染。已重编译 AOT、替换并重签双ABI；arm64 `b86bd9e4…` 已覆盖安装且回读一致，v7 `9fdead9f…`。产物与verification-routes-anim-v2.json在dist/integration/mpv-hdr-gray-20261110/。未提交/推送/发布。
@@ -2030,3 +2031,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - GitHub Release <https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.1> 已公开、非草稿/非预发布且为latest，两个APK资产digest和长度与本地一致。ModelScope `AerithDream/PiliExo` 的 `releases/v26.11.10.1/` 三文件上传成功，最终远端扫描3个文件、0孤儿；三个固定URL完整下载回读SHA256和长度一致。
 - 正式arm64包覆盖安装首次因设备锁屏返回 `INSTALL_FAILED_ABORTED: User rejected permissions`；当前设备仍 `mDreamingLockscreen=true`、`mScreenOn=false`，未继续自动操作。最终安装、正式包冷启动和HDR实播验收待用户解锁后完成。
 - 产物与验证记录：dist/release/v26.11.10.1/；未使用GitHub Actions/computer use。发布后工作树仅保留未跟踪 tmp/，需要在安装验收后补最终状态。
+
+## 2026-11-10 21:48 v26.11.10.1 包体 strip 修正
+
+- 用户反馈包体变大，怀疑打包测试集。对比新旧APK条目：两边均无 `test/`、`fixtures` 或 `dv-p5` 文件，条目总数同为756。增量来自定制 `libmpv.so` 未 strip：压缩后6.33→17.66 MiB；其余为libapp/classes/资源正常增长。
+- `llvm-strip --strip-unneeded` 后arm64 libmpv 50,762,656→14,362,624字节，v7 42,580,184→12,768,580字节；`llvm-readelf --dyn-syms` 仍保留55个 `mpv_*` 导出。strip版APK：arm64 33,882,935字节 SHA `d6344c685cc7276dbd29533b3fd1b7b382dd686bb529651a0d0ae922997f5b42`；v7 33,493,837字节 SHA `b0e6640a54ecf6ae583d900791e10ef3f2422ed0d9f138f1c29babe7ed62c934`；SHA256SUMS 220字节 SHA `3af3f80bb0618cfb75ab9a8592bf882f00a55b3b35209786676e46c5b7be9a97`。
+- 同一tag `v26.11.10.1` 的GitHub资产已用`gh release upload --clobber`覆盖，digest/长度更新为新值；ModelScope `releases/v26.11.10.1/` 用只含3个最终文件的staging目录`--sync`覆盖，远端扫描3文件、0孤儿，两个APK与校验清单完整下载回读SHA256一致。源码提交、tag、版本号和versionCode不变。
+- 设备已从ADB断开（`no devices/emulators found`），此前锁屏安装被拒；最终正式包覆盖安装、冷启动和HDR状态栏虚化实播验收仍未完成。dist/release/v26.11.10.1/verification.json已更新strip说明和新哈希。
