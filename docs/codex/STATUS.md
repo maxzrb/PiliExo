@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-11 10:46 已正式发布 v26.11.11.1：应用26.11.11+1/code41，源码/annotated tag `dc38097120dabea3146e3c3fda9ad89011e451a9`。本机重编匹配双ABI FFmpeg/mpv及APK，原证书V2/16KB对齐；241项Flutter、Kotlin flush、C FATE、P5参考通过，源码Analyze无error/warning。GitHub公开/latest与ModelScope三文件完整下载回读一致，默认main首页26edd8450已同步。本轮未安装/实播设备；Actions保持禁用。
+
 - 2026-11-11 10:27 当前任务：近期 mpv HDR 构建审查后的 5 项源码问题已按用户要求修复，另补迟到 JNI 回调保护。18 项 Flutter、1 项 Kotlin、C FATE 及双 ABI JNI 编译通过；尚未生成匹配的新正式 libmpv/APK。详见 docs/近期构建审查与修复-2026-11-11.md。工作树有本轮改动，未提交/发布；以下旧发布与实验条目为历史记录。
 
 - 2026-11-11 10:00 已发布 v26.11.10.3：源码/annotated tag `8a323275e`，应用 26.11.10+3/code40。修复从评论详情或楼中楼返回视频页后偶发白屏：返回时恢复视频层隐藏标记，弹层局部返回不再隐藏下层视频，移除路由已离开后的重复隐藏。定位确认 mpv HDR 报错来自诊断通用包的未定制 libmpv，正式双 ABI 包已回填 v26.11.10.2 验证过的 strip 版 libmpv（55 个导出）。arm64 `db14dd6c…`/33,874,743 字节，v7 `0ba57aa3…`/33,489,741 字节，SHA256SUMS `7151399c…`；GitHub 公开/latest，ModelScope 三文件完整下载回读一致。默认 main README 已同步 `bd199eaf5`。26 项定向测试通过，改动文件 Analyze 0 error/0 warning（4 条既有 info）。按用户要求未再做真机覆盖安装；未使用 Actions。
@@ -2066,3 +2068,14 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 18/18 Flutter 定向测试、1/1 Kotlin flush 测试、12 组 C FATE 输入/9 行参考、双 ABI JNI 严格编译链接、FFmpeg 补丁应用/清单检查通过。Analyze 0 error/0 warning、4 条既有 info。完整说明见 docs/近期构建审查与修复-2026-11-11.md。
 - Android 测试受本机 Debug 资源文件锁影响，仅跳过 Flutter 资源编译/复制/合并，Kotlin 编译和 JUnit 正常执行；使用独立 Gradle 项目缓存及 Flutter 镜像。不能据此声称已完成 APK 构建。
 - 未重编正式 libmpv、未重建正式 APK、未做设备安装或实播、未改版本/标签、未提交/推送/发布。后续必须先按更新清单构建匹配的双 ABI FFmpeg/mpv，再与当前 Dart/Kotlin/JNI 同步打包验收。工作树保留本轮源码/测试/文档改动和原有未跟踪 tmp/。
+
+## 2026-11-11 10:46 正式发布 v26.11.11.1
+
+- 用户要求发布今天的 release。新标签 v26.11.11.1，应用26.11.11+1，Android versionCode=41；源码提交/annotated tag固定 `dc38097120dabea3146e3c3fda9ad89011e451a9`，分支 codex/mpv-native-hdr 已推送。
+- 纳入前轮审查的修复：FFmpeg 动态 HDR 私有参数合入 vd-lavc-o 并保留 operating_rate；seek 空载荷清理；画质/尺寸/硬解变化重建会话；明确 NAL 包格式；补齐正式补丁清单；迟到 JNI 回调用会话令牌保护。
+- 双 ABI FFmpeg libavcodec 从更新后的真实源码增量编译，重链接 mpv 并 strip，保留55导出及16KB ELF对齐。arm64核心SHA256 `1c242b95d80d34a11cf7a4664c3dc374c8934cc631925b586b5d199d7a0eb3c6`，v7 `331aafaa5bd8332558c447eda550873acb1276aba202a0623040ad928612d04c`。重编前构建树的strip库与上一正式包逐字节匹配，确认沿用正确基线。
+- 原D盘 Gradle缓存锁及测试加载停滞；改用C:/Users/maxzr/AppData/Local/piliexo-release-20261111的提交归档构建。复用已校验media-kit JAR，Flutter3.47.9完整双ABI Release构建200.4秒成功。Windows pub get在依赖解析完成后仍提示桌面symlink限制，Android --no-pub构建正常。
+- 新归档中参考输出曾被autocrlf转换，添加test/ref/fate/**的LF约束后复跑241/241通过；Kotlin flush1/1、C FATE12输入9行、P5元数据及framemd5通过。正式源码lib/test Analyze 0error/0warning/74info；最初根目录分析误扫dist中的历史源码备份，两条错误不属于当前编译源码。README/29插件注册/版本/AOT提交/FFmpegJNI/原生HDR桥/无测试媒体检查通过。
+- 双APK原证书V2和16KB zipalign通过。arm64 33,702,711字节 SHA256 `3b17340c90d2555a68e4ebca4caf92217398e620b044602fee993823969247aa`；v7 33,313,613字节 SHA256 `0d12a4dfce970b3cf7c1d49492936402083890545d20f367a76e5920df1e3b6a`；SHA256SUMS220字节 SHA256 `8ba65346bf215f3a6c1c114421bc3dd128841d1eec0345132e699e6d42bd6660`。
+- GitHub Release已公开、非草稿/非预发布、latest；三个资产服务器digest及完整下载回读匹配。ModelScope releases/v26.11.11.1上传三文件、远端扫描三文件，全部完整下载回读SHA256/长度一致。默认main README更新26edd8450已推送。
+- 未做本次新包设备覆盖安装或HDR实播，不将构建/单测替代设备色彩与动态HDR验收。未使用Actions/computer use；版本标签不得移动。产物及verification.json在dist/release/v26.11.11.1/；日志、原生清单和双端回读在tmp/release-20261111/。发布收尾记录随本次提交推送，工作树只保留原有未跟踪tmp/。
