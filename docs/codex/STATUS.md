@@ -2079,3 +2079,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 双APK原证书V2和16KB zipalign通过。arm64 33,702,711字节 SHA256 `3b17340c90d2555a68e4ebca4caf92217398e620b044602fee993823969247aa`；v7 33,313,613字节 SHA256 `0d12a4dfce970b3cf7c1d49492936402083890545d20f367a76e5920df1e3b6a`；SHA256SUMS220字节 SHA256 `8ba65346bf215f3a6c1c114421bc3dd128841d1eec0345132e699e6d42bd6660`。
 - GitHub Release已公开、非草稿/非预发布、latest；三个资产服务器digest及完整下载回读匹配。ModelScope releases/v26.11.11.1上传三文件、远端扫描三文件，全部完整下载回读SHA256/长度一致。默认main README更新26edd8450已推送。
 - 未做本次新包设备覆盖安装或HDR实播，不将构建/单测替代设备色彩与动态HDR验收。未使用Actions/computer use；版本标签不得移动。产物及verification.json在dist/release/v26.11.11.1/；日志、原生清单和双端回读在tmp/release-20261111/。发布收尾记录随本次提交推送，工作树只保留原有未跟踪tmp/。
+
+## 2026-11-11 10:58 修正更新检查错误提示
+
+- 用户反馈 26.11.10+3 手动检查更新显示“Release 标签格式不受支持”。核对当前 GitHub latest、历史 v26.11.10.3，以及 BuildConfig→ReleaseVersion 映射均合法，确认旧代码把 HTTP/网络失败返回的 message Map 与非法 tag 分支合并，导致误导性提示。
+- lib/utils/update.dart 新增更新响应分类：403/429 提示 GitHub 限流，HTTP 非 2xx 显示对应状态，网络失败、缺字段、非法标签分别提示。非法标签提示保留实际 tag，便于排查。
+- test/utils/update_asset_test.dart 新增固定回归：261110+3 合法标签、403/429 限流、网络异常、数据缺失及真实非法标签。定向更新与版本测试 20/20 通过，改动文件 Analyze 无问题，git diff --check 通过。
+- 本轮是未发布的源码修复，未提交、未重建或重发 v26.11.11.1。现有 261110+3 的提示属于旧版错误归类；无法从用户设备导出日志确认当时具体是限流还是代理/TLS/网络失败，但当前 GitHub latest 与历史标签均正常。

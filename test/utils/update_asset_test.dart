@@ -140,4 +140,49 @@ void main() {
       );
     });
   });
+
+  group('更新接口错误分类', () {
+    test('261110+3 对应的标签可以正常检查', () {
+      expect(
+        updateCheckResponseError(
+          statusCode: 200,
+          data: {'tag_name': 'v26.11.10.3'},
+        ),
+        isNull,
+      );
+    });
+
+    test('GitHub 限流不再误报为标签格式错误', () {
+      for (final statusCode in [403, 429]) {
+        expect(
+          updateCheckResponseError(
+            statusCode: statusCode,
+            data: {'message': 'rate limit exceeded'},
+          ),
+          contains('限流'),
+        );
+      }
+    });
+
+    test('网络失败和响应异常使用各自提示', () {
+      expect(
+        updateCheckResponseError(statusCode: -1, data: null),
+        contains('网络请求异常'),
+      );
+      expect(
+        updateCheckResponseError(statusCode: 200, data: const {}),
+        contains('返回数据异常'),
+      );
+    });
+
+    test('只有真实存在的非法标签才提示格式错误', () {
+      expect(
+        updateCheckResponseError(
+          statusCode: 200,
+          data: {'tag_name': '2.2.0.2'},
+        ),
+        contains('标签格式不受支持（2.2.0.2）'),
+      );
+    });
+  });
 }
