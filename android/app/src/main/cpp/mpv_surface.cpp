@@ -6,6 +6,9 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
 
 namespace {
 struct MpvApi {
@@ -50,12 +53,21 @@ struct Output {
     bool direct_output = false;
     bool direct_logged = false;
     bool native_dolby = false;
-    jobject metadata_sink = nullptr;
-    jclass metadata_class = nullptr;
-    jmethodID metadata_method = nullptr;
+    uintptr_t metadata_token = 0;
 };
 
 JavaVM *java_vm = nullptr;
+
+// 解码线程只持有递增令牌，回调不解引用已经释放的视频输出对象。
+struct MetadataSink {
+    std::mutex mutex;
+    jobject object = nullptr;
+    jclass klass = nullptr;
+    jmethodID method = nullptr;
+};
+std::mutex metadata_mutex;
+uintptr_t next_metadata_token = 0;
+std::unordered_map<uintptr_t, std::shared_ptr<MetadataSink>> metadata_sinks;
 
 std::string string(JNIEnv *env, jstring input) {
     const char *value = env->GetStringUTFChars(input, nullptr);
@@ -104,17 +116,36 @@ void detach(JNIEnv *env, Output *output) {
 }
 
 void clear_metadata(JNIEnv *env, Output *output) {
-    if (output->metadata_sink) env->DeleteGlobalRef(output->metadata_sink);
-    if (output->metadata_class) env->DeleteGlobalRef(output->metadata_class);
-    output->metadata_sink = nullptr;
-    output->metadata_class = nullptr;
-    output->metadata_method = nullptr;
+    std::shared_ptr<MetadataSink> sink;
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex);
+        auto entry = metadata_sinks.find(output->metadata_token);
+        if (entry != metadata_sinks.end()) {
+            sink = entry->second;
+            metadata_sinks.erase(entry);
+        }
+        output->metadata_token = 0;
+    }
+    if (!sink) return;
+    // 等待正在执行的回调结束，再删除 JNI 引用；迟到回调会查不到令牌。
+    std::lock_guard<std::mutex> lock(sink->mutex);
+    if (sink->object) env->DeleteGlobalRef(sink->object);
+    if (sink->klass) env->DeleteGlobalRef(sink->klass);
+    sink->object = nullptr;
+    sink->klass = nullptr;
 }
 
 void deliver_metadata(uintptr_t opaque, int64_t pts_us, int type,
                       const uint8_t *data, int size) {
-    auto *output = reinterpret_cast<Output *>(opaque);
-    if (!output || !output->metadata_sink || !output->metadata_class || !java_vm) return;
+    std::shared_ptr<MetadataSink> sink;
+    {
+        std::lock_guard<std::mutex> lock(metadata_mutex);
+        auto entry = metadata_sinks.find(opaque);
+        if (entry == metadata_sinks.end()) return;
+        sink = entry->second;
+    }
+    std::lock_guard<std::mutex> lock(sink->mutex);
+    if (!sink->object || !java_vm) return;
     JNIEnv *env = nullptr;
     bool attached = false;
     const jint status = java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
@@ -131,7 +162,7 @@ void deliver_metadata(uintptr_t opaque, int64_t pts_us, int type,
             payload, 0, size, reinterpret_cast<const jbyte *>(data));
     }
     if (type == 0 || payload) {
-        env->CallVoidMethod(output->metadata_sink, output->metadata_method,
+        env->CallVoidMethod(sink->object, sink->method,
                             static_cast<jlong>(pts_us), static_cast<jint>(type), payload);
     }
     if (payload) env->DeleteLocalRef(payload);
@@ -157,25 +188,36 @@ Java_com_maxzrb_piliexo_MpvSurfaceNative_create(JNIEnv *env, jobject, jlong hand
     return reinterpret_cast<jlong>(output);
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_maxzrb_piliexo_MpvSurfaceNative_metadata(JNIEnv *env, jobject, jlong pointer,
-                                                  jobject sink, jboolean native_dolby) {
+                                                  jobject object, jboolean native_dolby) {
     auto *output = reinterpret_cast<Output *>(pointer);
-    if (!output) return;
+    if (!output) return nullptr;
     output->native_dolby = native_dolby;
     clear_metadata(env, output);
-    output->metadata_sink = sink ? env->NewGlobalRef(sink) : nullptr;
-    output->metadata_class = sink ? reinterpret_cast<jclass>(env->NewGlobalRef(
-        env->GetObjectClass(sink))) : nullptr;
-    output->metadata_method = output->metadata_class
-        ? env->GetMethodID(output->metadata_class, "onMetadata", "(JI[B)V") : nullptr;
-    api.set_option(output->client, "piliexo_dolbyvision", native_dolby ? "yes" : "no");
-    const std::string callback = output->metadata_sink
-        ? std::to_string(reinterpret_cast<uintptr_t>(&deliver_metadata))
-        : "0";
-    api.set_option(output->client, "piliexo_metadata_callback", callback.c_str());
-    api.set_option(output->client, "piliexo_metadata_opaque",
-                   std::to_string(reinterpret_cast<uintptr_t>(output)).c_str());
+    if (object) {
+        auto sink = std::make_shared<MetadataSink>();
+        sink->object = env->NewGlobalRef(object);
+        jclass klass = env->GetObjectClass(object);
+        sink->klass = reinterpret_cast<jclass>(env->NewGlobalRef(klass));
+        env->DeleteLocalRef(klass);
+        sink->method = env->GetMethodID(sink->klass, "onMetadata", "(JI[B)V");
+        if (!sink->method || env->ExceptionCheck()) {
+            env->DeleteGlobalRef(sink->object);
+            env->DeleteGlobalRef(sink->klass);
+            return nullptr;
+        }
+        std::lock_guard<std::mutex> lock(metadata_mutex);
+        output->metadata_token = ++next_metadata_token;
+        metadata_sinks.emplace(output->metadata_token, sink);
+    }
+    // 这些是 FFmpeg 私有选项，交给 Dart 合入每次 loadfile 的 vd-lavc-o。
+    // 不调用 mpv_set_option_string 设置不存在的同名 mpv 顶层选项。
+    const std::string options = std::string("piliexo_dolbyvision=") +
+        (native_dolby ? "1" : "0") + ",piliexo_metadata_callback=" +
+        (object ? std::to_string(reinterpret_cast<uintptr_t>(&deliver_metadata)) : "0") +
+        ",piliexo_metadata_opaque=" + std::to_string(output->metadata_token);
+    return env->NewStringUTF(options.c_str());
 }
 
 extern "C" JNIEXPORT void JNICALL

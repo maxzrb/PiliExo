@@ -1,0 +1,8 @@
+[
+  {"id":"same","changes":{},"reuse":true},
+  {"id":"hdr-to-vivid","changes":{"qualityCode":129},"reuse":false},
+  {"id":"resolution-width","changes":{"width":3840},"reuse":false},
+  {"id":"resolution-height","changes":{"height":2160},"reuse":false},
+  {"id":"hardware-disabled","changes":{"hardwareEnabled":false},"reuse":false},
+  {"id":"dolby-profile5","changes":{"codecs":"dvh1.05.05"},"reuse":false}
+]

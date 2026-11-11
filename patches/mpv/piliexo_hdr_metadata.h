@@ -82,24 +82,31 @@ static uint32_t piliexo_read_be(const uint8_t *data, int bytes)
     return value;
 }
 
-static void piliexo_hdr_packet(const uint8_t *data, size_t size, int64_t pts_us,
-                              PiliexoHdrCallback callback, uintptr_t opaque)
+/* nal_length_size=0 表示 Annex B；长度前缀由容器或调用者明确指定，禁止猜测。 */
+static void piliexo_hdr_packet(const uint8_t *data, size_t size, int nal_length_size,
+                              int64_t pts_us, PiliexoHdrCallback callback, uintptr_t opaque)
 {
-    if (piliexo_hdr_annexb_packet(data, size, pts_us, callback, opaque))
+    if (nal_length_size == 0) {
+        piliexo_hdr_annexb_packet(data, size, pts_us, callback, opaque);
         return;
-    // MP4/MKV 常见 4 字节长度前缀；保留 1～3 字节检测以覆盖厂商复用器。
-    for (int width = 4; width >= 1; width--) {
-        size_t pos = 0;
-        int count = 0;
-        while (pos + (size_t)width <= size) {
-            uint32_t length = piliexo_read_be(data + pos, width);
-            pos += width;
-            if (!length || length > size - pos) break;
-            piliexo_hdr_sei(data + pos, length, pts_us, callback, opaque);
-            pos += length;
-            count++;
-        }
-        if (pos == size && count > 0) return;
+    }
+    if (nal_length_size < 1 || nal_length_size > 4)
+        return;
+    const size_t width = (size_t)nal_length_size;
+    // 先验证完整包，避免损坏的长度前缀先投递一部分元数据再失败。
+    size_t pos = 0;
+    while (pos < size) {
+        if (size - pos < width) return;
+        uint32_t length = piliexo_read_be(data + pos, nal_length_size);
+        pos += width;
+        if (length < 2 || length > size - pos) return;
+        pos += length;
+    }
+    for (pos = 0; pos < size;) {
+        uint32_t length = piliexo_read_be(data + pos, nal_length_size);
+        pos += width;
+        piliexo_hdr_sei(data + pos, length, pts_us, callback, opaque);
+        pos += length;
     }
 }
 #endif

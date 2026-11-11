@@ -39,6 +39,21 @@ Android 的 Type 1 描述符必须为 25 字节、ID 为 0；按小端读取。�
 
 普通 HDR 且硬解开启时使用 mpv `mediacodec_embed` + `mediacodec`，由解码器直接输出到原生 Surface；P5 或关闭硬解时保留 `gpu-next` 路径。直出绕过 mpv shader，界面隐藏不适用的超分控制，保存的偏好不改。
 
-选定核心仅应用 JavaVM 兼容与 EGL HDR 补丁，FFmpeg 使用基线。上述静态元数据补丁保留为研究及解析 FATE 样例：输出格式补偿、容器属性补偿两轮真机 GPU 硬解均仍为 metadata types=0，因此没有纳入 direct-fixed 核心。`sources.json` 的 researchPatches 明确区分此边界。
+早期 direct-fixed 核心仅应用 JavaVM 兼容与 EGL HDR 补丁；正式动态 HDR 核心还需要 FFmpeg 的 `ffmpeg-android-dynamic-hdr.patch`。上述静态元数据补丁保留为研究及解析 FATE 样例：输出格式补偿、容器属性补偿两轮真机 GPU 硬解均仍为 metadata types=0，因此没有纳入正式核心。`sources.json` 的 `patches` 和 `researchPatches` 区分正式补丁与研究补丁。
 
 首个 direct 候选因本地 NativeWindow dataspace=UNKNOWN 被误判失败并回退 Media3。修正版不再把 GPU 窗口的查询条件套到 MediaCodec：检查实际 VO/硬解/源 PQ 或 HLG，诊断标为 decoder-managed，最终缓冲色彩标记独立核对 SurfaceFlinger。GPU 路径仍严格检查位深、传递函数与 dataspace。
+
+## 动态 HDR 源码准备与参数传递
+
+先按 `sources.json` 的归档 SHA-256、长度和版本准备源码，再运行以下命令。工具校验清单中全部补丁的 SHA-256，只按 `patches` 顺序应用正式补丁；已应用的补丁会检查并跳过，不会自动应用 `researchPatches`。
+
+```text
+python tool/prepare_mpv_sources.py --mpv-source <mpv源码目录> --ffmpeg-source <FFmpeg源码目录>
+python tool/prepare_mpv_sources.py --mpv-source <mpv源码目录> --ffmpeg-source <FFmpeg源码目录> --check
+```
+
+`piliexo_dolbyvision`、`piliexo_metadata_callback`、`piliexo_metadata_opaque` 属于 FFmpeg MediaCodec 解码器私有选项。JNI 返回本会话的解码参数，由 Dart 在每次打开媒体时与 `operating_rate` 合并到 `vd-lavc-o`，不能作为 mpv 顶层选项设置。回调使用递增令牌，释放时从注册表移除并等待正在执行的 JNI 调用结束；迟到回调不再访问已释放的对象。
+
+FFmpeg HEVC MediaCodec 的 `hevc_mp4toannexb` 位流过滤器保证送入解码器的是 Annex B，因此补丁明确传入 `nal_length_size=0`。独立解析调用需要明确给出 1～4 字节长度前缀，禁止按 `00 00 01` 猜测输入格式。
+
+本轮修改了 FFmpeg 内嵌解析头，必须重新准备并编译双 ABI 核心，再与当前 Dart/Kotlin/JNI 一起构建。不得把旧正式核心和新源码混包后宣称全部修复已进入 APK；源码修复和设备实播验收分别记录。

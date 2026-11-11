@@ -1640,7 +1640,12 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         : null;
     if (player != null &&
         ((nativeSource != null) != (_mpvHdrController != null) ||
-            nativeSource?.video.codecs != _mpvHdrController?.codecs)) {
+            (nativeSource != null &&
+                _mpvHdrController?.matchesSource(
+                      nativeSource,
+                      hardwareEnabled: hwdec != null,
+                    ) !=
+                    true))) {
       await _disposeMpvHdrController();
       _removeListeners();
       await player.dispose();
@@ -1712,7 +1717,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       Media(
         video,
         start: seekTo,
-        extras: extras.isEmpty ? null : extras,
+        extras:
+            _mpvHdrController?.mediaOptions(extras) ??
+            (extras.isEmpty ? null : extras),
       ),
       play: false,
     );

@@ -28,7 +28,13 @@
         "sha256": "f01e35acc099bbc52f622f2c774771bf4f7036b9c50187a899ab66972a15e0fd"
       }
     ],
-    "candidatePatchPolicy": "direct-fixed 候选使用未应用这些研究补丁的 FFmpeg 基线；GPU 硬解真机元数据仍为0，未纳入选定核心。"
+    "candidatePatchPolicy": "正式动态 HDR 核心应用 patches；researchPatches 仅作研究，不纳入正式构建。",
+    "patches": [
+      {
+        "file": "ffmpeg-android-dynamic-hdr.patch",
+        "sha256": "c87e88847d5d61795f327da313b4dae0629da3cfbe9ac886ac6509f968bd3aa1"
+      }
+    ]
   },
   {
     "name": "mbedtls",

@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse
 import difflib
+import os
 import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,34 +17,42 @@ def run(command, **kwargs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ndk", type=Path, required=True)
-    parser.add_argument("--serial", required=True)
+    compiler = parser.add_mutually_exclusive_group(required=True)
+    compiler.add_argument("--ndk", type=Path)
+    compiler.add_argument("--cc", type=Path, help="用主机 C 编译器运行同一组输入/参考输出")
+    parser.add_argument("--serial")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    ndk = args.ndk / "toolchains/llvm/prebuilt/windows-x86_64/bin"
-    program = args.output / "dynamic-hdr-sei"
-    run([
-        ndk / "clang.exe",
-        "--target=aarch64-linux-android28",
-        "-I", ROOT / "patches/mpv",
-        ROOT / "test/native/dynamic_hdr_fate.c",
-        "-o", program,
-    ])
-    adb = ["adb", "-s", args.serial]
+    if args.ndk and not args.serial:
+        parser.error("Android NDK 模式需要 --serial")
+    program = args.output.resolve() / ("dynamic-hdr-sei.exe" if args.cc and os.name == "nt" else "dynamic-hdr-sei")
+    env = os.environ.copy()
+    if args.cc:
+        env["PATH"] = str(args.cc.resolve().parent) + os.pathsep + env.get("PATH", "")
+        command = [args.cc, "-std=c11", "-Wall", "-Wextra", "-Werror"]
+    else:
+        ndk = args.ndk / "toolchains/llvm/prebuilt/windows-x86_64/bin"
+        command = [ndk / "clang.exe", "--target=aarch64-linux-android28"]
+    run([*command, "-I", ROOT / "patches/mpv", ROOT / "test/native/dynamic_hdr_fate.c", "-o", program], env=env)
+    adb = ["adb", "-s", args.serial] if args.serial else []
     remote = "/data/local/tmp/piliexo-dynamic-hdr-sei"
-    run([*adb, "push", program, remote])
+    if args.ndk:
+        run([*adb, "push", program, remote])
     try:
-        run([*adb, "shell", "chmod", "700", remote])
+        if args.ndk:
+            run([*adb, "shell", "chmod", "700", remote])
         sample = (ROOT / "test/fixtures/mpv_hdr/dynamic-sei.hex").read_bytes()
-        actual = run([*adb, "shell", "-T", remote], input=sample)
+        command = [*adb, "shell", "-T", remote] if args.ndk else [program]
+        actual = run(command, input=sample, env=env)
         (args.output / "mpv-hdr-dynamic-sei").write_text(actual, encoding="utf-8")
         expected = (ROOT / "test/ref/fate/mpv-hdr-dynamic-sei").read_text(encoding="utf-8")
         if actual != expected:
             raise AssertionError("".join(difflib.unified_diff(expected.splitlines(True), actual.splitlines(True))))
         print(f"PASS mpv-hdr-dynamic-sei: {len(actual.splitlines())} fixed metadata samples")
     finally:
-        run([*adb, "shell", "rm", "-f", remote])
+        if args.ndk:
+            run([*adb, "shell", "rm", "-f", remote])
 
 
 if __name__ == "__main__":

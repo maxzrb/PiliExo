@@ -1,0 +1,4 @@
+[
+  {"id":"native-only","existing":{},"native":"piliexo_dolbyvision=1,piliexo_metadata_callback=0,piliexo_metadata_opaque=0"},
+  {"id":"operating-rate","existing":{"vd-lavc-o":"operating_rate=120","cache":"yes"},"native":"piliexo_dolbyvision=0,piliexo_metadata_callback=1234,piliexo_metadata_opaque=7"}
+]

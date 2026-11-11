@@ -1,0 +1,4 @@
+first 1000 4 01020304
+seek-flush 0 0 -
+late-null 2000 4 -
+after-seek 3000 4 05060708

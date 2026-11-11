@@ -35,7 +35,7 @@ internal object MpvSurfaceNative {
     init { System.loadLibrary("piliexo_mpv_surface") }
     external fun create(handle: Long, directOutput: Boolean): Long
     external fun option(pointer: Long, name: String, value: String)
-    external fun metadata(pointer: Long, sink: MpvVividPipeline?, nativeDolby: Boolean)
+    external fun metadata(pointer: Long, sink: MpvVividPipeline?, nativeDolby: Boolean): String
     external fun attach(pointer: Long, surface: Surface, width: Int, height: Int)
     external fun resize(pointer: Long, width: Int, height: Int)
     external fun snapshot(pointer: Long): String
@@ -125,8 +125,8 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                     Log.i("PiliMpvHdr", "创建原生 HDR 输出会话 $id")
                     session.pointer = MpvSurfaceNative.create(handle, direct)
                     options.forEach { (name, value) -> MpvSurfaceNative.option(session.pointer, name, value) }
-                    MpvSurfaceNative.metadata(session.pointer, session.vivid, session.nativeDolby)
-                    main.post { result.success(null) }
+                    val decoderOptions = MpvSurfaceNative.metadata(session.pointer, session.vivid, session.nativeDolby)
+                    main.post { result.success(mapOf("decoderOptions" to decoderOptions)) }
                 } catch (error: Throwable) {
                     Log.e("PiliMpvHdr", "原生 HDR 输出初始化失败", error)
                     if (session.pointer != 0L) MpvSurfaceNative.release(session.pointer)

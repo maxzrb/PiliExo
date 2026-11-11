@@ -73,12 +73,16 @@ internal class MpvVividPipeline {
         private set
 
     @Keep
-    @Synchronized fun onMetadata(ptsUs: Long, type: Int, bytes: ByteArray) {
+    @Synchronized fun onMetadata(ptsUs: Long, type: Int, bytes: ByteArray?) {
         when (type) {
-            0 -> { metadata.clear(); mastering = null; light = null }
-            137 -> mastering = bytes
-            144 -> light = bytes
+            0 -> {
+                metadata.clear(); mastering = null; light = null
+                received = 0; applied = 0; unmatched = 0
+            }
+            137 -> if (bytes != null) mastering = bytes
+            144 -> if (bytes != null) light = bytes
             4 -> {
+                if (bytes == null) return
                 metadata[ptsUs] = bytes
                 received++
                 while (metadata.size > 128) metadata.pollFirstEntry()

@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-11 10:27 当前任务：近期 mpv HDR 构建审查后的 5 项源码问题已按用户要求修复，另补迟到 JNI 回调保护。18 项 Flutter、1 项 Kotlin、C FATE 及双 ABI JNI 编译通过；尚未生成匹配的新正式 libmpv/APK。详见 docs/近期构建审查与修复-2026-11-11.md。工作树有本轮改动，未提交/发布；以下旧发布与实验条目为历史记录。
+
 - 2026-11-11 10:00 已发布 v26.11.10.3：源码/annotated tag `8a323275e`，应用 26.11.10+3/code40。修复从评论详情或楼中楼返回视频页后偶发白屏：返回时恢复视频层隐藏标记，弹层局部返回不再隐藏下层视频，移除路由已离开后的重复隐藏。定位确认 mpv HDR 报错来自诊断通用包的未定制 libmpv，正式双 ABI 包已回填 v26.11.10.2 验证过的 strip 版 libmpv（55 个导出）。arm64 `db14dd6c…`/33,874,743 字节，v7 `0ba57aa3…`/33,489,741 字节，SHA256SUMS `7151399c…`；GitHub 公开/latest，ModelScope 三文件完整下载回读一致。默认 main README 已同步 `bd199eaf5`。26 项定向测试通过，改动文件 Analyze 0 error/0 warning（4 条既有 info）。按用户要求未再做真机覆盖安装；未使用 Actions。
 - 2026-11-10 22:41 已发布 v26.11.10.2：源码/annotated tag `57987ca6473e771fd889e51e41edb47ace9aa494`，应用26.11.10+2/code39。修复mpv原生HDR返回首页迟钝：视频层立即隐藏，detach/release转后台。双ABI正式包strip libmpv，arm64 `b05d4bc0…`、v7 `bec1161f…`；GitHub公开/latest、ModelScope三文件完整回读一致。13项定向测试通过。设备已断开ADB，最终安装验收待补；未使用Actions。
 - 2026-11-10 22:23 正在验证 mpv 原生 HDR 返回首页迟钝：`_hideVideoOutput` 不再等待 Kotlin worker 的 `detach` 完成，只等待一帧完成视图隐藏；原生 detach/release 转到后台。测试候选 `dist/integration/back-lag-20261110/`，arm64 `4c024e2a…` 已覆盖安装、回读一致，versionCode38/26.11.10，firstInstallTime保持，冷启动无检查范围异常；v7 `135d1d73…`。返回动画实际手感待用户测试；未提交/发布。
@@ -2057,3 +2059,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 产物：arm64 `PiliExo_android_v26.11.10.2_arm64-v8a.apk` 33882935字节 SHA `b05d4bc0ea99324d88f1d1b7eec83ebca1e2b69948975c66eaceaa6f2cc2b2b2`；v7 `..._armeabi-v7a.apk` 33493837字节 SHA `bec1161f0510bb73a0f17b95fbfac51c1032fee2147d9d97ef577cd024a0b7ac`；SHA256SUMS 220字节 SHA `bcc1417469b6e495838fda60a24c06650b41d173ec57c0be84c9b45b51152ffb`。
 - GitHub <https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.2> 已公开、非草稿/非预发布且latest，两APK digest/长度一致；ModelScope `releases/v26.11.10.2/` 三文件上传后完整下载回读SHA256一致，远端扫描3文件0孤儿。验证记录在dist/release/v26.11.10.2/verification.json。
 - 设备在发布收尾前再次断开ADB（`adb devices`为空），最终正式包覆盖安装、冷启动和返回动画实播验收仍未完成。未使用GitHub Actions/computer use；工作树仅保留未跟踪tmp/。
+
+## 2026-11-11 10:27 近期构建审查并按用户要求修复
+
+- 审查 v26.11.10.1～.3；确认 FFmpeg 参数误传 mpv 顶层、seek 空载荷冲突、切源复用不完整、长度前缀误判和动态补丁清单缺失。用户随后明确要求直接修复，现已完成源码及固定参考回归；同时保护释放后的迟到 JNI 回调。
+- 18/18 Flutter 定向测试、1/1 Kotlin flush 测试、12 组 C FATE 输入/9 行参考、双 ABI JNI 严格编译链接、FFmpeg 补丁应用/清单检查通过。Analyze 0 error/0 warning、4 条既有 info。完整说明见 docs/近期构建审查与修复-2026-11-11.md。
+- Android 测试受本机 Debug 资源文件锁影响，仅跳过 Flutter 资源编译/复制/合并，Kotlin 编译和 JUnit 正常执行；使用独立 Gradle 项目缓存及 Flutter 镜像。不能据此声称已完成 APK 构建。
+- 未重编正式 libmpv、未重建正式 APK、未做设备安装或实播、未改版本/标签、未提交/推送/发布。后续必须先按更新清单构建匹配的双 ABI FFmpeg/mpv，再与当前 Dart/Kotlin/JNI 同步打包验收。工作树保留本轮源码/测试/文档改动和原有未跟踪 tmp/。

@@ -2,6 +2,17 @@
 
 本目录采用固定输入和参考输出，验证媒体数据、P5 解码和字幕覆盖层。它不创建独立测试应用。
 
+## 动态元数据与会话交接回归
+
+`dynamic-sei.hex` 每行输入为“名称、PTS、NAL 长度字段字节数、十六进制包”；长度字段为 0 时表示 Annex B。配对参考 `mpv-hdr-dynamic-sei`，覆盖 1～4 字节长度前缀、长度 256 与 Annex B 起始码相似的包，以及损坏尾部不能产生部分回调。FFmpeg HEVC MediaCodec 已有 `hevc_mp4toannexb` 过滤器，生产入口明确使用 Annex B。
+
+```text
+python tool/verify_dynamic_hdr_sei.py --cc C:/msys64/ucrt64/bin/gcc.exe --output tmp/dynamic-hdr-regression
+flutter test test/plugin/pl_player/mpv_hdr_session_test.dart
+```
+
+`session-reuse.json`/`mpv-hdr-session-reuse` 验证画质、尺寸、硬解及编码变更必须重建原生会话；`decoder-options.json`/`mpv-hdr-decoder-options` 验证真实 Dart 控制器将原生返回的 FFmpeg 参数与吞吐参数合并。`vivid-flush.txt`/`mpv-hdr-vivid-flush` 由 `MpvVividFlushTest` 验证 JNI 的空载荷 flush 可清理队列与状态。上述测试不等价于动态 HDR 在设备上已实际激活。
+
 ## HDR 信号保留与 EGL 元数据单位
 
 `pq-color-input.txt` 包含 17 个 ST2084 灰阶及 3 个彩色点，覆盖 0–10000 nit；`hlg-color-input.txt` 包含 7 个 HLG 编码点。对应参考 `mpv-hdr-pq-color`、`mpv-hdr-hlg-color` 等于输入编码值，验证颜色映射后仍保留信号。允许每通道 2 个 10 位码值误差，覆盖移动 GPU 的 FP16 舍入。

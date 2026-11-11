@@ -1,2 +1,3 @@
 *.patch text eol=lf
 patches/mpv/*.patch whitespace=-blank-at-eol
+test/ref/fate/** text eol=lf

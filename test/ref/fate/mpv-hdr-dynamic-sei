@@ -3,3 +3,7 @@ CLLI@1100 type=144 size=4 hex=03440410
 VIVID@2000 type=4 size=4 hex=01020304
 EMULATION@3000 type=4 size=4 hex=00000101
 AVCC@6000 type=4 size=4 hex=01020304
+AVCC256@7000 type=4 size=4 hex=01020304
+AVCC1@9001 type=4 size=4 hex=01020304
+AVCC2@9002 type=4 size=4 hex=01020304
+AVCC3@9003 type=4 size=4 hex=01020304

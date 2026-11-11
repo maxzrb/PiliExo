@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
+import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/mpv_hdr_policy.dart';
 
 /// 复用 media-kit 的播放实例，仅将视频输出接到独立的原生 SurfaceView。
@@ -39,6 +40,26 @@ class MpvHdrController {
   StreamSubscription<VideoParams>? _sizeSubscription;
   bool _released = false;
   bool _created = false;
+  String _decoderOptions = '';
+
+  /// 每次打开媒体都合并解码参数，避免 operating_rate 覆盖动态 HDR 回调。
+  Map<String, String> mediaOptions(Map<String, String> options) => {
+    ...options,
+    'vd-lavc-o': [
+      if (options['vd-lavc-o'] case final value? when value.isNotEmpty) value,
+      _decoderOptions,
+    ].where((value) => value.isNotEmpty).join(','),
+  };
+
+  bool matchesSource(
+    HdrNetworkSource source, {
+    required bool hardwareEnabled,
+  }) =>
+      codecs == source.video.codecs &&
+      this.hardwareEnabled == hardwareEnabled &&
+      qualityCode == source.qualityCode &&
+      width == source.video.width &&
+      height == source.video.height;
 
   Stream<String> get errors => _errors.stream;
   bool get profile5 => MpvHdrPolicy.needsProfile5Correction(codecs);
@@ -98,7 +119,7 @@ class MpvHdrController {
           }
         });
     try {
-      await _methods.invokeMethod<void>('create', {
+      final result = await _methods.invokeMapMethod<String, dynamic>('create', {
         'sessionId': sessionId,
         'handle': player.handle,
         'codecs': codecs,
@@ -116,6 +137,11 @@ class MpvHdrController {
         ),
       });
       _created = true;
+      final decoderOptions = result?['decoderOptions'];
+      if (decoderOptions is! String || decoderOptions.isEmpty) {
+        throw StateError('原生 HDR 插件未返回 FFmpeg 解码选项');
+      }
+      _decoderOptions = decoderOptions;
       _sizeSubscription = player.stream.videoParams.listen((params) {
         final width = params.dw;
         final height = params.dh;
