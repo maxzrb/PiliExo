@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-11 11:54 已修复并覆盖 v26.11.11.1：根因是隔离构建遗漏GeneratedPluginRegistrant，导致插件未注册和MediaKit启动死循环。强制跟踪该文件后arm64真机冷启动233ms通过。新安装默认设置按用户公开偏好更新，HDR默认mpv原生；buvid/WebDAV/设备派生值排除。AOT源码`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`，双ABI原证书/16KB，GitHub与ModelScope完整回读一致。
+
 - 2026-11-11 11:03 已按用户要求覆盖 v26.11.11.1 修订包：版本仍26.11.11+1/code41，源码修订 `030fcd7224d810dc12acda42b829745ec794031d`，标签不移动。修复更新检查误报；20项定向测试通过。双ABI原证书/16KB，GitHub与ModelScope三文件完整回读一致。arm64 `a0db3383…`，v7 `3739a23b…`；未做新包真机实播。
 
 - 2026-11-11 10:46 已正式发布 v26.11.11.1：应用26.11.11+1/code41，源码/annotated tag `dc38097120dabea3146e3c3fda9ad89011e451a9`。本机重编匹配双ABI FFmpeg/mpv及APK，原证书V2/16KB对齐；241项Flutter、Kotlin flush、C FATE、P5参考通过，源码Analyze无error/warning。GitHub公开/latest与ModelScope三文件完整下载回读一致，默认main首页26edd8450已同步。本轮未安装/实播设备；Actions保持禁用。
@@ -2096,3 +2098,14 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - arm64 33,698,615字节 SHA256 `a0db33838204ab4b6ff81c5fbec356544f3468aaf17c1f709e6010997d7bd5f9`；v7 33,313,613字节 SHA256 `3739a23bc41cc04ef0a53b8add2f249e687fa8dc729fa4fd2c1f020da94ebe5e`；SHA256SUMS220字节 SHA256 `9bfa310037aa05258a7e504e1f0843e3a4bc27f60cb1abb50fbf202701894b23`。
 - 双包版本、code41、AOT提交030fcd722、原证书V2、16KB对齐、55个mpv导出、FFmpeg JNI及无测试媒体检查通过。GitHub三个资产服务器digest和完整下载回读一致；ModelScope三文件完整下载回读一致。
 - GitHub Release仍公开、非草稿/非预发布，发布说明已加入本次修订；ModelScope同路径覆盖完成。未做新包真机安装/HDR实播，Actions保持禁用。修复提交和收尾记录随后推送。
+
+## 2026-11-11 11:54 修复 v26.11.11.1 启动页并更新默认设置
+
+- 用户反馈 26.11.11+1 卡启动页。设备上进程存活、无崩溃或 ANR，Splash未移除；对照验证显示 261110+3完整内容仅改code41可正常启动，当前DEX单独替换即可复现失败。
+- 根因：隔离构建使用git archive，遗漏被gitignore但必需的android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java，导致classes.dex缺少插件注册类。MediaKitAndroidHelper未注册JavaVM，MediaKit.ensureInitialized在等待循环中卡死。
+- 修复：强制跟踪并纳入GeneratedPluginRegistrant.java；双ABI包校验classes.dex包含io.flutter.plugins.GeneratedPluginRegistrant。修复包arm64真机冷启动233ms成功，Flutter首页和media_kit插件注册正常。
+- 按用户导出的当前设置更新新安装默认值，仅写缺失键、不覆盖已有设置。新增项会写回setting/video Box，文件导出与WebDAV快照统一经GStorage.exportAllSettings，因此自动包含。HDR显式默认hdrPlaybackRoute=mpv-native，legacy为mpv true/media3 false。
+- 私密排除：buvid及webdavUri/Username/Password/Directory不进入默认表。设备派生displayMode、fullScreenSCWidth也不固定。用户导出的本地临时私人副本已清理。
+- 回归：默认设置5项、更新/版本24项合计25项通过；源码Analyze无问题；29插件注册校验通过。双ABI版本26.11.11/code41、原证书V2、16KB对齐、AOT提交`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`、插件注册类、FFmpeg JNI与无测试媒体检查通过。
+- arm64 33,895,223字节 SHA256 `46b815886ad1a4bd30b6bb460b61050189e69efad0539d7f8d79d7515659af0b`；v7 33,510,221字节 SHA256 `cffea146c1df54713b42ded0ad010bf1daf8f6136cda2b0fe71af5ce4a848308`；校验清单SHA256 `d6d91b1c74cb0e8db86314dbc0b6c0fecc81a52625845259aad7d82aa197cce5`。
+- 已覆盖GitHub与ModelScope同版本三文件并完整回读一致。标签v26.11.11.1仍固定dc3809712，未移动；修复源码提交`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`推送分支。未使用Actions。
