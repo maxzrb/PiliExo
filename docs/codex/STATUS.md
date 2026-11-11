@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-11 11:03 已按用户要求覆盖 v26.11.11.1 修订包：版本仍26.11.11+1/code41，源码修订 `030fcd7224d810dc12acda42b829745ec794031d`，标签不移动。修复更新检查误报；20项定向测试通过。双ABI原证书/16KB，GitHub与ModelScope三文件完整回读一致。arm64 `a0db3383…`，v7 `3739a23b…`；未做新包真机实播。
+
 - 2026-11-11 10:46 已正式发布 v26.11.11.1：应用26.11.11+1/code41，源码/annotated tag `dc38097120dabea3146e3c3fda9ad89011e451a9`。本机重编匹配双ABI FFmpeg/mpv及APK，原证书V2/16KB对齐；241项Flutter、Kotlin flush、C FATE、P5参考通过，源码Analyze无error/warning。GitHub公开/latest与ModelScope三文件完整下载回读一致，默认main首页26edd8450已同步。本轮未安装/实播设备；Actions保持禁用。
 
 - 2026-11-11 10:27 当前任务：近期 mpv HDR 构建审查后的 5 项源码问题已按用户要求修复，另补迟到 JNI 回调保护。18 项 Flutter、1 项 Kotlin、C FATE 及双 ABI JNI 编译通过；尚未生成匹配的新正式 libmpv/APK。详见 docs/近期构建审查与修复-2026-11-11.md。工作树有本轮改动，未提交/发布；以下旧发布与实验条目为历史记录。
@@ -2086,3 +2088,11 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - lib/utils/update.dart 新增更新响应分类：403/429 提示 GitHub 限流，HTTP 非 2xx 显示对应状态，网络失败、缺字段、非法标签分别提示。非法标签提示保留实际 tag，便于排查。
 - test/utils/update_asset_test.dart 新增固定回归：261110+3 合法标签、403/429 限流、网络异常、数据缺失及真实非法标签。定向更新与版本测试 20/20 通过，改动文件 Analyze 无问题，git diff --check 通过。
 - 本轮是未发布的源码修复，未提交、未重建或重发 v26.11.11.1。现有 261110+3 的提示属于旧版错误归类；无法从用户设备导出日志确认当时具体是限流还是代理/TLS/网络失败，但当前 GitHub latest 与历史标签均正常。
+
+## 2026-11-11 11:03 覆盖 v26.11.11.1 修订包
+
+- 按用户要求保留应用26.11.11+1/code41，重建并覆盖 v26.11.11.1 双ABI包。源码修订提交 `030fcd7224d810dc12acda42b829745ec794031d`，应用标签 `v26.11.11.1` 仍固定 `dc3809712`，未移动。
+- 修订内容包括更新检查错误分类：GitHub 403/429限流、网络失败、HTTP状态、响应缺字段与真实非法标签分别提示；版本和标签解析回归20/20通过。
+- arm64 33,698,615字节 SHA256 `a0db33838204ab4b6ff81c5fbec356544f3468aaf17c1f709e6010997d7bd5f9`；v7 33,313,613字节 SHA256 `3739a23bc41cc04ef0a53b8add2f249e687fa8dc729fa4fd2c1f020da94ebe5e`；SHA256SUMS220字节 SHA256 `9bfa310037aa05258a7e504e1f0843e3a4bc27f60cb1abb50fbf202701894b23`。
+- 双包版本、code41、AOT提交030fcd722、原证书V2、16KB对齐、55个mpv导出、FFmpeg JNI及无测试媒体检查通过。GitHub三个资产服务器digest和完整下载回读一致；ModelScope三文件完整下载回读一致。
+- GitHub Release仍公开、非草稿/非预发布，发布说明已加入本次修订；ModelScope同路径覆盖完成。未做新包真机安装/HDR实播，Actions保持禁用。修复提交和收尾记录随后推送。
