@@ -9,6 +9,7 @@ import 'package:PiliPlus/utils/reply_filter_preferences.dart';
 import 'package:PiliPlus/utils/accounts/account_adapter.dart';
 import 'package:PiliPlus/utils/accounts/account_type_adapter.dart';
 import 'package:PiliPlus/utils/accounts/cookie_jar_adapter.dart';
+import 'package:PiliPlus/utils/default_settings.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/set_int_adapter.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -65,6 +66,7 @@ abstract final class GStorage {
       ).then((res) => watchProgress = res),
     ]);
 
+    ensureDefaultSettings();
     await migrateReplyFilterPreferences(setting);
 
     if (Pref.saveReply) {
@@ -80,7 +82,22 @@ abstract final class GStorage {
     }
   }
 
+  /// 新增默认项写回原始 Box，文件导出和 WebDAV 快照会自然包含这些键。
+  static void ensureDefaultSettings() {
+    applyMissingDefaultValues(
+      createDefaultSettingValues(),
+      containsKey: setting.containsKey,
+      setValue: setting.put,
+    );
+    applyMissingDefaultValues(
+      createDefaultVideoValues(),
+      containsKey: video.containsKey,
+      setValue: video.put,
+    );
+  }
+
   static String exportAllSettings() {
+    ensureDefaultSettings();
     return Utils.jsonEncoder.convert({
       setting.name: setting.toMap(),
       video.name: video.toMap(),
