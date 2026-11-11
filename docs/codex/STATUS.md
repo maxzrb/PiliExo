@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-11 11:57 已将启动页事故和更新误报写入发布事故清单，并新增APK发布静态门禁及AGENTS约束。tool/verify_release_apk.py已通过当前双ABI正式包：插件注册、AOT提交、必要原生库齐全。
+
 - 2026-11-11 11:54 已修复并覆盖 v26.11.11.1：根因是隔离构建遗漏GeneratedPluginRegistrant，导致插件未注册和MediaKit启动死循环。强制跟踪该文件后arm64真机冷启动233ms通过。新安装默认设置按用户公开偏好更新，HDR默认mpv原生；buvid/WebDAV/设备派生值排除。AOT源码`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`，双ABI原证书/16KB，GitHub与ModelScope完整回读一致。
 
 - 2026-11-11 11:03 已按用户要求覆盖 v26.11.11.1 修订包：版本仍26.11.11+1/code41，源码修订 `030fcd7224d810dc12acda42b829745ec794031d`，标签不移动。修复更新检查误报；20项定向测试通过。双ABI原证书/16KB，GitHub与ModelScope三文件完整回读一致。arm64 `a0db3383…`，v7 `3739a23b…`；未做新包真机实播。
@@ -2109,3 +2111,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 回归：默认设置5项、更新/版本24项合计25项通过；源码Analyze无问题；29插件注册校验通过。双ABI版本26.11.11/code41、原证书V2、16KB对齐、AOT提交`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`、插件注册类、FFmpeg JNI与无测试媒体检查通过。
 - arm64 33,895,223字节 SHA256 `46b815886ad1a4bd30b6bb460b61050189e69efad0539d7f8d79d7515659af0b`；v7 33,510,221字节 SHA256 `cffea146c1df54713b42ded0ad010bf1daf8f6136cda2b0fe71af5ce4a848308`；校验清单SHA256 `d6d91b1c74cb0e8db86314dbc0b6c0fecc81a52625845259aad7d82aa197cce5`。
 - 已覆盖GitHub与ModelScope同版本三文件并完整回读一致。标签v26.11.11.1仍固定dc3809712，未移动；修复源码提交`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`推送分支。未使用Actions。
+
+## 2026-11-11 11:57 启动事故防回归记录与 APK 门禁
+
+- 新增 docs/发布事故与防回归清单-2026-11-11.md，记录 v26.11.11.1 启动页卡死、更新误报、同版本覆盖提交追溯、用户设置默认值与动态 HDR 回归边界。根因是隔离构建遗漏 GeneratedPluginRegistrant，导致插件未注册、MediaKit等待JavaVM死循环。
+- 新增 tool/verify_release_apk.py，静态检查classes.dex插件注册类、AOT源码提交与版本、单ABI必要libapp/libmpv/libffmpegJNI，以及禁止测试媒体。该工具已对当前双ABI正式APK复跑通过。
+- AGENTS.md新增发布防回归约束：发布前源码插件校验、APK静态门禁、AOT提交一致、真机冷启动、同版本覆盖记录，以及禁止把Buvid/WebDAV/设备标识/显示模式等私人或设备派生值写入默认设置。
+- 当前发布APK：arm64 `46b81588…`，v7 `cffea146…`，AOT提交ead9c3ec7；cold start 233ms。GitHub/ModelScope最终回读一致。未使用Actions。
