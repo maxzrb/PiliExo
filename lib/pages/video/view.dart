@@ -413,6 +413,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   // 返回当前页面时
   void didPopNext() {
     super.didPopNext();
+    videoDetailController.plPlayerController.restoreVideoOutput();
 
     if (videoDetailController.plPlayerController.isCloseAll) {
       return;
@@ -1253,7 +1254,18 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           !videoDetailController.plPlayerController.isDesktopPip &&
           (videoDetailController.horizontalScreen || isPortrait),
       onPopInvokedWithResult:
-          videoDetailController.plPlayerController.onPopInvokedWithResult,
+          (didPop, result) {
+            final route = ModalRoute.of(context);
+            if (!didPop && route?.willHandlePopInternally == true) {
+              // 评论弹层/局部历史只关闭弹层，不能隐藏仍在下方的视频层。
+              Get.back();
+              return;
+            }
+            videoDetailController.plPlayerController.onPopInvokedWithResult(
+              didPop,
+              result,
+            );
+          },
       child: Obx(
         () {
           final controller = plPlayerController;

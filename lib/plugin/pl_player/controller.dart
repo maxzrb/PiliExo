@@ -1017,6 +1017,15 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   // 路由退出前先清理 HDR 的独立 Surface，避免下一页显示期间暂留上一帧。
   Future<void> hideHdrSurface() => _hideOutputFuture ??= _hideVideoOutput();
 
+  /// 页面重新可见时恢复视频层；弹层返回可能留下过期的隐藏标记。
+  void restoreVideoOutput() {
+    _hideOutputFuture = null;
+    _routeExitPending = false;
+    if (videoOutputHidden.value) {
+      videoOutputHidden.value = false;
+    }
+  }
+
   Future<void> _hideVideoOutput() async {
     videoOutputHidden.value = true;
     if (Platform.isAndroid) {
@@ -3222,7 +3231,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   Future<void> onPopInvokedWithResult(bool didPop, Object? result) async {
     if (didPop) {
-      unawaited(hideHdrSurface());
       if (playerStatus.isPlaying) {
         pause();
       }

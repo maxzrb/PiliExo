@@ -164,9 +164,13 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                 ) { result.success(it) }
             }
             "hide" -> {
-                session.view?.hide()
+                val hiddenView = session.view
+                hiddenView?.hide()
                 worker.post {
-                    if (session.pointer != 0L) MpvSurfaceNative.detach(session.pointer)
+                    // 旧视图的延迟 detach 不能作用到返回后新挂载的 Surface。
+                    if (session.view === hiddenView && session.pointer != 0L) {
+                        MpvSurfaceNative.detach(session.pointer)
+                    }
                     main.post { result.success(null) }
                 }
             }

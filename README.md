@@ -4,9 +4,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.10.2](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.2)（2026-11-10 发布）。
+- 当前正式版本：[v26.11.10.3](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.10.3)（2026-11-11 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.10.2`](https://github.com/maxzrb/PiliExo/tree/v26.11.10.2)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`v26.11.10.3`](https://github.com/maxzrb/PiliExo/tree/v26.11.10.3)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游已处理至 `86f4759d4`；本轮适配 25 项 Android 功能/修复来源，排除 9 项桌面/iOS/依赖来源，保留 PiliExo 定制。
 
