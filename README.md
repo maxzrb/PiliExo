@@ -4,16 +4,18 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.11.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.11.1)（2026-11-11 发布）。
+- 当前正式版本：[v26.11.12.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.12.1)（2026-11-12 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.11.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.11.1)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`v26.11.12.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.12.1)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游已处理至 `86f4759d4`；本轮适配 25 项 Android 功能/修复来源，排除 9 项桌面/iOS/依赖来源，保留 PiliExo 定制。
+- PiliPlus 上游已处理至 `915276c87`；本轮 16 项中除纯 Linux MPRIS 和 Linux CI 2 项外全部纳入，保留 PiliExo 的 HDR、播放器和原生定制。
 
 ## PiliExo 的实际修改
 
-- HDR 播放页更多菜单可在 ExoPlayer 与 mpv 之间双向切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
-- Android 在线 UGC/PGC 的 HDR 播放使用 Media3 原生 `SurfaceView`；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，播放失败时保留 mpv 回退。
+- HDR 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
+- Android 在线 UGC/PGC 的 HDR 播放支持 Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，失败时保留回退。
+- mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
+- 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留视频缩小动画，原生 HDR 路线固定视频层并裁剪。
 - 修复高采样率 FLAC 音轨导致 HDR 播放失败的问题：从音轨元数据补齐真实采样率，按每条音轨的最大帧大小配置输入缓冲。
 - 播放器洞察提供概览、视频、音频、播放和事件详情，显示编码、解码器、分辨率、码率、音频参数和回退原因。
 - 顶栏、底栏和浮动底栏支持磨砂半透明，可关闭或选择轻薄、标准、浓厚效果；设置页面状态栏图标随顶栏背景明暗适配。
@@ -25,6 +27,8 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - “我的”页支持自选和排序收藏、观看记录、稍后再看、订阅卡片；推荐设置可自定义或随机生成 buvid，保留 Web/App 混合比例。
 - 番剧和课程适配 OGV 播放接口；文章/图文支持直接进入评论，保留分享，并修复评论滚动。
 - 改善离线合集选中与排序、课程横屏选集、截图防重复、画中画入口、竖版封面和图片切换。
+- 楼中楼回复支持线程化与平铺反复切换；加载进度按滚动位置平滑显示，增量加载不闪退，滑到底平滑拉满。
+- 同步上游直播 trace、粉丝勋章管理、离线音量均衡、离线 UGC 季信息、文章正序/倒序、下载季索引与队列刷新、匿名 buvid 修正和 Dash 空轨道保护。
 
 - 沿用已通过真机手测的音频与播放核心组合，倍速保持原音调；长按默认 2 倍并支持直接输入自定义数值。
 - 洞察显示近 1 秒与总丢帧，起播和普通切速排除最多 5 帧正常切换丢弃，松开长按快进后的 0.5 秒恢复期丢帧全部排除；正常切换丢帧先过滤再显示，后端清零或近期归零仍保留总数与黄色警示，构建缺少版本信息时不误报签名迁移。
@@ -46,7 +50,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/merge/upstream-2.1.4-20260913/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 
