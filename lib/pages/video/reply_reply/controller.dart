@@ -13,10 +13,12 @@ import 'package:PiliPlus/pages/common/reply/reply_controller.dart';
 import 'package:PiliPlus/pages/video/reply_new/view.dart';
 import 'package:PiliPlus/pages/video/reply_reply/tree.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/reply_progress.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart' show ScrollMetrics, WidgetsBinding;
 import 'package:get/get.dart';
 import 'package:super_sliver_list/super_sliver_list.dart';
 
@@ -81,7 +83,11 @@ class VideoReplyReplyController extends ReplyController
 
     // reply2Reply // isDialogue.not
     if (data is DetailListReply) {
-      count.value = data.root.count.toInt();
+      count.value = mergeReplyTotal(
+        previous: count.value,
+        incoming: data.root.count.toInt(),
+        isRefresh: isRefresh,
+      );
       if (isRefresh && !hasRoot) {
         firstFloor.value ??= data.root;
       }
@@ -232,12 +238,15 @@ class VideoReplyReplyController extends ReplyController
       loadingState
         ..value.dataOrNull?.insert(index + 1, replyInfo)
         ..refresh();
+      refreshReplyProgress();
     }
   }
 
   Timer? _replyTimer;
   Future<void>? _inflightReply;
   final progress = RxDouble(0);
+  final scrollProgress = RxDouble(0);
+  double? _estimatedTotalExtent;
 
   bool get inFetchReply => _replyTimer != null || _inflightReply != null;
 
@@ -271,18 +280,75 @@ class VideoReplyReplyController extends ReplyController
       } else {
         _createReplyTimer();
       }
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _syncScrollProgress(),
+      );
     }
   }
 
   @override
   Future<void> queryData([bool isRefresh = true]) async {
-    await super.queryData(isRefresh);
-    if (isEnd) {
-      progress.value = 1;
-    } else if (count.rawValue > 0) {
-      progress.value =
-          (loadingState.rawValue.dataOrNull?.length ?? 0) / count.rawValue;
+    if (isRefresh) {
+      progress.value = 0;
+      scrollProgress.value = 0;
+      _estimatedTotalExtent = null;
     }
+    await super.queryData(isRefresh);
+    refreshReplyProgress();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncScrollProgress());
+  }
+
+  @override
+  void refreshReplyProgress() {
+    progress.value = replyLoadProgress(
+      loaded: uniqueReplyCount(loadingState.rawValue.dataOrNull),
+      total: count.rawValue,
+      isEnd: isEnd,
+    );
+  }
+
+  /// 跟随列表滚动位置更新进度；滑到底即满格，短列表无滚动时也满格。
+  void updateScrollProgress(ScrollMetrics metrics, {bool force = false}) {
+    if (!force && (isLoading || _inflightReply != null)) return;
+
+    final loaded = uniqueReplyCount(loadingState.rawValue.dataOrNull);
+    if (loaded == 0) {
+      return;
+    }
+
+    final max = metrics.maxScrollExtent;
+    if (max <= 0) {
+      if (isEnd && loaded > 0 && !isLoading) scrollProgress.value = 1;
+      return;
+    }
+
+    if (_estimatedTotalExtent == null) {
+      // 等第一页请求完成并完成布局后再建立估算，避免用中间帧的小高度。
+      if (isLoading || page <= 1) return;
+      _estimatedTotalExtent = estimateReplyTotalExtent(
+        loadedExtent: max,
+        loadedPages: (page - 1).clamp(1, 1 << 30),
+        total: count.value,
+      );
+    }
+    final atBottom = metrics.pixels >= max - 0.5;
+    scrollProgress.value = atBottom && isEnd
+        ? 1
+        : replyScrollProgress(
+            pixels: metrics.pixels,
+            estimatedTotalExtent: _estimatedTotalExtent!,
+          );
+  }
+
+  void _syncScrollProgress() {
+    final nested = nestedController;
+    ScrollMetrics? metrics;
+    if (nested != null && nested.nestedPositions.isNotEmpty) {
+      metrics = nested.nestedPositions.last;
+    } else if (scrollController.hasClients) {
+      metrics = scrollController.position;
+    }
+    if (metrics != null) updateScrollProgress(metrics, force: true);
   }
 
   @override
@@ -317,12 +383,15 @@ class VideoReplyReplyController extends ReplyController
     super.onClose();
   }
 
+  bool showReplyTree = false;
   final replyTree = Rxn<ReplyTree>();
 
   void buildTree() {
     final data = loadingState.rawValue.data!;
+    if (data.isEmpty) return;
     final seen = HashSet<Int64>();
     data.retainWhere((i) => seen.add(i.id));
+    showReplyTree = true;
     replyTree.value = ReplyTree.build(
       data: data,
       seen: seen,

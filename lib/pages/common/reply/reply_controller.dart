@@ -141,10 +141,13 @@ abstract class ReplyController<R> extends CommonListController<R, ReplyInfo> {
   @override
   void checkIsEnd(int length) {
     final count = this.count.value;
-    if (count != -1 && length >= count) {
+    if (count > 0 && length >= count) {
       isEnd = true;
     }
   }
+
+  /// 回复列表内容变化后由子类刷新进度显示。
+  void refreshReplyProgress() {}
 
   late final _filterIntro = Pref.filterIntro;
   String? _intro;

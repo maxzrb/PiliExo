@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-11 17:29 充电专属限制核查：用户无对方样本，未知修改版手法未复现。检查真实播放入口与展示标记，新增4项input/reference固定拒绝响应回归；test/http/video_url_test.dart共14项通过。无平台请求/账号凭据/实播/破解APK，不据此认定权限漏洞或修改生产逻辑。
+
 - 2026-11-11 11:57 已将启动页事故和更新误报写入发布事故清单，并新增APK发布静态门禁及AGENTS约束。tool/verify_release_apk.py已通过当前双ABI正式包：插件注册、AOT提交、必要原生库齐全。
 
 - 2026-11-11 11:54 已修复并覆盖 v26.11.11.1：根因是隔离构建遗漏GeneratedPluginRegistrant，导致插件未注册和MediaKit启动死循环。强制跟踪该文件后arm64真机冷启动233ms通过。新安装默认设置按用户公开偏好更新，HDR默认mpv原生；buvid/WebDAV/设备派生值排除。AOT源码`ead9c3ec71ecce94304cc91f75a09eb5b35e042b`，双ABI原证书/16KB，GitHub与ModelScope完整回读一致。
@@ -2118,3 +2120,19 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 新增 tool/verify_release_apk.py，静态检查classes.dex插件注册类、AOT源码提交与版本、单ABI必要libapp/libmpv/libffmpegJNI，以及禁止测试媒体。该工具已对当前双ABI正式APK复跑通过。
 - AGENTS.md新增发布防回归约束：发布前源码插件校验、APK静态门禁、AOT提交一致、真机冷启动、同版本覆盖记录，以及禁止把Buvid/WebDAV/设备标识/显示模式等私人或设备派生值写入默认设置。
 - 当前发布APK：arm64 `46b81588…`，v7 `cffea146…`，AOT提交ead9c3ec7；cold start 233ms。GitHub/ModelScope最终回读一致。未使用Actions。
+
+## 2026-11-11 17:29 充电专属视频限制初步核查
+
+- 用户要求还原未知修改版并最终明确要APK，已确认没有对方安装包、源码或网络记录。无法据此归因具体手法，未生成解锁或破解APK。
+- 已读取AGENTS.md、HandShake技能、STATUS当前快照及日志和工作进度；INDEX.md不存在。git pull --ff-only返回Already up to date，当前基线cf2f73693/codex/mpv-native-hdr，进入时仅tmp/未跟踪。
+- 源码证据：isUpowerExclusive在详情模型解析，在UGC简介中用于标签展示；VideoHttp.videoUrl按远端code/业务响应解析PlayUrlModel，87008转错误；播放页另有“仅提供试看”提示。不能将标签消失或试看等同于完整访问权限被绕过。
+- 增加test/fixtures/playback_access_boundary/input.json、reference.json、README.md，并复用test/http/video_url_test.dart内存适配器调用生产播放函数。四个固定输入：UGC拒绝、tryLook下拒绝、拒绝响应附带媒体字段、PGC业务拒绝。均核对请求次数、错误、无播放模型及无媒体条目；UGC样例不带epid，不外推其他回退分支。
+- 验证：Flutter3.47.9执行flutter test --no-pub --reporter expanded test/http/video_url_test.dart，14/14通过（其中新增4项）；dart analyze test/http/video_url_test.dart为No issues found，git diff --check通过；所有响应为人工固定数据，无平台实测、真实凭据或媒体请求。该结果不能证明服务端鉴权正确、对方破解成立或不存在其他路径。
+- 未改生产源码/版本/签名/标签，未构建/安装/发布、未使用Actions或computer use、未提交/推送。后续需实际可疑样本或脱敏证据才能比较并定位修复；不据猜测改鉴权。测试和文档为本轮改动，原有tmp/保留。
+
+## 2026-11-12 上游审查与楼中楼加载进度修复
+
+- 上游边界从 `86f4759d4` 推进到 `915276c87`，新增 16 笔；除纯 Linux MPRIS 和 Linux CI 2 笔外全部纳入，包括直播 trace、粉丝牌管理/直播控制器拆分、依赖升级和 Material 补丁更新。
+- 直播控制器拆分保留本地 `SuperChatItem.fromJson` 单参数调用；`material_ui` 升至 `1.11.0`，Material 补丁已重新应用到该版本。
+- 楼中楼进度改为总数只增不减、按回复 id 去重、0..1 clamp、刷新归零，并在折叠加载/发表回复后重算；`checkIsEnd` 仅在 `count > 0` 时用计数兜底。完整说明见 `docs/PiliPlus上游审查-2026-11-12.md`。
+- 验证：`flutter test --no-pub` 257/257 通过；`dart analyze lib test` 0 error（74 条既有 info）；`git diff --check` 通过。未构建 APK、未真机安装、未改版本/标签/签名、未使用 GitHub Actions。

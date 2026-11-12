@@ -3,6 +3,7 @@ import 'dart:io' show Platform, Process;
 import 'package:PiliPlus/common/widgets/badge.dart';
 import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
+import 'package:PiliPlus/models/video/play/url.dart' show Volume;
 import 'package:PiliPlus/models_new/download/download_info.dart';
 import 'package:PiliPlus/models_new/sponsor_block/segment_item.dart';
 import 'package:PiliPlus/models_new/video/video_play_info/subtitle.dart';
@@ -55,6 +56,7 @@ class BiliDownloadEntryInfo with MultiSelectData {
   SeasonInfo? seasonInfo;
   List<Subtitle>? subtitles;
   List<ViewPoint>? viewPoints;
+  Volume? volume;
 
   late String pageDirPath;
   late String entryDirPath;
@@ -212,6 +214,7 @@ class BiliDownloadEntryInfo with MultiSelectData {
     this.seasonInfo,
     this.subtitles,
     this.viewPoints,
+    this.volume,
   });
 
   factory BiliDownloadEntryInfo.fromJson(
@@ -260,6 +263,7 @@ class BiliDownloadEntryInfo with MultiSelectData {
         : null,
     subtitles: LocalSubtitle.fromCache(json['subtitles'], entryDirPath),
     viewPoints: ViewPoint.fromCache(json['view_points']),
+    volume: .fromCache(json['volume']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -295,6 +299,7 @@ class BiliDownloadEntryInfo with MultiSelectData {
     'season_info': ?seasonInfo?.toJson(),
     'subtitles': ?subtitles?.map((e) => e.toJson()).toList(),
     'view_points': ?viewPoints?.map((e) => e.toJson()).toList(),
+    'volume': ?volume?.toJson(),
   };
 
   /// 旧缓存以秒保存时间戳，新缓存改为毫秒；读取时统一为毫秒。

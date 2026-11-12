@@ -1,0 +1,42 @@
+[
+  {
+    "name": "UGC拒绝不产生播放信息",
+    "requests": 1,
+    "tryLookSent": false,
+    "isError": true,
+    "mentionsCharge": true,
+    "hasPlayModel": false,
+    "videoStreams": 0,
+    "segments": 0
+  },
+  {
+    "name": "tryLook仍保留服务端拒绝",
+    "requests": 1,
+    "tryLookSent": true,
+    "isError": true,
+    "mentionsCharge": true,
+    "hasPlayModel": false,
+    "videoStreams": 0,
+    "segments": 0
+  },
+  {
+    "name": "拒绝响应附带媒体字段也不解析",
+    "requests": 1,
+    "tryLookSent": false,
+    "isError": true,
+    "mentionsCharge": true,
+    "hasPlayModel": false,
+    "videoStreams": 0,
+    "segments": 0
+  },
+  {
+    "name": "PGC业务拒绝不产生播放信息",
+    "requests": 1,
+    "tryLookSent": false,
+    "isError": true,
+    "mentionsCharge": true,
+    "hasPlayModel": false,
+    "videoStreams": 0,
+    "segments": 0
+  }
+]

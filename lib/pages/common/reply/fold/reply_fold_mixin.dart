@@ -38,6 +38,7 @@ mixin BaseReplyFoldMixin<R> on ReplyController<R> {
         loadingState
           ..value.data!.addAll(response.replies)
           ..refresh();
+        refreshReplyProgress();
         if (toast && response.hasTitle()) {
           SmartDialog.showToast(response.title);
         }

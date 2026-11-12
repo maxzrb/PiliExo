@@ -1,0 +1,34 @@
+{
+  "progress": [
+    {"name": "未加载", "loaded": 0, "total": 100, "is_end": false},
+    {"name": "首屏20/100", "loaded": 20, "total": 100, "is_end": false},
+    {"name": "第二页40/100", "loaded": 40, "total": 100, "is_end": false},
+    {"name": "重复回复导致超出总数", "loaded": 120, "total": 100, "is_end": false},
+    {"name": "未知总数", "loaded": 20, "total": -1, "is_end": false},
+    {"name": "总数被覆盖为0", "loaded": 20, "total": 0, "is_end": false},
+    {"name": "服务端结束强制满格", "loaded": 60, "total": 100, "is_end": true}
+  ],
+  "total": [
+    {"name": "刷新采用新值", "previous": -1, "incoming": 100, "is_refresh": true},
+    {"name": "刷新允许归零", "previous": 100, "incoming": 0, "is_refresh": true},
+    {"name": "后续页0不覆盖", "previous": 100, "incoming": 0, "is_refresh": false},
+    {"name": "后续页更大则采用", "previous": 100, "incoming": 120, "is_refresh": false},
+    {"name": "后续页更小不缩小", "previous": 100, "incoming": 80, "is_refresh": false}
+  ],
+  "unique": [
+    {"name": "重复id只计一次", "ids": [11, 12, 12, 13, 13, 13]}
+  ],
+  "scroll": [
+    {"name": "顶部", "pixels": 0.0, "estimated_total_extent": 1000.0},
+    {"name": "四分之一", "pixels": 250.0, "estimated_total_extent": 1000.0},
+    {"name": "到底", "pixels": 1000.0, "estimated_total_extent": 1000.0},
+    {"name": "超出底部夹紧", "pixels": 1200.0, "estimated_total_extent": 1000.0},
+    {"name": "未知总高度", "pixels": 500.0, "estimated_total_extent": 0.0}
+  ],
+  "extent": [
+    {"name": "首屏一页估算五页", "loaded_extent": 500.0, "loaded_pages": 1, "total": 100},
+    {"name": "两页估算保持一致", "loaded_extent": 1000.0, "loaded_pages": 2, "total": 100},
+    {"name": "未知总数按已加载页", "loaded_extent": 1000.0, "loaded_pages": 2, "total": 0},
+    {"name": "无高度", "loaded_extent": 0.0, "loaded_pages": 1, "total": 100}
+  ]
+}

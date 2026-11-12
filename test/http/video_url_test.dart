@@ -128,6 +128,43 @@ void main() {
     });
   }
 
+  // 固定样例仅验证真实播放函数的拒绝响应处理，不代表平台实播验收。
+  final accessInput = jsonDecode(
+    File('test/fixtures/playback_access_boundary/input.json')
+        .readAsStringSync(encoding: utf8),
+  ) as List;
+  final accessReference = jsonDecode(
+    File('test/fixtures/playback_access_boundary/reference.json')
+        .readAsStringSync(encoding: utf8),
+  ) as List;
+  for (var i = 0; i < accessInput.length; i++) {
+    final sample = accessInput[i];
+    test('播放权限固定样例：${sample['name']}', () async {
+      adapter.responses.addAll(
+        (sample['responses'] as List).cast<Map<String, dynamic>>(),
+      );
+      final result = await VideoHttp.videoUrl(
+        cid: 123,
+        qn: 80,
+        tryLook: sample['tryLook'] as bool,
+        videoType: VideoType.values.byName(sample['type']),
+      );
+      final data = result.dataOrNull;
+      expect({
+        'name': sample['name'],
+        'requests': adapter.requests.length,
+        'tryLookSent': adapter.requests.single.queryParameters['try_look'] == 1,
+        'isError': result is Error,
+        'mentionsCharge':
+            result is Error && (result.errMsg?.contains('充电') ?? false),
+        'hasPlayModel': data != null,
+        'videoStreams': data?.dash?.video?.length ?? 0,
+        'segments': data?.durl?.length ?? 0,
+      }, accessReference[i]);
+      expect(adapter.responses, isEmpty);
+    });
+  }
+
   test('匿名网页 Cookie 获取成功或失败均保留 APP/gRPC 独立标识', () async {
     final anonymous = AnonymousAccount();
     final originalBuvid = anonymous.buvid;

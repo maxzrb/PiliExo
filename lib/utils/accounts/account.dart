@@ -192,7 +192,10 @@ class AnonymousAccount extends Account {
   @override
   Future<void> delete() {
     grpcHeaders['x-bili-fawkes-req-bin'] = GrpcHeaders.fawkes;
-    return cookieJar.deleteAll().whenComplete(cookieJar.setBuvid3);
+    return cookieJar.deleteAll().whenComplete(() async {
+      await refreshWebCookies();
+      cookieJar.setBuvid3();
+    });
   }
 
   /// 导入配置后清除旧匿名标识和请求头，保持运行时状态一致。

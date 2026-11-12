@@ -100,10 +100,10 @@ class _DownloadPagePageState extends State<DownloadPagePage>
   }
 
   @override
-  Future<void> onUpdate(
+  Future<bool> onUpdate(
     Future<bool> Function(BiliDownloadEntryInfo e) toElement,
   ) async {
-    if (checkUpdateCount(checkedCount)) return;
+    if (checkUpdateCount(checkedCount)) return false;
 
     bool dismiss = false;
     SmartDialog.showLoading(
@@ -135,6 +135,8 @@ class _DownloadPagePageState extends State<DownloadPagePage>
     }
 
     toastUpdateResult(dismiss, isSuccess);
+
+    return isSuccess;
   }
 
   @override
@@ -209,7 +211,9 @@ class _DownloadPagePageState extends State<DownloadPagePage>
                           progress: widget.progress,
                           updatePageDm: updatePageDm,
                           updatePageSeg: updatePageSeg,
+                          updatePageVolume: updatePageVolume,
                           updatePagePlayInfo: updatePagePlayInfo,
+                          updatePageSeasonInfo: updatePageSeasonInfo,
                         );
                       },
                       itemCount: _pages.length,
