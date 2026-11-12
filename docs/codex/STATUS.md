@@ -2136,3 +2136,13 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 直播控制器拆分保留本地 `SuperChatItem.fromJson` 单参数调用；`material_ui` 升至 `1.11.0`，Material 补丁已重新应用到该版本。
 - 楼中楼进度改为总数只增不减、按回复 id 去重、0..1 clamp、刷新归零，并在折叠加载/发表回复后重算；`checkIsEnd` 仅在 `count > 0` 时用计数兜底。完整说明见 `docs/PiliPlus上游审查-2026-11-12.md`。
 - 验证：`flutter test --no-pub` 257/257 通过；`dart analyze lib test` 0 error（74 条既有 info）；`git diff --check` 通过。未构建 APK、未真机安装、未改版本/标签/签名、未使用 GitHub Actions。
+
+## 2026-11-12 21:35 正式发布 v26.11.12.1
+
+- 版本 `26.11.12+1`，Android `versionCode=42`，标签 `v26.11.12.1`；发布提交 `0de358dddb67ec1102877c6aa7ec656b8e07a022`，AOT 内嵌提交一致，标签未移动。
+- 上游 `86f4759d4..915276c87` 16 项中除纯 Linux MPRIS 与 Linux CI 外全部纳入；楼中楼进度改为固定总高度估算，加载下一页不闪退，结束并滑到底后 220ms 平滑拉满。
+- 按用户要求未重复执行全量 258 项测试；发布版源码与已通过 258/258 的候选提交一致，仅增加版本、README、Release Note 和版本记录变更。定向楼中楼进度 5/5、`dart analyze` 相关文件无问题。
+- `tool/verify_release_apk.py`、原证书 V2/V3、16KB 对齐、29 插件注册、AOT 提交、`libmpv`/`libffmpegJNI` 均通过。arm64 34,006,012 字节 SHA256 `a93dcdaca3cf3c142de881d9695f6453c8dfdc133edd4934cd8dfa31d27c8bb1`；v7a 33,629,202 字节 SHA256 `c5d07167a3794a661159ae60668520df6b517aa5cc4e73f9cd9d44b2f286cee9`；SHA256SUMS 240 字节 SHA256 `7b10c63e5c584451f94ee15d2e7cf1ee1e930dfa8b76ed81f80ad7e22fb8a0c1`。
+- GitHub Release <https://github.com/maxzrb/PiliExo/releases/tag/v26.11.12.1> 已公开、非草稿/非预发布、latest，三资产服务器 digest/长度与本地一致。ModelScope `releases/v26.11.12.1/` 三文件上传 3/3、0 failed，完整下载回读 SHA256/长度一致。
+- MEP-AN00 覆盖安装 `26.11.12`/code42，firstInstallTime 保持 2026-09-02 15:19:05；冷启动 330ms 进入首页，无 FATAL/AndroidRuntime/Unhandled Exception/MissingPlugin。默认 main README 已更新并推送 `2ce4314c9ce9359a7e5ae955ea30955ee27da90d`。
+- 未使用 GitHub Actions；作者签名密钥、密码和令牌未写入仓库/发布资产。
