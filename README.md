@@ -4,11 +4,11 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.11.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.11.1)（2026-11-11 发布）。
+- 当前正式版本：[v26.11.12.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.12.1)（2026-11-12 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.11.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.11.1)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`v26.11.12.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.12.1)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游已处理至 `86f4759d4`；本轮适配 25 项 Android 功能/修复来源，排除 9 项桌面/iOS/依赖来源，保留 PiliExo 定制。
+- PiliPlus 上游已处理至 `915276c87`；本轮 16 项中除纯 Linux MPRIS 和 Linux CI 2 项外全部纳入，保留 PiliExo 的 HDR、播放器和原生定制。
 
 ## PiliExo 的实际修改
 
@@ -27,6 +27,8 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - “我的”页支持自选和排序收藏、观看记录、稍后再看、订阅卡片；推荐设置可自定义或随机生成 buvid，保留 Web/App 混合比例。
 - 番剧和课程适配 OGV 播放接口；文章/图文支持直接进入评论，保留分享，并修复评论滚动。
 - 改善离线合集选中与排序、课程横屏选集、截图防重复、画中画入口、竖版封面和图片切换。
+- 楼中楼回复支持线程化与平铺反复切换；加载进度按滚动位置平滑显示，增量加载不闪退，滑到底平滑拉满。
+- 同步上游直播 trace、粉丝勋章管理、离线音量均衡、离线 UGC 季信息、文章正序/倒序、下载季索引与队列刷新、匿名 buvid 修正和 Dash 空轨道保护。
 
 - 沿用已通过真机手测的音频与播放核心组合，倍速保持原音调；长按默认 2 倍并支持直接输入自定义数值。
 - 洞察显示近 1 秒与总丢帧，起播和普通切速排除最多 5 帧正常切换丢弃，松开长按快进后的 0.5 秒恢复期丢帧全部排除；正常切换丢帧先过滤再显示，后端清零或近期归零仍保留总数与黄色警示，构建缺少版本信息时不误报签名迁移。
@@ -48,7 +50,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.10.2/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.10.2/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.10.2/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 
