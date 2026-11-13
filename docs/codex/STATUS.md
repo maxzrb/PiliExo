@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-13 23:05 已正式发布 v26.11.13.1：应用 26.11.13+1/code43，发布源码/annotated tag 指向 e89aa7c5d7279a897fbcad636a1bd3a6346202d5，tag object 82c6056c5。新增动态页关注 UP 模糊搜索；修复 Live Photo 从小图进入黑屏、静态切动态首帧闪块和切页后才播放，保留相邻页预热并在离开预加载范围后释放资源。262项Flutter测试通过；改动文件Analyze无问题，lib/test为0 error、1项既有未使用导入warning。双ABI原证书V2/16KB通过；arm64 32772506字节 SHA256 c3da7b98aae2b69c1dc8a013bd278b6a955eefd61d0ee24b1818a8bad1b6f9f4，v7 32814022字节 SHA256 b3196ae9dc76e765321bae9bcb4ca65d1269e7b5f7ee15e3fb21083485b9d08d。GitHub Release公开、非草稿/非预发布、latest，三资产digest/长度与本地一致；ModelScope releases/v26.11.13.1/三文件上传3/3，两个APK HEAD 200且Content-Length/X-Linked-ETag一致，SHA256SUMS回读SHA256一致。默认main README提交d9439d32c已推送。ADB在正式包安装前断开，用户明确要求直接发布，因此未执行正式包覆盖安装/冷启动验收，不标记为真机通过。未使用GitHub Actions。
+
 - 2026-11-11 17:29 充电专属限制核查：用户无对方样本，未知修改版手法未复现。检查真实播放入口与展示标记，新增4项input/reference固定拒绝响应回归；test/http/video_url_test.dart共14项通过。无平台请求/账号凭据/实播/破解APK，不据此认定权限漏洞或修改生产逻辑。
 
 - 2026-11-11 11:57 已将启动页事故和更新误报写入发布事故清单，并新增APK发布静态门禁及AGENTS约束。tool/verify_release_apk.py已通过当前双ABI正式包：插件注册、AOT提交、必要原生库齐全。
