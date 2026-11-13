@@ -3,6 +3,7 @@ import 'package:PiliPlus/models_new/follow/list.dart';
 import 'package:PiliPlus/pages/common/search/common_search_page.dart';
 import 'package:PiliPlus/pages/follow/widgets/follow_item.dart';
 import 'package:PiliPlus/pages/follow_search/controller.dart';
+import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/utils.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,10 +13,12 @@ class FollowSearchPage extends StatefulWidget {
     super.key,
     this.mid,
     this.isFromSelect = false,
+    this.localFuzzy = false,
   });
 
   final int? mid;
   final bool isFromSelect;
+  final bool localFuzzy;
 
   @override
   State<FollowSearchPage> createState() => _FollowSearchPageState();
@@ -31,7 +34,10 @@ class _FollowSearchPageState
   void initState() {
     super.initState();
     controller = Get.put(
-      FollowSearchController(widget.mid ?? Get.arguments['mid']),
+      FollowSearchController(
+        widget.mid ?? Get.arguments?['mid'] ?? Accounts.main.mid,
+        localFuzzy: widget.localFuzzy,
+      ),
       tag: Utils.generateRandomString(8),
     );
   }

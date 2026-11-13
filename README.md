@@ -4,9 +4,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.12.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.12.1)（2026-11-12 发布）。
+- 当前正式版本：[v26.11.13.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.13.1)（2026-11-13 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.12.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.12.1)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`v26.11.13.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.13.1)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游已处理至 `915276c87`；本轮 16 项中除纯 Linux MPRIS 和 Linux CI 2 项外全部纳入，保留 PiliExo 的 HDR、播放器和原生定制。
 
@@ -45,12 +45,13 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 离线视频支持缓存字幕与分段信息；评论支持线程式展示及自动折叠阈值。
 - 直播画中画/媒体通知支持刷新与弹幕按钮；音频焦点和音量超过 100% 的播放处理更稳定。
 - 网络图片偶发失败会自动有限重试，避免永久停留在占位图。
+- 动态页支持搜索指定关注 UP 主；Live Photo 预览通过静态封面遮罩、首帧预热和相邻页预加载，修复进入黑屏与切换闪块，并在离开后释放播放器资源。
 
 ## 下载与更新
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.12.1/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.13.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.13.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.13.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 

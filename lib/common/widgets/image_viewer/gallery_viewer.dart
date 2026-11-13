@@ -15,6 +15,7 @@
  * along with PiliPlus.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import 'dart:async';
 import 'dart:io' show File, Platform;
 
 import 'package:PiliPlus/common/widgets/colored_box_transition.dart';
@@ -24,7 +25,7 @@ import 'package:PiliPlus/common/widgets/gesture/image_horizontal_drag_gesture_re
 import 'package:PiliPlus/common/widgets/gesture/image_tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/image.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/loading_indicator.dart';
-import 'package:PiliPlus/common/widgets/image_viewer/viewer.dart';
+import 'package:PiliPlus/common/widgets/loading_widget/m3e_loading_indicator.dart';
 import 'package:PiliPlus/common/widgets/scroll_physics.dart'
     show tabBarScrollPhysics;
 import 'package:PiliPlus/main.dart' show tmpPadding;
@@ -33,6 +34,7 @@ import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
+import 'package:PiliPlus/utils/gallery_live_photo.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/max_screen_size.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -76,16 +78,20 @@ class GalleryViewer extends StatefulWidget {
 }
 
 class _GalleryViewerState extends State<GalleryViewer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late Size _containerSize;
   late final int _quality;
   late final RxInt _currIndex;
-  GlobalKey? _key;
   EdgeInsets? _padding;
 
-  late bool _hasInit = false;
   Player? _player;
-  VideoController? _videoController;
+  final Rx<VideoController?> _videoController = Rx(null);
+  Future<void>? _playerInitFuture;
+  Future<void> _livePhotoQueue = Future<void>.value();
+  int _livePhotoGeneration = 0;
+  late final RxInt _livePhotoReadyIndex;
+  int? _prewarmedLiveIndex;
+  String? _prewarmedLiveUrl;
 
   late final PageController _pageController;
 
@@ -100,6 +106,7 @@ class _GalleryViewerState extends State<GalleryViewer>
   late final LongPressGestureRecognizer _longPressGestureRecognizer;
 
   late final AnimationController _animateController;
+  late final AnimationController _livePhotoCoverController;
   late final Animation<Color?> _opacityAnimation;
   double dx = 0, dy = 0;
 
@@ -115,18 +122,190 @@ class _GalleryViewerState extends State<GalleryViewer>
   Future<void> _initPlayer() async {
     assert(_player == null);
     final player = await Player.create();
-    _videoController = await VideoController.create(player);
+    final videoController = await VideoController.create(player);
     if (!mounted) {
       player.dispose();
-      _videoController = null;
       return;
     }
     _player = player;
-    final currItem = widget.sources[_currIndex.value];
-    if (currItem.sourceType == .livePhoto) {
-      player.open(Media(currItem.liveUrl!));
-      _currIndex.refresh();
+    _videoController.value = videoController;
+  }
+
+  Future<void> _ensurePlayer() {
+    if (_player != null) return Future<void>.value();
+    return _playerInitFuture ??= _initPlayer();
+  }
+
+  int? _adjacentLiveIndex(int index) {
+    for (final candidate in [index + 1, index - 1]) {
+      if (candidate >= 0 &&
+          candidate < widget.sources.length &&
+          widget.sources[candidate].sourceType == .livePhoto) {
+        return candidate;
+      }
     }
+    return null;
+  }
+
+  Future<bool> _waitForPlayback(Player player) async {
+    const threshold = Duration(milliseconds: 200);
+    if (player.state.position >= threshold) return true;
+    try {
+      await player.stream.position
+          .firstWhere((position) => position >= threshold)
+          .timeout(const Duration(seconds: 3));
+      return true;
+    } on TimeoutException {
+      return false;
+    }
+  }
+
+  void _queueLivePhotoActivation(int index) {
+    final generation = ++_livePhotoGeneration;
+    _livePhotoQueue = _livePhotoQueue.then((_) async {
+      try {
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != index) {
+          return;
+        }
+        final item = widget.sources[index];
+        if (item.sourceType != .livePhoto) return;
+        final isPrewarmed =
+            _prewarmedLiveIndex == index && _prewarmedLiveUrl == item.liveUrl;
+        _prewarmedLiveIndex = null;
+        _prewarmedLiveUrl = null;
+
+        await _ensurePlayer();
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != index ||
+            _player == null) {
+          return;
+        }
+
+        if (!isPrewarmed) {
+          // 先在暂停状态完成首帧解码，避免播放中的纹理分块直接闪现。
+          await _player!.open(Media(item.liveUrl!), play: false);
+          if (!mounted ||
+              generation != _livePhotoGeneration ||
+              _currIndex.value != index) {
+            // 切页后旧任务才完成时，避免旧 Live Photo 继续播放声音。
+            await _player?.pause();
+            return;
+          }
+
+          // 等纹理完成首帧提交；视频层此时仅以极低透明度挂载。
+          await WidgetsBinding.instance.endOfFrame;
+          if (!mounted ||
+              generation != _livePhotoGeneration ||
+              _currIndex.value != index) {
+            return;
+          }
+        }
+
+        // 隐藏的视频层先推进到稳定帧率，再淡入可见。
+        await _player!.play();
+        final hasPlayback = await _waitForPlayback(_player!);
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != index ||
+            !hasPlayback) {
+          await _player?.pause();
+          return;
+        }
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != index) {
+          await _player?.pause();
+          return;
+        }
+        _livePhotoReadyIndex.value = index;
+        await _livePhotoCoverController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+        );
+      } catch (e, s) {
+        debugPrint('Live Photo 播放失败: $e\n$s');
+      }
+    });
+  }
+
+  void _queueAdjacentLivePhotoPrewarm(int currentIndex) {
+    final targetIndex = _adjacentLiveIndex(currentIndex);
+    if (targetIndex == null) {
+      _prewarmedLiveIndex = null;
+      _prewarmedLiveUrl = null;
+      _scheduleLivePhotoRelease();
+      return;
+    }
+
+    final generation = ++_livePhotoGeneration;
+    _livePhotoQueue = _livePhotoQueue.then((_) async {
+      try {
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != currentIndex ||
+            widget.sources[currentIndex].sourceType == .livePhoto) {
+          return;
+        }
+        final item = widget.sources[targetIndex];
+        if (_prewarmedLiveIndex == targetIndex &&
+            _prewarmedLiveUrl == item.liveUrl) {
+          return;
+        }
+
+        await _ensurePlayer();
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != currentIndex ||
+            _player == null) {
+          return;
+        }
+
+        _prewarmedLiveIndex = null;
+        _prewarmedLiveUrl = null;
+        await _player!.open(Media(item.liveUrl!), play: false);
+        if (!mounted ||
+            generation != _livePhotoGeneration ||
+            _currIndex.value != currentIndex) {
+          return;
+        }
+        _prewarmedLiveIndex = targetIndex;
+        _prewarmedLiveUrl = item.liveUrl;
+        await WidgetsBinding.instance.endOfFrame;
+      } catch (e, s) {
+        debugPrint('Live Photo 预加载失败: $e\n$s');
+      }
+    });
+  }
+
+  void _deactivateLivePhoto() {
+    _livePhotoGeneration++;
+    _livePhotoCoverController.value = 1;
+    _livePhotoReadyIndex.value = GalleryLivePhoto.none;
+    _player?.pause();
+  }
+
+  void _scheduleLivePhotoRelease() {
+    final generation = _livePhotoGeneration;
+    Future<void>.delayed(const Duration(milliseconds: 400), () async {
+      if (!mounted || generation != _livePhotoGeneration) return;
+      if (_prewarmedLiveIndex != null) return;
+      final index = _currIndex.value;
+      if (index >= 0 &&
+          index < widget.sources.length &&
+          widget.sources[index].sourceType == .livePhoto) {
+        return;
+      }
+      try {
+        await _player?.stop();
+      } catch (e, s) {
+        debugPrint('Live Photo 资源清理失败: $e\n$s');
+      }
+    });
   }
 
   @override
@@ -134,12 +313,18 @@ class _GalleryViewerState extends State<GalleryViewer>
     super.initState();
     _quality = Pref.previewQ;
     _currIndex = widget.initIndex.obs;
+    _livePhotoReadyIndex = GalleryLivePhoto.none.obs;
+    _livePhotoCoverController = AnimationController(
+      duration: const Duration(milliseconds: 180),
+      value: 1,
+      vsync: this,
+    );
     final item = widget.sources[widget.initIndex];
-    _playIfNeeded(item);
-
-    if (!item.isLongPic) {
-      _key = GlobalKey();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _key = null);
+    if (item.sourceType == .livePhoto) {
+      unawaited(_ensurePlayer());
+      _queueLivePhotoActivation(widget.initIndex);
+    } else {
+      _queueAdjacentLivePhotoPrewarm(widget.initIndex);
     }
 
     _pageController = PageController(initialPage: widget.initIndex);
@@ -287,11 +472,13 @@ class _GalleryViewerState extends State<GalleryViewer>
 
   @override
   void dispose() {
+    _livePhotoGeneration++;
     _player?.dispose();
     _player = null;
-    _videoController = null;
+    _videoController.value = null;
     _pageController.dispose();
     _animateController.dispose();
+    _livePhotoCoverController.dispose();
     _tapGestureRecognizer.dispose();
     _doubleTapGestureRecognizer
       ..onDoubleTapDown = null
@@ -344,17 +531,38 @@ class _GalleryViewerState extends State<GalleryViewer>
                   ),
                   itemCount: widget.sources.length,
                   itemBuilder: _itemBuilder,
+                  allowImplicitScrolling: true,
                   horizontalDragGestureRecognizer:
                       horizontalDragGestureRecognizer,
                 ),
               );
             },
           ),
+          _buildLivePhotoLoading,
           _buildIndicator,
         ],
       ),
     );
   }
+
+  Widget get _buildLivePhotoLoading => Obx(() {
+    final index = _currIndex.value;
+    if (index < 0 ||
+        index >= widget.sources.length ||
+        widget.sources[index].sourceType != .livePhoto ||
+        GalleryLivePhoto.shouldShowVideo(
+          pageIndex: index,
+          currentIndex: index,
+          readyIndex: _livePhotoReadyIndex.value,
+        )) {
+      return const SizedBox.shrink();
+    }
+    return const IgnorePointer(
+      child: Center(
+        child: M3ELoadingIndicator(size: Size.square(36)),
+      ),
+    );
+  });
 
   Widget get _buildIndicator => Positioned(
     bottom: 0,
@@ -384,21 +592,15 @@ class _GalleryViewerState extends State<GalleryViewer>
     ),
   );
 
-  void _playIfNeeded(SourceModel item) {
-    if (item.sourceType == .livePhoto) {
-      if (_player != null) {
-        _player!.open(Media(item.liveUrl!));
-      } else if (!_hasInit) {
-        _hasInit = true;
-        _initPlayer();
-      }
-    }
-  }
-
   void _onPageChanged(int index) {
-    _player?.pause();
-    _playIfNeeded(widget.sources[index]);
+    _deactivateLivePhoto();
     _currIndex.value = index;
+    if (widget.sources[index].sourceType == .livePhoto) {
+      unawaited(_ensurePlayer());
+      _queueLivePhotoActivation(index);
+    } else {
+      _queueAdjacentLivePhotoPrewarm(index);
+    }
     widget.onPageChanged?.call(index);
   }
 
@@ -425,7 +627,7 @@ class _GalleryViewerState extends State<GalleryViewer>
     switch (item.sourceType) {
       case SourceType.fileImage:
         child = Image.file(
-          key: _key,
+          key: ValueKey('gallery_image_$index'),
           File(item.url),
           filterQuality: .low,
           minScale: widget.minScale,
@@ -441,11 +643,12 @@ class _GalleryViewerState extends State<GalleryViewer>
       case SourceType.networkImage:
         final isLongPic = item.isLongPic;
         child = Image(
-          key: _key,
+          key: ValueKey('gallery_image_$index'),
           image: CachedNetworkImageProvider(_getActualUrl(item.url)),
           minScale: widget.minScale,
           maxScale: widget.maxScale,
           containerSize: _containerSize,
+          gaplessPlayback: true,
           doubleTapGestureRecognizer: _doubleTapGestureRecognizer,
           horizontalDragGestureRecognizer: _horizontalDragGestureRecognizer,
           onChangePage: _onChangePage,
@@ -498,30 +701,36 @@ class _GalleryViewerState extends State<GalleryViewer>
           return child;
         }
       case SourceType.livePhoto:
-        child = Obx(
-          key: _key,
-          () => _currIndex.value == index && _videoController != null
-              ? Viewer(
-                  minScale: widget.minScale,
-                  maxScale: widget.maxScale,
-                  containerSize: _containerSize,
-                  childSize: _containerSize,
-                  onDragStart: _onDragStart,
-                  onDragUpdate: _onDragUpdate,
-                  onDragEnd: _onDragEnd,
-                  doubleTapGestureRecognizer: _doubleTapGestureRecognizer,
-                  horizontalDragGestureRecognizer:
-                      _horizontalDragGestureRecognizer,
-                  onChangePage: _onChangePage,
-                  child: FittedBox(
-                    child: SimpleVideo(
-                      controller: _videoController!,
-                      fill: Colors.transparent,
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        );
+        child = Obx(() {
+          final videoController = _videoController.value;
+          final isCurrent = _currIndex.value == index;
+          final shouldMount = GalleryLivePhoto.shouldMountVideo(
+            pageIndex: index,
+            currentIndex: _currIndex.value,
+          );
+          return Image(
+            key: ValueKey('gallery_image_$index'),
+            image: CachedNetworkImageProvider(_getActualUrl(item.url)),
+            minScale: widget.minScale,
+            maxScale: widget.maxScale,
+            containerSize: _containerSize,
+            gaplessPlayback: true,
+            opacity: isCurrent
+                ? _livePhotoCoverController
+                : const AlwaysStoppedAnimation(1.0),
+            doubleTapGestureRecognizer: _doubleTapGestureRecognizer,
+            horizontalDragGestureRecognizer: _horizontalDragGestureRecognizer,
+            onChangePage: _onChangePage,
+            loadingBuilder: loadingBuilder,
+            onDragStart: _onDragStart,
+            onDragUpdate: _onDragUpdate,
+            onDragEnd: _onDragEnd,
+            overlayBuilder: videoController == null || !shouldMount
+                ? null
+                : (context, _) =>
+                      _LivePhotoOverlay(controller: videoController),
+          );
+        });
     }
     return Hero(tag: '${item.url}${widget.tag}', child: child);
   }
@@ -669,6 +878,27 @@ class _GalleryViewerState extends State<GalleryViewer>
             ),
           ),
       ],
+    );
+  }
+}
+
+class _LivePhotoOverlay extends StatelessWidget {
+  const _LivePhotoOverlay({required this.controller});
+
+  final VideoController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: IgnorePointer(
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SimpleVideo(
+            controller: controller,
+            fill: Colors.transparent,
+          ),
+        ),
+      ),
     );
   }
 }

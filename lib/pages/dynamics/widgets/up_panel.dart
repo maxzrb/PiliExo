@@ -3,12 +3,16 @@ import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/models/common/dynamic/up_panel_position.dart';
 import 'package:PiliPlus/models/dynamics/up.dart';
 import 'package:PiliPlus/pages/dynamics/controller.dart';
+import 'package:PiliPlus/pages/follow_search/view.dart';
 import 'package:PiliPlus/pages/live_follow/view.dart';
+import 'package:PiliPlus/pages/share/view.dart' show UserModel;
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/dynamics_up_navigation.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
+import 'package:collection/collection.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -29,14 +33,40 @@ class UpPanel extends StatefulWidget {
 class _UpPanelState extends State<UpPanel> {
   late final controller = widget.dynamicsController;
   late final isTop = controller.upPanelPosition == UpPanelPosition.top;
+  UpItem? _searchedUp;
 
   void toFollowPage() => Get.to(const LiveFollowPage());
+
+  Future<void> _searchFollowedUp() async {
+    final selected = await Get.to<UserModel>(
+      FollowSearchPage(
+        mid: Accounts.main.mid,
+        isFromSelect: true,
+        localFuzzy: true,
+      ),
+    );
+    if (!mounted || selected == null) return;
+    _onSelect(
+      UpItem(
+        mid: selected.mid,
+        uname: selected.name,
+        face: selected.avatar,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final upData = widget.upData;
-    final upList = upData.upList;
+    final sourceUpList = upData.upList;
+    final searchedUp = _searchedUp;
+    final upList = <UpItem>[
+      if (searchedUp != null &&
+          !(sourceUpList?.any((item) => item.mid == searchedUp.mid) ?? false))
+        searchedUp,
+      ...?sourceUpList,
+    ];
     final liveList = upData.liveUsers?.items;
     return CustomScrollView(
       scrollDirection: isTop ? .horizontal : .vertical,
@@ -101,22 +131,43 @@ class _UpPanelState extends State<UpPanel> {
               return upItemBuild(theme, liveList[index]);
             },
           ),
-        SliverToBoxAdapter(
-          child: upItemBuild(theme, UpItem(face: '', uname: '全部动态', mid: -1)),
-        ),
-        SliverToBoxAdapter(
-          child: Obx(
-            () => upItemBuild(
-              theme,
-              UpItem(
-                uname: '我',
-                face: controller.accountService.face.value,
-                mid: Accounts.main.mid,
+        ...DynamicsUpNavigation.fixedPanelSlots.map(
+          (slot) => switch (slot) {
+            DynamicsUpPanelSlot.all => SliverToBoxAdapter(
+              child: upItemBuild(
+                theme,
+                UpItem(
+                  face: '',
+                  uname: '全部动态',
+                  mid: DynamicsUpNavigation.allMid,
+                ),
               ),
             ),
-          ),
+            DynamicsUpPanelSlot.search => SliverToBoxAdapter(
+              child: upItemBuild(
+                theme,
+                UpItem(
+                  face: '',
+                  uname: '搜索UP',
+                  mid: DynamicsUpNavigation.searchMid,
+                ),
+              ),
+            ),
+            DynamicsUpPanelSlot.me => SliverToBoxAdapter(
+              child: Obx(
+                () => upItemBuild(
+                  theme,
+                  UpItem(
+                    uname: '我',
+                    face: controller.accountService.face.value,
+                    mid: Accounts.main.mid,
+                  ),
+                ),
+              ),
+            ),
+          },
         ),
-        if (upList != null && upList.isNotEmpty)
+        if (upList.isNotEmpty)
           SliverList.builder(
             itemCount: upList.length,
             itemBuilder: (context, index) {
@@ -130,6 +181,13 @@ class _UpPanelState extends State<UpPanel> {
 
   void _onSelect(UpItem item) {
     item.hasUpdate = false;
+    _searchedUp =
+        item.mid == DynamicsUpNavigation.allMid || item.mid == Accounts.main.mid
+        ? null
+        : widget.upData.upList?.firstWhereOrNull(
+                (followedUp) => followedUp.mid == item.mid,
+              ) ??
+              item;
     controller.onSelectUp(item.mid);
     setState(() {});
   }
@@ -137,9 +195,10 @@ class _UpPanelState extends State<UpPanel> {
   Widget upItemBuild(ThemeData theme, UpItem item) {
     final currentMid = controller.currentMid;
     final isLive = item is LiveUserItem;
+    final isSearch = item.mid == DynamicsUpNavigation.searchMid;
     final isCurrent = isLive || currentMid == item.mid || currentMid == -1;
 
-    final isAll = item.mid == -1;
+    final isAll = item.mid == DynamicsUpNavigation.allMid;
     void toMemberPage() => Get.toNamed('/member?mid=${item.mid}');
 
     Widget avatar;
@@ -155,6 +214,22 @@ class _UpPanelState extends State<UpPanel> {
           cacheWidth: 38.cacheSize(context),
           Assets.logo2,
           color: Colors.white,
+        ),
+      );
+    } else if (isSearch) {
+      avatar = DecoratedBox(
+        decoration: BoxDecoration(
+          shape: .circle,
+          color: theme.colorScheme.secondaryContainer,
+        ),
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(
+            Icons.search_outlined,
+            size: 20,
+            color: theme.colorScheme.onSecondaryContainer,
+          ),
         ),
       );
     } else {
@@ -208,15 +283,19 @@ class _UpPanelState extends State<UpPanel> {
       child: InkWell(
         onTap: () {
           feedBack();
-          if (isLive) {
+          if (isSearch) {
+            _searchFollowedUp();
+          } else if (isLive) {
             PageUtils.toLiveRoom(item.roomId);
           } else {
             _onSelect(item);
           }
         },
         // onDoubleTap: isLive ? () => _onSelect(data) : null,
-        onLongPress: !isAll ? toMemberPage : null,
-        onSecondaryTap: !isAll && !PlatformUtils.isMobile ? toMemberPage : null,
+        onLongPress: !isAll && !isSearch ? toMemberPage : null,
+        onSecondaryTap: !isAll && !isSearch && !PlatformUtils.isMobile
+            ? toMemberPage
+            : null,
         child: Opacity(
           opacity: isCurrent ? 1 : 0.6,
           child: Column(

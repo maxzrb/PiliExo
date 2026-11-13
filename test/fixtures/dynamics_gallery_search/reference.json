@@ -1,0 +1,19 @@
+{
+  "gallery": [true, false, false, false, false],
+  "gallery_mount": [true, true, true, true, false],
+  "panel": {
+    "fixed_slots": ["all", "search", "me"],
+    "selection_tabs": ["all", "up"]
+  },
+  "up_search": {
+    "queries": ["", "番茄", "  番茄  ", "bili 观察", "LTT", "不存在"],
+    "results": [
+      [1001, 1002, 1003, 1004],
+      [1004, 1001],
+      [1004, 1001],
+      [1002],
+      [1003],
+      []
+    ]
+  }
+}
