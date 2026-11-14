@@ -4,49 +4,25 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.14.1)（2026-11-14 发布）。
+[![GitHub release](https://img.shields.io/github/v/release/maxzrb/PiliExo?label=release)](https://github.com/maxzrb/PiliExo/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/maxzrb/PiliExo/total)](https://github.com/maxzrb/PiliExo/releases)
+
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.14.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.14.1)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`main`](https://github.com/maxzrb/PiliExo/tree/main)；编译固定版本请使用对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游已处理至 `915276c87`；本轮 16 项中除纯 Linux MPRIS 和 Linux CI 2 项外全部纳入，保留 PiliExo 的 HDR、播放器和原生定制。
 
 ## PiliExo 的实际修改
 
-- HDR 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
-- Android 在线 UGC/PGC 的 HDR 播放支持 Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，失败时保留回退。
-- 修复部分构建误打包未定制 mpv 核心，导致“mpv 原生 HDR”不可用并自动回退 ExoPlayer 的问题；打包前会校验定制核心，阻止 stock `libmpv` 再次进入正式包。
+- Android 在线 UGC/PGC 提供原生 HDR 播放：Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线，支持 HDR10、Dolby Vision、HDR Vivid 和失败回退。
+- 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
 - mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
-- 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留视频缩小动画，原生 HDR 路线固定视频层并裁剪。
-- 修复高采样率 FLAC 音轨导致 HDR 播放失败的问题：从音轨元数据补齐真实采样率，按每条音轨的最大帧大小配置输入缓冲。
+- 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留缩小动画，原生 HDR 路线固定视频层并裁剪。
+- 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析，以及高采样率 FLAC 的输入缓冲修正。
 - 播放器洞察提供概览、视频、音频、播放和事件详情，显示编码、解码器、分辨率、码率、音频参数和回退原因。
-- 顶栏、底栏和浮动底栏支持磨砂半透明，可关闭或选择轻薄、标准、浓厚效果；设置页面状态栏图标随顶栏背景明暗适配。
-- 播放手势支持可配置的震动反馈和强度；播放中调整画质、移动数据画质或音质只作用于当前播放，不回写默认设置。
-- 首页推荐支持 Web/App 混合比例，按 10% 步进调整；下次刷新生效，结果交错、去重，并在单路请求失败时兜底。
-- 检查更新优先使用 ModelScope，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、进度显示、取消和系统安装器。
-- 同步上游离线片段跳过和 UGC 合集缓存，改善收藏夹、番剧多季度切换、直播、黑名单过滤、图片缩放手势与媒体通知切换视频。
-- 选中文字默认提供站内搜索，选中网址可直接打开，同时保留调用方自定义菜单。
-- “我的”页支持自选和排序收藏、观看记录、稍后再看、订阅卡片；推荐设置可自定义或随机生成 buvid，保留 Web/App 混合比例。
-- 番剧和课程适配 OGV 播放接口；文章/图文支持直接进入评论，保留分享，并修复评论滚动。
-- 改善离线合集选中与排序、课程横屏选集、截图防重复、画中画入口、竖版封面和图片切换。
-- 楼中楼回复支持线程化与平铺反复切换；加载进度按滚动位置平滑显示，增量加载不闪退，滑到底平滑拉满。
-- 同步上游直播 trace、粉丝勋章管理、离线音量均衡、离线 UGC 季信息、文章正序/倒序、下载季索引与队列刷新、匿名 buvid 修正和 Dash 空轨道保护。
-
-- 沿用已通过真机手测的音频与播放核心组合，倍速保持原音调；长按默认 2 倍并支持直接输入自定义数值。
-- 洞察显示近 1 秒与总丢帧，起播和普通切速排除最多 5 帧正常切换丢弃，松开长按快进后的 0.5 秒恢复期丢帧全部排除；正常切换丢帧先过滤再显示，后端清零或近期归零仍保留总数与黄色警示，构建缺少版本信息时不误报签名迁移。
-- 修复部分 Android 设备长按加速后松手持续追帧：恢复基础倍速 80 毫秒后仅检查一次音画差，超过 1 秒时精确重定位，可能出现短暂停顿；长按期间隐藏底部灰色进度块，洞察隐藏时仍监测丢帧。
-- 优化首页固定背景顶栏的磨砂绘制；设置重新分类，新增纯 @ 评论与数量过滤，并保留原有自定义选项。
-
-- 全量 ZIP 备份与安全导入、缓存音质选择、评论独立过滤开关及来源定位；番剧/分 P/合集采用更新后的面板与同步逻辑。
-- 直播独立缓冲、SC 和固定分区入口；更新图文、用户主页及发布输入面板，支持惊吓片段跳过、外接键盘连续后退和系统大字体。
-- 适配 Android 17 局域网投屏权限，修复签名播放地址、设置搜索与账号设备标识迁移，兼容 vivo 媒体会话音量键。
-
-- 跟进 2.2.0：番剧分区选集和滚动定位、订阅倒序切换、搜索请求与文集收起修正；备份导入增加 ZIP 完整性校验。
-
-- 跟进近期上游：改善选集、番剧缓存和播放接口回退、图文排版、评论分页与匿名访问，适配 ChromeOS 旋转及投屏/文件选择兼容修复。
-- 离线视频支持缓存字幕与分段信息；评论支持线程式展示及自动折叠阈值。
-- 直播画中画/媒体通知支持刷新与弹幕按钮；音频焦点和音量超过 100% 的播放处理更稳定。
-- 网络图片偶发失败会自动有限重试，避免永久停留在占位图。
-- 动态页支持搜索指定关注 UP 主；Live Photo 预览通过静态封面遮罩、首帧预热和相邻页预加载，修复进入黑屏与切换闪块，并在离开后释放播放器资源。
+- Android 更新优先使用 ModelScope 镜像，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、取消和系统安装器。
+- 独立 `applicationId` `com.maxzrb.piliexo`，Release 按 ABI 拆分并使用独立签名，可与原版 PiliPlus 共存。
+- 发布流程在本机完成构建、原证书签名、16KB 对齐，并对 AOT 来源、插件注册和定制 `libmpv` 做静态门禁。
 
 ## 下载与更新
 
@@ -60,7 +36,7 @@ APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armea
 
 当前发布使用 Flutter `3.47.9` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
 
-每次正式发布必须更新本 README 的版本、工具链、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。本项目仅在本机构建、打包和签名，不使用 GitHub Actions。本地预构建脚本会校验版本与 Flutter 工具链；发布后同步默认分支的 README。
+每次正式发布必须核对本 README 的自动 Release 标签、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。本项目仅在本机构建、打包和签名，不使用 GitHub Actions。本地预构建脚本会校验自动 Release 标签与 Flutter 工具链；发布后同步默认分支的 README。
 
 本项目是个人为了兴趣而开发的第三方自用修改版，仅用于学习和测试，请于下载后 24 小时内删除。所用 API 皆从官方网站收集，不提供任何破解内容。
 
