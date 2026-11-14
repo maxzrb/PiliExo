@@ -10,6 +10,13 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRANT = b"io/flutter/plugins/GeneratedPluginRegistrant"
+
+# 定制 mpv 核心必须包含这些选项；stock media_kit 核心不含它们。
+MPV_HDR_MARKERS = (
+    b"android-hdr-signal-passthrough",
+    b"piliexo_dolbyvision",
+    b"piliexo_metadata_callback",
+)
 SUPPORTED_ABIS = {"arm64-v8a", "armeabi-v7a"}
 
 
@@ -40,6 +47,11 @@ def inspect_apk(path: Path, source_commit: str, version: str):
         missing = required - set(names)
         if missing:
             raise RuntimeError(f"APK 缺少必要文件：{sorted(missing)}")
+
+        mpv = archive.read(f"lib/{abi}/libmpv.so")
+        absent = [marker.decode("ascii") for marker in MPV_HDR_MARKERS if marker not in mpv]
+        if absent:
+            raise RuntimeError(f"libmpv.so 是 stock 核心，缺少定制 HDR 选项：{absent}")
 
         app = archive.read(f"lib/{abi}/libapp.so")
         if source_commit.encode() not in app:
