@@ -4,9 +4,9 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 ## 项目状态
 
-- 当前正式版本：[v26.11.13.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.13.1)（2026-11-13 发布）。
+- 当前正式版本：[v26.11.14.1](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.14.1)（2026-11-14 发布）。
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`v26.11.13.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.13.1)。编译当前版本请使用该标签或对应分支。
+- 发布源码：[`v26.11.14.1`](https://github.com/maxzrb/PiliExo/tree/v26.11.14.1)。编译当前版本请使用该标签或对应分支。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
 - PiliPlus 上游已处理至 `915276c87`；本轮 16 项中除纯 Linux MPRIS 和 Linux CI 2 项外全部纳入，保留 PiliExo 的 HDR、播放器和原生定制。
 
@@ -14,6 +14,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - HDR 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
 - Android 在线 UGC/PGC 的 HDR 播放支持 Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线；支持符合设备能力的 HDR10、Dolby Vision 和 HDR Vivid，失败时保留回退。
+- 修复部分构建误打包未定制 mpv 核心，导致“mpv 原生 HDR”不可用并自动回退 ExoPlayer 的问题；打包前会校验定制核心，阻止 stock `libmpv` 再次进入正式包。
 - mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
 - 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留视频缩小动画，原生 HDR 路线固定视频层并裁剪。
 - 修复高采样率 FLAC 音轨导致 HDR 播放失败的问题：从音轨元数据补齐真实采样率，按每条音轨的最大帧大小配置输入缓冲。
@@ -51,7 +52,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.13.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.13.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.13.1/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.14.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.14.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.14.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 
