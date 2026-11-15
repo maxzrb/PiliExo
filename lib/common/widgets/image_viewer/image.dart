@@ -45,6 +45,7 @@ class Image extends StatefulWidget {
     required this.doubleTapGestureRecognizer,
     required this.horizontalDragGestureRecognizer,
     required this.onChangePage,
+    this.overlayBuilder,
   });
 
   Image.network(
@@ -83,6 +84,7 @@ class Image extends StatefulWidget {
     required this.doubleTapGestureRecognizer,
     required this.horizontalDragGestureRecognizer,
     required this.onChangePage,
+    this.overlayBuilder,
   }) : image = ResizeImage.resizeIfNeeded(
          cacheWidth,
          cacheHeight,
@@ -128,6 +130,7 @@ class Image extends StatefulWidget {
     required this.doubleTapGestureRecognizer,
     required this.horizontalDragGestureRecognizer,
     required this.onChangePage,
+    this.overlayBuilder,
   }) : assert(
          !kIsWeb,
          'Image.file is not supported on Flutter Web. '
@@ -176,6 +179,7 @@ class Image extends StatefulWidget {
     required this.doubleTapGestureRecognizer,
     required this.horizontalDragGestureRecognizer,
     required this.onChangePage,
+    this.overlayBuilder,
   }) : image = ResizeImage.resizeIfNeeded(
          cacheWidth,
          cacheHeight,
@@ -224,6 +228,7 @@ class Image extends StatefulWidget {
     required this.doubleTapGestureRecognizer,
     required this.horizontalDragGestureRecognizer,
     required this.onChangePage,
+    this.overlayBuilder,
   }) : image = ResizeImage.resizeIfNeeded(
          cacheWidth,
          cacheHeight,
@@ -282,6 +287,9 @@ class Image extends StatefulWidget {
 
   final DoubleTapGestureRecognizer doubleTapGestureRecognizer;
   final ImageHorizontalDragGestureRecognizer horizontalDragGestureRecognizer;
+
+  /// 在已经解码的图片上方绘制附加内容，例如 Live Photo 的视频层。
+  final Widget Function(BuildContext context, Size imageSize)? overlayBuilder;
 
   @override
   State<Image> createState() => _ImageState();
@@ -613,6 +621,23 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       childSize = .zero;
       isLongPic = false;
     }
+    final rawImage = RawImage(
+      image: _imageInfo?.image,
+      opacity: widget.opacity,
+    );
+    Widget imageChild = rawImage;
+    if (_imageInfo != null && widget.overlayBuilder != null) {
+      imageChild = Stack(
+        fit: StackFit.passthrough,
+        children: [
+          Positioned.fill(
+            child: widget.overlayBuilder!(context, childSize),
+          ),
+          rawImage,
+        ],
+      );
+    }
+
     Widget result = Viewer(
       minScale: minScale ?? widget.minScale,
       maxScale: maxScale ?? widget.maxScale,
@@ -625,7 +650,7 @@ class _ImageState extends State<Image> with WidgetsBindingObserver {
       doubleTapGestureRecognizer: widget.doubleTapGestureRecognizer,
       horizontalDragGestureRecognizer: widget.horizontalDragGestureRecognizer,
       onChangePage: widget.onChangePage,
-      child: RawImage(image: _imageInfo?.image),
+      child: imageChild,
     );
 
     if (!widget.excludeFromSemantics) {

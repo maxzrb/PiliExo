@@ -1,0 +1,316 @@
+{
+  "video": [
+    {
+      "name": "番剧新版GET与续播",
+      "type": "pgc",
+      "responses": [
+        {
+          "code": 0,
+          "data": {
+            "video_info": {
+              "quality": 129
+            },
+            "watch_progress": {
+              "current_watch_progress": 12000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "课程新版GET与旧进度字段",
+      "type": "pugv",
+      "responses": [
+        {
+          "code": 0,
+          "data": {
+            "video_info": {
+              "quality": 80
+            },
+            "watch_progress": {
+              "current_progress": 9000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "番剧DRM只回退一次",
+      "type": "pgc",
+      "responses": [
+        {
+          "code": 0,
+          "data": {
+            "arc": {
+              "is_drm": true
+            }
+          }
+        },
+        {
+          "code": 0,
+          "result": {
+            "video_info": {
+              "quality": 125
+            },
+            "play_view_business_info": {
+              "user_status": {
+                "watch_progress": {
+                  "current_watch_progress": 7000
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "课程DRM独立回退",
+      "type": "pugv",
+      "responses": [
+        {
+          "code": 0,
+          "data": {
+            "arc": {
+              "is_drm": true
+            }
+          }
+        },
+        {
+          "code": 0,
+          "data": {
+            "quality": 80,
+            "play_view_business_info": {
+              "user_status": {
+                "watch_progress": {
+                  "current_watch_progress": 6000
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "无权限不触发回退",
+      "type": "pgc",
+      "responses": [
+        {
+          "code": 0,
+          "data": {
+            "not_playable_reason": {
+              "code": -404,
+              "message": "无权限"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "缺少播放信息返回明确错误",
+      "type": "pgc",
+      "responses": [
+        {
+          "code": 0,
+          "data": {}
+        }
+      ]
+    },
+    {
+      "name": "UGC纠正PGC保留语言和响度参数",
+      "type": "ugc",
+      "responses": [
+        {
+          "code": -404,
+          "message": "番剧入口"
+        },
+        {
+          "code": 0,
+          "data": {
+            "video_info": {
+              "quality": 129
+            },
+            "watch_progress": {
+              "current_progress": 11000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "回退失败不循环",
+      "type": "pgc",
+      "responses": [
+        {
+          "code": 0,
+          "data": {
+            "arc": {
+              "is_drm": true
+            }
+          }
+        },
+        {
+          "code": -404,
+          "message": "无权限"
+        }
+      ]
+    }
+  ],
+  "sign": [
+    {
+      "params": {
+        "empty": "",
+        "text": "中文 空格",
+        "list": [
+          "",
+          "a&b"
+        ]
+      },
+      "timestamp": 1700000000
+    }
+  ],
+  "progress": [
+    {
+      "dm_progress": "9000"
+    },
+    {
+      "dm_progress": "2000"
+    },
+    {
+      "dm_progress": "-1"
+    },
+    {
+      "start_progress": "7000",
+      "dm_progress": "9000"
+    },
+    {
+      "t": "1.25"
+    },
+    {
+      "dm_progress": "bad"
+    },
+    {
+      "t": "NaN"
+    }
+  ],
+  "scroll": [
+    {
+      "index": 2,
+      "count": 5,
+      "extent": 80,
+      "viewport": 200
+    },
+    {
+      "index": 4,
+      "count": 5,
+      "extent": 80,
+      "viewport": 200
+    },
+    {
+      "index": 2,
+      "count": 5,
+      "extent": 112
+    }
+  ],
+  "pagination": [
+    {
+      "name": "空页有游标仍续页",
+      "pages": [
+        {
+          "ids": [],
+          "offset": "next",
+          "end": false
+        },
+        {
+          "ids": [
+            2
+          ],
+          "offset": "last",
+          "end": false
+        },
+        {
+          "ids": [
+            3
+          ],
+          "offset": "",
+          "end": false
+        }
+      ]
+    },
+    {
+      "name": "服务端结束标记优先",
+      "pages": [
+        {
+          "ids": [
+            1
+          ],
+          "offset": "ignored",
+          "end": true
+        }
+      ]
+    },
+    {
+      "name": "空游标终止不重复请求",
+      "pages": [
+        {
+          "ids": [],
+          "offset": "",
+          "end": false
+        }
+      ]
+    }
+  ],
+  "refresh": [
+    {
+      "name": "隐藏时停止调度",
+      "initial": false,
+      "values": [
+        true,
+        false,
+        true,
+        false
+      ]
+    },
+    {
+      "name": "初始刷新可见且更换监听",
+      "initial": true,
+      "values": [
+        {
+          "replace": false
+        },
+        true,
+        false
+      ]
+    }
+  ],
+  "word": [
+    {
+      "words": "正文",
+      "font_size": 28,
+      "style": {
+        "font_level": "small"
+      }
+    },
+    {
+      "words": "标题",
+      "font_level": "xxLarge"
+    },
+    {
+      "words": "正文",
+      "font_size": 0
+    }
+  ],
+  "dlna": [
+    {
+      "base": "http://192.0.2.1:8080/root/",
+      "control": "/upnp/av"
+    },
+    {
+      "base": "http://192.0.2.1:8080/root/",
+      "control": "av"
+    },
+    {
+      "base": "http://192.0.2.1:8080/root/",
+      "control": "http://192.0.2.2/control"
+    }
+  ]
+}

@@ -18,11 +18,11 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # update when release
-version: 26.9.6+3
+version: 26.11.14+1
 
 environment:
   sdk: ">=3.13.0"
-  flutter: 3.47.2
+  flutter: 3.47.9
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -42,13 +42,13 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/audio_service.git
       path: audio_service
-      ref: main
+      ref: b531c6202b1205621cd95129b6361517398c3bce
   audio_session: ^0.2.2
   battery_plus: ^7.0.0
   brotli: ^0.6.0
   cached_network_image_ce:
     git:
-      url: https://github.com/My-Responsitories/flutter_cached_network_image_ce.git
+      url: https://github.com/bggRGjQaUbCoE/flutter_cached_network_image_ce.git
       path: cached_network_image
       ref: develop
   canvas_danmaku:
@@ -77,7 +77,11 @@ dependencies:
   device_info_plus: ^13.1.0
   dio: ^5.9.1
   dio_http2_adapter: ^2.7.1
-  dlna_dart: ^0.1.0
+  dlna_dart:
+    git:
+      url: https://github.com/suconghou/dlna-dart.git
+      # 固定本轮已审查的上游提交，避免后续解析时静默引入新重构。
+      ref: fe347512768400a4309dd73269f104ba65668f07
   dynamic_color: ^2.1.0
   easy_debounce: ^2.0.3
   encrypt: ^5.0.3
@@ -86,7 +90,7 @@ dependencies:
       url: https://github.com/bggRGjQaUbCoE/extended_nested_scroll_view.git
       ref: dev
   ffi: ^2.2.0
-  file_picker: ^12.0.0
+  file_picker: ^13.1.0
   fixnum: ^1.1.1
   fl_chart: ^1.0.0
   flex_seed_scheme: ^5.0.0
@@ -104,6 +108,7 @@ dependencies:
     git:
       url: https://github.com/bggRGjQaUbCoE/flutter_sortable_wrap.git
       ref: master
+  flutter_staggered_grid_view: ^0.7.0
   flutter_svg: ^2.0.14
   flutter_volume_controller: ^2.0.0
   font_awesome_flutter:
@@ -130,7 +135,7 @@ dependencies:
       url: https://github.com/bggRGjQaUbCoE/material_design_icons_flutter.git
       ref: const
   material_new_shapes: ^1.0.0
-  material_ui: 1.1.0
+  material_ui: 1.11.0
   media_kit: 1.1.11
   media_kit_libs_video: 1.0.5
   media_kit_video: 1.2.5
@@ -144,7 +149,7 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler_android: ^14.0.0
   permission_handler_apple: ^9.4.7
-  permission_handler_platform_interface: ^4.3.0
+  permission_handler_platform_interface: ^4.4.0
   pretty_qr_code: ^3.3.0
   protobuf: ^6.0.0
   re_highlight: ^0.0.3
@@ -163,7 +168,6 @@ dependencies:
   uuid: ^4.5.1
   vector_math: ^2.2.0
   wakelock_plus: ^1.2.8
-  waterfall_flow: ^3.1.0
   web_socket_channel: ^3.0.3
   webdav_client:
     git:
@@ -189,44 +193,39 @@ dependency_overrides:
       ref: v6.1.5
   media_kit:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: media_kit
-      ref: version_1.2.5
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_android_video:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: libs/android/media_kit_libs_android_video
-      ref: version_1.2.5
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_ios_video:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: libs/ios/media_kit_libs_ios_video
-      ref: version_1.2.5
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_video:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: libs/universal/media_kit_libs_video
-      ref: version_1.2.5
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_libs_windows_video:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: libs/windows/media_kit_libs_windows_video
-      ref: version_1.2.5
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_native_event_loop:
     git:
-      url: https://github.com/bggRGjQaUbCoE/media-kit.git
+      url: https://github.com/My-Responsitories/media-kit.git
       path: media_kit_native_event_loop
-      ref: version_1.2.5
+      ref: 73771ec38176be2d984a3049c28177bce23b54a0
   media_kit_video:
     git:
       url: https://github.com/bggRGjQaUbCoE/media-kit.git
       path: media_kit_video
-      ref: version_1.2.5
-  cached_network_image_ce:
-    git:
-      url: https://github.com/My-Responsitories/flutter_cached_network_image_ce.git
-      path: cached_network_image
-      ref: develop
+      ref: fd8421d21eade4d6d12de137fa7df902fec20292
 
 dev_dependencies:
   flutter_test:

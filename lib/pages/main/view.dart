@@ -16,6 +16,7 @@ import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
+import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
@@ -23,11 +24,11 @@ import 'package:PiliPlus/utils/mobile_observer.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/ui_power_probe.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tray_manager/tray_manager.dart';
-import 'package:win32/win32.dart' as kernel32;
 import 'package:window_manager/window_manager.dart';
 
 class MainApp extends StatefulWidget {
@@ -56,6 +57,7 @@ class _MainAppState extends PopScopeState<MainApp>
   @override
   void initState() {
     super.initState();
+    if (UiPowerProbe.enabled) UiPowerProbe.start();
     addObserverMobile(this);
     if (Platform.isMacOS) {
       HardwareKeyboard.instance.addHandler(_handleKeyEvent);
@@ -153,7 +155,7 @@ class _MainAppState extends PopScopeState<MainApp>
 
   @override
   Future<void> onWindowMoved() async {
-    if (PlPlayerController.instance?.isDesktopPip ?? false) {
+    if (PlPlayerController.instance?.updatePipBounds() ?? false) {
       return;
     }
     final Offset offset = await windowManager.getPosition();
@@ -162,7 +164,7 @@ class _MainAppState extends PopScopeState<MainApp>
 
   @override
   Future<void> onWindowResized() async {
-    if (PlPlayerController.instance?.isDesktopPip ?? false) {
+    if (PlPlayerController.instance?.updatePipBounds() ?? false) {
       return;
     }
     final Rect bounds = await windowManager.getBounds();
@@ -186,15 +188,7 @@ class _MainAppState extends PopScopeState<MainApp>
     await GStorage.compact();
     await GStorage.close();
     await trayManager.destroy();
-    if (Platform.isWindows) {
-      // flutter_inappwebview
-      // 6.2.0-beta.2+ https://github.com/pichillilorenzo/flutter_inappwebview/issues/2482
-      // 6.1.5 https://github.com/pichillilorenzo/flutter_inappwebview/issues/2512#issuecomment-3031039587
-      final hProcess = kernel32.GetCurrentProcess();
-      kernel32.TerminateProcess(hProcess, 0);
-    } else {
-      exit(0);
-    }
+    DeviceUtils.exitApp();
   }
 
   @override
@@ -422,10 +416,14 @@ class _MainAppState extends PopScopeState<MainApp>
           child: MediaQuery.removePadding(
             context: context,
             removeRight: true,
-            child: DrawerTheme(
-              data: DrawerThemeData(width: 130 + _padding.left),
-              child: Obx(
-                () => NavigationDrawer(
+            child: Obx(
+              () => DrawerTheme(
+                data: DrawerThemeData(
+                  width:
+                      (_mainController.hideSideBarLabel ? 80 : 130) +
+                      _padding.left,
+                ),
+                child: NavigationDrawer(
                   /// apply `lib/scripts/navigation_drawer.patch`
                   flex: 5,
                   backgroundColor: Colors.transparent,
@@ -433,13 +431,22 @@ class _MainAppState extends PopScopeState<MainApp>
                   selectedIndex: _mainController.selectedIndex.value,
                   header: Expanded(flex: 4, child: userAndSearchVertical()),
                   tilePadding: const .symmetric(vertical: 5, horizontal: 12),
-                  indicatorShape: const RoundedRectangleBorder(
-                    borderRadius: .all(.circular(16)),
-                  ),
+                  indicatorShape: _mainController.hideSideBarLabel
+                      ? const RoundedRectangleBorder(
+                          borderRadius: .all(.circular(12)),
+                        )
+                      : const RoundedRectangleBorder(
+                          borderRadius: .all(.circular(16)),
+                        ),
                   children: _mainController.navigationBars
                       .map(
                         (e) => NavigationDrawerDestination(
-                          label: Text(e.label),
+                          label: _mainController.hideSideBarLabel
+                              ? Semantics(
+                                  label: e.label,
+                                  child: const SizedBox.shrink(),
+                                )
+                              : Text(e.label),
                           icon: _buildIcon(type: e),
                           selectedIcon: _buildIcon(
                             type: e,
@@ -457,7 +464,7 @@ class _MainAppState extends PopScopeState<MainApp>
       return Obx(
         () => NavigationRail(
           groupAlignment: 0.5,
-          labelType: .selected,
+          labelType: _mainController.hideSideBarLabel ? .none : .selected,
           leading: userAndSearchVertical(),
           backgroundColor: Colors.transparent,
           onDestinationSelected: _mainController.setIndex,

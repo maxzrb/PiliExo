@@ -57,6 +57,7 @@ analysis_benchmark.json
 .pub-cache/
 .pub/
 /build/
+/tools/
 flutter_*.png
 linked_*.ds
 unlinked.ds
@@ -152,3 +153,10 @@ dist
 test*
 !test/
 !test/**
+!/tool/test_playback_experiment.py
+!/tool/test_playback_power_probe.py
+!/tool/test_ui_power_probe.py
+!/tool/test_ui_power_experiment.py
+
+# 百度网盘生成的上传状态文件不进入源码。
+*.baiduyun.uploading.cfg

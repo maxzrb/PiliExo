@@ -1,0 +1,42 @@
+[
+  {
+    "name": "UGC拒绝不产生播放信息",
+    "type": "ugc",
+    "tryLook": false,
+    "responses": [{"code": 87008, "message": "固定拒绝"}]
+  },
+  {
+    "name": "tryLook仍保留服务端拒绝",
+    "type": "ugc",
+    "tryLook": true,
+    "responses": [{"code": 87008, "message": "固定拒绝"}]
+  },
+  {
+    "name": "拒绝响应附带媒体字段也不解析",
+    "type": "ugc",
+    "tryLook": false,
+    "responses": [
+      {
+        "code": 87008,
+        "message": "固定拒绝",
+        "data": {
+          "quality": 80,
+          "durl": [{"url": "https://fixture.invalid/not-a-video.mp4"}]
+        }
+      }
+    ]
+  },
+  {
+    "name": "PGC业务拒绝不产生播放信息",
+    "type": "pgc",
+    "tryLook": false,
+    "responses": [
+      {
+        "code": 0,
+        "data": {
+          "not_playable_reason": {"code": 87008, "message": "固定拒绝"}
+        }
+      }
+    ]
+  }
+]

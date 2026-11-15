@@ -71,6 +71,30 @@ String? updateSigningKeyMigrationNoticeFor({
   return null;
 }
 
+/// 区分更新接口、响应数据和 Release 标签错误，避免网络失败被误报成标签格式问题。
+String? updateCheckResponseError({
+  required int? statusCode,
+  required Map<String, dynamic>? data,
+}) {
+  if (statusCode == null || statusCode < 200 || statusCode >= 300) {
+    if (statusCode == 403 || statusCode == 429) {
+      return '检查更新失败：GitHub 访问触发限流，请稍后重试';
+    }
+    if (statusCode == null || statusCode < 0) {
+      return '检查更新失败：网络请求异常，请检查网络或代理';
+    }
+    return '检查更新失败：更新接口返回 HTTP $statusCode';
+  }
+  final tag = data?['tag_name']?.toString().trim();
+  if (tag == null || tag.isEmpty) {
+    return '检查更新失败：更新接口返回数据异常';
+  }
+  if (ReleaseVersion.tryParse(tag) == null) {
+    return '检查更新失败：Release 标签格式不受支持（$tag）';
+  }
+  return null;
+}
+
 abstract final class Update {
   static const _androidUpdateChannel = MethodChannel(
     'com.maxzrb.piliexo/update',
@@ -85,6 +109,11 @@ abstract final class Update {
     if (kDebugMode) return;
     SmartDialog.dismiss();
     try {
+      final current = ReleaseVersion.current;
+      if (current == null) {
+        if (!isAuto) SmartDialog.showToast('当前构建缺少有效版本信息，暂无法检查更新');
+        return;
+      }
       final res = await Request().get(
         Api.latestApp,
         options: Options(
@@ -93,14 +122,17 @@ abstract final class Update {
         ),
       );
       final data = _asMap(res.data);
-      final latest = ReleaseVersion.tryParse(data?['tag_name']?.toString());
-      final current = ReleaseVersion.current;
-      if (data == null || latest == null || current == null) {
-        if (!isAuto) {
-          SmartDialog.showToast('检查更新失败，Release 标签格式不受支持');
-        }
+      final error = updateCheckResponseError(
+        statusCode: res.statusCode,
+        data: data,
+      );
+      if (error != null) {
+        if (!isAuto) SmartDialog.showToast(error);
         return;
       }
+      final latest = ReleaseVersion.tryParse(
+        data!['tag_name'].toString(),
+      )!;
 
       if (latest.compareTo(current) <= 0) {
         if (!isAuto) {

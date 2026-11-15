@@ -1,0 +1,75 @@
+{
+  "download": {
+    "time_update_stamp": 1762000000000,
+    "time_create_stamp": 1762000000000,
+    "subtitle_languages": [
+      "zh-CN",
+      "ai-zh"
+    ],
+    "subtitle_paths": [
+      "D:/cache/PiliExo/entry/subtitles/9.subtitle",
+      "D:/cache/PiliExo/entry/subtitles/2.subtitle"
+    ],
+    "view_point_ends": [
+      0.4,
+      0.8
+    ]
+  },
+  "trees": [
+    {
+      "name": "不折叠",
+      "visible": [
+        {
+          "id": 1,
+          "depth": 0,
+          "collapsed": 0
+        },
+        {
+          "id": 2,
+          "depth": 1,
+          "collapsed": 0
+        },
+        {
+          "id": 3,
+          "depth": 2,
+          "collapsed": 0
+        },
+        {
+          "id": 4,
+          "depth": 0,
+          "collapsed": 0
+        }
+      ]
+    },
+    {
+      "name": "深度1自动折叠",
+      "visible": [
+        {
+          "id": 1,
+          "depth": 0,
+          "collapsed": 0
+        },
+        {
+          "id": 2,
+          "depth": 1,
+          "collapsed": 1
+        },
+        {
+          "id": 4,
+          "depth": 0,
+          "collapsed": 0
+        }
+      ]
+    }
+  ],
+  "scroll": [
+    [
+      231,
+      258
+    ],
+    [
+      231,
+      324
+    ]
+  ]
+}

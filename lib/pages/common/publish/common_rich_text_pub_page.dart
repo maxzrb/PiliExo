@@ -44,6 +44,7 @@ abstract class CommonRichTextPubPage
     this.pics,
     super.onSave,
     super.autofocus,
+    super.panelType,
     super.imageLengthLimit,
   });
 
@@ -56,7 +57,7 @@ abstract class CommonRichTextPubPageState<T extends CommonRichTextPubPage>
   final key = GlobalKey<RichTextFieldState>();
   late final imagePicker = ImagePicker();
   late final RxList<PicModel> imageList;
-  int get limit => widget.imageLengthLimit ?? 9;
+  int get limit => widget.imageLengthLimit;
 
   @override
   late final RichTextEditingController editController;
@@ -325,11 +326,13 @@ abstract class CommonRichTextPubPageState<T extends CommonRichTextPubPage>
   }
 
   late double _mentionOffset = 0;
+  MentionItem? get topMentionItem => null;
   Future<void>? onMention([bool fromClick = false]) async {
     final res = await DynMentionPanel.onDynMention(
       context,
       offset: _mentionOffset,
       onCachePos: (offset) => _mentionOffset = offset,
+      top: topMentionItem,
     );
     if (res != null) {
       if (res is MentionItem) {

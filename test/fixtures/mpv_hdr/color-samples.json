@@ -1,0 +1,28 @@
+{
+  "description": "PQ参考直接使用ST2084公式生成的输入编码值，HLG参考等于输入；不使用候选GPU输出生成参考。",
+  "pqNits": [
+    0,
+    0.001,
+    0.005,
+    0.01,
+    0.1,
+    1,
+    10,
+    50,
+    100,
+    203,
+    300,
+    460,
+    600,
+    1000,
+    2000,
+    4000,
+    10000
+  ],
+  "rgbTolerance": 0.0019550342130987292,
+  "files": {
+    "pq-color-input.txt": "4b6cdf9cc5eeecf4127f8c5ddfaf7f5b628246383900fe1ba746b94700e8d332",
+    "hlg-color-input.txt": "19e303aae7b37b4fe948f3d898445873d1f7af444af8f340560b281c58a49a86",
+    "hdr-metadata-input.txt": "7d6abddedf6e8059e9170bbdb2b3fa242d81662bd2b4b35435478c6c7263f0ac"
+  }
+}

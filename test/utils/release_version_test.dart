@@ -35,7 +35,16 @@ void main() {
 
       expect(version?.tag, 'v26.8.30.1');
       expect(BuildConfig.versionCode, isNot(BuildConfig.releaseBuild));
-      expect(ReleaseVersion.current?.build, BuildConfig.releaseBuild);
+      if (BuildConfig.hasReleaseMetadata) {
+        expect(ReleaseVersion.current?.build, BuildConfig.releaseBuild);
+        expect(
+          BuildConfig.displayVersion,
+          '${BuildConfig.versionName}+${BuildConfig.releaseBuild}',
+        );
+      } else {
+        expect(ReleaseVersion.current, isNull);
+        expect(BuildConfig.displayVersion, contains('未写入版本信息'));
+      }
     });
   });
 }

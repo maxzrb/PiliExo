@@ -1,4 +1,4 @@
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 
 /// 音频音轨选择工具。
 abstract final class AudioTrackSelector {

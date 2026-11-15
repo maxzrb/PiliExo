@@ -1,0 +1,100 @@
+[
+  {
+    "calls": [
+      [
+        "mpv-native",
+        123456,
+        true
+      ]
+    ],
+    "active": false,
+    "mpvActive": true
+  },
+  {
+    "calls": [
+      [
+        "media3-native",
+        65432,
+        false
+      ]
+    ],
+    "active": true,
+    "mpvActive": false
+  },
+  {
+    "calls": [
+      [
+        "mpv-native",
+        0,
+        false
+      ]
+    ],
+    "active": false,
+    "mpvActive": true
+  },
+  {
+    "calls": [],
+    "active": true,
+    "mpvActive": false
+  },
+  {
+    "calls": [],
+    "active": false,
+    "mpvActive": false
+  },
+  {
+    "calls": [
+      [
+        "mpv-native",
+        7777,
+        true
+      ]
+    ],
+    "active": false,
+    "mpvActive": true
+  },
+  {
+    "calls": [
+      [
+        "media3-native",
+        5000,
+        true
+      ]
+    ],
+    "active": false,
+    "mpvActive": false
+  },
+  {
+    "calls": [
+      [
+        "mpv-native",
+        4000,
+        false
+      ]
+    ],
+    "active": true,
+    "mpvActive": false
+  },
+  {
+    "calls": [
+      [
+        "mpv-native",
+        3000,
+        true
+      ]
+    ],
+    "active": true,
+    "mpvActive": false
+  },
+  {
+    "calls": [
+      [
+        "mpv-native",
+        60000,
+        true
+      ]
+    ],
+    "active": false,
+    "mpvActive": true
+  }
+]

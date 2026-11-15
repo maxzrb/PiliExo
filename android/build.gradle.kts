@@ -2,8 +2,16 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 allprojects {
     repositories {
-        google()
-        mavenCentral()
+        maven("https://developer.huawei.com/repo/") {
+            content { includeGroup("com.huawei.hms") }
+        }
+        // Flutter 引擎由 Flutter 仓库提供，避免先访问其他仓库而中断解析。
+        google {
+            content { excludeGroup("io.flutter") }
+        }
+        mavenCentral {
+            content { excludeGroup("io.flutter") }
+        }
     }
 }
 

@@ -8,6 +8,7 @@ import 'package:PiliPlus/pages/common/common_data_controller.dart';
 import 'package:PiliPlus/pages/dynamics_tab/controller.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/dynamics_up_navigation.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
 import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -57,7 +58,7 @@ class DynamicsController
   }
 
   void _jumpToTab(int mid) {
-    tabController.index = mid == -1 ? 0 : 4;
+    tabController.index = DynamicsUpNavigation.tabIndexFor(mid);
   }
 
   void onSelectUp(int mid) {
@@ -104,12 +105,13 @@ class DynamicsController
   }
 
   @override
-  Future<void> refreshWithIndicator() {
+  Future<void> showRefresh() {
     final controller = this.controller;
-    if (controller?.refreshIndicatorKey.currentState case final state?) {
-      return state.show();
+    if (controller != null) {
+      singleRefresh();
+      return controller.showRefresh();
     }
-    return onRefresh();
+    return singleRefresh();
   }
 
   @override
@@ -130,35 +132,13 @@ class DynamicsController
         EasyThrottle.throttle(
           'topOrRefresh',
           const Duration(milliseconds: 500),
-          onRefresh,
+          showRefresh,
         );
       } else {
         animateToTop();
       }
     } else {
       super.toTopOrRefresh();
-    }
-  }
-
-  @override
-  void toTopOrRefreshWithIndicator() {
-    final ctr = controller;
-    if (ctr?.scrollController.hasClients == true) {
-      if (ctr!.scrollController.position.pixels == 0) {
-        if (scrollController.hasClients &&
-            scrollController.position.pixels != 0) {
-          scrollController.animToTop();
-        }
-        EasyThrottle.throttle(
-          'topOrRefresh',
-          const Duration(milliseconds: 500),
-          refreshWithIndicator,
-        );
-      } else {
-        animateToTop();
-      }
-    } else {
-      super.toTopOrRefreshWithIndicator();
     }
   }
 

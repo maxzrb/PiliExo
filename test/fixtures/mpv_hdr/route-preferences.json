@@ -1,0 +1,11 @@
+[
+  {"id":"default","stored":null,"media3":true,"mpv":false},
+  {"id":"old-compatible","stored":null,"media3":false,"mpv":false},
+  {"id":"old-native","stored":null,"media3":false,"mpv":true},
+  {"id":"old-both","stored":null,"media3":true,"mpv":true},
+  {"id":"explicit-compatible","stored":"mpv-compatible","media3":true,"mpv":true},
+  {"id":"explicit-mpv","stored":"mpv-native","media3":true,"mpv":false},
+  {"id":"explicit-media3","stored":"media3-native","media3":false,"mpv":true},
+  {"id":"unknown","stored":"future-route","media3":false,"mpv":false},
+  {"id":"invalid-type","stored":99,"media3":true,"mpv":false}
+]

@@ -1,9 +1,14 @@
 import 'package:PiliPlus/common/constants.dart';
+import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/grpc_headers.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
+import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:hive_ce/hive.dart';
 
 sealed class Account {
@@ -35,6 +40,9 @@ sealed class Account {
 
   String? get refresh => throw UnimplementedError();
 
+  set buvid(String value) => throw UnimplementedError();
+  String get buvid => throw UnimplementedError();
+
   const Account();
 }
 
@@ -55,6 +63,19 @@ class LoginAccount extends Account {
   @HiveField(3)
   final Set<AccountType> type;
 
+  late String _buvid = AnonymousAccount()._buvid;
+  @override
+  @HiveField(4)
+  String get buvid => _buvid;
+  @override
+  set buvid(String value) {
+    if (_buvid == value) return;
+    _buvid = value;
+    activated = false;
+    grpcHeaders.addAll(GrpcHeaders.newHeaders(this));
+    onChange();
+  }
+
   @override
   bool activated = false;
 
@@ -69,9 +90,7 @@ class LoginAccount extends Account {
   };
 
   @override
-  late final Map<String, String> grpcHeaders = GrpcHeaders.newHeaders(
-    accessKey,
-  );
+  late final Map<String, String> grpcHeaders = GrpcHeaders.newHeaders(this);
 
   @override
   late final String csrf =
@@ -96,6 +115,7 @@ class LoginAccount extends Account {
     'cookies': cookieJar.toJson(),
     'accessKey': accessKey,
     'refresh': refresh,
+    'buvid': buvid,
     'type': type.map((i) => i.index).toList(),
   };
 
@@ -111,7 +131,9 @@ class LoginAccount extends Account {
     this.accessKey,
     this.refresh, [
     Set<AccountType>? type,
+    String? buvid,
   ]) : type = type ?? {} {
+    if (buvid != null) _buvid = buvid;
     cookieJar.setBuvid3();
   }
 
@@ -120,6 +142,7 @@ class LoginAccount extends Account {
     json['accessKey'],
     json['refresh'],
     (json['type'] as Iterable?)?.map((i) => AccountType.values[i]).toSet(),
+    json['buvid'],
   );
 
   @override
@@ -149,20 +172,76 @@ class AnonymousAccount extends Account {
   final Map<String, String> headers = Constants.baseHeaders;
 
   @override
-  final Map<String, String> grpcHeaders = GrpcHeaders.newHeaders();
+  late final Map<String, String> grpcHeaders = GrpcHeaders.newHeaders(this);
 
   @override
-  bool activated = false;
+  bool activated = true;
+
+  late String _buvid = Pref.buvid;
+  @override
+  String get buvid => _buvid;
+  @override
+  set buvid(String value) {
+    if (_buvid == value) return;
+    _buvid = value;
+    activated = false;
+    grpcHeaders.addAll(GrpcHeaders.newHeaders(this));
+    GStorage.setting.put(SettingBoxKey.buvid, value);
+  }
 
   @override
   Future<void> delete() {
     grpcHeaders['x-bili-fawkes-req-bin'] = GrpcHeaders.fawkes;
-    return cookieJar.deleteAll().whenComplete(cookieJar.setBuvid3);
+    return cookieJar.deleteAll().whenComplete(() async {
+      await refreshWebCookies();
+      cookieJar.setBuvid3();
+    });
+  }
+
+  /// 导入配置后清除旧匿名标识和请求头，保持运行时状态一致。
+  void reloadBuvid() {
+    _buvid = Pref.buvid;
+    activated = false;
+    grpcHeaders.addAll(GrpcHeaders.newHeaders(this));
   }
 
   static final _instance = AnonymousAccount._();
 
   AnonymousAccount._();
+
+  /// 请求层就绪后获取匿名网页标识，避免在单例构造时递归初始化请求层。
+  Future<void> refreshWebCookies() async {
+    try {
+      final res = await Request().get(
+        '/x/frontend/finger/spi',
+        options: Options(extra: {'account': const NoAccount()}),
+      );
+      final response = res.data;
+      if (response['code'] != 0) return;
+      final data = response['data'];
+      final b3 = data['b_3'];
+      final b4 = data['b_4'];
+      if (b3 is! String || b3.isEmpty || b4 is! String || b4.isEmpty) return;
+      final cookies = cookieJar.domainCookies
+          .putIfAbsent(
+            'bilibili.com',
+            () => {'/': {}},
+          )
+          .putIfAbsent('/', () => {});
+      final values = {
+        'buvid3': b3,
+        'buvid4': b4,
+        'b_nut': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
+      };
+      for (final entry in values.entries) {
+        cookies[entry.key] = SerializableCookie(
+          Cookie(entry.key, entry.value)..setBiliDomain(),
+        );
+      }
+    } catch (_) {
+      // 网络失败时保留已有随机标识，不能破坏账号独立的 APP/gRPC 标识。
+    }
+  }
 
   factory AnonymousAccount() => _instance;
 

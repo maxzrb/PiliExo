@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(piliexo_mpv_surface LANGUAGES CXX)
+add_library(piliexo_mpv_surface SHARED mpv_surface.cpp)
+target_compile_features(piliexo_mpv_surface PRIVATE cxx_std_17)
+target_compile_options(piliexo_mpv_surface PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(piliexo_mpv_surface PRIVATE android log dl)
+target_link_options(piliexo_mpv_surface PRIVATE -Wl,-z,max-page-size=16384)

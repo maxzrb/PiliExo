@@ -1,7 +1,6 @@
 import 'dart:math' show max, min;
 
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models_new/sponsor_block/segment_item.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -123,11 +122,13 @@ class PlayUrlModel {
     videoCodecid = json['video_codecid'];
     seekParam = json['seek_param'];
     seekType = json['seek_type'];
-    dash = json['dash'] != null ? Dash.fromJson(json['dash']) : null;
-    durl = (json['durl'] as List?)?.map<Durl>((e) => Durl.fromJson(e)).toList();
     supportFormats = (json['support_formats'] as List?)
         ?.map<FormatItem>((e) => FormatItem.fromJson(e))
         .toList();
+    dash = json['dash'] != null
+        ? Dash.fromJson(json['dash'], supportFormats)
+        : null;
+    durl = (json['durl'] as List?)?.map<Durl>((e) => Durl.fromJson(e)).toList();
     volume = json['volume'] == null ? null : Volume.fromJson(json['volume']);
     lastPlayTime = json['last_play_time'];
     lastPlayCid = json['last_play_cid'];
@@ -174,14 +175,16 @@ class Language {
     support = json['support'];
     items =
         (json['items'] as List?)?.map((e) => LanguageItem.fromJson(e)).toList()
-          ?..sort((a, b) {
-            final aHasZh = a.lang?.contains('zh') ?? false;
-            final bHasZh = b.lang?.contains('zh') ?? false;
-            if (aHasZh != bHasZh) return aHasZh ? -1 : 1;
-            if (a.isAi != b.isAi) return a.isAi ? 1 : -1;
-            return 0;
-          });
+          ?..sort(_sort);
   }
+}
+
+int _sort(LanguageItem a, LanguageItem b) {
+  final aHasZh = a.lang?.contains('zh') ?? false;
+  final bHasZh = b.lang?.contains('zh') ?? false;
+  if (aHasZh != bHasZh) return aHasZh ? -1 : 1;
+  if (a.isAi != b.isAi) return a.isAi ? 1 : -1;
+  return 0;
 }
 
 class LanguageItem {
@@ -217,11 +220,11 @@ class Dash {
   List<VideoItem>? video;
   List<AudioItem>? audio;
 
-  Dash.fromJson(Map<String, dynamic> json) {
+  Dash.fromJson(Map<String, dynamic> json, List<FormatItem>? supportFormats) {
     duration = json['duration'];
     minBufferTime = json['minBufferTime'];
     video = (json['video'] as List?)
-        ?.map<VideoItem>((e) => VideoItem.fromJson(e))
+        ?.map<VideoItem>((e) => VideoItem.fromJson(e, supportFormats))
         .toList();
     final audio = [
       if (json['flac']?['audio'] case Map<String, dynamic> flac)
@@ -346,8 +349,9 @@ class VideoItem extends BaseItem {
     required this.quality,
   });
 
-  VideoItem.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    quality = VideoQuality.fromCode(json['id']);
+  VideoItem.fromJson(Map<String, dynamic> json, List<FormatItem>? formats)
+    : super.fromJson(json) {
+    quality = VideoQuality.fromFormat(json['id'], formats);
   }
 }
 
@@ -436,6 +440,24 @@ class Volume {
       targetTp: json["target_tp"] ?? 0,
       // multiSceneArgs: json["multi_scene_args"] == null ? null : MultiSceneArgs.fromJson(json["multi_scene_args"]),
     );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'measured_i': measuredI,
+    'measured_lra': measuredLra,
+    'measured_tp': measuredTp,
+    'measured_threshold': measuredThreshold,
+    'target_offset': targetOffset,
+    'target_i': targetI,
+    'target_tp': targetTp,
+  };
+
+  static Volume? fromCache(dynamic json) {
+    if (json == null) return null;
+    try {
+      return .fromJson(json);
+    } catch (_) {}
+    return null;
   }
 
   String format(Map<String, num> config) {

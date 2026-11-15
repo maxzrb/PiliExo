@@ -12,6 +12,21 @@ import 'package:hive_ce/hive.dart';
 import 'package:material_ui/material_ui.dart';
 
 void main() {
+  test('掉帧提示显示近期及累计数量，详情保留原始计数', () {
+    const snapshot = PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFramesAvailable: true,
+      droppedFrames: 20,
+      recentDroppedFrames: 7,
+      excludedDroppedFrames: 3,
+    );
+    expect(snapshot.statusText, '近1秒丢帧 7 · 总丢帧 20');
+    expect(
+      snapshot.videoRows.singleWhere((row) => row.label == '后端原始掉帧').value,
+      '23',
+    );
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory hiveDirectory;
   late PlPlayerController controller;
@@ -85,6 +100,172 @@ void main() {
       videoBitrate: 5000000,
     );
     expect(fallbackSource.videoBitrate, 5000000);
+  });
+
+  for (final mode in [PlaybackInsightMode.off, PlaybackInsightMode.smart]) {
+    testWidgets('$mode隐藏时快照不产生UI帧，重新显示读取最新数据', (tester) async {
+      playbackInsightModeNotifier.value = mode;
+      controller.showControls.value = false;
+      controller.playbackInsight.value = const PlaybackInsightSnapshot(
+        resolution: '1920×1080',
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SizedBox(
+            width: 320,
+            height: 200,
+            child: PlaybackInsightHud(
+              controller: controller,
+              isFullScreen: false,
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(find.text('1920×1080'), findsNothing);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+
+      controller.playbackInsight.value = const PlaybackInsightSnapshot(
+        resolution: '1280×720',
+      );
+      expect(tester.binding.hasScheduledFrame, isFalse);
+
+      playbackInsightModeNotifier.value = PlaybackInsightMode.always;
+      await tester.pumpAndSettle();
+      expect(find.text('1280×720'), findsOneWidget);
+    });
+  }
+
+  testWidgets('智能HUD隐藏期间的新掉帧仍会弹出提示，普通更新不延长提示', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.smart;
+    controller.showControls.value = false;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 320,
+          height: 200,
+          child: PlaybackInsightHud(
+            controller: controller,
+            isFullScreen: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text('1920×1080'), findsNothing);
+
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 3,
+      recentDroppedFrames: 3,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1920×1080'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 3,
+      positionMs: 9000,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('1920×1080'), findsNothing);
+  });
+
+  testWidgets('隐藏HUD不提示起播三帧，确认的稳定异常仍能弹出', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.smart;
+    controller.showControls.value = false;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SizedBox(
+          width: 320,
+          height: 200,
+          child: PlaybackInsightHud(
+            controller: controller,
+            isFullScreen: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    const excluded = PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      excludedDroppedFrames: 3,
+    );
+    expect(excluded.rawDroppedFrames, 3);
+    expect(excluded.statusText, '实时数据');
+    controller.playbackInsight.value = excluded;
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    await tester.pump();
+    expect(find.text('1920×1080'), findsNothing);
+
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 3,
+      recentDroppedFrames: 3,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1920×1080'), findsOneWidget);
+  });
+
+  test('恢复后近一秒归零，摘要仍持续显示总丢帧', () {
+    const recovered = PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 10,
+      excludedDroppedFrames: 3,
+    );
+    expect(recovered.statusText, '近1秒丢帧 0 · 总丢帧 10');
+    expect(recovered.rawDroppedFrames, 13);
+  });
+
+  testWidgets('近期恢复为零后总丢帧和黄色警示灯仍保留，切源后清除', (tester) async {
+    playbackInsightModeNotifier.value = PlaybackInsightMode.always;
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 10,
+      recentDroppedFrames: 2,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PlaybackInsightHud(controller: controller, isFullScreen: false),
+      ),
+    );
+    final yellowDot = find.byWidgetPredicate(
+      (widget) =>
+          widget is Container &&
+          widget.decoration is BoxDecoration &&
+          (widget.decoration! as BoxDecoration).shape == BoxShape.circle &&
+          (widget.decoration! as BoxDecoration).color ==
+              const Color(0xFFFFB74D),
+    );
+    expect(find.text('近1秒丢帧 2 · 总丢帧 10'), findsOneWidget);
+    expect(yellowDot, findsOneWidget);
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      droppedFrames: 10,
+    );
+    await tester.pump();
+    expect(find.text('近1秒丢帧 0 · 总丢帧 10'), findsOneWidget);
+    expect(yellowDot, findsOneWidget);
+    controller.playbackInsight.value = const PlaybackInsightSnapshot(
+      resolution: '1920×1080',
+      excludedDroppedFrames: 5,
+    );
+    await tester.pump();
+    expect(find.text('实时数据'), findsOneWidget);
+    expect(yellowDot, findsNothing);
   });
 
   testWidgets('摘要黑色背景区域可以点击展开详情', (tester) async {

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:PiliPlus/common/constants.dart';
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/badge.dart';
+import 'package:PiliPlus/common/widgets/emote_tooltip.dart';
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/image_viewer/hero.dart';
@@ -13,7 +14,7 @@ import 'package:PiliPlus/grpc/bilibili/im/interfaces/v1.pb.dart'
 import 'package:PiliPlus/grpc/bilibili/im/type.pb.dart' show Msg, MsgType;
 import 'package:PiliPlus/http/search.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart';
-import 'package:PiliPlus/models/common/image_type.dart';
+import 'package:PiliPlus/pages/article/view.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
@@ -23,7 +24,6 @@ import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:cached_network_image_ce/cached_network_image.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
 class ChatItem extends StatelessWidget {
@@ -248,40 +248,42 @@ class ChatItem extends StatelessWidget {
   Widget msgTypeArticleCard_12(dynamic content, Color textColor) {
     return GestureDetector(
       behavior: .opaque,
-      onTap: () => Get.toNamed(
-        '/articlePage',
-        parameters: {
-          'id': '${content['rid']}',
-          'type': "read",
-        },
+      onTap: () => ArticlePage.toArticlePage(
+        id: content['rid'].toString(),
+        type: .read,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              for (final i in content['image_urls'])
-                NetworkImgLayer(
-                  width: 130,
-                  height: 73.125,
-                  src: i,
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            content['title'] ?? "",
-            style: TextStyle(
-              letterSpacing: 0.6,
-              height: 1.5,
-              color: textColor,
-              fontWeight: FontWeight.bold,
+          if (content['image_urls'] case final List urls
+              when urls.isNotEmpty) ...[
+            Row(
+              children: [
+                for (final url in urls)
+                  NetworkImgLayer(
+                    width: 130,
+                    height: 73.125,
+                    src: url,
+                  ),
+              ],
             ),
-          ),
-          if (content['summary'] != null && content['summary'] != '') ...[
+            const SizedBox(height: 6),
+          ],
+          if (content['title'] case final String title when title.isNotEmpty)
+            Text(
+              title,
+              style: TextStyle(
+                letterSpacing: 0.6,
+                height: 1.5,
+                color: textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          if (content['summary'] case final String summary
+              when summary.isNotEmpty) ...[
             const SizedBox(height: 1),
             Text(
-              content['summary'],
+              summary,
               style: TextStyle(
                 letterSpacing: 0.6,
                 height: 1.5,
@@ -546,12 +548,9 @@ class ChatItem extends StatelessWidget {
       // article
       case 6:
         type = '专栏';
-        onTap = () => Get.toNamed(
-          '/articlePage',
-          parameters: {
-            'id': '${content['id']}',
-            'type': 'read',
-          },
+        onTap = () => ArticlePage.toArticlePage(
+          id: content['id'].toString(),
+          type: .read,
         );
         break;
 
@@ -687,14 +686,21 @@ class ChatItem extends StatelessWidget {
           final emoji = emojiMap[matchStr];
           if (emoji != null) {
             final size = emoji['size'];
+            final url = emoji['url'];
             children.add(
               WidgetSpan(
                 rawText: matchStr,
-                child: NetworkImgLayer(
-                  width: size,
-                  height: size,
-                  src: emoji['url'],
-                  type: ImageType.emote,
+                child: emoteTooltipBuilder(
+                  url: url,
+                  emote: matchStr,
+                  triggerMode: .tap,
+                  colorScheme: theme.colorScheme,
+                  child: NetworkImgLayer(
+                    width: size,
+                    height: size,
+                    src: url,
+                    type: .emote,
+                  ),
                 ),
               ),
             );
@@ -798,6 +804,7 @@ class ChatItem extends StatelessWidget {
           borderRadius: Style.mdRadius,
           child: CachedNetworkImage(
             width: maxWidth,
+            gaplessPlayback: true,
             memCacheWidth: maxWidth.cacheSize(context),
             imageUrl: ImageUtils.thumbnailUrl(content['pic_url']),
             placeholder: (_, _) => const SizedBox.shrink(),

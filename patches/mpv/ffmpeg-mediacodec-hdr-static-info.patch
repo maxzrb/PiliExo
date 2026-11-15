@@ -1,0 +1,93 @@
+diff --git a/libavcodec/mediacodecdec_common.c b/libavcodec/mediacodecdec_common.c
+--- a/libavcodec/mediacodecdec_common.c
++++ b/libavcodec/mediacodecdec_common.c
+@@ -41,6 +41,7 @@
+ #include "mediacodec_sw_buffer.h"
+ #include "mediacodec_wrapper.h"
+ #include "mediacodecdec_common.h"
++#include "mediacodec_hdr.h"
+ 
+ /**
+  * OMX.k3.video.decoder.avc, OMX.NVIDIA.* OMX.SEC.avc.dec and OMX.google
+@@ -308,6 +309,9 @@
+     frame->height = avctx->height;
+     frame->format = avctx->pix_fmt;
+     frame->sample_aspect_ratio = avctx->sample_aspect_ratio;
++    // 硬件缓冲不经过 ff_get_buffer，也必须复制容器中的 mastering/CLL 等帧属性。
++    ret = ff_decode_frame_props(avctx, frame);
++    if (ret < 0) return ret;
+ 
+     if (avctx->pkt_timebase.num && avctx->pkt_timebase.den) {
+         frame->pts = av_rescale_q(info->presentationTimeUs,
+@@ -1042,6 +1046,15 @@
+                 }
+             }
+ 
++            // 将 MediaCodec 输出格式的静态 HDR 信息带回 AVFrame，避免 GPU 输出丢失元数据。
++            if (avctx->codec_type == AVMEDIA_TYPE_VIDEO && s->format) {
++                void *hdr = NULL;
++                size_t hdr_size = 0;
++                if (ff_AMediaFormat_getBuffer(s->format, "hdr-static-info", &hdr, &hdr_size)) {
++                    ret = ff_mediacodec_hdr_static_info_to_frame(frame, hdr, hdr_size);
++                    if (ret < 0) return ret;
++                }
++            }
+             s->output_buffer_count++;
+             return 0;
+         } else {
+diff --git a/libavcodec/mediacodec_hdr.h b/libavcodec/mediacodec_hdr.h
+new file mode 100644
+--- /dev/null
++++ b/libavcodec/mediacodec_hdr.h
+@@ -0,0 +1,51 @@
++#ifndef AVCODEC_MEDIACODEC_HDR_H
++#define AVCODEC_MEDIACODEC_HDR_H
++
++#include "libavutil/frame.h"
++#include "libavutil/intreadwrite.h"
++#include "libavutil/mastering_display_metadata.h"
++#include "libavutil/error.h"
++
++// Android hdr-static-info 为 25 字节 CTA-861.3 Type 1，小端；亮度单位与 EGL 不同。
++static inline int ff_mediacodec_hdr_static_info_to_frame(AVFrame *frame,
++                                                       const uint8_t *data,
++                                                       size_t size)
++{
++    if (!data || size != 25 || data[0] != 0)
++        return 0;
++    unsigned v[12];
++    for (int i = 0; i < 12; i++) v[i] = AV_RL16(data + 1 + 2*i);
++    int has_primaries = 1;
++    for (int i = 0; i < 8; i += 2)
++        has_primaries &= v[i+1] > 0 && v[i] + v[i+1] <= 50000;
++    int has_luminance = v[8] > 0 && v[8] * 10000U >= v[9];
++    if ((has_primaries || has_luminance) &&
++        !av_frame_get_side_data(frame, AV_FRAME_DATA_MASTERING_DISPLAY_METADATA)) {
++        AVMasteringDisplayMetadata *m = av_mastering_display_metadata_create_side_data(frame);
++        if (!m) return AVERROR(ENOMEM);
++        if (has_primaries) {
++            for (int c = 0; c < 3; c++) {
++                m->display_primaries[c][0] = (AVRational){ v[2*c], 50000 };
++                m->display_primaries[c][1] = (AVRational){ v[2*c+1], 50000 };
++            }
++            m->white_point[0] = (AVRational){ v[6], 50000 };
++            m->white_point[1] = (AVRational){ v[7], 50000 };
++            m->has_primaries = 1;
++        }
++        if (has_luminance) {
++            m->max_luminance = (AVRational){ v[8], 1 };
++            m->min_luminance = (AVRational){ v[9], 10000 };
++            m->has_luminance = 1;
++        }
++    }
++    if ((v[10] || v[11]) &&
++        !av_frame_get_side_data(frame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL)) {
++        AVContentLightMetadata *cl = av_content_light_metadata_create_side_data(frame);
++        if (!cl) return AVERROR(ENOMEM);
++        cl->MaxCLL = v[10];
++        cl->MaxFALL = v[11];
++    }
++    return 0;
++}
++
++#endif

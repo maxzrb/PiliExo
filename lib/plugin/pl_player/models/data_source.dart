@@ -6,12 +6,14 @@ sealed class DataSource {
   final String? audioSource;
   final int? videoBitrate;
   final int? audioBitrate;
+  final String? videoFrameRate;
 
   DataSource({
     required this.videoSource,
     required this.audioSource,
     this.videoBitrate,
     this.audioBitrate,
+    this.videoFrameRate,
   });
 }
 
@@ -21,6 +23,7 @@ class NetworkSource extends DataSource {
     required super.audioSource,
     super.videoBitrate,
     super.audioBitrate,
+    super.videoFrameRate,
   });
 }
 
@@ -89,6 +92,7 @@ class HdrVideoRepresentation {
 /// 该类型只由在线 UGC/PGC 播放页创建；直播、下载文件和普通 SDR 仍然使用
 /// [NetworkSource] 或 [FileSource]，从而确保现有 mpv 路径不受影响。
 class HdrNetworkSource extends NetworkSource {
+  final bool useMpvHdr;
   final int qualityCode;
   final HdrTrackSource video;
   final HdrTrackSource? audio;
@@ -96,6 +100,7 @@ class HdrNetworkSource extends NetworkSource {
   final List<HdrVideoRepresentation> videoRepresentations;
 
   HdrNetworkSource({
+    this.useMpvHdr = false,
     required this.qualityCode,
     required this.video,
     this.audio,
@@ -117,6 +122,7 @@ class HdrNetworkSource extends NetworkSource {
          audioSource: audio?.urls.first,
          videoBitrate: video.bitrate,
          audioBitrate: audio?.bitrate,
+         videoFrameRate: video.frameRate,
        );
 }
 

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:PiliPlus/common/widgets/emote_tooltip.dart';
 import 'package:PiliPlus/common/widgets/gesture/tap_gesture_recognizer.dart';
 import 'package:PiliPlus/common/widgets/image/network_img_layer.dart';
 import 'package:PiliPlus/common/widgets/image_grid/image_grid_view.dart';
@@ -9,6 +10,7 @@ import 'package:PiliPlus/http/search.dart';
 import 'package:PiliPlus/models/common/image_preview_type.dart'
     show SourceModel;
 import 'package:PiliPlus/models/dynamics/result.dart';
+import 'package:PiliPlus/pages/article/view.dart';
 import 'package:PiliPlus/pages/dynamics/widgets/vote.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/parse_string.dart';
@@ -23,6 +25,9 @@ const _linkFoldedText = '网页链接';
 TextSpan? richNode(
   BuildContext context, {
   required ThemeData theme,
+  required int floor,
+  required bool isDetail,
+  required bool isSave,
   required DynamicItemModel item,
 }) {
   try {
@@ -30,13 +35,14 @@ TextSpan? richNode(
     final List<InlineSpan> spanChildren = [];
 
     final moduleDynamic = item.modules.moduleDynamic;
+    final opus = moduleDynamic?.major?.opus;
     List<RichTextNodeItem>? richTextNodes;
     if (moduleDynamic?.desc case final desc?) {
       richTextNodes = desc.richTextNodes;
       if (richTextNodes == null || richTextNodes.isEmpty) {
         return TextSpan(text: desc.text);
       }
-    } else if (moduleDynamic?.major?.opus case DynamicOpusModel(
+    } else if (opus case DynamicOpusModel(
       :final title,
       :final summary,
     )) {
@@ -73,15 +79,26 @@ TextSpan? richNode(
           // 表情
           case 'RICH_TEXT_NODE_TYPE_EMOJI' when (i.emoji != null):
             final size = i.emoji!.size * 20.0;
+            Widget child = NetworkImgLayer(
+              src: i.emoji!.url,
+              type: .emote,
+              width: size,
+              height: size,
+            );
+            if (floor == 1 && isDetail && !isSave) {
+              child = emoteTooltipBuilder(
+                triggerMode: .tap,
+                url: i.emoji!.url,
+                emote: i.origText,
+                jumpUrl: i.emoji!.jumpUrl,
+                colorScheme: theme.colorScheme,
+                child: child,
+              );
+            }
             spanChildren.add(
               WidgetSpan(
                 rawText: i.origText,
-                child: NetworkImgLayer(
-                  src: i.emoji!.url,
-                  type: .emote,
-                  width: size,
-                  height: size,
-                ),
+                child: child,
               ),
             );
             break;
@@ -164,7 +181,7 @@ TextSpan? richNode(
                     ..onTap = () => showVoteDialog(
                       context,
                       int.parse(i.rid!),
-                      parseIntOrNull(item.basic?.commentIdStr),
+                      dynamicId: parseIntOrNull(item.basic?.commentIdStr),
                     ),
                 ),
               );
@@ -358,6 +375,17 @@ TextSpan? richNode(
             );
             break;
         }
+      }
+      if (opus?.redirect ?? false) {
+        spanChildren.add(
+          TextSpan(
+            text: '\n${DynamicOpusModel.redirectText}',
+            style: style,
+            recognizer: (NoDeadlineTapGestureRecognizer()
+              ..onTap = () =>
+                  ArticlePage.toArticlePage(id: item.idStr, type: .opus)),
+          ),
+        );
       }
       return TextSpan(
         children: spanChildren,

@@ -1,13 +1,12 @@
 import 'dart:io';
 
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/cdn_type.dart';
-import 'package:PiliPlus/models/common/video/live_quality.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
-import 'package:PiliPlus/models/common/video/video_quality.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/widgets/ordered_multi_select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
+import 'package:PiliPlus/pages/setting/widgets/hdr_route_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/models/audio_output_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/utils/filtering_text.dart';
@@ -31,12 +30,23 @@ List<SettingsModel> get videoSettings => [
     defaultVal: true,
   ),
   if (Platform.isAndroid)
-    const SwitchModel(
-      title: 'HDR 播放器',
-      subtitle: 'Media3 原生 HDR（关闭后 HDR 使用兼容播放器）',
-      leading: Icon(Icons.hdr_auto_outlined),
-      setKey: SettingBoxKey.enableMedia3Hdr,
-      defaultVal: true,
+    NormalModel(
+      title: 'HDR 播放路线',
+      getSubtitle: () =>
+          '${Pref.hdrPlaybackRoute.title}：${Pref.hdrPlaybackRoute.summary}。仅影响在线 HDR，重开视频后生效。',
+      leading: const Icon(Icons.hdr_auto_outlined),
+      onTap: (context, setState) async {
+        final route = await showHdrRouteDialog(
+          context,
+          value: Pref.hdrPlaybackRoute,
+        );
+        if (route == null) return;
+        await GStorage.setting.put(
+          SettingBoxKey.hdrPlaybackRoute,
+          route.storageValue,
+        );
+        setState();
+      },
     ),
   const SwitchModel(
     title: '免登录1080P',
@@ -122,14 +132,14 @@ List<SettingsModel> get videoSettings => [
   NormalModel(
     title: '直播默认画质',
     leading: const Icon(Icons.video_settings_outlined),
-    getSubtitle: () => '当前画质：${LiveQuality.fromCode(Pref.liveQuality)?.desc}',
+    getSubtitle: () => '当前画质：${LiveQuality.fromCode(Pref.liveQuality).desc}',
     onTap: _showLiveQaDialog,
   ),
   NormalModel(
     title: '移动数据直播默认画质',
     leading: const Icon(Icons.video_settings_outlined),
     getSubtitle: () =>
-        '当前画质：${LiveQuality.fromCode(Pref.liveQualityCellular)?.desc}',
+        '当前画质：${LiveQuality.fromCode(Pref.liveQualityCellular).desc}',
     onTap: _showLiveCellularQaDialog,
   ),
   NormalModel(
@@ -157,20 +167,34 @@ List<SettingsModel> get videoSettings => [
     title: '缓冲大小',
     leading: const Icon(Icons.storage_outlined),
     getSubtitle: () =>
-        '当前：${Pref.bufferSize}MB。同时为前向和后向缓冲区大小。对于直播流，无后向缓冲大小，全部转给前向（此选项即mpv的--demuxer-max-bytes，--demuxer-max-back-bytes）',
+        '当前：${Pref.bufferSize}MB。点播视频的前向和后向缓冲区大小（此选项即mpv的--demuxer-max-bytes，--demuxer-max-back-bytes）。直播流请设置下方的直播缓冲大小',
     onTap: _showBufferSizeDialog,
   ),
   NormalModel(
     title: '缓冲时长',
     leading: const Icon(Icons.av_timer),
     getSubtitle: () =>
-        '当前：${Pref.bufferSec}s。实际缓冲为二者最小值。对于直播流，该选项无效（此选项即mpv的--cache-secs）',
+        '当前：${Pref.bufferSec}s。点播视频的实际缓冲为大小与时长二者的最小值（此选项即mpv的--cache-secs）。直播流该选项无效，请设置下方的直播缓冲时长',
     onTap: _showBufferSecDialog,
+  ),
+  NormalModel(
+    title: '直播缓冲大小',
+    leading: const Icon(Icons.storage_outlined),
+    getSubtitle: () =>
+        '当前：${Pref.liveBufferSize > 0 ? '${Pref.liveBufferSize}MB' : '跟随缓冲大小（${(Pref.bufferSize * 2).toStringAsFixed(0)}MB）'}。仅对直播流生效，小于等于0时使用缓冲大小的2倍（此选项即mpv的--demuxer-max-bytes）',
+    onTap: _showLiveBufferSizeDialog,
+  ),
+  NormalModel(
+    title: '直播缓冲时长',
+    leading: const Icon(Icons.av_timer),
+    getSubtitle: () =>
+        '当前：${Pref.liveBufferSec > 0 ? '${Pref.liveBufferSec}s' : '不限制'}。仅对直播流生效，大于0时可限制直播缓冲时长以降低延迟（此选项即mpv的--cache-secs）',
+    onTap: _showLiveBufferSecDialog,
   ),
   NormalModel(
     title: '自动同步',
     leading: const Icon(Icons.sync_rounded),
-    getSubtitle: () => '当前：${Pref.autosync}（此项即mpv的--autosync）',
+    getSubtitle: () => '当前：${Pref.autosync}；0 为直接同步（推荐），大于 0 为平滑同步',
     onTap: _showAutoSyncDialog,
   ),
   NormalModel(
@@ -364,7 +388,7 @@ Future<void> _showCodecsDialog(
   final res = await showDialog<List<VideoDecodeFormatType>>(
     context: context,
     builder: (context) => OrderedMultiSelectDialog<VideoDecodeFormatType>(
-      title: '首选解码格式',
+      title: const Text('首选解码格式'),
       initValues: Pref.preferCodecs,
       values: {for (final e in VideoDecodeFormatType.values) e: e.name},
     ),
@@ -385,7 +409,7 @@ Future<void> _showCellularCodecsDialog(
   final res = await showDialog<List<VideoDecodeFormatType>>(
     context: context,
     builder: (context) => OrderedMultiSelectDialog<VideoDecodeFormatType>(
-      title: '移动数据首选解码格式',
+      title: const Text('移动数据首选解码格式'),
       initValues: Pref.preferCodecsCellular,
       values: {for (final e in VideoDecodeFormatType.values) e: e.name},
     ),
@@ -406,7 +430,7 @@ Future<void> _showAudioOutputDialog(
   final res = await showDialog<List<String>>(
     context: context,
     builder: (context) => OrderedMultiSelectDialog<String>(
-      title: '音频输出设备',
+      title: const Text('音频输出设备'),
       initValues: Pref.audioOutput.split(','),
       values: {
         for (final e in AudioOutput.values) e.name: e.label,
@@ -457,7 +481,7 @@ Future<void> _showHwDecDialog(
   final res = await showDialog<List<String>>(
     context: context,
     builder: (context) => OrderedMultiSelectDialog<String>(
-      title: '硬解模式',
+      title: const Text('硬解模式'),
       initValues: Pref.hardwareDecoding.split(','),
       values: {
         for (final e in HwDecType.values) e.hwdec: '${e.hwdec}\n${e.desc}',
@@ -577,5 +601,25 @@ void _showBufferSecDialog(BuildContext context, VoidCallback setState) =>
       key: SettingBoxKey.bufferSec,
       defVal: Pref.bufferSec,
       title: '缓冲时长',
+      suffix: 's',
+    );
+
+void _showLiveBufferSizeDialog(BuildContext context, VoidCallback setState) =>
+    _showDecimalDialog(
+      context,
+      setState,
+      key: SettingBoxKey.liveBufferSize,
+      defVal: Pref.liveBufferSize,
+      title: '直播缓冲大小',
+      suffix: 'MB',
+    );
+
+void _showLiveBufferSecDialog(BuildContext context, VoidCallback setState) =>
+    _showDecimalDialog(
+      context,
+      setState,
+      key: SettingBoxKey.liveBufferSec,
+      defVal: Pref.liveBufferSec,
+      title: '直播缓冲时长',
       suffix: 's',
     );

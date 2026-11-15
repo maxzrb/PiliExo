@@ -739,7 +739,7 @@ class _AudioPageState extends State<AudioPage> {
             ActionItem(
               icon: const Icon(FontAwesomeIcons.circlePlay),
               onTap: () {
-                _controller.player?.pause();
+                _controller.onPause();
                 PageUtils.toVideoPage(
                   cid: audioItem.associatedItem.subId.first.toInt(),
                   aid: audioItem.associatedItem.oid.toInt(),
@@ -756,8 +756,8 @@ class _AudioPageState extends State<AudioPage> {
 
   void _onDragStart(ThumbDragDetails details) {
     _controller
-      ..isDragging = true
-      ..position.value = details.seconds;
+      ..position.value = details.seconds
+      ..isDragging = true;
   }
 
   void _onDragUpdate(ThumbDragDetails details) {
@@ -767,7 +767,7 @@ class _AudioPageState extends State<AudioPage> {
   void _onSeek(int milliseconds) {
     _controller
       ..isDragging = false
-      ..player?.seek(Duration(milliseconds: milliseconds));
+      ..onSeek(Duration(milliseconds: milliseconds));
   }
 
   Widget _buildProgressBar(ColorScheme colorScheme) {
@@ -946,7 +946,7 @@ class _AudioPageState extends State<AudioPage> {
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
-                          _controller.player?.pause();
+                          _controller.onPause();
                           Get.toNamed('/member?mid=${audioItem.owner.mid}');
                         },
                         child: Row(

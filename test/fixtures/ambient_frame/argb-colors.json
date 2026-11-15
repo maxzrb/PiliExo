@@ -1,0 +1,6 @@
+[
+  {"id":"opaque-red","argb":"0xFFFF0000"},
+  {"id":"half-alpha-green","argb":"0x8000FF00"},
+  {"id":"low-alpha-blue","argb":"0x7F0000FF"},
+  {"id":"transparent","argb":"0x00000000"}
+]

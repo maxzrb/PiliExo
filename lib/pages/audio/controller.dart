@@ -34,6 +34,7 @@ import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
+import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -89,6 +90,20 @@ class AudioController extends GetxController
   List<DetailItem>? playlist;
 
   late double speed = 1.0;
+  PlayerStatus _playerStatus = .paused;
+
+  void _updatePlaybackState({Duration? position, bool force = false}) {
+    if (player case final player?) {
+      videoPlayerServiceHandler?.onUpdateState(
+        _playerStatus,
+        player.state.buffering,
+        false,
+        position: position ?? player.state.position,
+        speed: speed,
+        force: force,
+      );
+    }
+  }
 
   late final Rx<PlayRepeat> playMode = Pref.audioPlayMode.obs;
 
@@ -107,6 +122,21 @@ class AudioController extends GetxController
   double? _lastVolume;
   late final RxDouble desktopVolume = RxDouble(Pref.desktopVolume);
 
+  Timer? _statusTimer;
+
+  void _stopStatusTimer() {
+    _statusTimer?.cancel();
+    _statusTimer = null;
+  }
+
+  void _startStatusTimer() {
+    _stopStatusTimer();
+    _statusTimer = Timer(
+      const Duration(milliseconds: 500),
+      _updatePlaybackState,
+    );
+  }
+
   void toggleVolume() {
     if (_lastVolume == null) {
       _lastVolume = desktopVolume.value;
@@ -121,14 +151,14 @@ class AudioController extends GetxController
       _lastVolume = null;
     }
     desktopVolume.value = volume;
-    player?.setVolume(volume * 100);
+    setVolumeCapped(player, volume);
   }
 
   void syncVolume([_]) {
     final volume = desktopVolume.value;
     PlPlayerController.instance
       ?..volume.value = volume
-      ..videoPlayerController?.setVolume(volume * 100);
+      ..setVolumeCapped(player, volume);
     GStorage.setting.put(SettingBoxKey.desktopVolume, volume.toPrecision(3));
   }
 
@@ -175,7 +205,10 @@ class AudioController extends GetxController
     videoPlayerServiceHandler
       ?..onPlay = onPlay
       ..onPause = onPause
-      ..onSeek = onSeek;
+      ..onSeek = onSeek
+      ..onSkipToNext = playNext
+      ..onSkipToPrevious = playPrev
+      ..isPlaying = () => player?.state.playing ?? false;
 
     animController = AnimationController(
       vsync: this,
@@ -194,15 +227,29 @@ class AudioController extends GetxController
     return player?.state.playing ?? false;
   }
 
-  Future<void>? onPlay() {
-    return player?.play();
+  Future<void>? onPlay() async {
+    if (player == null) return;
+    await player?.play();
+    await audioSessionHandler?.setActive(true);
   }
 
-  Future<void>? onPause() {
-    return player?.pause();
+  Future<void>? onPause() async {
+    if (player == null) return;
+    await player?.pause();
+    await audioSessionHandler?.setActive(false);
+  }
+
+  Future<void>? playOrPause() {
+    if (player == null) return null;
+    if (player!.state.playing) {
+      return onPause();
+    } else {
+      return onPlay();
+    }
   }
 
   Future<void>? onSeek(Duration duration) {
+    _updatePlaybackState(position: duration, force: true);
     return player?.seek(duration);
   }
 
@@ -341,14 +388,17 @@ class AudioController extends GetxController
     http_model.Volume? volume,
   }) async {
     await _initPlayerIfNeeded();
-    final extras = audioFilterExtras(volume);
-    player
-      ?..setMediaHeader(
-        userAgent: ua,
-        // mpv cannot clear referer option
-        headers: {'Referer': ?referer},
-      )
-      ..open(Media(url, start: _start, extras: extras));
+    if (player == null) return;
+    player!.setMediaHeader(
+      userAgent: ua,
+      // mpv cannot clear referer option
+      headers: {'Referer': ?referer},
+    );
+    await player!.open(
+      Media(url, start: _start, extras: audioFilterExtras(volume)),
+      play: false,
+    );
+    await onPlay();
     _start = null;
   }
 
@@ -360,9 +410,6 @@ class AudioController extends GetxController
       configuration: PlayerConfiguration(
         options: {
           if (Platform.isAndroid) 'ao': Pref.audioOutput,
-          'volume': PlatformUtils.isDesktop
-              ? (desktopVolume.value * 100).toString()
-              : Pref.playerVolume.toString(),
           'volume-max': kMaxVolume.toString(),
           ...Pref.initBuffer(),
         },
@@ -373,6 +420,11 @@ class AudioController extends GetxController
       player = null;
       return;
     }
+    // >100% 的音量走 af 增益+限幅，避免直接放大 mpv volume 导致削波
+    await setVolumeCapped(
+      player,
+      PlatformUtils.isDesktop ? desktopVolume.value : Pref.playerVolume / 100,
+    );
     final stream = player!.stream;
     _subscriptions = [
       stream.position.listen((position) {
@@ -381,31 +433,35 @@ class AudioController extends GetxController
         if (seconds != this.position.value) {
           this.position.value = seconds;
           _videoDetailController?.playedTime = position;
-          videoPlayerServiceHandler?.onPositionChange(position);
+          _updatePlaybackState(position: position);
         }
       }),
       stream.duration.listen((duration) {
         this.duration.value = duration.inSeconds;
       }),
       stream.playing.listen((playing) {
-        final PlayerStatus playerStatus;
         if (playing) {
           animController.forward();
-          playerStatus = PlayerStatus.playing;
+          _playerStatus = .playing;
+          _stopStatusTimer();
+          _updatePlaybackState();
         } else {
           animController.reverse();
-          playerStatus = PlayerStatus.paused;
+          _playerStatus = .paused;
+          _startStatusTimer();
         }
-        videoPlayerServiceHandler?.onStatusChange(playerStatus, false, false);
+      }),
+      stream.buffering.listen((buffering) {
+        if (!_playerStatus.isCompleted) {
+          _stopStatusTimer();
+          _updatePlaybackState();
+        }
       }),
       stream.completed.listen((completed) {
         _videoDetailController?.playedTime = player!.state.duration;
-        videoPlayerServiceHandler?.onStatusChange(
-          PlayerStatus.completed,
-          false,
-          false,
-        );
         if (completed) {
+          _playerStatus = .completed;
+          _startStatusTimer();
           if (shutdownTimerService.isWaiting) {
             shutdownTimerService.handleWaiting();
           } else {
@@ -579,7 +635,7 @@ class AudioController extends GetxController
             child: const Text('其它app打开', style: TextStyle(fontSize: 14)),
             onPressed: () {
               Get.back();
-              PageUtils.launchURL(audioUrl);
+              PiliAndroidHelper.openUrl(audioUrl);
             },
           ),
           if (PlatformUtils.isMobile)
@@ -656,10 +712,6 @@ class AudioController extends GetxController
     );
   }
 
-  Future<void>? playOrPause() {
-    return player?.playOrPause();
-  }
-
   bool playPrev() {
     if (index != null && playlist != null && player != null) {
       final prev = index! - 1;
@@ -726,6 +778,7 @@ class AudioController extends GetxController
     if (player case final player?) {
       this.speed = speed;
       player.setRate(speed);
+      _updatePlaybackState();
     }
   }
 
@@ -777,8 +830,7 @@ class AudioController extends GetxController
   int? get timeLength => player?.state.duration.inMilliseconds ?? 0;
 
   @override
-  Future<void>? seekTo(Duration duration, {required bool isSeek}) =>
-      onSeek(duration);
+  Future<void>? seekTo(Duration duration) => onSeek(duration);
 
   @override
   bool get autoPlay => true;
@@ -788,6 +840,7 @@ class AudioController extends GetxController
 
   @override
   void onClose() {
+    _stopStatusTimer();
     shutdownTimerService
       ..onPause = null
       ..isPlaying = null
@@ -796,7 +849,11 @@ class AudioController extends GetxController
       ?..onPlay = null
       ..onPause = null
       ..onSeek = null
-      ..onVideoDetailDispose(hashCode.toString());
+      ..onSkipToNext = null
+      ..onSkipToPrevious = null
+      ..isPlaying = null
+      ..onVideoDetailDispose(hashCode.toString())
+      ..clearIfNeeded();
     _subscriptions?.forEach((e) => e.cancel());
     _subscriptions?.clear();
     _subscriptions = null;

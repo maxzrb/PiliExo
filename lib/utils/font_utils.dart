@@ -23,6 +23,7 @@ abstract final class FontUtils {
   static final _fonts = <String>{};
   static bool _initialized = false;
 
+  static const kFontName = 'customFont.otf';
   static const _kFontExts = ['ttf', 'ttc', 'otf'];
 
   /// 新版将当前自定义字体统一保存为一个文件；该文件名用于兼容迁移。
@@ -121,14 +122,15 @@ abstract final class FontUtils {
       if (files.isNotEmpty) {
         final Map<String, Uint8List> fonts = {};
         final now = DateTime.now().millisecondsSinceEpoch.toString();
-        await Future.wait(
-          files.map((file) async {
-            final name = '$now/${path.basenameWithoutExtension(file.name)}';
-            final bytes = await file.readAsBytes();
-            await _loadFont(bytes, fontFamily: name);
-            fonts[name] = bytes;
-          }),
-        );
+
+        Future<void> loadFont(file) async {
+          final name = '$now/${path.basenameWithoutExtension(file.name)}';
+          final bytes = await file.readAsBytes();
+          await _loadFont(bytes, fontFamily: name);
+          fonts[name] = bytes;
+        }
+
+        await Future.wait(files.map(loadFont));
         return fonts;
       }
     } catch (_) {

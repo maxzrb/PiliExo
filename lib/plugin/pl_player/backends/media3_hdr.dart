@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
@@ -203,6 +204,23 @@ class HdrMedia3Controller {
     if (value is Uint8List) return value;
     if (value is List<int>) return Uint8List.fromList(value);
     return null;
+  }
+
+  Future<AmbientRgbaFrame?> captureAmbientPixels({
+    int width = 96,
+    int height = 54,
+  }) async {
+    if (_released || !_created) return null;
+    final value = await _methodChannel.invokeMethod<Object?>(
+      'captureAmbientFrame',
+      {
+        'sessionId': sessionId,
+        'width': width,
+        'height': height,
+        'format': 'rgba8888',
+      },
+    );
+    return AmbientRgbaFrame.fromMessage(value);
   }
 
   Future<void> setSubtitle({

@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:PiliPlus/plugin/pl_player/models/ambient_frame.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -11,11 +12,13 @@ class VideoStatusBarAmbient extends StatelessWidget {
   const VideoStatusBarAmbient({
     super.key,
     required this.frame,
+    this.texture,
     this.blurSigma = 24.0,
   });
 
   final ValueListenable<ui.Image?>? frame;
   final double blurSigma;
+  final ValueListenable<AmbientTextureFrame?>? texture;
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +26,12 @@ class VideoStatusBarAmbient extends StatelessWidget {
     if (frame == null) return const SizedBox.expand();
 
     return IgnorePointer(
-      child: ValueListenableBuilder<ui.Image?>(
-        valueListenable: frame,
-        builder: (context, image, child) {
-          if (image == null) return const SizedBox.expand();
+      child: ListenableBuilder(
+        listenable: Listenable.merge([frame, texture]),
+        builder: (context, child) {
+          final image = frame.value;
+          final video = texture?.value;
+          if (image == null && video == null) return const SizedBox.expand();
           return ClipRect(
             child: Stack(
               fit: StackFit.expand,
@@ -36,12 +41,40 @@ class VideoStatusBarAmbient extends StatelessWidget {
                     sigmaX: blurSigma,
                     sigmaY: blurSigma,
                   ),
-                  child: RawImage(
-                    image: image,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    filterQuality: FilterQuality.low,
-                  ),
+                  child: video != null
+                      ? FittedBox(
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox.fromSize(
+                            size: video.viewportSize,
+                            child: ColoredBox(
+                              color: video.fill,
+                              child: ClipRect(
+                                child: Transform.flip(
+                                  flipX: video.flipX,
+                                  flipY: video.flipY,
+                                  child: FittedBox(
+                                    fit: video.fit,
+                                    alignment: video.alignment,
+                                    child: SizedBox.fromSize(
+                                      size: video.videoSize,
+                                      child: Texture(
+                                        textureId: video.textureId,
+                                        filterQuality: FilterQuality.low,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : RawImage(
+                          image: image,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          filterQuality: FilterQuality.low,
+                        ),
                 ),
                 const ColoredBox(color: Color(0x57000000)),
               ],

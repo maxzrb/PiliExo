@@ -37,6 +37,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     super.cdnUri,
     super.bandwidthEstimate,
     super.playerState,
+    super.droppedFramesAvailable,
     super.droppedFrames,
     super.recentDroppedFrames,
     super.fallbackReason,
@@ -51,6 +52,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     this.playWhenReady = false,
     this.isBuffering = false,
     this.firstFrame = false,
+    this.excludedDroppedFrames = 0,
   });
 
   factory PlaybackInsightSnapshot.fromTelemetry(
@@ -63,6 +65,9 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     bool playWhenReady = false,
     bool isBuffering = false,
     bool firstFrame = false,
+    int? droppedFrames,
+    int? recentDroppedFrames,
+    int excludedDroppedFrames = 0,
   }) => PlaybackInsightSnapshot(
     engine: telemetry.engine,
     quality: telemetry.quality,
@@ -95,8 +100,10 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     cdnUri: telemetry.cdnUri,
     bandwidthEstimate: telemetry.bandwidthEstimate,
     playerState: telemetry.playerState,
-    droppedFrames: telemetry.droppedFrames,
-    recentDroppedFrames: telemetry.recentDroppedFrames,
+    droppedFramesAvailable: telemetry.droppedFramesAvailable,
+    droppedFrames: droppedFrames ?? telemetry.droppedFrames,
+    recentDroppedFrames: recentDroppedFrames ?? telemetry.recentDroppedFrames,
+    excludedDroppedFrames: excludedDroppedFrames,
     fallbackReason: telemetry.fallbackReason,
     fallbackHistory: telemetry.fallbackHistory,
     lastError: telemetry.lastError,
@@ -119,6 +126,29 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   final bool playWhenReady;
   final bool isBuffering;
   final bool firstFrame;
+  final int excludedDroppedFrames;
+
+  /// 保留后端原始计数，便于与起播和切速排除的数量核对。
+  int get rawDroppedFrames => droppedFrames + excludedDroppedFrames;
+
+  PlaybackInsightSnapshot withDropCounts({
+    required int droppedFrames,
+    required int recentDroppedFrames,
+    required int excludedDroppedFrames,
+  }) => PlaybackInsightSnapshot.fromTelemetry(
+    this,
+    positionMs: positionMs,
+    durationMs: durationMs,
+    forwardBufferMs: forwardBufferMs,
+    speed: speed,
+    isPlaying: isPlaying,
+    playWhenReady: playWhenReady,
+    isBuffering: isBuffering,
+    firstFrame: firstFrame,
+    droppedFrames: droppedFrames,
+    recentDroppedFrames: recentDroppedFrames,
+    excludedDroppedFrames: excludedDroppedFrames,
+  );
 
   bool get hasMeasuredData =>
       resolution.isNotEmpty ||
@@ -130,10 +160,26 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
       audioDecoder.isNotEmpty ||
       audioBitrate.isNotEmpty;
 
+  /// 将不同播放器上报的同一种编码统一为面向用户的名称。
+  ///
+  /// Codec String 仍保留原始值（例如 hvc1、hev1），便于诊断具体封装标识；
+  /// 摘要和 Codec 行只展示统一后的编码家族。
+  String get displayVideoCodec => normalizeVideoCodec(
+    videoCodec,
+    codecString: videoCodecString,
+    mimeType: videoMimeType,
+  );
+
+  String get displayAudioCodec => normalizeAudioCodec(
+    audioCodec,
+    codecString: audioCodecString,
+    mimeType: audioMimeType,
+  );
+
   String get summary {
     final parts = [
       if (resolution.isNotEmpty) resolution,
-      if (videoCodec.isNotEmpty) videoCodec,
+      if (displayVideoCodec.isNotEmpty) displayVideoCodec,
       if (frameRate.isNotEmpty) frameRate,
     ];
     final summary = parts.take(3).join(' · ');
@@ -143,7 +189,9 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   String get statusText {
     if (lastError.isNotEmpty) return '播放出现错误';
     if (fallbackReason.isNotEmpty) return '已执行编码回退';
-    if (droppedFrames > 0) return '已记录 $droppedFrames 个掉帧';
+    if (recentDroppedFrames > 0 || droppedFrames > 0) {
+      return '近1秒丢帧 $recentDroppedFrames · 总丢帧 $droppedFrames';
+    }
     if (isBuffering && playWhenReady) return '缓冲中';
     if (!hasMeasuredData) return '等待播放器数据';
     return '实时数据';
@@ -153,7 +201,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     PlaybackInsightRow('播放器', engine),
     PlaybackInsightRow('画质', quality),
     PlaybackInsightRow('分辨率', resolution),
-    PlaybackInsightRow('视频 Codec', videoCodec),
+    PlaybackInsightRow('视频 Codec', displayVideoCodec),
     PlaybackInsightRow('HDR 类型', hdrType),
     PlaybackInsightRow('视频码率', videoBitrate),
     PlaybackInsightRow('音频码率', audioBitrate),
@@ -163,7 +211,7 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
   ]);
 
   List<PlaybackInsightRow> get videoRows => _rows([
-    PlaybackInsightRow('视频 Codec', videoCodec),
+    PlaybackInsightRow('视频 Codec', displayVideoCodec),
     PlaybackInsightRow('Codec String', videoCodecString),
     PlaybackInsightRow('Profile', videoProfile),
     PlaybackInsightRow('Level', videoLevel),
@@ -177,12 +225,26 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     PlaybackInsightRow('视频码率', videoBitrate),
     PlaybackInsightRow('视频解码器', videoDecoder),
     PlaybackInsightRow('硬/软解', videoDecoderType),
-    PlaybackInsightRow('累计掉帧', '$droppedFrames'),
-    PlaybackInsightRow('近期掉帧', '$recentDroppedFrames'),
+    PlaybackInsightRow(
+      '总丢帧',
+      droppedFramesAvailable ? '$droppedFrames' : '暂不可用',
+    ),
+    PlaybackInsightRow(
+      '近1秒丢帧',
+      droppedFramesAvailable ? '$recentDroppedFrames' : '暂不可用',
+    ),
+    PlaybackInsightRow(
+      '后端原始掉帧',
+      droppedFramesAvailable ? '$rawDroppedFrames' : '暂不可用',
+    ),
+    PlaybackInsightRow(
+      '起播/切速等排除的丢帧',
+      droppedFramesAvailable ? '$excludedDroppedFrames' : '暂不可用',
+    ),
   ]);
 
   List<PlaybackInsightRow> get audioRows => _rows([
-    PlaybackInsightRow('音频 Codec', audioCodec),
+    PlaybackInsightRow('音频 Codec', displayAudioCodec),
     PlaybackInsightRow('Codec String', audioCodecString),
     PlaybackInsightRow('媒体类型', audioMimeType),
     PlaybackInsightRow('采样率', audioSampleRate),
@@ -236,6 +298,74 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
+
+String normalizeVideoCodec(
+  String codec, {
+  String codecString = '',
+  String mimeType = '',
+}) {
+  final raw = codec.trim();
+  final value = '$raw $codecString $mimeType'.toLowerCase();
+  if (_containsAny(value, const [
+    'dolby vision',
+    'dvhe',
+    'dvh1',
+    'dva1',
+    'dvav',
+  ])) {
+    return 'Dolby Vision';
+  }
+  if (_containsAny(value, const [
+    'hevc',
+    'h.265',
+    'h265',
+    'hvc1',
+    'hev1',
+    'video/hevc',
+  ])) {
+    return 'HEVC';
+  }
+  if (_containsAny(value, const [
+    'h.264',
+    'h264',
+    'avc1',
+    'avc3',
+    'video/avc',
+  ])) {
+    return 'AVC';
+  }
+  if (_containsAny(value, const ['av01', 'video/av01', 'av1'])) {
+    return 'AV1';
+  }
+  if (_containsAny(value, const ['vp09', 'vp9', 'video/x-vnd.on2.vp9'])) {
+    return 'VP9';
+  }
+  if (_containsAny(value, const ['vp08', 'vp8', 'video/x-vnd.on2.vp8'])) {
+    return 'VP8';
+  }
+  return raw;
+}
+
+String normalizeAudioCodec(
+  String codec, {
+  String codecString = '',
+  String mimeType = '',
+}) {
+  final raw = codec.trim();
+  final value = '$raw $codecString $mimeType'.toLowerCase();
+  if (_containsAny(value, const ['truehd', 'mlp'])) return 'Dolby TrueHD';
+  if (_containsAny(value, const ['e-ac-3', 'eac3', 'ec-3'])) return 'E-AC-3';
+  if (_containsAny(value, const ['ac-3', 'ac3', 'audio/ac3'])) return 'AC-3';
+  if (_containsAny(value, const ['mp4a', 'aac', 'audio/aac'])) return 'AAC';
+  if (_containsAny(value, const ['opus'])) return 'Opus';
+  if (_containsAny(value, const ['vorbis'])) return 'Vorbis';
+  if (_containsAny(value, const ['flac'])) return 'FLAC';
+  if (_containsAny(value, const ['mp3', 'mpeg layer 3'])) return 'MP3';
+  return raw;
+}
+
+bool _containsAny(String value, List<String> candidates) =>
+    candidates.any(value.contains);
 
 class PlaybackInsightRow {
   const PlaybackInsightRow(this.label, this.value);

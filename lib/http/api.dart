@@ -25,6 +25,8 @@ abstract final class Api {
 
   static const String pugvUrl = '/pugv/player/web/playurl';
 
+  static const String ogvUrl = '/ogv/player/playview';
+
   static const String tvPlayUrl = '/x/tv/playurl';
 
   // 字幕
@@ -261,8 +263,7 @@ abstract final class Api {
   static const String searchDefault = '/x/web-interface/wbi/search/default';
 
   // 搜索关键词
-  static const String searchSuggest =
-      'https://s.search.bilibili.com/main/suggest';
+  static const String searchSuggest = '/x/web-interface/suggest';
 
   // 分类搜索
   static const String searchByType = '/x/web-interface/wbi/search/type';
@@ -407,7 +408,7 @@ abstract final class Api {
   static const String favPgc = '/x/space/bangumi/follow/list';
 
   // 黑名单
-  static const String blackLst = '/x/relation/blacks';
+  static const String blackList = '/x/relation/blacks';
 
   // github 获取最新版
   static const String latestApp =
@@ -1017,4 +1018,33 @@ abstract final class Api {
 
   static const String liveFeedback =
       '${HttpString.liveBaseUrl}/xlive/app-interface/v2/index/feedback';
+
+  static const String liveMasterInfo =
+      '${HttpString.liveBaseUrl}/live_user/v1/Master/info';
+
+  static const String _liveTrace =
+      '${HttpString.liveTraceBaseUrl}/xlive/data-interface/v1/x25Kn';
+
+  static const String liveTraceE = '$_liveTrace/E';
+
+  static const String liveTraceX = '$_liveTrace/X';
+
+  static const String _fansMedal =
+      '${HttpString.liveBaseUrl}/xlive/app-ucenter/v1/fansMedal';
+
+  static const String fansMedalPanel = '$_fansMedal/panel';
+
+  static const String userMedalInfo = '$_fansMedal/user_medal_info';
+
+  static const String wearFansMedal = '$_fansMedal/wear';
+
+  static const String takeOffFansMedal = '$_fansMedal/take_off';
+
+  static const String delFansMedal = '$_fansMedal/web_room/del_medal';
+
+  static const String liveConfigPlugs =
+      '${HttpString.liveBaseUrl}/xlive/web-ucenter/v1/labs/ConfigPlugs';
+
+  static const String liveEditPlugs =
+      '${HttpString.liveBaseUrl}/xlive/web-ucenter/v1/labs/EditPlugs';
 }

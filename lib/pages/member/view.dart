@@ -47,6 +47,7 @@ import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 
 class MemberPage extends StatefulWidget {
@@ -121,6 +122,7 @@ class _MemberPageState extends State<MemberPage> {
                         chargeCount: _userController.chargeCount,
                         guards: _userController.guards,
                         guardCount: _userController.guardCount,
+                        hasMedal: _userController.medal == 1,
                       ),
                     ),
                   ),
@@ -147,6 +149,7 @@ class _MemberPageState extends State<MemberPage> {
                           SizedBox(
                             height: 45,
                             child: TabBar(
+                              labelPadding: .zero,
                               controller: _userController.tabController,
                               tabs: _userController.tabs,
                               onTap: _userController.onTapTab,
@@ -345,8 +348,7 @@ class _MemberPageState extends State<MemberPage> {
     PopupMenuButton(
       icon: const Icon(Icons.more_vert),
       itemBuilder: (_) => <PopupMenuEntry>[
-        if (_userController.account.isLogin &&
-            _userController.account.mid != _mid) ...[
+        if (_userController.account.mid != _mid) ...[
           PopupMenuItem(
             onTap: () => _userController.blockUser(context),
             child: Row(
@@ -360,7 +362,8 @@ class _MemberPageState extends State<MemberPage> {
               ],
             ),
           ),
-          if (_userController.isFollowed == 1)
+          if (_userController.account.isLogin &&
+              _userController.isFollowed == 1)
             PopupMenuItem(
               onTap: _userController.onRemoveFan,
               child: const Row(
@@ -514,6 +517,17 @@ class _MemberPageState extends State<MemberPage> {
                   Icon(Icons.linear_scale, size: 18),
                   SizedBox(width: 10),
                   Text('经验记录'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              onTap: () => Get.toNamed('/fansMedal'),
+              child: const Row(
+                spacing: 10,
+                mainAxisSize: .min,
+                children: [
+                  Icon(MdiIcons.medalOutline, size: 18),
+                  Text('粉丝勋章'),
                 ],
               ),
             ),

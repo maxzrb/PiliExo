@@ -3,6 +3,7 @@ import 'package:PiliPlus/models/common/account_type.dart';
 import 'package:PiliPlus/pages/mine/controller.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/login_utils.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:hive_ce/hive.dart';
 
 abstract final class Accounts {
@@ -11,7 +12,8 @@ abstract final class Accounts {
     AccountType.values.length,
     AnonymousAccount(),
   );
-  static bool get mainEqVideo => main == video;
+  static bool get isMainVip => Pref.userInfoCache?.vipStatus == 1;
+  static bool get isVideoVip => main == video && isMainVip;
   static Account get main => accountMode[AccountType.main.index];
   static Account get video => accountMode[AccountType.video.index];
   static Account get heartbeat => accountMode[AccountType.heartbeat.index];
@@ -33,12 +35,14 @@ abstract final class Accounts {
     );
   }
 
-  static Future<void> refresh() {
+  static Future<void> refresh({bool activate = true}) {
+    accountMode.fillRange(0, accountMode.length, AnonymousAccount());
     for (final a in account.values) {
       for (final t in a.type) {
         accountMode[t.index] = a;
       }
     }
+    if (!activate) return Future.value();
     return Future.wait(
       (accountMode.toSet()..removeWhere((i) => i.activated)).map(
         Request.buvidActive,
@@ -90,5 +94,17 @@ abstract final class Accounts {
   @pragma("vm:prefer-inline")
   static Account get(AccountType key) {
     return accountMode[key.index];
+  }
+
+  static Future<void> importJsonAccount(Map<String, dynamic> json) async {
+    final res = json.map(
+      (key, value) => MapEntry(key, LoginAccount.fromJson(value)),
+    );
+    await Accounts.account.putAll(res);
+    await Accounts.refresh();
+    MineController.anonymity.value = !Accounts.heartbeat.isLogin;
+    if (Accounts.main.isLogin) {
+      await LoginUtils.onLoginMain();
+    }
   }
 }

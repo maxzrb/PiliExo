@@ -82,9 +82,17 @@ jobs:
               shell: pwsh
               run: lib/scripts/verify_flutter.ps1
 
+            - name: 校验README发布信息
+              shell: pwsh
+              run: lib/scripts/verify_readme.ps1
+
             - name: Apply Patch
               shell: pwsh
               run: lib/scripts/patch.ps1 android
+
+            - name: 校验Android插件注册
+              shell: pwsh
+              run: lib/scripts/verify_android_plugins.ps1
 
             - name: Write key
               if: github.event_name == 'workflow_dispatch'

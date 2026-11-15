@@ -15,12 +15,18 @@ abstract final class ApiType {
       Api.roomEntryAction,
       Api.liveLikeReport,
       Api.mediaListHistory,
+
+      // live trace
+      Api.liveTraceE,
+      Api.liveTraceX,
+
       // Api.historyList,
       // Api.pauseHistory,
       // Api.clearHistory,
       // Api.delHistory,
       // Api.searchHistory,
       // Api.historyStatus,
+
       // progress
       Api.pgcInfo,
       Api.pugvInfo,
@@ -36,6 +42,7 @@ abstract final class ApiType {
       Api.liveRoomDmToken,
       Api.liveRoomDmPrefetch,
       Api.superChatMsg,
+      Api.getLiveInfoByUser,
 
       // Api.memberInfo,
       // Api.bgmDetail,
@@ -87,6 +94,7 @@ abstract final class ApiType {
       Api.searchDefault,
       Api.searchSuggest,
       Api.searchByType,
+      Api.searchAll,
       Api.dynSearch,
       Api.searchArchive,
       Api.liveSearch,
@@ -96,6 +104,7 @@ abstract final class ApiType {
       Api.ugcUrl,
       Api.pgcUrl,
       Api.pugvUrl,
+      Api.ogvUrl,
       Api.tvPlayUrl,
       Api.videoshot,
     },

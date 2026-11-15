@@ -173,6 +173,7 @@ class ItemModulesModel {
   List<ArticleContentModel>? moduleContent;
   ModuleBlocked? moduleBlocked;
   ModuleFold? moduleFold;
+  ModuleTribee? moduleTribee;
 
   static bool showDynDispute = Pref.showDynDispute;
   static bool showDynInteraction = Pref.showDynInteraction;
@@ -248,8 +249,41 @@ class ItemModulesModel {
               ? null
               : ModuleStatModel.fromJson(i['module_stat']);
           break;
+        case 'MODULE_TYPE_TRIBEE':
+          moduleTribee = i['module_tribee'] == null
+              ? null
+              : ModuleTribee.fromJson(i['module_tribee']);
+          break;
       }
     }
+  }
+}
+
+class ModuleTribee {
+  List<Tribee>? items;
+
+  ModuleTribee.fromJson(Map<String, dynamic> json) {
+    items = (json['items'] as List?)?.map((e) => Tribee.fromJson(e)).toList();
+  }
+}
+
+class Tribee {
+  String? tribeeId;
+  String? name;
+  String? suffix;
+  String? faceUrl;
+  String? jumpUrl;
+  String? dynCountText;
+  String? latestTimeText;
+
+  Tribee.fromJson(Map<String, dynamic> json) {
+    tribeeId = json['tribee_id'];
+    name = json['name'];
+    suffix = json['suffix'];
+    faceUrl = json['face_url'];
+    jumpUrl = json['jump_url'];
+    dynCountText = json['dyn_count_text'];
+    latestTimeText = json['latest_time_text'];
   }
 }
 
@@ -399,6 +433,18 @@ class Basic {
   String? commentIdStr;
   int? commentType;
   String? ridStr;
+
+  ({int oid, int replyType})? get replyInfo {
+    if (commentIdStr != null && commentType != null) {
+      try {
+        return (
+          oid: int.parse(commentIdStr!),
+          replyType: commentType!,
+        );
+      } catch (_) {}
+    }
+    return null;
+  }
 
   Basic.fromJson(Map<String, dynamic> json) {
     commentIdStr = json['comment_id_str'];
@@ -1116,6 +1162,9 @@ class DynamicOpusModel {
   List<OpusPicModel>? pics;
   SummaryModel? summary;
   String? title;
+  bool? redirect;
+
+  static const redirectText = '全文';
 
   DynamicOpusModel.fromJson(Map<String, dynamic> json) {
     pics = (json['pics'] as List?)
@@ -1125,6 +1174,11 @@ class DynamicOpusModel {
         ? SummaryModel.fromJson(json['summary'])
         : null;
     title = json['title'];
+    if (json['fold_action'] case final List list when list.length == 1) {
+      if (list.first == redirectText) {
+        redirect = true;
+      }
+    }
   }
 }
 
@@ -1179,6 +1233,7 @@ class RichTextNodeItem {
 class Emoji {
   String? url;
   late num size;
+  String? jumpUrl;
 
   Emoji.fromJson(Map<String, dynamic> json) {
     url =
@@ -1186,6 +1241,7 @@ class Emoji {
         nonNullOrEmptyString(json['gif_url']) ??
         nonNullOrEmptyString(json['icon_url']);
     size = json['size'] ?? 1;
+    jumpUrl = json['jump_url'];
   }
 }
 

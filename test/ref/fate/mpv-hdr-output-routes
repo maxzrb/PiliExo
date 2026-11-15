@@ -1,0 +1,4 @@
+hdr-hardware=mediacodec_embed,mediacodec
+hdr-software=gpu-next,no
+p5-hardware-setting=gpu-next,no
+p5-software-setting=gpu-next,no

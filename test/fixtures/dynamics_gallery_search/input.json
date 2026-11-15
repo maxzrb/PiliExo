@@ -1,0 +1,93 @@
+{
+  "gallery": [
+    {
+      "name": "当前 Live Photo 首帧已完成",
+      "page_index": 0,
+      "current_index": 0,
+      "ready_index": 0
+    },
+    {
+      "name": "当前 Live Photo 仍在加载",
+      "page_index": 0,
+      "current_index": 0,
+      "ready_index": -1
+    },
+    {
+      "name": "已滑到下一页但旧视频层尚未收起",
+      "page_index": 0,
+      "current_index": 1,
+      "ready_index": 0
+    },
+    {
+      "name": "相邻 Live Photo 已预载但并非当前页",
+      "page_index": 2,
+      "current_index": 1,
+      "ready_index": 2
+    },
+    {
+      "name": "超出相邻预载范围的 Live Photo",
+      "page_index": 4,
+      "current_index": 0,
+      "ready_index": 4
+    }
+  ],
+  "panel": {
+    "fixed_slots": ["all", "search", "me"],
+    "selections": [
+      {
+        "name": "全部动态",
+        "mid": -1
+      },
+      {
+        "name": "指定关注 UP",
+        "mid": 67890
+      }
+    ]
+  },
+  "up_search": {
+    "items": [
+      {
+        "mid": 1001,
+        "uname": "老番茄"
+      },
+      {
+        "mid": 1002,
+        "uname": "Bilibili 观察员"
+      },
+      {
+        "mid": 1003,
+        "uname": "Linus Tech Tips"
+      },
+      {
+        "mid": 1004,
+        "uname": "番茄研究所"
+      }
+    ],
+    "cases": [
+      {
+        "query": "",
+        "expected": [1001, 1002, 1003, 1004]
+      },
+      {
+        "query": "番茄",
+        "expected": [1004, 1001]
+      },
+      {
+        "query": "  番茄  ",
+        "expected": [1004, 1001]
+      },
+      {
+        "query": "bili 观察",
+        "expected": [1002]
+      },
+      {
+        "query": "LTT",
+        "expected": [1003]
+      },
+      {
+        "query": "不存在",
+        "expected": []
+      }
+    ]
+  }
+}

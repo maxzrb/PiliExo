@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
+import 'package:PiliPlus/pages/common/common_controller.dart'
+    show RefreshImplMixin;
 import 'package:PiliPlus/pages/common/common_list_controller.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 
-class RcmdController extends CommonListController {
+class RcmdController extends CommonListController with RefreshImplMixin {
   late bool enableSaveLastData = Pref.enableSaveLastData;
   // 每次请求读取最新设置，使保存后的比例在下一次刷新时生效。
   int get appRcmdRatio => Pref.appRcmdRatio;

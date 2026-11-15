@@ -1,0 +1,8 @@
+mpv-compatible offset=0 visible=400x225 video=400x225 retained=true
+mpv-compatible offset=100 visible=400x125 video=400x125 retained=true
+mpv-compatible offset=800 visible=400x56 video=400x56 retained=true
+mpv-compatible offset=0 visible=400x225 video=400x225 retained=true
+native-hdr offset=0 visible=400x225 video=400x225 retained=true
+native-hdr offset=100 visible=400x125 video=400x225 retained=true
+native-hdr offset=800 visible=400x56 video=400x225 retained=true
+native-hdr offset=0 visible=400x225 video=400x225 retained=true

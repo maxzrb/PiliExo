@@ -3,19 +3,21 @@ import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
 import 'package:PiliPlus/common/widgets/view_insets_safe_area.dart';
 import 'package:PiliPlus/common/widgets/view_sliver_safe_area.dart';
 import 'package:PiliPlus/pages/search/controller.dart' show DebounceStreamState;
+import 'package:PiliPlus/pages/setting/models/dm_settings.dart';
+import 'package:PiliPlus/pages/setting/models/dyn_settings.dart';
 import 'package:PiliPlus/pages/setting/models/extra_settings.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/models/play_settings.dart';
 import 'package:PiliPlus/pages/setting/models/privacy_settings.dart';
 import 'package:PiliPlus/pages/setting/models/recommend_settings.dart';
+import 'package:PiliPlus/pages/setting/models/reply_settings.dart';
 import 'package:PiliPlus/pages/setting/models/style_settings.dart';
 import 'package:PiliPlus/pages/setting/models/video_settings.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/waterfall.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:waterfall_flow/waterfall_flow.dart'
-    hide SliverWaterfallFlowDelegateWithMaxCrossAxisExtent;
 
 class SettingsSearchPage extends StatefulWidget {
   const SettingsSearchPage({super.key});
@@ -30,6 +32,9 @@ class _SettingsSearchPageState
   final RxList<SettingsModel> _list = <SettingsModel>[].obs;
   late final _settings = [
     ...extraSettings,
+    ...dmSettings,
+    ...replySettings,
+    ...dynSettings,
     ...privacySettings,
     ...recommendSettings,
     ...videoSettings,
@@ -97,13 +102,10 @@ class _SettingsSearchPageState
               sliver: Obx(
                 () => _list.isEmpty
                     ? const HttpError()
-                    : SliverWaterfallFlow(
-                        gridDelegate:
-                            SliverWaterfallFlowDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: Grid.smallCardWidth * 2,
-                            ),
+                    : SliverMasonryGrid(
+                        gridDelegate: gridDelegate,
                         delegate: SliverChildBuilderDelegate(
-                          (_, index) => _list[index].widget,
+                          (context, index) => _list[index].widget,
                           childCount: _list.length,
                         ),
                       ),
@@ -114,4 +116,8 @@ class _SettingsSearchPageState
       ),
     );
   }
+
+  late final gridDelegate = SliverSimpleGridDelegateWithMaxCrossAxisExtent_(
+    maxCrossAxisExtent: Grid.smallCardWidth * 2,
+  );
 }

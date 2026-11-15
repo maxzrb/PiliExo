@@ -1,0 +1,279 @@
+{
+  "scroll": [
+    {
+      "name": "空列表与越界索引",
+      "cases": [
+        {
+          "op": "items",
+          "index": -1,
+          "pages": []
+        },
+        {
+          "op": "fixed",
+          "index": -1,
+          "count": 0
+        },
+        {
+          "op": "page",
+          "index": 4,
+          "count": 0,
+          "viewport": 500
+        },
+        {
+          "op": "items",
+          "index": 99,
+          "pages": [
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "多分P前后高度",
+      "cases": [
+        {
+          "op": "items",
+          "index": 0,
+          "pages": [
+            0,
+            2
+          ]
+        },
+        {
+          "op": "items",
+          "index": 1,
+          "pages": [
+            0,
+            2
+          ]
+        },
+        {
+          "op": "height",
+          "pages": null
+        }
+      ]
+    },
+    {
+      "name": "尾项与倒序定位",
+      "cases": [
+        {
+          "op": "adjust",
+          "offset": 567,
+          "remain": 100,
+          "viewport": 500,
+          "reverse": false
+        },
+        {
+          "op": "adjust",
+          "offset": 100,
+          "remain": 7,
+          "viewport": 500,
+          "reverse": true
+        },
+        {
+          "op": "page",
+          "index": 9,
+          "count": 10,
+          "viewport": 500
+        },
+        {
+          "op": "separated",
+          "index": 9,
+          "count": 10,
+          "extent": 140,
+          "separator": 10,
+          "viewport": 500
+        }
+      ]
+    }
+  ],
+  "subscriptions": {
+    "many": {
+      "pages": {
+        "1": {
+          "info": {
+            "media_count": 45
+          },
+          "medias": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            },
+            {
+              "id": 3
+            },
+            {
+              "id": 4
+            },
+            {
+              "id": 5
+            },
+            {
+              "id": 6
+            },
+            {
+              "id": 7
+            },
+            {
+              "id": 8
+            },
+            {
+              "id": 9
+            },
+            {
+              "id": 10
+            },
+            {
+              "id": 11
+            },
+            {
+              "id": 12
+            },
+            {
+              "id": 13
+            },
+            {
+              "id": 14
+            },
+            {
+              "id": 15
+            },
+            {
+              "id": 16
+            },
+            {
+              "id": 17
+            },
+            {
+              "id": 18
+            },
+            {
+              "id": 19
+            },
+            {
+              "id": 20
+            }
+          ]
+        },
+        "2": {
+          "info": {
+            "media_count": 45
+          },
+          "medias": [
+            {
+              "id": 21
+            },
+            {
+              "id": 22
+            },
+            {
+              "id": 23
+            },
+            {
+              "id": 24
+            },
+            {
+              "id": 25
+            },
+            {
+              "id": 26
+            },
+            {
+              "id": 27
+            },
+            {
+              "id": 28
+            },
+            {
+              "id": 29
+            },
+            {
+              "id": 30
+            },
+            {
+              "id": 31
+            },
+            {
+              "id": 32
+            },
+            {
+              "id": 33
+            },
+            {
+              "id": 34
+            },
+            {
+              "id": 35
+            },
+            {
+              "id": 36
+            },
+            {
+              "id": 37
+            },
+            {
+              "id": 38
+            },
+            {
+              "id": 39
+            },
+            {
+              "id": 40
+            }
+          ]
+        },
+        "3": {
+          "info": {
+            "media_count": 45
+          },
+          "medias": [
+            {
+              "id": 41
+            },
+            {
+              "id": 42
+            },
+            {
+              "id": 43
+            },
+            {
+              "id": 44
+            },
+            {
+              "id": 45
+            }
+          ]
+        }
+      },
+      "loadMore": 3
+    },
+    "single": {
+      "pages": {
+        "1": {
+          "info": {
+            "media_count": 3
+          },
+          "medias": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            },
+            {
+              "id": 3
+            }
+          ]
+        }
+      },
+      "loadMore": 0
+    }
+  },
+  "archives": {
+    "normal": "UEsDBBQAAAAAAAAAX13wLGlTQQAAAEEAAAAJAAAAbWV0YS5qc29ueyJ0eXBlIjoiZGF0YV9hcmNoaXZlIiwiZm9ybWF0VmVyc2lvbiI6NjU1MzYsImFwcE5hbWUiOiJQaWxpRXhvIn1QSwMEFAAAAAAAAABfXfMsWxcuAAAALgAAAAwAAABzZXR0aW5nLmpzb257InNldHRpbmciOnsicHJlc2VydmVkIjoiY2hhbmdlZCJ9LCJ2aWRlbyI6e319UEsBAhQAFAAAAAAAAABfXfAsaVNBAAAAQQAAAAkAAAAAAAAAAAAAAIABAAAAAG1ldGEuanNvblBLAQIUABQAAAAAAAAAX13zLFsXLgAAAC4AAAAMAAAAAAAAAAAAAACAAWgAAABzZXR0aW5nLmpzb25QSwUGAAAAAAIAAgBxAAAAwAAAAAAA",
+    "crc": "UEsDBBQAAAAAAAAAX13wLGlTQQAAAEEAAAAJAAAAbWV0YS5qc29ueyJ0eXBlIjoiZGF0YV9hcmNoaXZlIiwiZm9ybWF0VmVyc2lvbiI6NjU1MzYsImFwcE5hbWUiOiJQaWxpRXhvIn1QSwMEFAAAAAAAAABfXfMsWxcuAAAALgAAAAwAAABzZXR0aW5nLmpzb257InNldHRpbmciOnsicHJlc2VydmVkIjoiY2hhbmdlZCJ9LCJ2aWRlbyI6e319UEsBAhQAFAAAAAAAAABfXQ8saVNBAAAAQQAAAAkAAAAAAAAAAAAAAIABAAAAAG1ldGEuanNvblBLAQIUABQAAAAAAAAAX13zLFsXLgAAAC4AAAAMAAAAAAAAAAAAAACAAWgAAABzZXR0aW5nLmpzb25QSwUGAAAAAAIAAgBxAAAAwAAAAAAA",
+    "truncated": "UEsDBBQAAAAAAAAAX13wLGlTQQAAAEEAAAAJAAAAbWV0YS5qc29ueyJ0eXBlIjoiZGF0YV9hcmNoaXZlIiwiZm9ybWF0VmVyc2lvbiI6NjU1MzYsImFwcE5hbWUiOiJQaWxpRXhvIn1QSwMEFAAAAAAAAABfXfMsWxcuAAAALgAAAAwAAABzZXR0aW5nLmpzb257InNldHRpbmciOnsicHJlcw=="
+  }
+}

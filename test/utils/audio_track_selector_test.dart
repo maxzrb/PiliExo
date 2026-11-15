@@ -1,4 +1,4 @@
-import 'package:PiliPlus/models/common/video/audio_quality.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 

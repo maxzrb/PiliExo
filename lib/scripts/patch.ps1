@@ -2,8 +2,18 @@ param(
     [string]$platform = ""
 )
 
-git config --global user.name "ci"
-git config --global user.email "example@example.com"
+# 本机补丁操作不修改全局身份，临时值在结束后恢复。
+$IdentityKeys = @('GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL')
+$PreviousIdentity = @{}
+$OriginalLocation = Get-Location
+foreach ($key in $IdentityKeys) {
+    $PreviousIdentity[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+    if (-not $PreviousIdentity[$key]) {
+        $fallback = if ($key.EndsWith('EMAIL')) { 'local-patch@example.invalid' } else { 'local-patch' }
+        [Environment]::SetEnvironmentVariable($key, $fallback, 'Process')
+    }
+}
+try {
 
 # TODO: remove
 # https://github.com/flutter/flutter/issues/182281
@@ -101,6 +111,8 @@ $MouseCursorPatch = "lib/scripts/mouse_cursor.patch"
 
 $GeetestIOSPatch = "lib/scripts/geetest_ios.patch"
 
+$DoubleTapGesturePatch = "lib/scripts/double_tap_gesture.patch"
+
 if ($platform.ToLower() -eq "ios") {
     git apply $BottomSheetIOSPiliPlusPatch
     if ($LASTEXITCODE -eq 0) {
@@ -126,7 +138,8 @@ $patches = @($ModalBarrierPatch, $TextSelectionPatch, $MouseCursorPatch,
             $SelectableRegionPatch, $EditableTextPatch, $TextFieldPatch,
             $ScrollPositionPatch, $ScrollablePatch, $ScrollableGesturePatch,
             $DraggableScrollableSheetPatch, $ScaffoldPatch, $TextPatch,
-            $TextPainterPatch, $SliverPatch, $RefreshIndicatorPatch)
+            $TextPainterPatch, $SliverPatch, $RefreshIndicatorPatch,
+            $DoubleTapGesturePatch)
 
 switch ($platform.ToLower()) {
     "android" {
@@ -210,7 +223,15 @@ $patches_material = @($ModalBarrierPatchMaterial, $NavigationDrawerPatchMaterial
                     $FABPatchMaterial, $TextFieldPatchMaterial, $ScaffoldPatchMaterial, $RefreshIndicatorPatchMaterial,
                     $TabsPatchMaterial)
 
-$PubCacheDir = "~/.pub-cache"
+# Pub 缓存位置取决于执行脚本的宿主系统，而不是目标构建平台。
+# Android 构建也可能运行在 Windows 上，不能把 android 误当成 Unix 主机。
+if ($env:PUB_CACHE) {
+    $PubCacheDir = $env:PUB_CACHE
+} elseif ($env:OS -eq "Windows_NT") {
+    $PubCacheDir = "$env:LOCALAPPDATA/Pub/Cache"
+} else {
+    $PubCacheDir = "~/.pub-cache"
+}
 
 switch ($platform.ToLower()) {
     "android" {
@@ -224,7 +245,6 @@ switch ($platform.ToLower()) {
     "macos" {
     }
     "windows" {
-        $PubCacheDir = "$env:LOCALAPPDATA/Pub/Cache"
     }
     default {}
 }
@@ -240,7 +260,23 @@ try {
 } catch {
 }
 
-flutter pub get
+# Windows Android 构建不生成桌面链接，避免链接权限错误中断 Android 插件注册。
+$DesktopEnvKeys = @('FLUTTER_WINDOWS', 'FLUTTER_LINUX', 'FLUTTER_MACOS')
+$PreviousDesktopEnv = @{}
+try {
+    if ($platform.ToLower() -eq 'android' -and $env:OS -eq 'Windows_NT') {
+        foreach ($key in $DesktopEnvKeys) {
+            $PreviousDesktopEnv[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+            [Environment]::SetEnvironmentVariable($key, 'false', 'Process')
+        }
+    }
+    flutter pub get
+    if ($LASTEXITCODE -ne 0) { throw "flutter pub get 失败：$LASTEXITCODE" }
+} finally {
+    foreach ($key in $PreviousDesktopEnv.Keys) {
+        [Environment]::SetEnvironmentVariable($key, $PreviousDesktopEnv[$key], 'Process')
+    }
+}
 
 $MaterialUiDir = Get-ChildItem "$PubCacheDir/hosted/pub.dev" -Directory |
     Where-Object { $_.Name -like "material_ui-*" } |
@@ -311,4 +347,11 @@ foreach ($patch in $patches_cupertino) {
     } else {
         throw "$LASTEXITCODE"
     }
+}
+
+} finally {
+    foreach ($key in $IdentityKeys) {
+        [Environment]::SetEnvironmentVariable($key, $PreviousIdentity[$key], 'Process')
+    }
+    Set-Location $OriginalLocation
 }

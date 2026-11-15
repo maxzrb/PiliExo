@@ -54,6 +54,7 @@ final class ReleaseVersion implements Comparable<ReleaseVersion> {
   }
 
   static ReleaseVersion? get current {
+    if (!BuildConfig.hasReleaseMetadata) return null;
     return fromBuildMetadata(
       versionName: BuildConfig.versionName,
       releaseBuild: BuildConfig.releaseBuild,

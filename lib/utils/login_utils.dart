@@ -7,6 +7,7 @@ import 'package:PiliPlus/main.dart' show webViewEnvironment;
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -94,11 +95,17 @@ abstract final class LoginUtils {
   static String generateBuvid() {
     final md5Str = Digest(
       List.generate(16, (_) => Utils.random.nextInt(256)),
-    ).toString();
+    ).toString().toUpperCase();
     return 'XY${md5Str[2]}${md5Str[12]}${md5Str[22]}$md5Str';
   }
 
-  static final buvid = Pref.buvid;
+  static String get buvid => AnonymousAccount().buvid;
+
+  /// 更新匿名标识时同步持久化及缓存请求头。
+  static Future<void> setBuvid(String value) async {
+    AnonymousAccount().buvid = value;
+    await GStorage.setting.put(SettingBoxKey.buvid, value);
+  }
 
   // static String getUUID() {
   //   return const Uuid().v4().replaceAll('-', '');

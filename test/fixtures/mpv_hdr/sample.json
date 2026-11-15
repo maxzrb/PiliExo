@@ -1,0 +1,10 @@
+{
+  "file": "dv-p5-five-frames.mp4",
+  "sha256": "9aa83c5fa22c84e89e6cf080fa67671104c7d3818e1640938cfe25ff55d5d3d5",
+  "source": "https://repo.jellyfin.org/test-videos/HDR/Dolby%20Vision/Test%20Jellyfin%201080p%20DV%20P5.mp4",
+  "sourceBytes": 50039227,
+  "sourceHeadBytesRead": 3502080,
+  "sourceTailRange": "50015935-50039226",
+  "derivation": "ffmpeg -i source.mp4 -map 0:v:0 -frames:v 5 -c:v copy -strict unofficial -an dv-p5-five-frames.mp4",
+  "description": "公开 Jellyfin 测试片源的前5帧，保留 P5 dvcC、RPU和结构化 Dolby Vision 元数据。源文件仅按必要区间读取，未声称完整源文件哈希已验证。"
+}

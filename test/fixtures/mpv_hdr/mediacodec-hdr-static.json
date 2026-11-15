@@ -1,0 +1,15 @@
+{
+  "source": "Android MediaFormat KEY_HDR_STATIC_INFO / AOSP ColorUtils CTA-861.3 Type1",
+  "file": "mediacodec-hdr-static.hex",
+  "sha256": "5ac860039978ea4165f9da95f1c79ecc84a3bb4982e1c7911de0a9d55acd0441",
+  "cases": [
+    "BT2020 1000nit",
+    "P3 4000nit",
+    "unknown primaries and zero black",
+    "all unknown",
+    "24 bytes rejected",
+    "26 bytes rejected",
+    "unsupported descriptor rejected"
+  ],
+  "reference": "mastering xy uses 1/50000; maximum uses 1 nit; minimum uses 1/10000 nit; light levels use 1 nit; repeat preserves existing side data"
+}

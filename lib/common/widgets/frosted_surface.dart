@@ -2,23 +2,29 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:PiliPlus/models/common/frosted_surface_style.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:material_ui/material_ui.dart';
 
 class FrostedSurfaceSettings {
   const FrostedSurfaceSettings({
     required this.enabled,
     required this.style,
+    this.optimizeUniformBackground = true,
   });
 
   final bool enabled;
   final FrostedSurfaceStyle style;
+  final bool optimizeUniformBackground;
 
   FrostedSurfaceSettings copyWith({
     bool? enabled,
     FrostedSurfaceStyle? style,
+    bool? optimizeUniformBackground,
   }) => FrostedSurfaceSettings(
     enabled: enabled ?? this.enabled,
     style: style ?? this.style,
+    optimizeUniformBackground:
+        optimizeUniformBackground ?? this.optimizeUniformBackground,
   );
 }
 
@@ -33,9 +39,14 @@ abstract final class FrostedSurfaceConfig {
   static void update({
     bool? enabled,
     FrostedSurfaceStyle? style,
+    bool? optimizeUniformBackground,
   }) {
     final current = notifier.value;
-    notifier.value = current.copyWith(enabled: enabled, style: style);
+    notifier.value = current.copyWith(
+      enabled: enabled,
+      style: style,
+      optimizeUniformBackground: optimizeUniformBackground,
+    );
   }
 
   static void updateEnabled(bool enabled) => update(enabled: enabled);
@@ -50,6 +61,7 @@ class FrostedSurface extends StatelessWidget {
     this.borderRadius = BorderRadius.zero,
     this.sigma = 18.0,
     this.showBorder = false,
+    this.backgroundIsUniform = false,
   });
 
   final Widget child;
@@ -57,6 +69,9 @@ class FrostedSurface extends StatelessWidget {
   final BorderRadius borderRadius;
   final double sigma;
   final bool showBorder;
+
+  /// 仅在调用方确认背后为纯色且没有覆盖动态内容时使用。
+  final bool backgroundIsUniform;
 
   @override
   Widget build(BuildContext context) {
@@ -82,12 +97,25 @@ class FrostedSurface extends StatelessWidget {
         ? colorScheme.surface
         : color!;
     final opaqueSurface = baseColor.withValues(alpha: 1);
+    final surfaceBrightness = ThemeData.estimateBrightnessForColor(
+      opaqueSurface,
+    );
     final themedChild = Theme(
       data: theme.copyWith(
         appBarTheme: theme.appBarTheme.copyWith(
           backgroundColor: settings.enabled
               ? Colors.transparent
               : opaqueSurface,
+          // 按磨砂底色设置状态栏图标，避免透明 AppBar 被误判为深色背景。
+          systemOverlayStyle:
+              theme.appBarTheme.systemOverlayStyle ??
+              SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarBrightness: surfaceBrightness,
+                statusBarIconBrightness: surfaceBrightness == Brightness.light
+                    ? Brightness.dark
+                    : Brightness.light,
+              ),
         ),
         navigationBarTheme: theme.navigationBarTheme.copyWith(
           backgroundColor: settings.enabled
@@ -119,9 +147,13 @@ class FrostedSurface extends StatelessWidget {
     );
     final borderColor = colorScheme.outline.withValues(alpha: 0.10);
 
-    return ClipRRect(
+    final uniformOptimization =
+        backgroundIsUniform && settings.optimizeUniformBackground;
+    final surface = ClipRRect(
       borderRadius: borderRadius,
       child: BackdropFilter(
+        // 保留材质透明度、边框和裁剪，只省去纯色背景的重复模糊。
+        enabled: !uniformOptimization,
         filter: ImageFilter.blur(
           sigmaX: effectiveSigma,
           sigmaY: effectiveSigma,
@@ -139,6 +171,8 @@ class FrostedSurface extends StatelessWidget {
         ),
       ),
     );
+    // 纯色背景不再依赖外部绘制，隔离顶栏，避免列表滚动时重复栅格化。
+    return uniformOptimization ? RepaintBoundary(child: surface) : surface;
   }
 }
 

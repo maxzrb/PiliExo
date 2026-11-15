@@ -55,6 +55,14 @@ android {
         targetSdk = 37
         versionCode = resolvedVersionCode
         versionName = resolvedVersionName
+        externalNativeBuild.cmake.arguments += "-DANDROID_STL=c++_static"
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     packagingOptions.jniLibs.useLegacyPackaging = true
@@ -117,6 +125,8 @@ android {
 }
 
 dependencies {
+    // Vivid 只在该片源的原生 mpv 路线按需初始化，不依赖华为账号或播放服务。
+    implementation("com.huawei.hms:videokit-hdrvivid:1.0.15.304")
     // Media3 负责 Android HDR 硬解和原生 SurfaceView 输出。
     val media3Version = "1.11.0"
     implementation("androidx.media3:media3-exoplayer:$media3Version")

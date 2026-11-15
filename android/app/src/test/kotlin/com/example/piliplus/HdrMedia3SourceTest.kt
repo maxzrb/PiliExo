@@ -27,6 +27,21 @@ import org.robolectric.annotation.Config
 @Config(manifest = Config.NONE)
 class HdrMedia3SourceTest {
     @Test
+    fun pendingEventsPreserveOrderAndBoundMemory() {
+        val events = BoundedPendingEvents<String>(3)
+        events.add("format-video")
+        events.add("format-audio")
+        events.add("decoder-video")
+        events.add("decoder-audio")
+
+        assertEquals(
+            listOf("format-audio", "decoder-video", "decoder-audio"),
+            events.drain(),
+        )
+        assertEquals(emptyList<String>(), events.drain())
+    }
+
+    @Test
     fun mapsResizeModesToMedia3PlayerViewModes() {
         assertEquals(AspectRatioFrameLayout.RESIZE_MODE_FILL, media3ResizeMode("fill"))
         assertEquals(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, media3ResizeMode("cover"))

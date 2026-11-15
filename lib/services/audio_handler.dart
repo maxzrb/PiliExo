@@ -8,14 +8,24 @@ import 'package:PiliPlus/models_new/live/live_room_info_h5/data.dart';
 import 'package:PiliPlus/models_new/pgc/pgc_info_model/episode.dart';
 import 'package:PiliPlus/models_new/video/video_detail/data.dart';
 import 'package:PiliPlus/models_new/video/video_detail/page.dart';
+import 'package:PiliPlus/pages/common/common_intro_controller.dart';
+import 'package:PiliPlus/pages/live_room/controller.dart';
+import 'package:PiliPlus/pages/video/introduction/local/controller.dart';
+import 'package:PiliPlus/pages/video/introduction/pgc/controller.dart';
+import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
+import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/image_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get/get_instance/src/extension_instance.dart';
+import 'package:jni/jni.dart' show JStringExtension;
 import 'package:path/path.dart' as path;
 
 Future<VideoPlayerServiceHandler> initAudioService() {
@@ -34,13 +44,35 @@ Future<VideoPlayerServiceHandler> initAudioService() {
   );
 }
 
+typedef _StatusConfig = (PlayerStatus, bool, bool, double);
+
 class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
+  VideoPlayerServiceHandler() {
+    // Android 14 的固定远程会话会吞掉音量键，仅在已验证的 vivo Android 16 及以上启用。
+    if (Platform.isAndroid && DeviceUtils.sdkInt >= 36) {
+      final jStr = AndroidHelper.manufacturer();
+      if (jStr != null &&
+          jStr.toDartString(releaseOriginal: true).toLowerCase() == 'vivo') {
+        androidPlaybackInfo.add(
+          RemoteAndroidPlaybackInfo(
+            volumeControlType: .fixed,
+            maxVolume: 100,
+            volume: 50,
+          ),
+        );
+      }
+    }
+  }
+
   static final List<MediaItem> _item = [];
   bool enableBackgroundPlay = Pref.enableBackgroundPlay;
 
+  bool Function()? isPlaying;
   Future<void>? Function()? onPlay;
   Future<void>? Function()? onPause;
   Future<void>? Function(Duration position)? onSeek;
+  void Function()? onSkipToNext;
+  void Function()? onSkipToPrevious;
 
   @override
   Future<void> play() {
@@ -56,16 +88,59 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
     // player.pause();
   }
 
+  CommonIntroController? _findIntroController() {
+    final playOwner = PlPlayerController.playOwner;
+    if (playOwner != null && playOwner.type != null) {
+      final tag = playOwner.tag;
+      try {
+        return switch (playOwner.type) {
+          UgcIntroController => Get.find<UgcIntroController>(tag: tag),
+          PgcIntroController => Get.find<PgcIntroController>(tag: tag),
+          LocalIntroController => Get.find<LocalIntroController>(tag: tag),
+          _ => throw UnimplementedError(playOwner.type.toString()),
+        };
+      } catch (_) {
+        if (kDebugMode) rethrow;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<void> skipToNext() {
+    final func = onSkipToNext ?? _findIntroController()?.nextPlay;
+    return func == null ? Future.syncValue(null) : Future.sync(func);
+  }
+
+  @override
+  Future<void> skipToPrevious() {
+    final func = onSkipToPrevious ?? _findIntroController()?.prevPlay;
+    return func == null ? Future.syncValue(null) : Future.sync(func);
+  }
+
   @override
   Future<void> seek(Duration position) {
-    playbackState.add(
-      playbackState.value.copyWith(
-        updatePosition: position,
-      ),
-    );
+    _lastPositionSeconds = position.inSeconds;
+    playbackState.add(playbackState.value.copyWith(updatePosition: position));
     return (onSeek?.call(position) ??
-        PlPlayerController.seekToIfExists(position, isSeek: false));
-    // await player.seekTo(position);
+        PlPlayerController.seekToIfExists(position) ??
+        Future.syncValue(null));
+  }
+
+  @override
+  Future<dynamic> customAction(String name, [Map<String, dynamic>? extras]) {
+    try {
+      switch (name) {
+        case 'ACTION_DM':
+          final tag = PlPlayerController.playOwner!.tag;
+          Get.find<LiveRoomController>(tag: tag).toggleDanmaku();
+        case 'ACTION_REFRESH':
+          final tag = PlPlayerController.playOwner!.tag;
+          Get.find<LiveRoomController>(tag: tag).queryLiveUrl();
+        default:
+      }
+    } catch (_) {}
+    return Future.syncValue(null);
   }
 
   void setMediaItem(MediaItem newMediaItem) {
@@ -79,16 +154,29 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
     if (!mediaItem.isClosed) mediaItem.add(newMediaItem);
   }
 
-  void setPlaybackState(
+  _StatusConfig? _lastConfig;
+  int? _lastPositionSeconds;
+  (bool, bool)? _lastPipConfig;
+
+  void onUpdateState(
     PlayerStatus status,
     bool isBuffering,
-    bool isLive,
-  ) {
-    if (!enableBackgroundPlay ||
-        _item.isEmpty ||
-        !PlPlayerController.instanceExists()) {
+    bool isLive, {
+    required Duration position,
+    required double speed,
+    bool force = false,
+    bool fromVideoPause = false,
+  }) {
+    if (!enableBackgroundPlay || _item.isEmpty) return;
+    if (fromVideoPause && onPlay != null) return;
+
+    final config = (status, isBuffering, isLive, speed);
+    final seconds = position.inSeconds;
+    if (!force && _lastConfig == config && _lastPositionSeconds == seconds) {
       return;
     }
+    _lastConfig = config;
+    _lastPositionSeconds = seconds;
 
     final AudioProcessingState processingState;
     if (status.isCompleted) {
@@ -99,37 +187,16 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
       processingState = AudioProcessingState.ready;
     }
 
-    final playing = status.isPlaying;
+    final playing = !status.isCompleted && (status.isPlaying || isBuffering);
     playbackState.add(
       playbackState.value.copyWith(
-        processingState: isBuffering
-            ? AudioProcessingState.buffering
-            : processingState,
+        processingState: processingState,
+        updatePosition: position,
+        speed: speed,
         controls: [
-          if (!isLive)
-            const MediaControl(
-              androidIcon: 'drawable/ic_player_rewind_10s',
-              label: 'Rewind',
-              action: MediaAction.rewind,
-            ),
-          if (playing)
-            const MediaControl(
-              androidIcon: 'drawable/ic_player_pause',
-              label: 'Pause',
-              action: MediaAction.pause,
-            )
-          else
-            const MediaControl(
-              androidIcon: 'drawable/ic_player_play',
-              label: 'Play',
-              action: MediaAction.play,
-            ),
-          if (!isLive)
-            const MediaControl(
-              androidIcon: 'drawable/ic_player_fast_forward_10s',
-              label: 'Fast Forward',
-              action: MediaAction.fastForward,
-            ),
+          if (isLive) _refresh else _rewind,
+          if (playing) _pause else _play,
+          if (isLive) _dm else _fastForward,
         ],
         playing: playing,
         systemActions: const {
@@ -137,7 +204,9 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
         },
       ),
     );
-    if (Platform.isAndroid &&
+    final pipConfig = (isLive, playing);
+    if (_lastPipConfig != pipConfig &&
+        Platform.isAndroid &&
         (AndroidHelper.isPipMode ||
             PlPlayerController.instance?.isAutoEnterPip == true)) {
       AndroidHelper.updatePipActions(
@@ -146,13 +215,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
         playing,
       );
     }
-  }
-
-  void onStatusChange(PlayerStatus status, bool isBuffering, isLive) {
-    if (!enableBackgroundPlay) return;
-
-    if (_item.isEmpty) return;
-    setPlaybackState(status, isBuffering, isLive);
+    _lastPipConfig = pipConfig;
   }
 
   void onVideoDetailChange(
@@ -167,7 +230,6 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
     //   debugPrint('当前调用栈为：');
     //   debugPrint(StackTrace.current);
     // }
-    if (!PlPlayerController.instanceExists()) return;
     if (data == null) return;
 
     Uri getUri(String? cover) => Uri.parse(ImageUtils.safeThumbnailUrl(cover));
@@ -245,9 +307,8 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
       default:
         return;
     }
-    // if (kDebugMode) debugPrint("exist: ${PlPlayerController.instanceExists()}");
-    if (!PlPlayerController.instanceExists()) return;
     _item.add(mediaItem);
+    _lastConfig = null;
     setMediaItem(mediaItem);
   }
 
@@ -258,54 +319,74 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with SeekHandler {
       _item.removeWhere((item) => item.id.endsWith(herotag));
     }
     if (_item.isNotEmpty) {
+      _lastConfig = null;
+      setMediaItem(_item.last);
       playbackState.add(
         playbackState.value.copyWith(
-          processingState: AudioProcessingState.idle,
+          processingState: AudioProcessingState.ready,
           playing: false,
         ),
       );
-      setMediaItem(_item.last);
-      stop();
     }
+  }
+
+  void clearIfNeeded() {
+    if (_item.isEmpty) clear();
   }
 
   void clear() {
     if (!enableBackgroundPlay) return;
     mediaItem.add(null);
     _item.clear();
+    _lastConfig = null;
+    _lastPositionSeconds = null;
+    _lastPipConfig = null;
     /**
      * if (playbackState.processingState == AudioProcessingState.idle &&
             previousState?.processingState != AudioProcessingState.idle) {
           await AudioService._stop();
         }
      */
-    if (playbackState.value.processingState == AudioProcessingState.idle) {
-      playbackState.add(
-        PlaybackState(
-          processingState: AudioProcessingState.completed,
-          playing: false,
-        ),
-      );
-    }
     playbackState.add(
-      PlaybackState(
-        processingState: AudioProcessingState.idle,
-        playing: false,
-      ),
-    );
-  }
-
-  void onPositionChange(Duration position) {
-    if (!enableBackgroundPlay ||
-        _item.isEmpty ||
-        !PlPlayerController.instanceExists()) {
-      return;
-    }
-
-    playbackState.add(
-      playbackState.value.copyWith(
-        updatePosition: position,
-      ),
+      PlaybackState(processingState: AudioProcessingState.idle, playing: false),
     );
   }
 }
+
+const _refresh = MediaControl(
+  androidIcon: 'drawable/ic_player_refresh',
+  label: 'Refresh',
+  action: .custom,
+  customAction: CustomMediaAction(name: 'ACTION_REFRESH'),
+);
+
+const _dm = MediaControl(
+  androidIcon: 'drawable/ic_state_danmaku',
+  label: 'Danmaku',
+  action: .custom,
+  customAction: CustomMediaAction(name: 'ACTION_DM'),
+);
+
+const _play = MediaControl(
+  androidIcon: 'drawable/ic_player_play',
+  label: 'Play',
+  action: .play,
+);
+
+const _pause = MediaControl(
+  androidIcon: 'drawable/ic_player_pause',
+  label: 'Pause',
+  action: .pause,
+);
+
+const _rewind = MediaControl(
+  androidIcon: 'drawable/ic_player_rewind_10s',
+  label: 'Rewind',
+  action: .rewind,
+);
+
+const _fastForward = MediaControl(
+  androidIcon: 'drawable/ic_player_fast_forward_10s',
+  label: 'Fast Forward',
+  action: .fastForward,
+);

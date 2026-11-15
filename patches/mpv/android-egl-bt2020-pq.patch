@@ -1,0 +1,211 @@
+diff --git a/video/out/gpu/context.h b/video/out/gpu/context.h
+--- a/video/out/gpu/context.h
++++ b/video/out/gpu/context.h
+@@ -12,6 +12,7 @@
+     bool want_alpha;      // create an alpha framebuffer if possible
+     bool debug;           // enable debugging layers/callbacks etc.
+     bool probing;        // the backend was auto-probed
++    bool android_hdr;    // 启用 Android 原生 HDR 颜色与元数据输出
+     bool composition;    // enable swapchain composition
+     struct m_obj_settings *context_list; // list of `ra_ctx_fns.name` to probe
+     struct m_obj_settings *context_type_list;  // list of `ra_ctx_fns.type` to probe
+diff --git a/video/out/gpu/context.c b/video/out/gpu/context.c
+--- a/video/out/gpu/context.c
++++ b/video/out/gpu/context.c
+@@ -214,6 +214,7 @@
+             OPT_SETTINGSLIST(context_list, &ra_ctx_obj_list)},
+         {"gpu-api",
+             OPT_SETTINGSLIST(context_type_list, &ra_ctx_type_obj_list)},
++        {"android-hdr-signal-passthrough", OPT_BOOL(android_hdr)},
+         {"gpu-debug", OPT_BOOL(debug)},
+         {"gpu-sw", OPT_BOOL(allow_sw)},
+         {0}
+diff --git a/video/out/opengl/android_hdr.h b/video/out/opengl/android_hdr.h
+new file mode 100644
+--- /dev/null
++++ b/video/out/opengl/android_hdr.h
+@@ -0,0 +1,40 @@
++#pragma once
++
++#include <math.h>
++#include <EGL/egl.h>
++#include <EGL/eglext.h>
++#include <libplacebo/colorspace.h>
++
++// EGL 的色度坐标和亮度均使用 50000 倍缩放，不能混用 HEVC 的单位。
++static inline EGLint mpv_android_hdr_scaled(float value, float limit)
++{
++    if (!isfinite(value) || value < 0 || value > limit)
++        return EGL_DONT_CARE;
++    return (EGLint) llround((double)value * EGL_METADATA_SCALING_EXT);
++}
++
++static inline void mpv_android_hdr_metadata(const struct pl_hdr_metadata *hdr,
++                                            EGLint values[12])
++{
++    for (int i = 0; i < 12; i++) values[i] = EGL_DONT_CARE;
++    if (!hdr) return;
++    const struct pl_raw_primaries *p = &hdr->prim;
++    const float xy[] = {p->red.x, p->red.y, p->green.x, p->green.y,
++                        p->blue.x, p->blue.y, p->white.x, p->white.y};
++    bool valid_primaries = true;
++    for (int i = 0; i < 8; i += 2) {
++        valid_primaries &= isfinite(xy[i]) && isfinite(xy[i+1]) &&
++            xy[i] >= 0 && xy[i+1] > 0 && xy[i] + xy[i+1] <= 1.00001f;
++    }
++    if (valid_primaries)
++        for (int i = 0; i < 8; i++) values[i] = mpv_android_hdr_scaled(xy[i], 1);
++    if (isfinite(hdr->min_luma) && isfinite(hdr->max_luma) &&
++        hdr->min_luma >= 0 && hdr->max_luma > hdr->min_luma && hdr->max_luma <= 10000) {
++        values[8] = mpv_android_hdr_scaled(hdr->max_luma, 10000);
++        values[9] = mpv_android_hdr_scaled(hdr->min_luma, 10000);
++    }
++    if (hdr->max_cll > 0)
++        values[10] = mpv_android_hdr_scaled(hdr->max_cll, 10000);
++    if (hdr->max_fall > 0 && (!hdr->max_cll || hdr->max_fall <= hdr->max_cll))
++        values[11] = mpv_android_hdr_scaled(hdr->max_fall, 10000);
++}
+diff --git a/video/out/opengl/context_android.c b/video/out/opengl/context_android.c
+--- a/video/out/opengl/context_android.c
++++ b/video/out/opengl/context_android.c
+@@ -22,17 +22,93 @@
+ #include "egl_helpers.h"
+ #include "common/common.h"
+ #include "context.h"
++#include "android_hdr.h"
++#include "video/mp_image.h"
+ 
+ struct priv {
+     struct GL gl;
+     EGLDisplay egl_display;
+     EGLContext egl_context;
+     EGLSurface egl_surface;
++    EGLConfig egl_config;
++    EGLint hdr_colorspace;
++    bool has_mastering_metadata, cta861_3;
++    EGLint metadata[12];
+ };
+ 
++// 在渲染前切换 EGLSurface，避免将 HLG 像素误标成 PQ；普通路径不变。
++static bool android_configure_surface(struct ra_ctx *ctx, bool hlg)
++{
++    struct priv *p = ctx->priv;
++    EGLint colorspace = hlg ? EGL_GL_COLORSPACE_BT2020_HLG_EXT : EGL_GL_COLORSPACE_BT2020_PQ_EXT;
++    if (!ctx->opts.android_hdr) colorspace = 0;
++    if (p->egl_surface && colorspace == p->hdr_colorspace) return true;
++    const char *ext = eglQueryString(p->egl_display, EGL_EXTENSIONS);
++    const char *required = hlg ? "EGL_EXT_gl_colorspace_bt2020_hlg" : "EGL_EXT_gl_colorspace_bt2020_pq";
++    if (colorspace && (!ext || !strstr(ext, required))) {
++        MP_ERR(ctx, "Android HDR EGL colorspace extension unavailable.\n");
++        return false;
++    }
++    if (p->egl_surface) {
++        eglMakeCurrent(p->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++        eglDestroySurface(p->egl_display, p->egl_surface);
++    }
++    EGLint attrs[] = {EGL_GL_COLORSPACE_KHR, colorspace, EGL_NONE};
++    p->egl_surface = eglCreateWindowSurface(p->egl_display, p->egl_config,
++        (EGLNativeWindowType)vo_android_native_window(ctx->vo), colorspace ? attrs : NULL);
++    if (p->egl_surface == EGL_NO_SURFACE ||
++        !eglMakeCurrent(p->egl_display, p->egl_surface, p->egl_surface, p->egl_context)) {
++        MP_ERR(ctx, "Android HDR EGL surface creation/binding failed.\n");
++        return false;
++    }
++    p->hdr_colorspace = colorspace;
++    p->has_mastering_metadata = colorspace && ext && strstr(ext, "EGL_EXT_surface_SMPTE2086_metadata");
++    p->cta861_3 = colorspace && ext && strstr(ext, "EGL_EXT_surface_CTA861_3_metadata");
++    for (int i = 0; i < 12; i++) p->metadata[i] = EGL_DONT_CARE;
++    if (colorspace) MP_INFO(ctx, "EGL BT.2020/%s surface enabled; SMPTE2086=%d CTA861_3=%d.\n",
++        hlg ? "HLG" : "PQ", p->has_mastering_metadata, p->cta861_3);
++    return true;
++}
++
++static void android_update_hdr_metadata(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    if (!ctx->opts.android_hdr) return;
++    struct mp_image_params source = vo_get_current_params(ctx->vo);
++    struct mp_image_params target = vo_get_target_params(ctx->vo);
++    // 只传递仍适用于输出像素的 PQ 静态元数据；HLG 或缺失字段清除旧值，不伪造。
++    bool passthrough = source.color.transfer == PL_COLOR_TRC_PQ &&
++        target.color.transfer == PL_COLOR_TRC_PQ &&
++        source.color.primaries == target.color.primaries &&
++        target.color.hdr.max_luma >= source.color.hdr.max_luma;
++    EGLint values[12];
++    mpv_android_hdr_metadata(passthrough ? &source.color.hdr : NULL, values);
++    const EGLint attrs[] = {EGL_SMPTE2086_DISPLAY_PRIMARY_RX_EXT, EGL_SMPTE2086_DISPLAY_PRIMARY_RY_EXT,
++        EGL_SMPTE2086_DISPLAY_PRIMARY_GX_EXT, EGL_SMPTE2086_DISPLAY_PRIMARY_GY_EXT,
++        EGL_SMPTE2086_DISPLAY_PRIMARY_BX_EXT, EGL_SMPTE2086_DISPLAY_PRIMARY_BY_EXT,
++        EGL_SMPTE2086_WHITE_POINT_X_EXT, EGL_SMPTE2086_WHITE_POINT_Y_EXT,
++        EGL_SMPTE2086_MAX_LUMINANCE_EXT, EGL_SMPTE2086_MIN_LUMINANCE_EXT,
++        EGL_CTA861_3_MAX_CONTENT_LIGHT_LEVEL_EXT, EGL_CTA861_3_MAX_FRAME_AVERAGE_LEVEL_EXT};
++    bool changed = false, ok = true;
++    for (int i = 0; i < 12; i++) {
++        if ((i < 10 ? !p->has_mastering_metadata : !p->cta861_3) || values[i] == p->metadata[i]) continue;
++        changed = true;
++        EGLint actual = EGL_DONT_CARE;
++        ok &= eglSurfaceAttrib(p->egl_display, p->egl_surface, attrs[i], values[i]) &&
++            eglQuerySurface(p->egl_display, p->egl_surface, attrs[i], &actual) && actual == values[i];
++        p->metadata[i] = values[i];
++    }
++    if (changed) {
++        MP_INFO(ctx, "EGL HDR metadata: verified=%d max=%d min=%d cll=%d fall=%d (scale=50000).\n",
++            ok, values[8], values[9], values[10], values[11]);
++        if (!ok) MP_WARN(ctx, "HDR metadata rejected; display matching is not verified.\n");
++    }
++}
++
+ static void android_swap_buffers(struct ra_ctx *ctx)
+ {
+     struct priv *p = ctx->priv;
++    android_update_hdr_metadata(ctx);
+     eglSwapBuffers(p->egl_display, p->egl_surface);
+ }
+ 
+@@ -74,19 +150,8 @@
+     eglGetConfigAttrib(p->egl_display, config, EGL_NATIVE_VISUAL_ID, &format);
+     ANativeWindow_setBuffersGeometry(native_window, 0, 0, format);
+ 
+-    p->egl_surface = eglCreateWindowSurface(p->egl_display, config,
+-                                    (EGLNativeWindowType)native_window, NULL);
+-
+-    if (p->egl_surface == EGL_NO_SURFACE) {
+-        MP_FATAL(ctx, "Could not create EGL surface!\n");
+-        goto fail;
+-    }
+-
+-    if (!eglMakeCurrent(p->egl_display, p->egl_surface, p->egl_surface,
+-                        p->egl_context)) {
+-        MP_FATAL(ctx, "Failed to set context!\n");
+-        goto fail;
+-    }
++    p->egl_config = config;
++    if (!android_configure_surface(ctx, false)) goto fail;
+ 
+     mpegl_load_functions(&p->gl, ctx->log);
+ 
+@@ -105,6 +170,8 @@
+ 
+ static bool android_reconfig(struct ra_ctx *ctx)
+ {
++    struct mp_image_params source = vo_get_current_params(ctx->vo);
++    if (!android_configure_surface(ctx, source.color.transfer == PL_COLOR_TRC_HLG)) return false;
+     int w, h;
+     if (!vo_android_surface_size(ctx->vo, &w, &h))
+         return false;
+diff --git a/video/out/vo_gpu_next.c b/video/out/vo_gpu_next.c
+--- a/video/out/vo_gpu_next.c
++++ b/video/out/vo_gpu_next.c
+@@ -882,6 +882,12 @@
+         target->color.transfer = opts->target_trc;
+     if (opts->target_peak && (!target->color.hdr.max_luma || !hint))
+         target->color.hdr.max_luma = opts->target_peak;
++    // Android 原生 HLG 保留编码和参考 OOTF，让系统根据面板亮度处理，避免转成 10000 nit PQ。
++    if (p->ra_ctx->opts.android_hdr && p->ra_ctx->vo->params &&
++        p->ra_ctx->vo->params->color.transfer == PL_COLOR_TRC_HLG) {
++        target->color.transfer = PL_COLOR_TRC_HLG;
++        target->color.hdr.max_luma = PL_COLOR_HLG_PEAK;
++    }
+     if (opts->hdr_reference_white && (!target->color.hdr.max_luma || !hint) &&
+         !pl_color_transfer_is_hdr(target->color.transfer)) {
+         target->color.hdr.max_luma = opts->hdr_reference_white;

@@ -63,6 +63,21 @@ import java.util.ArrayDeque
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 
+/** 将 PixelCopy 的 ARGB 颜色整数编码为明确的 RGBA8888 字节，避免平台字节序差异。 */
+internal fun ambientArgbToRgba(colors: IntArray): ByteArray {
+    val pixels = ByteArray(colors.size * 4)
+    for (index in colors.indices) {
+        val color = colors[index]
+        val alpha = color ushr 24
+        val offset = index * 4
+        pixels[offset] = ((((color ushr 16) and 255) * alpha + 127) / 255).toByte()
+        pixels[offset + 1] = ((((color ushr 8) and 255) * alpha + 127) / 255).toByte()
+        pixels[offset + 2] = (((color and 255) * alpha + 127) / 255).toByte()
+        pixels[offset + 3] = alpha.toByte()
+    }
+    return pixels
+}
+
 /** Android 原生 HDR 播放器的 Flutter 桥接层。 */
 @UnstableApi
 class HdrMedia3Plugin(
@@ -76,9 +91,20 @@ class HdrMedia3Plugin(
     }
 
     private var eventSink: EventChannel.EventSink? = null
+    private val pendingEvents = BoundedPendingEvents<Map<String, Any?>>(256)
     // 会话需要使用 Activity 上下文读取当前显示器的 HDR 能力，同时由会话生命周期控制播放器。
-    private val manager = HdrMedia3Manager(context) { event ->
-        eventSink?.success(event)
+    private val manager = HdrMedia3Manager(context, ::dispatchEvent)
+
+    @Synchronized
+    private fun dispatchEvent(event: Map<String, Any?>) {
+        val sink = eventSink
+        if (sink == null) {
+            // EventChannel 的 onListen 与 Dart 的方法调用并不保证严格先后。
+            // 首次进入播放器时先到的格式事件需要暂存，不能静默丢弃。
+            pendingEvents.add(event)
+        } else {
+            sink.success(event)
+        }
     }
     private val methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
     private val eventChannel = EventChannel(messenger, EVENT_CHANNEL)
@@ -162,7 +188,8 @@ class HdrMedia3Plugin(
                         .coerceIn(16, 256)
                     val height = (call.argument<Number>("height")?.toInt() ?: 54)
                         .coerceIn(16, 256)
-                    manager.getSession(call).captureAmbientFrame(width, height) {
+                    manager.getSession(call).captureAmbientFrame(width, height,
+                        call.argument<String>("format") == "rgba8888") {
                         result.success(it)
                     }
                 }
@@ -205,10 +232,15 @@ class HdrMedia3Plugin(
         }
     }
 
+    @Synchronized
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
+        if (events != null) {
+            pendingEvents.drain().forEach(events::success)
+        }
     }
 
+    @Synchronized
     override fun onCancel(arguments: Any?) {
         eventSink = null
     }
@@ -218,7 +250,31 @@ class HdrMedia3Plugin(
         eventChannel.setStreamHandler(null)
         manager.releaseAll()
         eventSink = null
+        pendingEvents.clear()
     }
+}
+
+/** EventChannel 尚未连接时使用的有界 FIFO，避免首次播放的诊断事件丢失。 */
+internal class BoundedPendingEvents<T>(private val capacity: Int) {
+    private val values = ArrayDeque<T>()
+
+    init {
+        require(capacity > 0) { "capacity 必须大于 0" }
+    }
+
+    @Synchronized
+    fun add(value: T) {
+        if (values.size == capacity) values.removeFirst()
+        values.addLast(value)
+    }
+
+    @Synchronized
+    fun drain(): List<T> = buildList(values.size) {
+        while (values.isNotEmpty()) add(values.removeFirst())
+    }
+
+    @Synchronized
+    fun clear() = values.clear()
 }
 
 @UnstableApi
@@ -757,7 +813,7 @@ private class HdrMedia3Session(
      * 这里使用 PixelCopy 只读取 SurfaceView 的画面，HDR 播放链路仍然直接输出到
      * SurfaceView，不会经过 TextureView、Flutter Texture 或软件视频合成。
      */
-    fun captureAmbientFrame(width: Int, height: Int, callback: (ByteArray?) -> Unit) {
+    fun captureAmbientFrame(width: Int, height: Int, rawPixels: Boolean, callback: (Any?) -> Unit) {
         if (released || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             callback(null)
             return
@@ -787,6 +843,22 @@ private class HdrMedia3Session(
                     if (copyResult != PixelCopy.SUCCESS || released) {
                         bitmap.recycle()
                         callback(null)
+                        return@request
+                    }
+                    if (rawPixels) {
+                        // getPixels明确返回ARGB颜色整数；逐通道输出RGBA，避免平台字节序差异。
+                        val message = try {
+                            val colors = IntArray(width * height)
+                            bitmap.getPixels(colors, 0, width, 0, 0, width, height)
+                            val pixels = ambientArgbToRgba(colors)
+                            mapOf("format" to "rgba8888", "width" to width,
+                                "height" to height, "rowBytes" to width * 4, "pixels" to pixels)
+                        } catch (_: Throwable) {
+                            null
+                        } finally {
+                            bitmap.recycle()
+                        }
+                        callback(message)
                         return@request
                     }
                     val output = ByteArrayOutputStream()
@@ -1021,7 +1093,10 @@ private class HdrMedia3Session(
                 audio.mimeType?.takeIf(String::isNotBlank)?.let(::setMimeType)
             }
             .build()
-        val audioSource = ProgressiveMediaSource.Factory(fallbackFactory)
+        val audioSource = ProgressiveMediaSource.Factory(
+            fallbackFactory,
+            FlacFormatExtractorsFactory(),
+        )
             .createMediaSource(audioItem)
         return MergingMediaSource(true, true, videoSource, audioSource)
     }

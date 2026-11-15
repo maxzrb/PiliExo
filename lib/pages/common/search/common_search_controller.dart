@@ -6,6 +6,8 @@ abstract class CommonSearchController<R, T> extends CommonListController<R, T> {
   final editController = TextEditingController();
   final focusNode = FocusNode();
 
+  String get searchHint => '搜索';
+
   void onClear() {
     if (editController.text.isNotEmpty) {
       editController.clear();
