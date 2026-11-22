@@ -13,6 +13,18 @@
       {
         "file": "android-egl-bt2020-pq.patch",
         "sha256": "df5aaf0ef99b11e8583f2804d8b255827c291c6ba19d8357b18f4440ace8be5d"
+      },
+      {
+        "file": "mpv-android-late-output-drop.patch",
+        "sha256": "a18fdcbf206a3f235a76dff53182992dda09b2591d395d52089fcd0141718dc2"
+      },
+      {
+        "file": "mpv-android-audio-clock.patch",
+        "sha256": "bf95fe5faee98aeca8e08c2570802ffff7a153b5583176e6c8b5d1ca4ab720fb"
+      },
+      {
+        "file": "mpv-android-codec-operating-rate.patch",
+        "sha256": "f4190cef6f58616c436515fa4a24975da647865fd85145705c89b349668c4373"
       }
     ]
   },
@@ -32,7 +44,7 @@
     "patches": [
       {
         "file": "ffmpeg-android-dynamic-hdr.patch",
-        "sha256": "c87e88847d5d61795f327da313b4dae0629da3cfbe9ac886ac6509f968bd3aa1"
+        "sha256": "268c0b264f932c392123f47e708883c05b62e8fccd4890d7cd0bd7dba412d020"
       }
     ]
   },

@@ -558,7 +558,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      unawaited(plPlayerController.setLongPressStatus(false));
+      _endLongPress();
     }
     _ambientHostLifecycleStarted =
         state != AppLifecycleState.paused &&
@@ -610,8 +610,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   @override
   void dispose() {
-    // 视图销毁与已识别长按的PointerCancel不保证触发onLongPressEnd。
-    unawaited(plPlayerController.setLongPressStatus(false));
+    _endLongPress();
     _ambientCaptureGeneration++;
     AmbientFramePolicy.optimized.removeListener(_scheduleAmbientCapture);
     _ambientTextureChanges?.removeListener(_scheduleAmbientCapture);
@@ -1154,6 +1153,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   late final TransformationController _transformationController;
   String? _hdrResizeMode;
+  String? _mpvResizeMode;
+  String? _mpvResizeModeSessionId;
   bool _wasHdr = false;
 
   void _scheduleHdrModeSideEffects(bool isHdr) {
@@ -1533,18 +1534,43 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     }
   }
 
+  int? _longPressPointer;
   LongPressGestureRecognizer? _longPressRecognizer;
   LongPressGestureRecognizer get longPressRecognizer => _longPressRecognizer ??=
       LongPressGestureRecognizer(
-          duration: plPlayerController.enableTapDm
+          duration: PlatformUtils.isMobile
               ? const Duration(milliseconds: 300)
               : null,
         )
-        ..onLongPressStart = ((_) =>
-            plPlayerController.setLongPressStatus(true))
-        ..onLongPressEnd = ((_) => plPlayerController.setLongPressStatus(false))
-        ..onLongPressCancel = (() =>
-            plPlayerController.setLongPressStatus(false));
+        ..onLongPressStart = (_) {
+          if (_longPressPointer != null &&
+              _longPressPointer == _longPressRecognizer?.primaryPointer) {
+            unawaited(plPlayerController.setLongPressStatus(true));
+          }
+        }
+        ..onLongPressEnd = (_) {
+          _endLongPress();
+        }
+        ..onLongPressCancel = _endLongPress;
+
+  void _trackLongPress(PointerDownEvent event) {
+    if (event.buttons != kPrimaryButton) return;
+    if (_longPressPointer != null) {
+      _endLongPress();
+      return;
+    }
+    _longPressPointer = event.pointer;
+    longPressRecognizer.addPointer(event);
+  }
+
+  void _onLongPressPointerExit(PointerEvent event) {
+    if (event.pointer == _longPressPointer) _endLongPress();
+  }
+
+  void _endLongPress() {
+    _longPressPointer = null;
+    unawaited(plPlayerController.setLongPressStatus(false));
+  }
   late final ImmediateTapGestureRecognizer _tapGestureRecognizer;
   late final DoubleTapGestureRecognizer _doubleTapGestureRecognizer;
   late final PlayerScaleGestureRecognizer _scaleGestureRecognizer;
@@ -1587,7 +1613,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       if (controlsUnlock) {
         if (!plPlayerController.isLive) {
           _doubleTapGestureRecognizer.addPointer(event);
-          longPressRecognizer.addPointer(event);
+          _trackLongPress(event);
         }
         _scaleGestureRecognizer
           ..isPosAllowed = _isPositionAllowed(event.localPosition)
@@ -1599,7 +1625,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       } else {
         _tapGestureRecognizer.addPointer(event);
         _doubleTapGestureRecognizer.addPointer(event);
-        longPressRecognizer.addPointer(event);
+        _trackLongPress(event);
       }
       _scaleGestureRecognizer.addPointer(event);
     }
@@ -2187,7 +2213,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           Obx(
             () {
               if (!plPlayerController.showFsScreenshotBtn ||
-                  plPlayerController.media3HdrActive.value) {
+                  plPlayerController.media3HdrActive.value ||
+                  plPlayerController.mpvHdrActive.value) {
                 return const SizedBox.shrink();
               }
               return ViewSafeArea(
@@ -2397,14 +2424,31 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               _scheduleHdrResizeMode(hdrController, resizeMode);
             }
           }
+          if (nativeMpv == null) {
+            _mpvResizeMode = null;
+            _mpvResizeModeSessionId = null;
+          } else {
+            final resizeMode = videoFit.mpvResizeMode;
+            if (_mpvResizeMode != resizeMode ||
+                _mpvResizeModeSessionId != nativeMpv.sessionId) {
+              _mpvResizeMode = resizeMode;
+              _mpvResizeModeSessionId = nativeMpv.sessionId;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted ||
+                    !identical(
+                      nativeMpv,
+                      plPlayerController.mpvHdrController,
+                    ) ||
+                    _mpvResizeMode != resizeMode ||
+                    _mpvResizeModeSessionId != nativeMpv.sessionId) {
+                  return;
+                }
+                unawaited(nativeMpv.setResizeMode(resizeMode));
+              });
+            }
+          }
           final Widget videoChild;
           if (nativeMpv != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted &&
-                  identical(nativeMpv, plPlayerController.mpvHdrController)) {
-                unawaited(nativeMpv.setResizeMode(videoFit.hdrResizeMode));
-              }
-            });
             videoChild = KeyedSubtree(
               key: _videoKey,
               child: nativeMpv.buildView(key: ValueKey(nativeMpv.sessionId)),
@@ -2454,7 +2498,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             );
           }
           return MouseInteractiveViewer(
-            // HDR 由原生播放器处理适配，固定比例模式由 Flutter 外层约束。
+            // 原生播放器自行适配输出，Flutter 不再对其应用手势缩放。
             scaleEnabled:
                 !isNativeOutput && !plPlayerController.controlsLock.value,
             pointerSignalFallback: plPlayerController.enableScrollVolume
@@ -2463,8 +2507,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             onPointerPanZoomUpdate: _onPointerPanZoomUpdate,
             onPointerPanZoomEnd: _onPointerPanZoomEnd,
             onPointerDown: _onPointerDown,
-            onPointerCancel: (_) =>
-                unawaited(plPlayerController.setLongPressStatus(false)),
+            onPointerUp: _onLongPressPointerExit,
+            onPointerCancel: _onLongPressPointerExit,
             onPanStart: _onPanStart,
             onPanUpdate: _onPanUpdate,
             onPanEnd: _onPanEnd,
@@ -2491,7 +2535,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   Future<void> screenshotWebp() async {
-    if (plPlayerController.isMedia3Hdr) {
+    if (plPlayerController.isMedia3Hdr ||
+        plPlayerController.mpvHdrActive.value) {
       SmartDialog.showToast('HDR 原生播放暂不支持截图');
       return;
     }

@@ -1,0 +1,7 @@
+[
+  {"name": "rotation", "landscape": true, "initial": [1080, 2340], "steps": [[16, 1080, 2200], [120, 2340, 1080]]},
+  {"name": "rotation-with-intermediate-square", "landscape": true, "initial": [1080, 2340], "steps": [[16, 1080, 1080], [16, 1081, 1080], [16, 2340, 1080]]},
+  {"name": "already-landscape", "landscape": true, "initial": [2340, 1080], "steps": []},
+  {"name": "rotation-denied", "landscape": true, "initial": [1080, 2340], "steps": [[899, 1080, 2340], [1, 1080, 2340]]},
+  {"name": "portrait-target", "landscape": false, "initial": [2340, 1080], "steps": [[120, 1080, 2340]]}
+]

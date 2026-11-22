@@ -31,6 +31,11 @@ class MpvRuntimeObserver {
       ('decoder-frame-drop-count', mpv.mpv_format.MPV_FORMAT_INT64),
       ('demuxer-cache-state/fw-bytes', mpv.mpv_format.MPV_FORMAT_INT64),
       ('demuxer-cache-state/cache-duration', mpv.mpv_format.MPV_FORMAT_DOUBLE),
+      ('container-fps', mpv.mpv_format.MPV_FORMAT_DOUBLE),
+      ('video-format', mpv.mpv_format.MPV_FORMAT_STRING),
+      ('audio-codec-name', mpv.mpv_format.MPV_FORMAT_STRING),
+      ('current-tracks/video/decoder-desc', mpv.mpv_format.MPV_FORMAT_STRING),
+      ('current-tracks/audio/decoder-desc', mpv.mpv_format.MPV_FORMAT_STRING),
     ];
     for (var index = 0; index < properties.length; index++) {
       final (property, format) = properties[index];
@@ -46,7 +51,7 @@ class MpvRuntimeObserver {
       } finally {
         malloc.free(pointer);
       }
-      if (result < 0) {
+      if (result < 0 && index < 4) {
         observer.dispose();
         return null;
       }
@@ -78,6 +83,13 @@ class MpvRuntimeObserver {
           available && property.format == mpv.mpv_format.MPV_FORMAT_DOUBLE
           ? property.data.cast<Double>().value
           : null;
+      final stringPointer =
+          available && property.format == mpv.mpv_format.MPV_FORMAT_STRING
+          ? property.data.cast<Pointer<Uint8>>().value
+          : nullptr;
+      final string = stringPointer == nullptr
+          ? null
+          : stringPointer.toDartString();
       switch (event.reply_userdata) {
         case 1:
           metrics.outputDroppedFrames = integer;
@@ -87,6 +99,16 @@ class MpvRuntimeObserver {
           metrics.forwardBytes = integer;
         case 4:
           metrics.cacheDuration = decimal;
+        case 5:
+          metrics.videoFrameRate = decimal;
+        case 6:
+          metrics.videoCodec = string;
+        case 7:
+          metrics.audioCodec = string;
+        case 8:
+          metrics.videoDecoder = string;
+        case 9:
+          metrics.audioDecoder = string;
       }
     }
     metrics.finishSample();

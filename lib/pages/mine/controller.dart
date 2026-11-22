@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
 import 'package:PiliPlus/http/fav.dart';
 import 'package:PiliPlus/http/loading_state.dart';
@@ -25,6 +27,7 @@ import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -83,16 +86,21 @@ class MineController extends GetxController with AccountMixin {
   ];
 
   late final Set<MineTabType> mineTabs;
+  bool _initialLoadPending = false;
   FavCtr? favCtr;
   HistoryCtr? historyCtr;
   LaterCtr? laterCtr;
   SubCtr? subCtr;
 
   Iterable<MineRefreshMixin> tabCtr() sync* {
-    if (favCtr != null) yield favCtr!;
-    if (historyCtr != null) yield historyCtr!;
-    if (laterCtr != null) yield laterCtr!;
-    if (subCtr != null) yield subCtr!;
+    for (final tab in mineTabs) {
+      yield switch (tab) {
+        .favorite => favCtr!,
+        .history => historyCtr!,
+        .later => laterCtr!,
+        .sub => subCtr!,
+      };
+    }
   }
 
   void _initTabs() {
@@ -118,9 +126,27 @@ class MineController extends GetxController with AccountMixin {
     final userInfoCache = Pref.userInfoCache;
     if (userInfoCache != null) {
       userInfo.value = userInfoCache;
-      queryUserInfo();
-      tabCtr().forEach((ctr) => ctr.queryData());
+      _initialLoadPending = true;
     }
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    if (isClosed || !_initialLoadPending) return;
+    unawaited(queryUserInfo());
+    unawaited(Future<void>.microtask(_loadInitialLists));
+  }
+
+  Future<void> _loadInitialLists() async {
+    final scheduler = SchedulerBinding.instance;
+    for (final ctr in tabCtr()) {
+      if (isClosed || !_initialLoadPending) return;
+      await scheduler.endOfFrame;
+      if (isClosed || !_initialLoadPending) return;
+      unawaited(ctr.queryData());
+    }
+    _initialLoadPending = false;
   }
 
   @override
@@ -310,6 +336,7 @@ class MineController extends GetxController with AccountMixin {
     if (!accountService.isLogin.value) {
       return Future.syncValue(null);
     }
+    _initialLoadPending = false;
     if (isManual) {
       queryUserInfo();
     }
@@ -320,6 +347,7 @@ class MineController extends GetxController with AccountMixin {
 
   @override
   void onChangeAccount(bool isLogin) {
+    _initialLoadPending = false;
     if (isLogin) {
       onRefresh();
     } else {

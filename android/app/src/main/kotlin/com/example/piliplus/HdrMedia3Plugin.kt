@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Base64
+import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.PixelCopy
@@ -28,6 +29,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.exoplayer.DecoderCounters
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -228,6 +230,7 @@ class HdrMedia3Plugin(
                 else -> result.notImplemented()
             }
         } catch (error: Throwable) {
+            Log.w("PiliExoMedia3", "method=${call.method} cause=${error.javaClass.simpleName}")
             result.error("MEDIA3_ERROR", error.message, null)
         }
     }
@@ -1569,10 +1572,19 @@ private class HdrMedia3Session(
     }
 
     override fun onRenderedFirstFrame() {
+        Log.i("PiliExoMedia3", "firstFrame quality=${source?.qualityCode}")
         emitEvent("firstFrame")
     }
 
     override fun onPlayerError(error: PlaybackException) {
+        // 只记录结构化字段，异常消息和请求对象可能包含签名 URL。
+        val causes = generateSequence<Throwable>(error) { it.cause }.take(6).toList()
+        val httpStatus = causes.filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+            .firstOrNull()?.responseCode
+        val renderer = (error as? ExoPlaybackException)?.rendererName
+        val causeNames = causes.joinToString("/") { it.javaClass.simpleName }
+        Log.w("PiliExoMedia3", "error=${error.errorCodeName} renderer=$renderer " +
+            "httpStatus=$httpStatus cause=$causeNames")
         if (isVideoRepresentationError(error) && fallbackToNextRepresentation(error)) {
             return
         }

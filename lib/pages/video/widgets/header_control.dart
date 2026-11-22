@@ -582,7 +582,8 @@ class HeaderControlState extends State<HeaderControl>
                   child: Row(
                     spacing: 10,
                     children: [
-                      if (!plPlayerController.isMedia3Hdr)
+                      if (!plPlayerController.isMedia3Hdr &&
+                          !plPlayerController.mpvHdrActive.value)
                         Obx(
                           () {
                             final flipX = plPlayerController.flipX.value;
@@ -595,7 +596,8 @@ class HeaderControlState extends State<HeaderControl>
                             );
                           },
                         ),
-                      if (!plPlayerController.isMedia3Hdr)
+                      if (!plPlayerController.isMedia3Hdr &&
+                          !plPlayerController.mpvHdrActive.value)
                         Obx(
                           () {
                             final flipY = plPlayerController.flipY.value;

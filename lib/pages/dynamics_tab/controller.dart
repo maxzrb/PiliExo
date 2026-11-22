@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:PiliPlus/http/dynamics.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/msg.dart';
@@ -24,9 +26,11 @@ class DynamicsTabController
   final dynamicsController = Get.find<DynamicsController>();
 
   @override
-  void onInit() {
-    super.onInit();
-    queryData();
+  void onReady() {
+    super.onReady();
+    if (!isClosed && loadingState.value is Loading) {
+      unawaited(queryData());
+    }
   }
 
   @override

@@ -50,10 +50,17 @@ class HomeController extends GetxController
 
     if (enableSearchWord) {
       lateCheckSearchAt = DateTime.now().millisecondsSinceEpoch;
-      querySearchDefault();
     }
 
     setTabConfig();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    if (!isClosed && enableSearchWord) {
+      unawaited(querySearchDefault());
+    }
   }
 
   @override

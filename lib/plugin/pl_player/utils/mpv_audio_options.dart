@@ -8,8 +8,10 @@ abstract final class MpvAudioOptions {
     'audio-pitch-correction': 'yes',
     if (isAndroid) ...{
       'ao': output,
-      // 沿用已通过长按 exact 手测包的配置，不在洞察清理时启用候选参数。
-      if (output.split(',').first.trim() == 'opensles') ...{
+      if (output.split(',').first.trim() == 'audiotrack')
+        // mpv 仍会以实际设备缓冲帧数为下限。
+        'audio-buffer': '0.10'
+      else if (output.split(',').first.trim() == 'opensles') ...{
         'audio-buffer': '0.02',
         'opensles-buffer-size-in-ms': '20',
       } else if (output.split(',').first.trim() == 'aaudio') ...{

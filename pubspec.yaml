@@ -18,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # update when release
-version: 26.11.14+1
+version: 26.11.22+1
 
 environment:
   sdk: ">=3.13.0"
@@ -122,7 +122,7 @@ dependencies:
   hive_ce: ^2.19.3
   html: ^0.15.4
   http2: ^2.3.1
-  image_cropper: ^12.0.0
+  image_cropper: ^13.0.0
   image_picker: ^1.1.2
   intl: ^0.20.2
   jni: ^1.0.0

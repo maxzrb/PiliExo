@@ -21,6 +21,18 @@ abstract final class DecoderOperatingRate {
     return fps.isFinite && fps > 0 && fps <= 240 ? fps : null;
   }
 
+  static double? resolveFrameRate({
+    required double? measured,
+    required double? selectedTrack,
+    required String? declared,
+  }) {
+    if (measured != null && measured.isFinite && measured > 0) return measured;
+    if (selectedTrack != null && selectedTrack.isFinite && selectedTrack > 0) {
+      return selectedTrack;
+    }
+    return parseFrameRate(declared);
+  }
+
   static int? plan({
     required bool isAndroid,
     required bool hardwareEnabled,

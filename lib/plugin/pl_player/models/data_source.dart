@@ -18,7 +18,18 @@ sealed class DataSource {
 }
 
 class NetworkSource extends DataSource {
+  final bool hdrCompatibility;
+  final String? videoCodecString;
+  final String? audioCodecString;
+  final String? videoMimeType;
+  final String? audioMimeType;
+
   NetworkSource({
+    this.hdrCompatibility = false,
+    this.videoCodecString,
+    this.audioCodecString,
+    this.videoMimeType,
+    this.audioMimeType,
     required super.videoSource,
     required super.audioSource,
     super.videoBitrate,
@@ -123,6 +134,10 @@ class HdrNetworkSource extends NetworkSource {
          videoBitrate: video.bitrate,
          audioBitrate: audio?.bitrate,
          videoFrameRate: video.frameRate,
+         videoCodecString: video.codecs,
+         audioCodecString: audio?.codecs,
+         videoMimeType: video.mimeType,
+         audioMimeType: audio?.mimeType,
        );
 }
 

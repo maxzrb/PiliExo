@@ -1,0 +1,58 @@
+{
+  "rotation": {
+    "ready": [
+      false,
+      false,
+      true
+    ],
+    "fullscreenTransitionLayout": [
+      false,
+      false,
+      true
+    ]
+  },
+  "already-landscape": {
+    "ready": [
+      true
+    ],
+    "fullscreenTransitionLayout": [
+      true
+    ]
+  },
+  "rotation-denied": {
+    "ready": [
+      false,
+      false,
+      true
+    ],
+    "fullscreenTransitionLayout": [
+      false,
+      false,
+      false
+    ]
+  },
+  "portrait-target": {
+    "ready": [
+      false,
+      true
+    ],
+    "fullscreenTransitionLayout": [
+      false,
+      true
+    ]
+  },
+  "rotation-with-intermediate-square": {
+    "ready": [
+      false,
+      false,
+      true,
+      true
+    ],
+    "fullscreenTransitionLayout": [
+      false,
+      false,
+      true,
+      true
+    ]
+  }
+}

@@ -59,10 +59,8 @@ import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
-import 'package:PiliPlus/utils/extension/context_ext.dart';
 import 'package:PiliPlus/utils/extension/nested_scroll_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
-import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -914,6 +912,11 @@ class VideoDetailController extends GetxController
       seek ??= getFirstSegment();
     }
 
+    final isHdrDash =
+        data.dash != null &&
+        HdrPlaybackPolicy.supportedQualityCodes.contains(
+          currentVideoQa.value?.code,
+        );
     final DataSource source;
     if (isFileSource) {
       source = FileSource(
@@ -965,20 +968,30 @@ class VideoDetailController extends GetxController
         );
       } else {
         source = NetworkSource(
+          hdrCompatibility: isHdrDash,
           videoSource: videoUrl!,
           audioSource: audioUrl,
           videoBitrate: firstVideo.bandWidth,
           audioBitrate: firstAudio?.bandWidth,
           videoFrameRate: firstVideo.frameRate,
+          videoCodecString: firstVideo.codecs,
+          audioCodecString: firstAudio?.codecs,
+          videoMimeType: firstVideo.mimeType,
+          audioMimeType: firstAudio?.mimeType,
         );
       }
     } else {
       source = NetworkSource(
+        hdrCompatibility: isHdrDash,
         videoSource: videoUrl!,
         audioSource: audioUrl,
         videoBitrate: firstVideo.bandWidth,
         audioBitrate: firstAudio?.bandWidth,
         videoFrameRate: firstVideo.frameRate,
+        videoCodecString: firstVideo.codecs,
+        audioCodecString: firstAudio?.codecs,
+        videoMimeType: firstVideo.mimeType,
+        audioMimeType: firstAudio?.mimeType,
       );
     }
 
@@ -1774,11 +1787,11 @@ class VideoDetailController extends GetxController
         useSafeArea: true,
         isScrollControlled: true,
         constraints: BoxConstraints(
-          maxWidth: min(640, context.mediaQueryShortestSide),
+          maxWidth: min(640, MediaQuery.shortestSideOf(context)),
         ),
         builder: (context) {
           final maxChildSize =
-              PlatformUtils.isMobile && !context.mediaQuerySize.isPortrait
+              PlatformUtils.isMobile && !MediaQuery.isPortraitOf(context)
               ? 1.0
               : 0.7;
           return DraggableScrollableSheet(

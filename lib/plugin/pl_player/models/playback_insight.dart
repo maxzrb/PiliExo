@@ -154,9 +154,15 @@ class PlaybackInsightSnapshot extends PlaybackTelemetry {
       resolution.isNotEmpty ||
       videoCodec.isNotEmpty ||
       videoMimeType.isNotEmpty ||
+      frameRate.isNotEmpty ||
+      hdrType.isNotEmpty ||
+      videoColor.isNotEmpty ||
       videoDecoder.isNotEmpty ||
       videoBitrate.isNotEmpty ||
       audioCodec.isNotEmpty ||
+      audioMimeType.isNotEmpty ||
+      audioSampleRate.isNotEmpty ||
+      audioChannelCount.isNotEmpty ||
       audioDecoder.isNotEmpty ||
       audioBitrate.isNotEmpty;
 

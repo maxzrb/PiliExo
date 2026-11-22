@@ -1,0 +1,32 @@
+[
+  {
+    "name": "登录后按显示顺序分帧加载",
+    "cachedUser": true,
+    "mineTabs": ["history", "favorite"],
+    "events": ["mount", "frame", "frame", "frame", "frame"]
+  },
+  {
+    "name": "未登录时只加载公共页面",
+    "cachedUser": false,
+    "mineTabs": ["favorite", "history"],
+    "events": ["mount", "frame", "frame"]
+  },
+  {
+    "name": "退出登录后停掉尚未开始的列表请求",
+    "cachedUser": true,
+    "mineTabs": ["favorite", "history"],
+    "events": ["mount", "frame", "frame", "logout", "frame", "frame"]
+  },
+  {
+    "name": "控制器关闭后停掉尚未开始的列表请求",
+    "cachedUser": true,
+    "mineTabs": ["favorite", "history"],
+    "events": ["mount", "frame", "closeMine", "frame", "frame"]
+  },
+  {
+    "name": "首帧前主动刷新后无需重复请求推荐",
+    "cachedUser": false,
+    "mineTabs": [],
+    "events": ["mount", "refreshRecommendations", "frame"]
+  }
+]

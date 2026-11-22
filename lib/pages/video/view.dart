@@ -136,8 +136,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   bool isShowing = true;
 
-  bool get isFullScreen =>
-      videoDetailController.plPlayerController.isFullScreen.value;
+  bool get isFullScreen => videoDetailController.plPlayerController
+      .useFullscreenLayout(Size(maxWidth, maxHeight));
 
   bool get _shouldShowSeasonPanel {
     if (videoDetailController.isFileSource ||
@@ -504,145 +504,143 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
       videoDetailController.removeSafeArea ||
       (isWindowMode && isFullScreen && !isPortrait);
 
-  Widget get childWhenDisabled {
-    return Obx(
-      () {
-        final isFullScreen = this.isFullScreen;
-        return SimpleScaffold(
-          appBar: removeAppBar(isFullScreen)
-              ? null
-              : Obx(
-                  () {
-                    final scrollRatio = videoDetailController.scrollRatio.value;
-                    final brightness = colorScheme.brightness;
-                    final Brightness statusBarBrightness;
-                    final Brightness statusBarIconBrightness;
-                    final backgroundColor = isPortrait && scrollRatio > 0
-                        ? Color.lerp(
-                            Colors.black,
-                            colorScheme.surface,
-                            scrollRatio,
-                          )!
-                        : Colors.black;
-                    if (isPortrait && scrollRatio >= 0.5) {
-                      statusBarBrightness = brightness;
-                      statusBarIconBrightness = brightness.reverse;
-                    } else {
-                      statusBarBrightness = .dark;
-                      statusBarIconBrightness = .light;
-                    }
-                    return SimpleAppBar(
-                      height: padding.top,
-                      backgroundColor: backgroundColor,
-                      brightness: brightness,
-                      statusBarBrightness: statusBarBrightness,
-                      statusBarIconBrightness: statusBarIconBrightness,
-                      background: _videoStatusBarAmbient,
-                    );
-                  },
-                ),
-          body: ExtendedNestedScrollView(
-            onlyOneScrollInBody: true,
-            physics: platformClampingPhysics,
-            key: videoDetailController.scrollKey,
-            controller: videoDetailController.scrollCtr,
-            scrollBehavior: const NoOverscrollIndicator(),
-            pinnedHeaderSliverHeightBuilder: () {
-              double pinnedHeight = this.isFullScreen || !isPortrait
-                  ? maxHeight - (isWindowMode && !isPortrait ? 0 : padding.top)
-                  : videoDetailController.isExpanding ||
-                        videoDetailController.isCollapsing
-                  ? videoDetailController.animHeight
-                  : videoDetailController.isCollapsing ||
-                        (plPlayerController?.playerStatus.isPlaying ?? false)
-                  ? videoDetailController.minVideoHeight
-                  : kToolbarHeight;
-              if (videoDetailController.isExpanding &&
-                  videoDetailController.animationController.value == 1) {
-                videoDetailController.isExpanding = false;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  videoDetailController.scrollRatio.value = 0;
-                  videoDetailController.refreshPage();
-                });
-              } else if (videoDetailController.isCollapsing &&
-                  videoDetailController.animationController.value == 1) {
-                videoDetailController.isCollapsing = false;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  videoDetailController.refreshPage();
-                });
-              }
-              return pinnedHeight;
-            },
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              final height = isFullScreen || !isPortrait
-                  ? maxHeight - (isWindowMode && !isPortrait ? 0 : padding.top)
-                  : videoDetailController.isExpanding ||
-                        videoDetailController.isCollapsing
-                  ? videoDetailController.animHeight
-                  : videoDetailController.videoHeight;
-              return [
-                VideoHeader(
-                  minExtent: kToolbarHeight,
-                  maxExtent: height,
-                  minVideoHeight: videoDetailController.minVideoHeight,
-                  onScrollRatioChanged: videoDetailController.scrollRatio.call,
-                  child: Stack(
-                    clipBehavior: .none,
-                    children: [
-                      Builder(
-                        builder: (context) {
-                          final video = SizedBox(
+  Widget childWhenDisabled(bool isFullScreen) {
+    return SimpleScaffold(
+      appBar: removeAppBar(isFullScreen)
+          ? null
+          : Obx(
+              () {
+                final scrollRatio = videoDetailController.scrollRatio.value;
+                final brightness = colorScheme.brightness;
+                final Brightness statusBarBrightness;
+                final Brightness statusBarIconBrightness;
+                final backgroundColor = isPortrait && scrollRatio > 0
+                    ? Color.lerp(
+                        Colors.black,
+                        colorScheme.surface,
+                        scrollRatio,
+                      )!
+                    : Colors.black;
+                if (isPortrait && scrollRatio >= 0.5) {
+                  statusBarBrightness = brightness;
+                  statusBarIconBrightness = brightness.reverse;
+                } else {
+                  statusBarBrightness = .dark;
+                  statusBarIconBrightness = .light;
+                }
+                return SimpleAppBar(
+                  height: padding.top,
+                  backgroundColor: backgroundColor,
+                  brightness: brightness,
+                  statusBarBrightness: statusBarBrightness,
+                  statusBarIconBrightness: statusBarIconBrightness,
+                  background: _videoStatusBarAmbient,
+                );
+              },
+            ),
+      body: ExtendedNestedScrollView(
+        onlyOneScrollInBody: true,
+        physics: platformClampingPhysics,
+        key: videoDetailController.scrollKey,
+        controller: videoDetailController.scrollCtr,
+        scrollBehavior: const NoOverscrollIndicator(),
+        pinnedHeaderSliverHeightBuilder: () {
+          double pinnedHeight = isFullScreen || !isPortrait
+              ? maxHeight - (isWindowMode && !isPortrait ? 0 : padding.top)
+              : videoDetailController.isExpanding ||
+                    videoDetailController.isCollapsing
+              ? videoDetailController.animHeight
+              : videoDetailController.isCollapsing ||
+                    (plPlayerController?.playerStatus.isPlaying ?? false)
+              ? videoDetailController.minVideoHeight
+              : kToolbarHeight;
+          if (videoDetailController.isExpanding &&
+              videoDetailController.animationController.value == 1) {
+            videoDetailController.isExpanding = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              videoDetailController.scrollRatio.value = 0;
+              videoDetailController.refreshPage();
+            });
+          } else if (videoDetailController.isCollapsing &&
+              videoDetailController.animationController.value == 1) {
+            videoDetailController.isCollapsing = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              videoDetailController.refreshPage();
+            });
+          }
+          return pinnedHeight;
+        },
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          final height = isFullScreen || !isPortrait
+              ? maxHeight - (isWindowMode && !isPortrait ? 0 : padding.top)
+              : videoDetailController.isExpanding ||
+                    videoDetailController.isCollapsing
+              ? videoDetailController.animHeight
+              : videoDetailController.videoHeight;
+          return [
+            VideoHeader(
+              minExtent: kToolbarHeight,
+              maxExtent: height,
+              minVideoHeight: videoDetailController.minVideoHeight,
+              onScrollRatioChanged: videoDetailController.scrollRatio.call,
+              child: Stack(
+                clipBehavior: .none,
+                children: [
+                  Builder(
+                    builder: (context) {
+                      final video = SizedBox(
+                        width: maxWidth,
+                        height: height,
+                        child: videoPlayer(width: maxWidth, height: height),
+                      );
+                      return Obx(
+                        () {
+                          final plPlayer =
+                              videoDetailController.plPlayerController;
+                          final nativeOutput =
+                              plPlayer.media3HdrActive.value ||
+                              plPlayer.mpvHdrActive.value;
+                          // 原生 HDR 保持视频层尺寸稳定；mpv 兼容路线保留下拉评论时的缩小动画。
+                          return CollapsingVideoViewport(
+                            animateShrink: !nativeOutput,
                             width: maxWidth,
                             height: height,
-                            child: videoPlayer(width: maxWidth, height: height),
-                          );
-                          return Obx(
-                            () {
-                              final plPlayer =
-                                  videoDetailController.plPlayerController;
-                              final nativeOutput =
-                                  plPlayer.media3HdrActive.value ||
-                                  plPlayer.mpvHdrActive.value;
-                              // 原生 HDR 保持视频层尺寸稳定；mpv 兼容路线保留下拉评论时的缩小动画。
-                              return CollapsingVideoViewport(
-                                animateShrink: !nativeOutput,
-                                width: maxWidth,
-                                height: height,
-                                child: video,
-                              );
-                            },
+                            child: video,
                           );
                         },
-                      ),
-                      _buildHeaderOverlay(),
-                    ],
+                      );
+                    },
                   ),
-                ),
-              ];
-            },
-            body: MiniScaffold(
-              key: videoDetailController.childKey,
-              body: Column(
-                children: [
-                  buildTabBar(onTap: videoDetailController.animToTop),
-                  Expanded(
-                    child: tabBarView(
-                      hitTestBehavior: .translucent,
-                      controller: videoDetailController.tabCtr,
-                      children: [
-                        videoIntro(isHorizontal: false, needCtr: false),
-                        if (videoDetailController.showReply)
-                          videoReplyPanel(isNested: true),
-                        if (_shouldShowSeasonPanel) seasonPanel,
-                      ],
-                    ),
-                  ),
+                  _buildHeaderOverlay(),
                 ],
               ),
             ),
+          ];
+        },
+        body: Offstage(
+          offstage: isFullScreen,
+          child: MiniScaffold(
+            key: videoDetailController.childKey,
+            body: Column(
+              children: [
+                buildTabBar(onTap: videoDetailController.animToTop),
+                Expanded(
+                  child: tabBarView(
+                    hitTestBehavior: .translucent,
+                    controller: videoDetailController.tabCtr,
+                    children: [
+                      videoIntro(isHorizontal: false, needCtr: false),
+                      if (videoDetailController.showReply)
+                        videoReplyPanel(isNested: true),
+                      if (_shouldShowSeasonPanel) seasonPanel,
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -789,28 +787,25 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     );
   }
 
-  Widget get childWhenDisabledLandscape => Obx(
-    () {
-      final isFullScreen = this.isFullScreen;
-      return SimpleScaffold(
-        appBar: removeAppBar(isFullScreen)
-            ? null
-            : SimpleAppBar(
-                height: padding.top,
-                brightness: colorScheme.brightness,
-                background: _videoStatusBarAmbient,
-              ),
-        body: Padding(
-          padding: isFullScreen
-              ? EdgeInsets.zero
-              : padding.copyWith(top: 0, bottom: 0),
-          child: childWhenDisabledLandscapeInner(isFullScreen),
-        ),
-      );
-    },
-  );
+  Widget childWhenDisabledLandscape(bool isFullScreen) {
+    return SimpleScaffold(
+      appBar: removeAppBar(isFullScreen)
+          ? null
+          : SimpleAppBar(
+              height: padding.top,
+              brightness: colorScheme.brightness,
+              background: _videoStatusBarAmbient,
+            ),
+      body: Padding(
+        padding: isFullScreen
+            ? EdgeInsets.zero
+            : padding.copyWith(top: 0, bottom: 0),
+        child: childWhenDisabledLandscapeInner(isFullScreen),
+      ),
+    );
+  }
 
-  Widget childSplit(double ratio) {
+  Widget childSplit(double ratio, bool isFullScreen) {
     final double videoHeight = maxHeight - padding.vertical;
     final double width = videoHeight * ratio;
     final videoWidth = isFullScreen ? maxWidth : width;
@@ -937,7 +932,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         ? maxHeight - (isWindowMode && !isPortrait ? 0 : padding.top)
         : height;
     if (height > maxHeight) {
-      return childSplit(Style.aspectRatio16x9);
+      return childSplit(Style.aspectRatio16x9, isFullScreen);
     }
     final introHeight = maxHeight - height - padding.top;
     final showIntro =
@@ -1022,8 +1017,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     );
   }
 
-  Widget get childWhenDisabledAlmostSquare => Obx(() {
-    final isFullScreen = this.isFullScreen;
+  Widget childWhenDisabledAlmostSquare(bool isFullScreen) {
     return SimpleScaffold(
       appBar: removeAppBar(isFullScreen)
           ? null
@@ -1039,14 +1033,14 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
         child: childWhenDisabledAlmostSquareInner(isFullScreen),
       ),
     );
-  });
+  }
 
   Widget childWhenDisabledAlmostSquareInner(bool isFullScreen) {
     if (enableVerticalExpand) {
       return Obx(
         () {
           if (videoDetailController.isVertical.value && !isPortrait) {
-            return childSplit(9 / 16);
+            return childSplit(9 / 16, isFullScreen);
           }
 
           return _childWhenDisabledAlmostSquareInner(isFullScreen);
@@ -1253,19 +1247,18 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           !isFullScreen &&
           !videoDetailController.plPlayerController.isDesktopPip &&
           (videoDetailController.horizontalScreen || isPortrait),
-      onPopInvokedWithResult:
-          (didPop, result) {
-            final route = ModalRoute.of(context);
-            if (!didPop && route?.willHandlePopInternally == true) {
-              // 评论弹层/局部历史只关闭弹层，不能隐藏仍在下方的视频层。
-              Get.back();
-              return;
-            }
-            videoDetailController.plPlayerController.onPopInvokedWithResult(
-              didPop,
-              result,
-            );
-          },
+      onPopInvokedWithResult: (didPop, result) {
+        final route = ModalRoute.of(context);
+        if (!didPop && route?.willHandlePopInternally == true) {
+          // 评论弹层/局部历史只关闭弹层，不能隐藏仍在下方的视频层。
+          Get.back();
+          return;
+        }
+        videoDetailController.plPlayerController.onPopInvokedWithResult(
+          didPop,
+          result,
+        );
+      },
       child: Obx(
         () {
           final controller = plPlayerController;
@@ -1323,18 +1316,25 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   @override
   Widget build(BuildContext context) {
-    Widget child;
-    if (videoDetailController.plPlayerController.isPipMode) {
-      child = plPlayer(width: maxWidth, height: maxHeight, isPipMode: true);
-    } else if (!videoDetailController.horizontalScreen) {
-      child = childWhenDisabled;
-    } else if (maxWidth / maxHeight >= kScreenRatio) {
-      child = childWhenDisabledLandscape;
-    } else if (maxWidth / Style.aspectRatio16x9 < 0.4 * maxHeight) {
-      child = childWhenDisabled;
-    } else {
-      child = childWhenDisabledAlmostSquare;
-    }
+    Widget child = Obx(() {
+      // 视频尺寸和详情可见性使用这一帧的同一份视口和全屏状态。
+      final viewport = MediaQuery.sizeOf(context);
+      final controller = videoDetailController.plPlayerController;
+      final fullscreen = controller.useFullscreenLayout(viewport);
+      if (controller.isPipMode) {
+        return plPlayer(width: maxWidth, height: maxHeight, isPipMode: true);
+      }
+      if (!videoDetailController.horizontalScreen) {
+        return childWhenDisabled(fullscreen);
+      }
+      if (viewport.aspectRatio >= kScreenRatio) {
+        return childWhenDisabledLandscape(fullscreen);
+      }
+      if (viewport.width / Style.aspectRatio16x9 < 0.4 * viewport.height) {
+        return childWhenDisabled(fullscreen);
+      }
+      return childWhenDisabledAlmostSquare(fullscreen);
+    });
     if (videoDetailController.plPlayerController.keyboardControl) {
       child = PlayerFocus(
         plPlayerController: videoDetailController.plPlayerController,

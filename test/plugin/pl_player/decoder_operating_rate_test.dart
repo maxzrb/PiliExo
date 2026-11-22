@@ -1,7 +1,33 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:PiliPlus/plugin/pl_player/utils/decoder_operating_rate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  final inputs = jsonDecode(
+    File('test/fixtures/mpv_frame_drop_policy/insight-fps.json').readAsStringSync(),
+  ) as List;
+  final reference = jsonDecode(
+    File(
+      'test/fixtures/mpv_frame_drop_policy/insight-fps-reference.json',
+    ).readAsStringSync(),
+  ) as List;
+  for (var index = 0; index < inputs.length; index++) {
+    final [String name, num? measured, num? selectedTrack, String? declared] =
+        inputs[index] as List;
+    test(name, () {
+      expect(
+        DecoderOperatingRate.resolveFrameRate(
+          measured: measured?.toDouble(),
+          selectedTrack: selectedTrack?.toDouble(),
+          declared: declared,
+        ),
+        reference[index],
+      );
+    });
+  }
+
   test('正式参数只按规划需求申请吞吐，无需求时保留原策略', () {
     expect(DecoderOperatingRate.options(plannedRate: 120), {
       'vd-lavc-o': 'operating_rate=120',

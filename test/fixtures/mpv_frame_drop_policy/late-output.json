@@ -1,0 +1,19 @@
+[
+  ["late-with-due-successor", 0.125, 0.0, 0.0625, 60],
+  ["without-latency", 0.0625, 0.0, 0.03125, 60],
+  ["less-than-three-frames", 0.09375, 0.0, 0.03125, 24],
+  ["exactly-three-frames", 0.125, 0.0, 0.0625, 24],
+  ["successor-in-the-future", 0.09375, 0.0, 0.125, 60],
+  ["equal-timestamps", 0.125, 0.0, 0.0, 60],
+  ["backward-timestamps", 0.125, 0.0, -0.03125, 60],
+  ["timestamp-gap", 0.25, 0.0, 0.1875, 60],
+  ["exact-gap-boundary", 0.25, 0.0, 0.125, 60],
+  ["unknown-frame-rate", 0.125, 0.0, 0.0625, 0],
+  ["regular-1x-never-arms-catchup", 1, 1, 80, 1.985, 0, 0.03336],
+  ["release-with-observed-2s-video-lag", 2, 1, 89, 1.99, 0, 0.03336],
+  ["release-keeps-future-frame", 3, 1, 80, 0.09375, 0, 0.125],
+  ["release-stops-dropping-when-synced", 3, 1, 80, 0.0625, 0, 0.03125],
+  ["release-still-catches-up-at-249ms", 3, 1, 249, 0.125, 0, 0.03125],
+  ["release-clears-at-250ms", 3, 1, 250, 0.125, 0, 0.03125],
+  ["release-to-1_25x-keeps-its-deadline", 3, 1.25, 80, 0.125, 0, 0.03125]
+]

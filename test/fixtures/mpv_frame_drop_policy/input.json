@@ -1,0 +1,85 @@
+[
+  {
+    "name": "原生 HDR 1x 交由原生时钟控制丢帧",
+    "mode": "initial",
+    "nativeHdr": true,
+    "speed": 1.0
+  },
+  {
+    "name": "原生 HDR 1.5x 交由原生时钟控制丢帧",
+    "mode": "initial",
+    "nativeHdr": true,
+    "speed": 1.5
+  },
+  {
+    "name": "原生 HDR 2x 交由原生时钟控制丢帧",
+    "mode": "initial",
+    "nativeHdr": true,
+    "speed": 2.0
+  },
+  {
+    "name": "SDR 常速打开时使用 VO 丢帧默认值",
+    "mode": "initial",
+    "nativeHdr": false,
+    "speed": 1.0
+  },
+  {
+    "name": "SDR 2x 打开时只允许解码前丢帧",
+    "mode": "initial",
+    "nativeHdr": false,
+    "speed": 2.0
+  },
+  {
+    "name": "原生 HDR 初始化丢帧策略与初始倍速无关",
+    "mode": "initial",
+    "nativeHdr": true,
+    "speed": null
+  },
+  {
+    "name": "SDR 退出倍速后恢复 VO 默认",
+    "mode": "transition",
+    "nativeHdr": false,
+    "speed": 1.0
+  },
+  {
+    "name": "SDR 长按倍速只允许解码前丢帧",
+    "mode": "transition",
+    "nativeHdr": false,
+    "speed": 2.0
+  },
+  {
+    "name": "SDR 3x 只使用解码前丢帧",
+    "mode": "transition",
+    "nativeHdr": false,
+    "speed": 3,
+    "temporary": true
+  },
+  {
+    "name": "兼容 HDR 常速起播关闭输出丢帧",
+    "mode": "initial",
+    "nativeHdr": false,
+    "hdrCompatibility": true,
+    "speed": 1.0
+  },
+  {
+    "name": "兼容 HDR 退出倍速后关闭输出丢帧",
+    "mode": "transition",
+    "nativeHdr": false,
+    "hdrCompatibility": true,
+    "speed": 1.0
+  },
+  {
+    "name": "兼容 HDR 加速仅允许解码前丢帧",
+    "mode": "transition",
+    "nativeHdr": false,
+    "hdrCompatibility": true,
+    "speed": 3.0
+  },
+  {
+    "name": "原生 HDR 退出倍速仍使用原生时钟调度",
+    "mode": "transition",
+    "nativeHdr": true,
+    "hdrCompatibility": false,
+    "speed": 1.0
+  }
+]

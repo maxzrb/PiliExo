@@ -29,11 +29,12 @@ void main() {
     expect(options['audio-pitch-correction'], 'yes');
   });
 
-  test('AudioTrack与已通过exact手测的包一致，不额外启用原生候选参数', () {
+  test('AudioTrack 缩短软件队列，保留设备容量和驱动回退顺序', () {
     const output = 'audiotrack,aaudio,opensles';
     expect(MpvAudioOptions.forOutput(isAndroid: true, output: output), {
       'audio-pitch-correction': 'yes',
       'ao': output,
+      'audio-buffer': '0.10',
     });
   });
 

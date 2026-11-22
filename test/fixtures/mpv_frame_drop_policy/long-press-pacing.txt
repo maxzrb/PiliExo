@@ -1,0 +1,24 @@
+v 4k60-three-times-60fps-capacity 59.94 3 1 30 500 NNNNNNNNN
+v 4k60-three-times-mixed-refs 60 3 1 30 500 NRNRNRNRN
+v all-reference-frames 60 3 1 30 500 RRRRRRRRR
+v distribute-one-third 30 3 1 30 500 NNNNNNNNN
+v codec-meets-demand 24 3 1 36 500 NNNNNNNNN
+v short-startup-sample 60 3 1 18 300 NNNNNNNNN
+v audio-clock-not-late 60 3 0 30 500 NNNNNNNNN
+v codec-starved 60 3 1 2 500 NNNNNNNNN
+v ordinary-playback 60 1 1 10 500 NNNNNNNNN
+v unknown-source-rate 0 3 1 30 500 NNNNNNNNN
+a same-old-queue-after-release 180 3 0 1 180 1540
+a mixed-queue-after-release 180 3 50 1 150 1540
+a queue-already-at-base-rate 180 3 50 1 40 1540
+a quick-repeat-mixes-base-and-fast 100 1 40 3 120 1540
+n h264-nonref h264 0 0 00000101aa
+n h264-reference h264 0 0 00000141aa
+n h264-mixed-reference h264 0 0 00000101aa00000141bb
+n h264-parameter-set h264 0 0 00000101aa00000167bb
+n h264-key-packet h264 1 0 00000101aa
+n h264-changed-extradata h264 0 1 00000101aa
+n hevc-nonref hevc 0 0 000000010001aa
+n hevc-reference hevc 0 0 000000010201aa
+n hevc-unrecognized-vcl hevc 0 0 0000010001aa0000011401bb
+n hevc-invalid-header hevc 0 0 0000010000aa

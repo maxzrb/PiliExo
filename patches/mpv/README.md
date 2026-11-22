@@ -2,7 +2,15 @@
 
 本目录保存播放器原生改动及对应上游源码版本。正式 APK 使用本机交叉编译的 mpv，不依赖 GitHub Actions。
 
-`sources.json` 记录各组件的仓库、标签、源码归档 SHA-256 和长度。mpv 基线为 v0.41.0；依次应用 `mpv-lavc-java-vm.patch` 和 `audiotrack-low-latency-experiment.patch`。前者保留 media-kit 的 Java VM 入口，后者为 AudioTrack 添加默认关闭的低延迟与采样率适配选项。原生库仍须导出原有 55 个 `mpv_*` API。
+`sources.json` 记录各组件的仓库、标签、源码归档 SHA-256、长度及正式补丁顺序。mpv 基线为 v0.41.0。AudioTrack 小缓冲实验补丁单独保留。原生库须导出原有 55 个 `mpv_*` API。
+
+FFmpeg 的动态 HDR、运行中吞吐提示和解码前丢帧共用
+`ffmpeg-android-dynamic-hdr.patch`。mpv 在播放倍率变化时把源帧率乘以目标倍率提交给解码线程。
+Java MediaCodec 接收限在 15–240 的 `operating-rate` 提示，驱动拒绝时继续使用现有解码器。
+实际跟不上音频时，FFmpeg 每 500ms 根据成功解码的输出数估算吞吐，按
+`1 - 实测吞吐 / 目标吞吐` 累计丢帧额度。仅在额度足够时省去完整的 H.264/HEVC 非参考访问单元。
+关键帧、参数集、带新 extradata 的包、含参考画面或无法确认依赖关系的包均保留。
+1 倍时不使用该预算。目标倍率改变或发生跳转时清空旧预算。
 
 本轮工具链为 Windows NDK 28.2.13676358、API 24、CMake 3.22.1、Meson 1.11.2、Ninja 1.13.2。分别使用 `aarch64-linux-android24-clang` 和 `armv7a-linux-androideabi24-clang`，依赖静态链接；C++ 使用 `c++_static` 与 `c++abi`，禁止把主机 RPATH 或主机 DLL 带进 Android 库。共享库链接要求 `--no-undefined` 和 `-z,max-page-size=16384`。mpv 启用 libmpv、AAudio、OpenSL ES、AudioTrack、Android 硬解，禁用 cplayer、GPL、Lua、Vulkan 与文档生成。32 位 FFmpeg 使用 ARMv7/NEON，两个架构分别安装到独立前缀，禁止共用编译产物。
 
@@ -34,6 +42,18 @@ EGL 色彩空间缺失或创建失败时让 VO 初始化失败，应用回退 Me
 Android 的 Type 1 描述符必须为 25 字节、ID 为 0；按小端读取。色度坐标单位为 1/50000，mastering 最大亮度和 CLL/FALL 为 1 nit，最小亮度为 1/10000 nit。不能直接套用 EGL 的 50000 倍亮度表示。无数据、零值未知字段、错误长度或不支持的描述符不会被伪造成完整 HDR 信息。
 
 `test/fixtures/mpv_hdr/mediacodec-hdr-static.hex` 和 `test/ref/fate/mediacodec-hdr-static-info` 为 7 组固定输入/独立参考。运行 `tool/verify_mediacodec_hdr_samples.py`，直接编译本补丁中的解析函数并使用相同 libavutil 分配实际帧 side data；不启动测试 App。解析样例通过不等于所有厂商 MediaCodec 都会提供这些数据，必须另核对最终 SurfaceFlinger 的 HDR metadata types。
+
+## `mpv-android-late-output-drop.patch`
+
+`mpv-android-late-output-drop.patch` 为 `mediacodec_embed` 保留按音频 PTS 判断的解码前丢帧请求。持按期间已解码画面走常规送显，解码负载由 FFmpeg 的非参考访问单元预算控制。
+
+回到较低的基础倍速时进入 250ms 过渡，每次呈现前最多跳过一张确认过期的画面，暂停新的解码前丢帧请求。相邻提交时间至少隔开基础倍率帧间隔的九成，原有较晚的呈现时刻仍保留。音画差未达丢帧阈值或后继帧尚未到期时保留当前画面。重新加速、暂停或跳转会清除过渡状态。
+
+普通纹理输出也跟踪复速并重新累计显示同步误差。复速最初 250ms 暂缓 VO 的超时丢帧和音画纠偏重复帧，音画差回到 50ms 内或保护满 3 秒时恢复正常策略。处于保护期的画面继续按基础倍率调度。
+
+Android mpv 在线分轨点播独立读音频，避免视频积压占满共享的解封装队列。倍速及短暂追帧窗口中，实际声卡欠载时保留最后一帧，等原有音频输出恢复后继续同步。固定输入与参考输出见 `test/fixtures/mpv_frame_drop_policy/` 和 `test/ref/fate/mpv-late-output-drop`。
+
+`mpv-android-audio-clock.patch` 按已排队 PCM 各段原有的处理倍率计算媒体时长，供音频 PTS 和视频调度使用。AudioTrack 按完整采样帧上报设备容量，应用为 AudioTrack 首选输出配置 100ms 软件缓冲，设备容量更大时沿用设备下限。混合倍速时钟和均匀丢帧的固定输入与参考输出通过 `python -m unittest discover -s test/native` 比较。
 
 ## 2026-11-10 direct-fixed 候选范围
 

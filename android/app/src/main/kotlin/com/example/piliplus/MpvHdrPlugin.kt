@@ -26,9 +26,6 @@ import io.flutter.plugin.platform.PlatformView
 import io.flutter.plugin.platform.PlatformViewFactory
 import java.io.ByteArrayOutputStream
 import org.json.JSONObject
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /** 所有 mpv 同步调用放到独立线程，避免 Surface 生命周期阻塞主线程。 */
 internal object MpvSurfaceNative {
@@ -125,6 +122,12 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                     Log.i("PiliMpvHdr", "创建原生 HDR 输出会话 $id")
                     session.pointer = MpvSurfaceNative.create(handle, direct)
                     options.forEach { (name, value) -> MpvSurfaceNative.option(session.pointer, name, value) }
+                    // create 调用可能早于 Flutter 下发的固定比例；指针就绪后按当前模式补设。
+                    MpvSurfaceNative.option(
+                        session.pointer,
+                        "keepaspect",
+                        if (session.mode.keepAspect) "yes" else "no",
+                    )
                     val decoderOptions = MpvSurfaceNative.metadata(session.pointer, session.vivid, session.nativeDolby)
                     main.post { result.success(mapOf("decoderOptions" to decoderOptions)) }
                 } catch (error: Throwable) {
@@ -148,8 +151,23 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                 result.success(null)
             }
             "resizeMode" -> {
-                session.mode = call.argument<String>("mode") ?: "fit"
-                session.view?.layoutVideo()
+                val mode = MpvResizeMode.fromWire(call.argument<String>("mode"))
+                val previous = session.mode
+                if (mode != previous) {
+                    session.mode = mode
+                    session.view?.layoutVideo()
+                    // 模式变化时重发；若指针尚未创建，由 create 按那时的最新模式补设。
+                    worker.post {
+                        if (session.released || session.pointer == 0L) return@post
+                        try {
+                            MpvSurfaceNative.option(
+                                session.pointer, "keepaspect", if (mode.keepAspect) "yes" else "no",
+                            )
+                        } catch (error: Throwable) {
+                            session.fail(error)
+                        }
+                    }
+                }
                 result.success(null)
             }
             "captureAmbientFrame" -> {
@@ -197,7 +215,7 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
         @Volatile var view: OutputView? = null
         var videoWidth = 0
         var videoHeight = 0
-        var mode = "fit"
+        @Volatile var mode = MpvResizeMode.FIT
         var polls = 0
         var lastSnapshot = ""
         var nativeDolby = false
@@ -360,18 +378,9 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
         }
 
         fun layoutVideo() {
-            val width = root.width
-            val height = root.height
-            if (width <= 0 || height <= 0 || session.videoWidth <= 0 || session.videoHeight <= 0) return
-            val ratio = session.videoWidth.toDouble() / session.videoHeight
-            val scale = when (session.mode) {
-                "cover" -> max(width / ratio, height.toDouble())
-                "fitWidth" -> width / ratio
-                "fitHeight" -> height.toDouble()
-                else -> min(width / ratio, height.toDouble())
-            }
-            val targetWidth = if (session.mode == "fill") width else (scale * ratio).roundToInt()
-            val targetHeight = if (session.mode == "fill") height else scale.roundToInt()
+            val (targetWidth, targetHeight) = session.mode.surfaceSize(
+                root.width, root.height, session.videoWidth, session.videoHeight,
+            ) ?: return
             val params = surface.layoutParams as FrameLayout.LayoutParams
             if (params.width != targetWidth || params.height != targetHeight) {
                 surface.layoutParams = FrameLayout.LayoutParams(targetWidth, targetHeight, Gravity.CENTER)

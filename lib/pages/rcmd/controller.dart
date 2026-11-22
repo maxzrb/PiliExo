@@ -34,7 +34,14 @@ class RcmdController extends CommonListController with RefreshImplMixin {
   void onInit() {
     super.onInit();
     page = 0;
-    queryData();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    if (!isClosed && loadingState.value is Loading) {
+      unawaited(queryData());
+    }
   }
 
   @override

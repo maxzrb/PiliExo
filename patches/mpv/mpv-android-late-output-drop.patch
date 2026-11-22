@@ -1,0 +1,381 @@
+--- a/options/options.c
++++ b/options/options.c
+@@ -807,7 +807,11 @@
+         {"no", 0},
+         {"vo", 1},
+         {"decoder", 2},
+-        {"decoder+vo", 3})},
++        {"decoder+vo", 3}
++#if HAVE_ANDROID
++         ,{"decoder+late", 6}
++#endif
++    )},
+     {"video-latency-hacks", OPT_BOOL(video_latency_hacks)},
+ 
+     {"untimed", OPT_BOOL(untimed)},
+--- a/player/core.h
++++ b/player/core.h
+@@ -154,6 +154,10 @@
+ };
+ 
+ // Summarizes video filtering and output.
++#if HAVE_ANDROID
++#include "piliexo_late_drop.h"
++#endif
++
+ struct vo_chain {
+     struct mp_log *log;
+ 
+@@ -171,6 +175,11 @@
+     // - video consists of sparse still images
+     bool is_sparse;
+     bool sparse_eof_signalled;
++#if HAVE_ANDROID
++    bool release_dropped_output;
++    struct piliexo_video_speed_transition speed_transition;
++    int64_t last_output_pts_ns;
++#endif
+ 
+     bool underrun;
+     bool underrun_signaled;
+--- a/player/video.c
++++ b/player/video.c
+@@ -93,6 +93,11 @@
+     vo_seek_reset(vo_c->vo);
+     vo_c->underrun = false;
+     vo_c->underrun_signaled = false;
++#if HAVE_ANDROID
++    vo_c->release_dropped_output = false;
++    vo_c->speed_transition = (struct piliexo_video_speed_transition){0};
++    vo_c->last_output_pts_ns = 0;
++#endif
+ }
+ 
+ void reset_video_state(struct MPContext *mpctx)
+@@ -316,6 +321,12 @@
+ {
+     struct MPOpts *opts = mpctx->opts;
+     // check for frame-drop:
++#if HAVE_ANDROID
++    // 原生 HDR 回退到 GPU 输出时，常速仍不启用解码前丢帧。
++    if ((opts->frame_dropping & 4) && opts->playback_speed <= 1.01)
++        return;
++#endif
++
+     if (mpctx->video_status == STATUS_PLAYING && !mpctx->paused &&
+         mpctx->audio_status == STATUS_PLAYING && !ao_untimed(mpctx->ao) &&
+         vo_c->track && vo_c->track->dec && (opts->frame_dropping & 2))
+@@ -331,6 +342,54 @@
+     }
+ }
+ 
++#if HAVE_ANDROID
++static bool use_live_decoder_framedrop(struct MPContext *mpctx, struct vo_chain *vo_c)
++{
++    return (mpctx->opts->frame_dropping & 2) &&
++           strcmp(vo_c->vo->driver->name, "mediacodec_embed") == 0 &&
++           ((mpctx->opts->frame_dropping & 4) ||
++            mpctx->opts->playback_speed > 1.01);
++}
++
++static double mediacodec_audio_deadline(struct MPContext *mpctx,
++                                      struct vo_chain *vo_c)
++{
++    if (mpctx->video_status != STATUS_PLAYING ||
++        mpctx->audio_status != STATUS_PLAYING || !mpctx->ao_chain ||
++        mpctx->ao_chain->ao_underrun || ao_untimed(mpctx->ao) ||
++        vo_c->vo->opts->video_sync == VS_NONE || mpctx->display_sync_active ||
++        mpctx->paused || mpctx->hrseek_active || mpctx->step_frames ||
++        mpctx->play_dir != 1 || vo_c->is_sparse ||
++        mpctx->video_pts == MP_NOPTS_VALUE ||
++        (mpctx->opts->playback_speed <= 1.01 &&
++         !piliexo_video_releasing(&vo_c->speed_transition, mp_time_ns())))
++        return MP_NOPTS_VALUE;
++
++    double audio_pts = playing_audio_pts(mpctx);
++    return audio_pts == MP_NOPTS_VALUE ? audio_pts : audio_pts + mpctx->opts->audio_delay;
++}
++
++static void update_live_decoder_framedrop(struct MPContext *mpctx,
++                                          struct vo_chain *vo_c)
++{
++    if (!vo_c->track || !vo_c->track->dec)
++        return;
++
++    int drops = 0;
++    double fps = vo_c->filter->container_fps;
++    double deadline = mediacodec_audio_deadline(mpctx, vo_c);
++    if (deadline != MP_NOPTS_VALUE &&
++        !piliexo_video_releasing(&vo_c->speed_transition, mp_time_ns()) &&
++        piliexo_late_output_due(deadline, mpctx->video_pts, fps))
++    {
++        // 解码器只跳过可独立安全丢弃的完整访问单元。
++        drops = MPCLAMP((deadline - mpctx->video_pts) * fps - 2, 0, 12);
++    }
++    // 不把上一次的丢帧需求留给无音频或已追上的窗口。
++    mp_decoder_wrapper_set_frame_drops(vo_c->track->dec, drops);
++}
++#endif
++
+ /* Modify video timing to match the audio timeline. There are two main
+  * reasons this is needed. First, video and audio can start from different
+  * positions at beginning of file or after a seek (MPlayer starts both
+@@ -404,7 +463,54 @@
+     for (int n = 0; n < mpctx->num_next_frames - 1; n++)
+         mpctx->next_frames[n] = mpctx->next_frames[n + 1];
+     mpctx->num_next_frames -= 1;
+-}
++#if HAVE_ANDROID
++    if (mpctx->vo_chain)
++        mpctx->vo_chain->release_dropped_output = false;
++#endif
++}
++
++#if HAVE_ANDROID
++static void drop_expired_mediacodec_output_after_release(struct MPContext *mpctx,
++                                                        struct vo_chain *vo_c)
++{
++    if (!(mpctx->opts->frame_dropping & 4) ||
++        !use_live_decoder_framedrop(mpctx, vo_c) || mpctx->num_next_frames != 1 ||
++        !piliexo_release_can_drop(&vo_c->speed_transition, mp_time_ns(),
++                                  vo_c->release_dropped_output))
++        return;
++
++    struct mp_image *old = mpctx->next_frames[0];
++    double deadline = mediacodec_audio_deadline(mpctx, vo_c);
++    if (deadline == MP_NOPTS_VALUE ||
++        !piliexo_late_output_due(deadline, old->pts, vo_c->filter->container_fps))
++        return;
++
++    // 只有后继画面已就绪才替换。持按期间保留已解码画面，不为追赶而等待。
++    struct mp_pin *pin = vo_c->filter->f->pins[1];
++    if (!mp_pin_out_request_data(pin))
++        return;
++
++    struct mp_frame frame = mp_pin_out_read(pin);
++    struct mp_image *next = frame.type == MP_FRAME_VIDEO ? frame.data : NULL;
++    double end_pts = get_play_end_pts(mpctx);
++    if (!next || !piliexo_late_output_can_replace(deadline, old->pts, next->pts) ||
++        (end_pts != MP_NOPTS_VALUE && next->pts >= end_pts) ||
++        !mp_image_params_static_equal(&old->params, &next->params))
++    {
++        mp_pin_out_unread(pin, frame);
++        return;
++    }
++
++    double advance = next->pts - old->pts;
++    mpctx->time_frame += advance / mpctx->video_speed;
++    if (mpctx->ao_chain && !mpctx->ao_chain->delaying_audio_start)
++        mpctx->delay -= advance;
++    mpctx->next_frames[0] = next;
++    vo_c->release_dropped_output = true;
++    talloc_free(old);
++    vo_increment_drop_count(vo_c->vo, 1);
++}
++#endif
+ 
+ static bool use_video_lookahead(struct MPContext *mpctx)
+ {
+@@ -493,6 +599,10 @@
+     // Get a new frame if we need one.
+     int r = VD_PROGRESS;
+     if (needs_new_frame(mpctx)) {
++#if HAVE_ANDROID
++        if (use_live_decoder_framedrop(mpctx, vo_c))
++            update_live_decoder_framedrop(mpctx, vo_c);
++#endif
+         // Filter a new frame.
+         struct mp_image *img = NULL;
+         struct mp_frame frame = mp_pin_out_read(vo_c->filter->f->pins[1]);
+@@ -1066,8 +1176,32 @@
+     if (mpctx->video_status == STATUS_READY)
+         return;
+ 
+-    if (mpctx->paused && mpctx->video_status >= STATUS_READY)
+-        return;
++    if (mpctx->paused && mpctx->video_status >= STATUS_READY) {
++#if HAVE_ANDROID
++        vo_c->speed_transition = (struct piliexo_video_speed_transition){0};
++#endif
++        return;
++    }
++
++#if HAVE_ANDROID
++    if (piliexo_video_speed_changed(&vo_c->speed_transition, opts->playback_speed,
++                                    mp_time_ns()))
++    {
++        // 降速前后的帧间隔不同，复速时从新的显示误差开始累计。
++        mpctx->display_sync_error = 0;
++        mpctx->display_sync_drift_dir = 0;
++    }
++
++    // 声卡短时断供时先保留最后画面，等待音频队列补齐并由原路径唤醒。
++    // 真正的音频结尾继续播放视频，普通常速不受这条保护影响。
++    if ((opts->frame_dropping & 4) && use_live_decoder_framedrop(mpctx, vo_c) &&
++        vo->opts->video_sync != VS_NONE && !mpctx->hrseek_active && !mpctx->step_frames &&
++        mpctx->audio_status == STATUS_PLAYING && mpctx->ao_chain &&
++        mpctx->ao_chain->ao_underrun && !mpctx->ao_chain->out_eof &&
++        (opts->playback_speed > 1.01 ||
++         piliexo_video_releasing(&vo_c->speed_transition, mp_time_ns())))
++        return;
++#endif
+ 
+     bool logical_eof = false;
+     int r = video_output_image(mpctx, &logical_eof);
+@@ -1164,6 +1298,11 @@
+         }
+     }
+ 
++#if HAVE_ANDROID
++    if (!logical_eof)
++        drop_expired_mediacodec_output_after_release(mpctx, vo_c);
++#endif
++
+     // Inject vo crop to notify and reconfig if needed
+     apply_video_crop(mpctx, vo);
+ 
+@@ -1216,6 +1355,18 @@
+ 
+     double time_frame = MPMAX(mpctx->time_frame, -1);
+     int64_t pts = mp_time_ns() + (int64_t)(time_frame * 1e9);
++#if HAVE_ANDROID
++    int64_t now = mp_time_ns();
++    if (!logical_eof && (vo->driver->caps & VO_CAP_UNTIMED) == 0 && !opts->untimed &&
++        vo->opts->video_sync != VS_NONE && !mpctx->display_sync_active &&
++        !mpctx->hrseek_active && !mpctx->step_frames &&
++        piliexo_video_releasing(&vo_c->speed_transition, now))
++    {
++        pts = piliexo_release_output_pts(now, pts, vo_c->last_output_pts_ns,
++                                         vo_c->filter->container_fps,
++                                         mpctx->video_speed);
++    }
++#endif
+ 
+     // wait until VO wakes us up to get more frames
+     // (NB: in theory, the 1st frame after display sync mode change uses the
+@@ -1241,11 +1392,19 @@
+ 
+     int req = vo_get_num_req_frames(mpctx->video_out);
+     mp_assert(req >= 1 && req <= VO_MAX_REQ_FRAMES);
++    bool can_drop = opts->frame_dropping & 1;
++#if HAVE_ANDROID
++    if (can_drop) {
++        // 纹理输出复速时会重新启用 vo。先让显示时钟收敛，再恢复丢帧及重复帧纠偏。
++        can_drop = piliexo_vo_recovery_can_drop(&vo_c->speed_transition, now,
++                                               mpctx->last_av_difference);
++    }
++#endif
+     struct vo_frame dummy = {
+         .pts = pts,
+         .duration = -1,
+         .still = mpctx->step_frames > 0,
+-        .can_drop = opts->frame_dropping & 1,
++        .can_drop = can_drop,
+         .num_frames = MPMIN(mpctx->num_next_frames, req),
+         .num_vsyncs = 1,
+     };
+@@ -1268,13 +1427,19 @@
+     shift_frames(mpctx);
+ 
+     schedule_frame(mpctx, frame);
++#if HAVE_ANDROID
++    vo_c->last_output_pts_ns = MPMAX(frame->pts, mp_time_ns());
++#endif
+ 
+     mpctx->osd_force_update = true;
+     update_osd_msg(mpctx);
+ 
+     vo_queue_frame(vo, frame);
+ 
+-    check_framedrop(mpctx, vo_c);
++#if HAVE_ANDROID
++    if (!use_live_decoder_framedrop(mpctx, vo_c))
++#endif
++        check_framedrop(mpctx, vo_c);
+ 
+     // The frames were shifted down; "initialize" the new first entry.
+     if (mpctx->num_next_frames >= 1)
+--- /dev/null
++++ b/player/piliexo_late_drop.h
+@@ -0,0 +1,81 @@
++#ifndef MPV_PILIEXO_LATE_DROP_H
++#define MPV_PILIEXO_LATE_DROP_H
++
++#include <stdbool.h>
++#include <stdint.h>
++
++#define PILIEXO_RELEASE_NS INT64_C(250000000)
++#define PILIEXO_VO_RECOVERY_MAX_NS INT64_C(3000000000)
++
++struct piliexo_video_speed_transition {
++    double speed;
++    int64_t release_ns;
++    bool vo_recovered;
++};
++
++// 以实际减速开始计时，恢复到 1.25x 等基础倍速也进入同一过渡。
++static inline bool piliexo_video_speed_changed(struct piliexo_video_speed_transition *s,
++                                                double speed, int64_t now)
++{
++    if (s->speed == speed)
++        return false;
++    s->release_ns = s->speed > 1.01 && speed < s->speed ? now : 0;
++    s->vo_recovered = false;
++    s->speed = speed;
++    return s->release_ns > 0;
++}
++
++static inline bool piliexo_video_releasing(const struct piliexo_video_speed_transition *s,
++                                           int64_t now)
++{
++    return s->release_ns > 0 && now >= s->release_ns &&
++           now - s->release_ns < PILIEXO_RELEASE_NS;
++}
++
++static inline bool piliexo_release_can_drop(const struct piliexo_video_speed_transition *s,
++                                           int64_t now, bool dropped_output)
++{
++    return !dropped_output && piliexo_video_releasing(s, now);
++}
++
++// 先保留复速后的画面。音画靠近后恢复输出策略，避免普通时钟抖动重新触发保护。
++static inline bool piliexo_vo_recovery_can_drop(struct piliexo_video_speed_transition *s,
++                                               int64_t now, double av_difference)
++{
++    if (s->release_ns <= 0 || now < s->release_ns || s->vo_recovered)
++        return true;
++    int64_t elapsed = now - s->release_ns;
++    if (elapsed < PILIEXO_RELEASE_NS)
++        return false;
++    s->vo_recovered = elapsed >= PILIEXO_VO_RECOVERY_MAX_NS ||
++                      (av_difference >= -0.050 && av_difference <= 0.050);
++    return s->vo_recovered;
++}
++
++// 松手后保持接近基础送显节拍，给正常的调度抖动留出一成余量。
++static inline int64_t piliexo_release_output_pts(int64_t now, int64_t target,
++                                                 int64_t previous, double fps,
++                                                 double speed)
++{
++    if (!(fps > 20 && fps < 500 && speed > 0) || previous <= 0 ||
++        previous > now || now - previous >= PILIEXO_RELEASE_NS)
++        return target;
++    int64_t earliest = previous + (int64_t)(900000000.0 / (fps * speed));
++    return target < earliest ? earliest : target;
++}
++
++// 只在明显迟到时追赶；留出三个源帧或 80ms 的媒体时间容差。
++static inline bool piliexo_late_output_due(double audio_pts, double pts, double fps)
++{
++    return fps > 20 && fps < 500 && audio_pts - pts >= 0.080 &&
++           (audio_pts - pts) * fps >= 3;
++}
++
++// 保留尚未到呈现时刻的后继画面，拒绝倒序或跨时间戳断点替换。
++static inline bool piliexo_late_output_can_replace(double audio_pts, double pts,
++                                                   double next_pts)
++{
++    return next_pts > pts && next_pts - pts <= 0.125 && next_pts <= audio_pts;
++}
++
++#endif

@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:ui' show Size;
 
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:flutter/services.dart'
     show SystemChrome, MethodChannel, SystemUiOverlay, DeviceOrientation;
+import 'package:flutter/widgets.dart'
+    show WidgetsBinding, WidgetsBindingObserver;
 
 bool _isDesktopFullScreen = false;
 
@@ -56,6 +59,56 @@ Future<void>? landscapeLeftMode() {
 
 Future<void>? landscapeRightMode() {
   return _setPreferredOrientations(const [.landscapeRight]);
+}
+
+bool? fullscreenViewportIsLandscape() {
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  if (views.isEmpty || views.first.physicalSize.isEmpty) return null;
+  final size = views.first.physicalSize;
+  return size.width > size.height;
+}
+
+bool useFullscreenViewportLayout({
+  required Size viewport,
+  required bool fullscreen,
+  required bool? targetLandscape,
+}) {
+  return fullscreen ||
+      (targetLandscape != null &&
+          !viewport.isEmpty &&
+          (viewport.width > viewport.height) == targetLandscape);
+}
+
+/// 系统方法返回时，Flutter 视口可能还没有收到旋转后的尺寸。
+Future<void> waitForFullscreenViewport(bool landscape) async {
+  final binding = WidgetsBinding.instance;
+  final ready = Completer<void>();
+  void check() {
+    if (!ready.isCompleted && fullscreenViewportIsLandscape() == landscape) {
+      ready.complete();
+    }
+  }
+
+  final observer = _FullscreenViewportObserver(check);
+  binding.addObserver(observer);
+  try {
+    check();
+    // 分屏和某些大屏策略会忽略旋转请求，按当前尺寸完成全屏。
+    await ready.future.timeout(
+      const Duration(milliseconds: 900),
+      onTimeout: () {},
+    );
+  } finally {
+    binding.removeObserver(observer);
+  }
+}
+
+class _FullscreenViewportObserver with WidgetsBindingObserver {
+  _FullscreenViewportObserver(this.check);
+  final void Function() check;
+
+  @override
+  void didChangeMetrics() => check();
 }
 
 Future<void>? fullMode() {

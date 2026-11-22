@@ -1,25 +1,126 @@
+--- a/libavcodec/mediacodec_wrapper.c
++++ b/libavcodec/mediacodec_wrapper.c
+@@ -174,6 +174,7 @@
+     jmethodID get_name_id;
+ 
+     jmethodID configure_id;
++    jmethodID set_parameters_id;
+     jmethodID start_id;
+     jmethodID flush_id;
+     jmethodID stop_id;
+@@ -228,6 +229,7 @@
+ 
+         { "android/media/MediaCodec", "configure", "(Landroid/media/MediaFormat;Landroid/view/Surface;Landroid/media/MediaCrypto;I)V", FF_JNI_METHOD, OFFSET(configure_id), 1 },
+         { "android/media/MediaCodec", "start", "()V", FF_JNI_METHOD, OFFSET(start_id), 1 },
++        { "android/media/MediaCodec", "setParameters", "(Landroid/os/Bundle;)V", FF_JNI_METHOD, OFFSET(set_parameters_id), 0 },
+         { "android/media/MediaCodec", "flush", "()V", FF_JNI_METHOD, OFFSET(flush_id), 1 },
+         { "android/media/MediaCodec", "stop", "()V", FF_JNI_METHOD, OFFSET(stop_id), 1 },
+         { "android/media/MediaCodec", "release", "()V", FF_JNI_METHOD, OFFSET(release_id), 1 },
+@@ -1411,6 +1413,49 @@
+     return ret;
+ }
+ 
++static int mediacodec_jni_setOperatingRate(FFAMediaCodec *ctx, float rate)
++{
++    FFAMediaCodecJni *codec = (FFAMediaCodecJni *)ctx;
++    JNIEnv *env = NULL;
++    if (!codec->jfields.set_parameters_id)
++        return AVERROR(ENOSYS);
++
++    JNI_GET_ENV_OR_RETURN(env, codec, AVERROR_EXTERNAL);
++    if ((*env)->PushLocalFrame(env, 4) < 0) {
++        ff_jni_exception_check(env, 1, codec);
++        return AVERROR_EXTERNAL;
++    }
++
++    int ret = AVERROR_EXTERNAL;
++    jclass bundle_class = (*env)->FindClass(env, "android/os/Bundle");
++    if (!bundle_class)
++        goto done;
++    jmethodID init = (*env)->GetMethodID(env, bundle_class, "<init>", "()V");
++    if (!init)
++        goto done;
++    jmethodID put_float = (*env)->GetMethodID(env, bundle_class, "putFloat",
++                                             "(Ljava/lang/String;F)V");
++    if (!put_float)
++        goto done;
++    jobject bundle = (*env)->NewObject(env, bundle_class, init);
++    if (!bundle)
++        goto done;
++    jstring key = (*env)->NewStringUTF(env, "operating-rate");
++    if (!key)
++        goto done;
++    (*env)->CallVoidMethod(env, bundle, put_float, key, (jfloat)rate);
++    if ((*env)->ExceptionCheck(env))
++        goto done;
++    (*env)->CallVoidMethod(env, codec->object, codec->jfields.set_parameters_id, bundle);
++    if (!(*env)->ExceptionCheck(env))
++        ret = 0;
++
++done:
++    ff_jni_exception_check(env, 1, codec);
++    (*env)->PopLocalFrame(env, NULL);
++    return ret;
++}
++
+ static int mediacodec_jni_start(FFAMediaCodec* ctx)
+ {
+     int ret = 0;
+@@ -1803,6 +1848,7 @@
+ 
+     .configure = mediacodec_jni_configure,
+     .start = mediacodec_jni_start,
++    .setOperatingRate = mediacodec_jni_setOperatingRate,
+     .stop = mediacodec_jni_stop,
+     .flush = mediacodec_jni_flush,
+ 
+--- a/libavcodec/mediacodec_wrapper.h
++++ b/libavcodec/mediacodec_wrapper.h
+@@ -240,6 +240,7 @@
+     int (*setAsyncNotifyCallback)(FFAMediaCodec *codec,
+                                   const FFAMediaCodecOnAsyncNotifyCallback *callback,
+                                   void *userdata);
++    int (*setOperatingRate)(FFAMediaCodec *codec, float rate);
+ };
+ 
+ static inline char *ff_AMediaCodec_getName(FFAMediaCodec *codec)
 --- a/libavcodec/mediacodecdec.c
 +++ b/libavcodec/mediacodecdec.c
-@@ -44,6 +44,8 @@
+@@ -31,6 +31,7 @@
+ #include "libavutil/opt.h"
+ #include "libavutil/intreadwrite.h"
+ #include "libavutil/pixfmt.h"
++#include "libavutil/time.h"
+ #include "libavutil/internal.h"
+ 
+ #include "avcodec.h"
+@@ -43,7 +44,10 @@
+ #include "internal.h"
  #include "jni.h"
  #include "mediacodec_wrapper.h"
++#include "piliexo_decode_budget.h"
  #include "mediacodecdec_common.h"
 +#include "libavutil/dovi_meta.h"
 +#include "piliexo_hdr_metadata.h"
  
  typedef struct MediaCodecH264DecContext {
  
-@@ -59,6 +61,9 @@
+@@ -58,7 +62,14 @@
+ 
      int use_ndk_codec;
      // Ref. MediaFormat KEY_OPERATING_RATE
++    int piliexo_live_operating_rate;
++    struct piliexo_decode_budget drop_budget;
++    int attempted_operating_rate;
      int operating_rate;
 +    int piliexo_dolbyvision;
 +    int64_t piliexo_metadata_callback;
 +    int64_t piliexo_metadata_opaque;
++    int early_drop_logged;
  } MediaCodecH264DecContext;
  
  static av_cold int mediacodec_decode_close(AVCodecContext *avctx)
-@@ -347,6 +352,36 @@
+@@ -347,6 +358,36 @@
  #if CONFIG_HEVC_MEDIACODEC_DECODER
      case AV_CODEC_ID_HEVC:
          codec_mime = "video/hevc";
@@ -56,7 +157,152 @@
  
          ret = hevc_set_extradata(avctx, format);
          if (ret < 0)
-@@ -553,6 +588,14 @@
+@@ -486,6 +527,114 @@
+     return ret;
+ }
+ 
++static const uint8_t *piliexo_annexb_start_code(const uint8_t *p,
++                                                const uint8_t *end)
++{
++    while (end - p >= 3) {
++        if (p[0] == 0 && p[1] == 0) {
++            if (p[2] == 1)
++                return p;
++            if (end - p >= 4 && p[2] == 0 && p[3] == 1)
++                return p;
++        }
++        p++;
++    }
++    return NULL;
++}
++
++/*
++ * 判断一个 Annex B 访问单元是否只包含非参考画面。
++ *
++ * 调用方已确认当前迟到且有丢帧额度。只丢弃整个 AU，
++ * 避免把多 slice 画面拆坏；带参数集、关键帧或混合参考画面的
++ * AU 一律保留。
++ */
++static int piliexo_should_drop_nonref_au(AVCodecContext *avctx,
++                                         const AVPacket *pkt)
++{
++    const uint8_t *p;
++    const uint8_t *end;
++    const uint8_t *start;
++    int has_vcl = 0;
++    int has_ref = 0;
++    int has_config = 0;
++
++    if (avctx->codec_id != AV_CODEC_ID_H264 &&
++        avctx->codec_id != AV_CODEC_ID_HEVC)
++        return 0;
++    if (pkt->size <= 0 || (pkt->flags & AV_PKT_FLAG_KEY))
++        return 0;
++    if (av_packet_get_side_data(pkt, AV_PKT_DATA_NEW_EXTRADATA, NULL))
++        return 0;
++
++    p = pkt->data;
++    end = p + pkt->size;
++    start = piliexo_annexb_start_code(p, end);
++    if (!start)
++        return 0;
++
++    while (start && start < end) {
++        const uint8_t *nal = start;
++        const uint8_t *next;
++        const uint8_t *nal_end;
++        int sc_len = (end - start >= 4 &&
++                      start[2] == 0 && start[3] == 1) ? 4 : 3;
++        unsigned type;
++
++        nal += sc_len;
++        next = piliexo_annexb_start_code(nal, end);
++        nal_end = next ? next : end;
++        if (nal_end <= nal || (nal[0] & 0x80))
++            return 0;
++
++        if (avctx->codec_id == AV_CODEC_ID_HEVC) {
++            if (nal_end - nal < 2 || !(nal[1] & 7))
++                return 0;
++            type = (nal[0] >> 1) & 0x3f;
++            if (type >= 10 && type < 32)
++                return 0;
++            if (type <= 9) {
++                has_vcl = 1;
++                if (type & 1)
++                    has_ref = 1;
++            } else if (type >= 16 && type <= 23) {
++                has_vcl = 1;
++                has_ref = 1;
++            } else if (type == 32 || type == 33 || type == 34) {
++                has_config = 1;
++            }
++        } else {
++            type = nal[0] & 0x1f;
++            if (type == 1) {
++                has_vcl = 1;
++                if (nal[0] >> 5)
++                    has_ref = 1;
++            } else if (type != 9 && type != 12) {
++                // 参数集、分区/扩展片层和无法确认依赖关系的类型均保留。
++                return 0;
++            }
++        }
++        start = next;
++    }
++
++    if (!has_vcl || has_ref || has_config)
++        return 0;
++    return 1;
++}
++
++static int piliexo_receive_and_measure(AVCodecContext *avctx,
++                                       AVFrame *frame, bool wait)
++{
++    MediaCodecH264DecContext *s = avctx->priv_data;
++    int ret = ff_mediacodec_dec_receive(avctx, s->ctx, frame, wait);
++    if (s->piliexo_live_operating_rate > 0 || s->drop_budget.demand > 0) {
++        piliexo_decode_budget_measure(&s->drop_budget, s->piliexo_live_operating_rate,
++                                      av_gettime_relative(),
++                                      avctx->skip_frame >= AVDISCARD_NONREF, ret == 0);
++    }
++    return ret;
++}
++
+ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
+ {
+     MediaCodecH264DecContext *s = avctx->priv_data;
+@@ -500,8 +649,19 @@
+         }
+     }
+ 
++    // 运行中的 Java MediaCodec 可更新提示；拒绝更新时继续正常解码。
++    FFAMediaCodec *codec = s->ctx->codec;
++    if (codec->setOperatingRate && s->piliexo_live_operating_rate != 0 &&
++        s->piliexo_live_operating_rate != s->attempted_operating_rate) {
++        s->attempted_operating_rate = s->piliexo_live_operating_rate;
++        const int hint = av_clip(abs(s->attempted_operating_rate), 15, 240);
++        ret = codec->setOperatingRate(codec, hint);
++        av_log(avctx, AV_LOG_DEBUG, "PiliExo operating-rate: %d (result=%d)\n",
++               hint, ret);
++    }
++
+     /* poll for new frame */
+-    ret = ff_mediacodec_dec_receive(avctx, s->ctx, frame, false);
++    ret = piliexo_receive_and_measure(avctx, frame, false);
+     if (ret != AVERROR(EAGAIN))
+         return ret;
+ 
+@@ -512,7 +672,7 @@
+             index = ff_AMediaCodec_dequeueInputBuffer(s->ctx->codec, 0);
+             if (index < 0) {
+                 /* no space, block for an output frame to appear */
+-                ret = ff_mediacodec_dec_receive(avctx, s->ctx, frame, true);
++                ret = piliexo_receive_and_measure(avctx, frame, true);
+                 /* Try again if both input port and output port return EAGAIN.
+                  * If no data is consumed and no frame in output, it can make
+                  * both avcodec_send_packet() and avcodec_receive_frame()
+@@ -553,6 +713,14 @@
  
          /* fetch new packet or eof */
          ret = ff_decode_get_packet(avctx, &s->buffered_pkt);
@@ -71,7 +317,27 @@
          if (ret == AVERROR_EOF) {
              AVPacket null_pkt = { 0 };
              ret = ff_mediacodec_dec_send(avctx, s->ctx, &null_pkt, true);
-@@ -572,6 +615,9 @@
+@@ -564,6 +732,19 @@
+         } else if (ret < 0) {
+             return ret;
+         }
++        if (avctx->skip_frame >= AVDISCARD_NONREF &&
++            piliexo_decode_budget_due(&s->drop_budget) &&
++            piliexo_should_drop_nonref_au(avctx, &s->buffered_pkt)) {
++            piliexo_decode_budget_drop(&s->drop_budget);
++            if (!s->early_drop_logged) {
++                s->early_drop_logged = 1;
++                av_log(avctx, AV_LOG_DEBUG,
++                       "PiliExo early-drop: first non-reference AU dropped (%d bytes)\n",
++                       s->buffered_pkt.size);
++            }
++            av_packet_unref(&s->buffered_pkt);
++            continue;
++        }
+     }
+ 
+     return AVERROR(EAGAIN);
+@@ -572,8 +753,12 @@
  static void mediacodec_decode_flush(AVCodecContext *avctx)
  {
      MediaCodecH264DecContext *s = avctx->priv_data;
@@ -80,8 +346,17 @@
 +            (uintptr_t)s->piliexo_metadata_opaque, 0, 0, NULL, 0);
  
      av_packet_unref(&s->buffered_pkt);
++    s->drop_budget = (struct piliexo_decode_budget){0};
  
-@@ -600,6 +646,12 @@
+     ff_mediacodec_dec_flush(avctx, s->ctx);
+ }
+@@ -596,10 +781,18 @@
+ static const AVOption ff_mediacodec_vdec_options[] = {
+     { "delay_flush", "Delay flush until hw output buffers are returned to the decoder",
+                      OFFSET(delay_flush), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, VD },
++    { "piliexo_live_operating_rate", "Running decoder operating-rate hint",
++                   OFFSET(piliexo_live_operating_rate), AV_OPT_TYPE_INT, {.i64 = 0}, -24000, 24000, VD },
+     { "ndk_codec", "Use MediaCodec from NDK",
                     OFFSET(use_ndk_codec), AV_OPT_TYPE_BOOL, {.i64 = -1}, -1, 1, VD },
      { "operating_rate", "The desired operating rate that the codec will need to operate at, zero for unspecified",
              OFFSET(operating_rate), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, VD },
@@ -105,6 +380,74 @@
      if (profile < 0) {
          av_log(avctx, AV_LOG_WARNING, "Unsupported or unknown profile\n");
      }
+--- /dev/null
++++ b/libavcodec/piliexo_decode_budget.h
+@@ -0,0 +1,65 @@
++#ifndef AVCODEC_PILIEXO_DECODE_BUDGET_H
++#define AVCODEC_PILIEXO_DECODE_BUDGET_H
++
++#include <stdbool.h>
++#include <stdint.h>
++
++struct piliexo_decode_budget {
++    int demand;
++    int decoded;
++    int64_t sample_start_us;
++    double fraction;
++    double credit;
++};
++
++static inline void piliexo_decode_budget_measure(struct piliexo_decode_budget *b,
++                                                int demand, int64_t now_us,
++                                                bool late, bool decoded)
++{
++    if (demand != b->demand)
++        *b = (struct piliexo_decode_budget){.demand = demand};
++
++    if (!late || demand <= 0) {
++        b->sample_start_us = 0;
++        b->decoded = 0;
++        b->credit = 0;
++        return;
++    }
++
++    int64_t elapsed = now_us - b->sample_start_us;
++    if (!b->sample_start_us || elapsed < 0 || elapsed > 1000000) {
++        b->sample_start_us = now_us;
++        b->decoded = 0;
++        return;
++    }
++
++    b->decoded += decoded;
++    if (elapsed < 500000)
++        return;
++
++    // 有持续迟到反馈时才测容量。几乎没有输出的窗口可能是断供，不据此增加丢帧。
++    if (b->decoded >= 5) {
++        double capacity = b->decoded * 1000000.0 / elapsed;
++        b->fraction = capacity < demand ? 1 - capacity / demand : 0;
++    }
++    b->sample_start_us = now_us;
++    b->decoded = 0;
++}
++
++// 按所有输入帧累计额度。遇到参考帧只暂存额度，最多延期补偿两帧。
++static inline bool piliexo_decode_budget_due(struct piliexo_decode_budget *b)
++{
++    if (b->fraction <= 0)
++        return false;
++    b->credit += b->fraction;
++    if (b->credit > 2)
++        b->credit = 2;
++    return b->credit >= 1;
++}
++
++static inline void piliexo_decode_budget_drop(struct piliexo_decode_budget *b)
++{
++    b->credit -= 1;
++}
++
++#endif
 --- /dev/null
 +++ b/libavcodec/piliexo_hdr_metadata.h
 @@ -0,0 +1,112 @@

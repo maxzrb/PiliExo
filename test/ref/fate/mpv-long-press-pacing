@@ -1,0 +1,24 @@
+4k60-three-times-60fps-capacity demand=180 drop=66.7% NDDNDDNDD release=0.0%
+4k60-three-times-mixed-refs demand=180 drop=66.7% NRDRDRDRD release=0.0%
+all-reference-frames demand=180 drop=66.7% RRRRRRRRR release=0.0%
+distribute-one-third demand=90 drop=33.3% NNDNNDNND release=0.0%
+codec-meets-demand demand=72 drop=0.0% NNNNNNNNN release=0.0%
+short-startup-sample demand=180 drop=0.0% NNNNNNNNN release=0.0%
+audio-clock-not-late demand=180 drop=0.0% NNNNNNNNN release=0.0%
+codec-starved demand=180 drop=0.0% NNNNNNNNN release=0.0%
+ordinary-playback demand=-60 drop=0.0% NNNNNNNNN release=0.0%
+unknown-source-rate demand=0 drop=0.0% NNNNNNNNN release=0.0%
+same-old-queue-after-release queued-media=540ms playing-pts=1000ms
+mixed-queue-after-release queued-media=350ms playing-pts=1190ms
+queue-already-at-base-rate queued-media=40ms playing-pts=1500ms
+quick-repeat-mixes-base-and-fast queued-media=200ms playing-pts=1340ms
+h264-nonref eligible
+h264-reference keep
+h264-mixed-reference keep
+h264-parameter-set keep
+h264-key-packet keep
+h264-changed-extradata keep
+hevc-nonref eligible
+hevc-reference keep
+hevc-unrecognized-vcl keep
+hevc-invalid-header keep

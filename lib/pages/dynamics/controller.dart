@@ -54,7 +54,14 @@ class DynamicsController
       length: DynamicsTabType.values.length,
       initialIndex: Pref.defaultDynamicTypeIndex,
     );
-    queryData();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    if (!isClosed && loadingState.value is Loading) {
+      unawaited(queryData());
+    }
   }
 
   void _jumpToTab(int mid) {

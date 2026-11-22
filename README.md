@@ -10,7 +10,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
 - 发布源码：[`main`](https://github.com/maxzrb/PiliExo/tree/main)；编译固定版本请使用对应 Release 标签。
 - 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游已处理至 `915276c87`；本轮 16 项中除纯 Linux MPRIS 和 Linux CI 2 项外全部纳入，保留 PiliExo 的 HDR、播放器和原生定制。
+- PiliPlus 上游 Android 相关变更已处理至 `217fb54f5`（`2.2.1`），包括粉丝勋章和部分页面重建优化。
 
 ## PiliExo 的实际修改
 
@@ -19,7 +19,8 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
 - 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留缩小动画，原生 HDR 路线固定视频层并裁剪。
 - 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析，以及高采样率 FLAC 的输入缓冲修正。
-- 播放器洞察提供概览、视频、音频、播放和事件详情，显示编码、解码器、分辨率、码率、音频参数和回退原因。
+- 播放器洞察提供概览、视频、音频、播放和事件详情，显示帧率、编码、解码器、分辨率、码率、音频参数和回退原因。
+- mpv 原生 HDR 支持独立的 4:3 和 16:9 固定画面比例。截图及画面翻转由兼容路线提供。
 - Android 更新优先使用 ModelScope 镜像，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、取消和系统安装器。
 - 独立 `applicationId` `com.maxzrb.piliexo`，Release 按 ABI 拆分并使用独立签名，可与原版 PiliPlus 共存。
 - 发布流程在本机完成构建、原证书签名、16KB 对齐，并对 AOT 来源、插件注册和定制 `libmpv` 做静态门禁。
@@ -28,7 +29,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.14.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.14.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.14.1/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.22.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.22.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.22.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 

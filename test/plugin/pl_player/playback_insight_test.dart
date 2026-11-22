@@ -77,6 +77,11 @@ void main() {
     );
   });
 
+  test('只有帧率数据时也视为已测量', () {
+    const snapshot = PlaybackInsightSnapshot(frameRate: '59.94 fps');
+    expect(snapshot.hasMeasuredData, isTrue);
+  });
+
   test('DASH 轨道码率会传入播放器数据源作为回退值', () {
     final source = HdrNetworkSource(
       qualityCode: 125,

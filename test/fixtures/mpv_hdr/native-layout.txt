@@ -1,0 +1,15 @@
+wide-screen-four-three 4:3 1920 1080 3840 2160
+wide-screen-sixteen-nine 16:9 1920 1080 3840 2160
+portrait-four-three 4:3 1000 1300 3840 2160
+portrait-sixteen-nine 16:9 1000 1300 3840 2160
+four-three-screen-four-three 4:3 1200 900 3840 2160
+four-three-screen-sixteen-nine 16:9 1200 900 3840 2160
+fixed-before-track-metadata 4:3 1920 1080 0 0
+fit-without-track-metadata fit 1920 1080 0 0
+fit-source-four-three fit 1920 1080 640 480
+fill-entire-view fill 1920 1080 640 480
+cover-source-four-three cover 1920 1080 640 480
+fit-width-source-four-three fitWidth 1920 1080 640 480
+fit-height-source-four-three fitHeight 1920 1080 640 480
+unknown-mode-falls-back invalid 1920 1080 640 480
+empty-view-waits 16:9 1920 0 3840 2160

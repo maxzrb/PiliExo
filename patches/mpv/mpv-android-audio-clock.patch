@@ -1,0 +1,207 @@
+--- a/audio/out/ao_audiotrack.c
++++ b/audio/out/ao_audiotrack.c
+@@ -745,8 +745,10 @@
+     max = MP_ALIGN_UP(max, bps);
+     p->size = MPCLAMP(buffer_size * 2, min, max);
+     MP_VERBOSE(ao, "Setting bufferSize = %d (driver=%d, min=%d, max=%d)\n", p->size, buffer_size, min, max);
+-    mp_assert(p->size % bps == 0);
+-    ao->device_buffer = p->size / bps;
++    const int frame_bytes = bps * ao->channels.num;
++    p->size = (p->size + frame_bytes - 1) / frame_bytes * frame_bytes;
++    // 设备容量以帧为单位，每帧包含所有声道。
++    ao->device_buffer = p->size / frame_bytes;
+ 
+     p->chunksize = p->size;
+     p->chunk = talloc_size(ao, p->size);
+--- a/player/audio.c
++++ b/player/audio.c
+@@ -219,6 +219,9 @@
+ static void ao_chain_reset_state(struct ao_chain *ao_c)
+ {
+     ao_c->last_out_pts = MP_NOPTS_VALUE;
++#if HAVE_ANDROID
++    piliexo_audio_clock_reset(&ao_c->audio_clock);
++#endif
+     ao_c->out_eof = false;
+     ao_c->start_pts_known = false;
+     ao_c->start_pts = MP_NOPTS_VALUE;
+@@ -244,6 +247,9 @@
+ {
+     struct ao_chain *ao_c = mpctx->ao_chain;
+     if (ao_c) {
++#if HAVE_ANDROID
++        piliexo_audio_clock_reset(&ao_c->audio_clock);
++#endif
+         ao_c->ao_queue = NULL;
+         TA_FREEP(&ao_c->queue_filter);
+         ao_c->ao = NULL;
+@@ -619,6 +625,14 @@
+     return mpctx->ao_chain ? mpctx->ao_chain->last_out_pts : MP_NOPTS_VALUE;
+ }
+ 
++#if HAVE_ANDROID
++double buffered_audio_media_duration(struct MPContext *mpctx)
++{
++    return piliexo_audio_clock_delay(&mpctx->ao_chain->audio_clock,
++                                    ao_get_delay(mpctx->ao), mpctx->audio_speed);
++}
++#endif
++
+ // Return pts value corresponding to currently playing audio adjusted for AO delay
+ // and playback speed.
+ double playing_audio_pts(struct MPContext *mpctx)
+@@ -626,7 +640,11 @@
+     double pts = written_audio_pts(mpctx);
+     if (pts == MP_NOPTS_VALUE || !mpctx->ao)
+         return pts;
++#if HAVE_ANDROID
++    return pts - buffered_audio_media_duration(mpctx);
++#else
+     return pts - mpctx->audio_speed * ao_get_delay(mpctx->ao);
++#endif
+ }
+ 
+ // This garbage is needed for untimed AOs. These consume audio infinitely fast,
+@@ -731,7 +749,15 @@
+         }
+ 
+         mpctx->shown_aframes += samples;
++#if HAVE_ANDROID
++        // 已处理的旧音频帧仍携带自己的倍率，不能按新倍速累计。
++        double real_samplerate = mp_aframe_get_effective_rate(af);
++        piliexo_audio_clock_write(&ao_c->audio_clock,
++                                  samples / (double)mp_aframe_get_rate(af),
++                                  mp_aframe_get_speed(af));
++#else
+         double real_samplerate = mp_aframe_get_rate(af) / mpctx->audio_speed;
++#endif
+         if (mpctx->video_status != STATUS_EOF)
+             mpctx->delay += samples / real_samplerate;
+         ao_c->last_out_pts = mp_aframe_end_pts(af);
+@@ -942,7 +968,7 @@
+             mpctx->audio_status = STATUS_EOF;
+             mp_wakeup_core(mpctx);
+             // stops untimed AOs, stops pull AOs from streaming silence
+-            ao_reset(ao_c->ao);
++            clear_audio_output_buffers(mpctx);
+         } else {
+             if (!ao_c->ao_underrun) {
+                 MP_WARN(mpctx, "Audio device underrun detected.\n");
+@@ -986,6 +1012,10 @@
+ // Drop data queued for output, or which the AO is currently outputting.
+ void clear_audio_output_buffers(struct MPContext *mpctx)
+ {
++#if HAVE_ANDROID
++    if (mpctx->ao_chain)
++        piliexo_audio_clock_reset(&mpctx->ao_chain->audio_clock);
++#endif
+     if (mpctx->ao)
+         ao_reset(mpctx->ao);
+ }
+--- a/player/core.h
++++ b/player/core.h
+@@ -22,6 +22,10 @@
+ #include <stdbool.h>
+ 
+ #include "audio/aframe.h"
++#include "config.h"
++#if HAVE_ANDROID
++#include "piliexo_audio_clock.h"
++#endif
+ #include "clipboard/clipboard.h"
+ #include "common/common.h"
+ #include "filters/f_output_chain.h"
+@@ -199,6 +203,9 @@
+     struct mp_async_queue *ao_queue;
+     struct mp_filter *queue_filter;
+     struct mp_filter *ao_filter;
++#if HAVE_ANDROID
++    struct piliexo_audio_clock audio_clock;
++#endif
+     double ao_resume_time;
+ 
+     bool out_eof;
+@@ -510,6 +517,9 @@
+ int init_audio_decoder(struct MPContext *mpctx, struct track *track);
+ int reinit_audio_filters(struct MPContext *mpctx);
+ double playing_audio_pts(struct MPContext *mpctx);
++#if HAVE_ANDROID
++double buffered_audio_media_duration(struct MPContext *mpctx);
++#endif
+ void fill_audio_out_buffers(struct MPContext *mpctx);
+ double written_audio_pts(struct MPContext *mpctx);
+ void clear_audio_output_buffers(struct MPContext *mpctx);
+--- /dev/null
++++ b/player/piliexo_audio_clock.h
+@@ -0,0 +1,57 @@
++#ifndef PILIEXO_AUDIO_CLOCK_H
++#define PILIEXO_AUDIO_CLOCK_H
++
++#define PILIEXO_AUDIO_RATE_HISTORY 64
++
++struct piliexo_audio_clock {
++    struct {
++        double duration;
++        double rate;
++    } runs[PILIEXO_AUDIO_RATE_HISTORY];
++    unsigned next;
++    unsigned count;
++};
++
++static inline void piliexo_audio_clock_reset(struct piliexo_audio_clock *clock)
++{
++    clock->next = 0;
++    clock->count = 0;
++}
++
++static inline void piliexo_audio_clock_write(struct piliexo_audio_clock *clock,
++                                            double duration, double rate)
++{
++    if (!(duration > 0) || !__builtin_isfinite(duration) ||
++        !(rate > 0) || !__builtin_isfinite(rate))
++        return;
++    unsigned last = (clock->next + PILIEXO_AUDIO_RATE_HISTORY - 1) %
++                    PILIEXO_AUDIO_RATE_HISTORY;
++    if (clock->count && clock->runs[last].rate == rate) {
++        clock->runs[last].duration += duration;
++        return;
++    }
++    clock->runs[clock->next].duration = duration;
++    clock->runs[clock->next].rate = rate;
++    clock->next = (clock->next + 1) % PILIEXO_AUDIO_RATE_HISTORY;
++    if (clock->count < PILIEXO_AUDIO_RATE_HISTORY)
++        clock->count++;
++}
++
++static inline double piliexo_audio_clock_delay(const struct piliexo_audio_clock *clock,
++                                               double delay, double current_rate)
++{
++    double media_delay = 0;
++    unsigned slot = clock->next;
++    // 从最新一段向前，把设备仍排队的物理时长按各段的处理倍速换算。
++    for (unsigned i = 0; i < clock->count && delay > 0; i++) {
++        slot = (slot + PILIEXO_AUDIO_RATE_HISTORY - 1) % PILIEXO_AUDIO_RATE_HISTORY;
++        double duration = clock->runs[slot].duration;
++        double queued = delay < duration ? delay : duration;
++        media_delay += queued * clock->runs[slot].rate;
++        delay -= queued;
++    }
++    // 输出设备估算的延迟可能包含尚无时间戳的部分，沿用原估算。
++    return media_delay + delay * current_rate;
++}
++
++#endif
+--- a/player/video.c
++++ b/player/video.c
+@@ -731,7 +731,11 @@
+                mpctx->video_status == STATUS_PLAYING &&
+                !ao_untimed(mpctx->ao))
+     {
++#if HAVE_ANDROID
++        double buffered_audio = buffered_audio_media_duration(mpctx) / mpctx->video_speed;
++#else
+         double buffered_audio = ao_get_delay(mpctx->ao);
++#endif
+ 
+         double predicted = mpctx->delay / mpctx->video_speed +
+                            mpctx->time_frame;

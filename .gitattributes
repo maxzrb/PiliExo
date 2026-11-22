@@ -1,3 +1,4 @@
 *.patch text eol=lf
+lib/scripts/media_query.patch whitespace=-blank-at-eol
 patches/mpv/*.patch whitespace=-blank-at-eol
 test/ref/fate/** text eol=lf

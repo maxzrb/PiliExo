@@ -35,4 +35,11 @@ enum VideoFitType {
     .ratio_16x9 => 'fill',
     _ => 'fit',
   };
+
+  /// mpv 原生视图在 Android 端计算固定比例的 Surface 尺寸。
+  String get mpvResizeMode => switch (this) {
+    .ratio_4x3 => '4:3',
+    .ratio_16x9 => '16:9',
+    _ => hdrResizeMode,
+  };
 }

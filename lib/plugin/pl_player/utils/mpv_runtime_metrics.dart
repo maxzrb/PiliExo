@@ -4,6 +4,11 @@ class MpvRuntimeMetrics {
   int? decoderDroppedFrames;
   int? forwardBytes;
   double? cacheDuration;
+  double? videoFrameRate;
+  String? videoCodec;
+  String? audioCodec;
+  String? videoDecoder;
+  String? audioDecoder;
   int recentDroppedFrames = 0;
   int? _previousOutputDroppedFrames;
   int? _previousDecoderDroppedFrames;

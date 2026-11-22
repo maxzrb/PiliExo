@@ -1,0 +1,7 @@
+[
+  [[], ["search", "recommendations", "following", "feed", "user"], ["history"], ["favorite"], []],
+  [[], ["search", "recommendations", "following", "feed"], []],
+  [[], ["search", "recommendations", "following", "feed", "user"], ["favorite"], [], [], []],
+  [[], ["search", "recommendations", "following", "feed", "user"], [], [], []],
+  [[], ["recommendations"], ["search", "following", "feed"]]
+]

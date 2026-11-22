@@ -1,0 +1,147 @@
+--- a/filters/f_decoder_wrapper.c
++++ b/filters/f_decoder_wrapper.c
+@@ -231,6 +231,9 @@
+     bool attached_picture;
+     bool pts_reset;
+     int attempt_framedrops; // try dropping this many frames
++#if HAVE_ANDROID
++    int pending_operating_rate;
++#endif
+     int dropped_frames; // total frames _probably_ dropped
+ };
+ 
+@@ -500,6 +503,16 @@
+     p->attempt_framedrops = num;
+     mp_mutex_unlock(&p->cache_lock);
+ }
++
++#if HAVE_ANDROID
++void mp_decoder_wrapper_set_operating_rate(struct mp_decoder_wrapper *d, int rate)
++{
++    struct priv *p = d->f->priv;
++    mp_mutex_lock(&p->cache_lock);
++    p->pending_operating_rate = rate;
++    mp_mutex_unlock(&p->cache_lock);
++}
++#endif
+ 
+ int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d)
+ {
+@@ -924,7 +937,16 @@
+         mp_mutex_lock(&p->cache_lock);
+         if (p->attempt_framedrops)
+             framedrop_type = 1;
++#if HAVE_ANDROID
++        int operating_rate = p->pending_operating_rate;
++        p->pending_operating_rate = 0;
++#endif
+         mp_mutex_unlock(&p->cache_lock);
++#if HAVE_ANDROID
++        // 只在解码线程设置参数，播放器线程不等待 MediaCodec 的回执。
++        if (operating_rate != 0)
++            p->decoder->control(p->decoder->f, VDCTRL_SET_OPERATING_RATE, &operating_rate);
++#endif
+ 
+         if (start_pts != MP_NOPTS_VALUE && packet && p->play_dir > 0 &&
+             packet->pts < start_pts - .005 && !p->has_broken_packet_pts)
+--- a/filters/f_decoder_wrapper.h
++++ b/filters/f_decoder_wrapper.h
+@@ -45,6 +45,9 @@
+ 
+ // Legacy decoder framedrop control.
+ void mp_decoder_wrapper_set_frame_drops(struct mp_decoder_wrapper *d, int num);
++#if HAVE_ANDROID
++void mp_decoder_wrapper_set_operating_rate(struct mp_decoder_wrapper *d, int rate);
++#endif
+ int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d);
+ 
+ double mp_decoder_wrapper_get_container_fps(struct mp_decoder_wrapper *d);
+@@ -75,6 +78,9 @@
+     // framedrop mode: 0=none, 1=standard, 2=hrseek
+     VDCTRL_SET_FRAMEDROP,
+     VDCTRL_CHECK_FORCED_EOF,
++#if HAVE_ANDROID
++    VDCTRL_SET_OPERATING_RATE,
++#endif
+ };
+ 
+ int mp_decoder_wrapper_control(struct mp_decoder_wrapper *d,
+--- a/player/core.h
++++ b/player/core.h
+@@ -168,6 +168,9 @@
+     struct mp_output_chain *filter;
+ 
+     struct vo *vo;
++#if HAVE_ANDROID
++    int requested_codec_rate;
++#endif
+ 
+     struct track *track;
+     struct mp_pin *filter_src;
+--- /dev/null
++++ b/player/piliexo_codec_rate.h
+@@ -0,0 +1,16 @@
++#ifndef MPV_PILIEXO_CODEC_RATE_H
++#define MPV_PILIEXO_CODEC_RATE_H
++
++#include <math.h>
++
++// 提示解码器预留吞吐；用户选择的实际播放倍率由播放时钟控制。
++static inline int piliexo_codec_operating_rate(double fps, double speed)
++{
++    if (!(fps > 0 && fps <= 240 && isfinite(speed) && speed > 0))
++        return 0;
++    double demand = fps * fmax(1, speed);
++    int rate = (int)ceil(fmin(24000, demand));
++    return speed > 1.01 ? rate : -rate;
++}
++
++#endif
+--- a/player/video.c
++++ b/player/video.c
+@@ -42,6 +42,10 @@
+ #include "video/out/vo.h"
+ 
+ #include "core.h"
++
++#if HAVE_ANDROID
++#include "piliexo_codec_rate.h"
++#endif
+ #include "command.h"
+ #include "screenshot.h"
+ 
+@@ -1192,6 +1196,18 @@
+     struct vo_chain *vo_c = mpctx->vo_chain;
+     struct vo *vo = vo_c->vo;
+ 
++#if HAVE_ANDROID
++    if (!mpctx->opts->untimed && track && track->dec)
++    {
++        int rate = piliexo_codec_operating_rate(vo_c->filter->container_fps,
++                                               opts->playback_speed);
++        if (rate != vo_c->requested_codec_rate) {
++            vo_c->requested_codec_rate = rate;
++            mp_decoder_wrapper_set_operating_rate(track->dec, rate);
++        }
++    }
++#endif
++
+     if (vo_c->filter->reconfig_happened) {
+         mp_notify(mpctx, MPV_EVENT_VIDEO_RECONFIG, NULL);
+         vo_c->filter->reconfig_happened = false;
+--- a/video/decode/vd_lavc.c
++++ b/video/decode/vd_lavc.c
+@@ -1362,6 +1362,13 @@
+ {
+     vd_ffmpeg_ctx *ctx = vd->priv;
+     switch (cmd) {
++#if HAVE_ANDROID
++    case VDCTRL_SET_OPERATING_RATE:
++        if (ctx->avctx && ctx->avctx->priv_data)
++            av_opt_set_int(ctx->avctx->priv_data, "piliexo_live_operating_rate",
++                           *(int *)arg, 0);
++        return CONTROL_TRUE;
++#endif
+     case VDCTRL_SET_FRAMEDROP:
+         ctx->framedrop_flags = *(int *)arg;
+         return CONTROL_TRUE;
