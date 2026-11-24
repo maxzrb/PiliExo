@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-24 23:56 已发布 `v26.11.24.1`，标签对应 `abdc2e076`。GitHub 和 ModelScope 两个 ABI 包及校验清单一致。MEP-AN00 覆盖安装并冷启动至首页。
+
 - 2026-11-24 23:30 v15 已覆盖安装。主标签滑动减小末段残余位移，目标页到零位后的下一帧再隐藏离场页。切页定向测试通过，真机尾段观感待确认。
 
 - 2026-11-24 23:22 v14 已覆盖安装。Android 14 起，预测性返回对未保存设置的用户默认开启，效果为缩小渐隐。洞察透明度从 33% 起调，切回首页立即检查未读数。17 项定向测试通过。
@@ -2404,3 +2406,12 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 用户观察到切回首页时偶发停一下后再平移几像素。旧 300 ms 曲线的尾部仍有少量位移，结束帧还要取消离场页绘制。这两处可解释漏帧时的观感，尚无对应真机帧序列归因。
 - 主标签使用较早减小残余位移的缓出曲线，先绘制目标页的零位，再在下一帧隐藏离场页。保留底栏实时模糊和未读检查时序。定向静态分析和切页测试 1/1 通过，测试覆盖中途反向切页、最后一帧零位与下一帧收起。
 - v15 候选 `dist/integration/predictive-back-20261124/PiliExo_android_v26.11.22_predictive-back-v15.apk`，49,923,875 字节，SHA256 `8d2ff276a33afd179f831d1dfeb1a61fd8a8d8a926e6b4f0f4b6b75ed7cd8c80`。插件、原生库、AOT 基线 `d9b00df0b`、原 V2 签名和 16 KB 对齐通过。MEP-AN00 覆盖安装成功，lastUpdateTime 23:30:04。手机息屏锁定，页面级冷启动与实际切页观感待验，工作区未提交。
+
+## 2026-11-24 23:56 v26.11.24.1 正式发布
+
+- 用户通过 v15 候选验收后发布。源提交 `abdc2e076b8cd3d53a62ab6dc1b9d72653ee6a4a`，正式标签 `v26.11.24.1`，Android `26.11.24`、versionCode 46。发布源码快进至 `origin/main`，GitHub Actions 保持关闭。
+- Flutter 3.47.9 本机构建。离线 Gradle 使用经官方对象校验的 32 位引擎依赖。双 ABI 通过插件注册 29/29、DEX、AOT 源提交、包名/版本/ABI、定制 mpv、FFmpeg renderer、16 KB 对齐及原 V2 证书检查。两包的 mpv 库 SHA-256 与上一正式版对应 ABI 相同。
+- 71 项定向测试通过。66 个相关 Dart 文件静态分析为 0 错误、0 警告、8 项既有提示。MEP-AN00 上用正式 arm64 包覆盖安装成功，ADB 报告冷启动 463 ms，首页视图层级包含首页、动态、我的。32 位包的验收限于产物检查，正式包的真机检查覆盖从 v15 候选覆盖安装与冷启动，更新验证覆盖公开端点与下载资产。
+- 本机产物位于 `dist/release/v26.11.24.1/`。arm64 APK 为 49,924,264 字节，SHA-256 `7dd178796829f8b6b6c9f2b775ef4060d96ced7b5cf0068859f09fd1460af772`。v7a APK 为 49,926,042 字节，SHA-256 `e12de1262c05b59b7c2f0bea78801b17dd456d6770e89de1e24cd882dcfae363`。校验清单 SHA-256 `ba34703bbd484c780e690aa08830bc8fab3f3d79499f5bad3e6bad71ea53242b`。
+- GitHub Release 已设为 Latest，ModelScope 同版本目录下三份文件的长度及 SHA-256 与本机构建产物完全一致。默认分支 README 的下载入口与版本标签已核对。[GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.24.1) · [ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
+- 本机已恢复 SDK、工程 Pub 依赖及 Android 生成配置的真实路径，重新通过插件注册检查，已移除本次 P 盘映射。
