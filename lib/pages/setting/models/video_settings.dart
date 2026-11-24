@@ -9,6 +9,7 @@ import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/hdr_route_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/models/audio_output_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/bluetooth_latency_service.dart';
 import 'package:PiliPlus/utils/filtering_text.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
@@ -162,6 +163,18 @@ List<SettingsModel> get videoSettings => [
       leading: const Icon(Icons.speaker_outlined),
       getSubtitle: () => '当前：${Pref.audioOutput}',
       onTap: _showAudioOutputDialog,
+    ),
+  if (Platform.isAndroid)
+    NormalModel(
+      title: '蓝牙延迟补偿',
+      leading: const Icon(Icons.bluetooth_rounded),
+      getSubtitle: () => BluetoothLatencyService.instance.isCompensationActive
+          ? BluetoothLatencyService.instance.summaryText
+          : '点击配置蓝牙耳机音画同步',
+      onTap: (context, setState) async {
+        await Get.toNamed('/bluetoothLatencySetting');
+        setState();
+      },
     ),
   NormalModel(
     title: '缓冲大小',

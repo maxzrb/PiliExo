@@ -716,7 +716,7 @@ private class HdrMedia3Session(
     )
     private val player: ExoPlayer = ExoPlayer.Builder(
         context,
-        DefaultRenderersFactory(context)
+        BluetoothLatencyRenderersFactory(context)
             // 先使用设备硬解；设备没有可用 AC-3/E-AC-3 解码器时再使用 FFmpeg 软件解码。
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true),

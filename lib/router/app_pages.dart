@@ -54,6 +54,7 @@ import 'package:PiliPlus/pages/search/view.dart';
 import 'package:PiliPlus/pages/search_result/view.dart';
 import 'package:PiliPlus/pages/search_trending/view.dart';
 import 'package:PiliPlus/pages/setting/pages/bar_set.dart';
+import 'package:PiliPlus/pages/setting/pages/bluetooth_latency_set.dart';
 import 'package:PiliPlus/pages/setting/pages/color_select.dart';
 import 'package:PiliPlus/pages/setting/pages/display_mode.dart';
 import 'package:PiliPlus/pages/setting/pages/font_setting.dart';
@@ -115,6 +116,10 @@ class Routes {
     GetPage(name: '/fontSetting', page: () => const FontSettingPage()),
     // 屏幕帧率
     GetPage(name: '/displayModeSetting', page: () => const SetDisplayMode()),
+    GetPage(
+      name: '/bluetoothLatencySetting',
+      page: () => const BluetoothLatencySettingPage(),
+    ),
     //
     GetPage(name: '/articlePage', page: () => const ArticlePage()),
 

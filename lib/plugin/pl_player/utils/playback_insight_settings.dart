@@ -12,3 +12,17 @@ Future<void> setPlaybackInsightMode(PlaybackInsightMode mode) async {
   playbackInsightModeNotifier.value = mode;
   await GStorage.setting.put(SettingBoxKey.playbackInsightMode, mode.index);
 }
+
+const playbackInsightDefaultTransparency = 32;
+
+final playbackInsightTransparencyNotifier = ValueNotifier<int?>(
+  Pref.playbackInsightTransparency,
+);
+
+Future<void> setPlaybackInsightTransparency(int transparency) async {
+  playbackInsightTransparencyNotifier.value = transparency;
+  await GStorage.setting.put(
+    SettingBoxKey.playbackInsightTransparency,
+    transparency,
+  );
+}

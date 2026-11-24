@@ -136,6 +136,15 @@ List<SettingsModel> get playSettings => [
     onSelected: (value, setState) =>
         setPlaybackInsightMode(value).whenComplete(setState),
   ),
+  NormalModel(
+    title: '播放器洞察透明度',
+    leading: const Icon(Icons.opacity_outlined),
+    getSubtitle: () {
+      final transparency = Pref.playbackInsightTransparency;
+      return transparency == null ? '默认' : '$transparency%';
+    },
+    onTap: _showPlaybackInsightTransparencyDialog,
+  ),
   if (PlatformUtils.isMobile)
     SwitchModel(
       title: '音频焦点接管',
@@ -482,6 +491,32 @@ Future<void> _showFullScreenModeDialog(
     await GStorage.setting.put(SettingBoxKey.fullScreenMode, res.index);
     setState();
   }
+}
+
+Future<void> _showPlaybackInsightTransparencyDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final res = await showDialog<double>(
+    context: context,
+    builder: (_) => SliderDialog(
+      title: const Text('播放器洞察背景透明度'),
+      value:
+          (Pref.playbackInsightTransparency ??
+                  playbackInsightDefaultTransparency)
+              .toDouble(),
+      min: 0,
+      max: 100,
+      divisions: 100,
+      precise: 0,
+      suffix: '%',
+      minLabel: '不透明',
+      maxLabel: '透明',
+    ),
+  );
+  if (res == null) return;
+  await setPlaybackInsightTransparency(res.toInt());
+  setState();
 }
 
 Future<void> _showAngleDegreesDialog(

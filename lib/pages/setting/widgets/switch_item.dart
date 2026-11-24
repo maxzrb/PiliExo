@@ -10,6 +10,7 @@ class SetSwitchItem extends StatefulWidget {
   final String? subtitle;
   final String setKey;
   final bool defaultVal;
+  final bool enabled;
   final ValueChanged<bool>? onChanged;
   final bool needReboot;
   final Widget? leading;
@@ -24,6 +25,7 @@ class SetSwitchItem extends StatefulWidget {
     this.subtitle,
     required this.setKey,
     this.defaultVal = false,
+    this.enabled = true,
     this.onChanged,
     this.needReboot = false,
     this.leading,
@@ -99,14 +101,18 @@ class _SetSwitchItemState extends State<SetSwitchItem> {
       alignment: .centerRight,
       child: Switch(
         value: val,
-        onChanged: switchChange,
+        onChanged: widget.enabled ? switchChange : null,
       ),
     );
 
     Widget child(Widget? trailing) => ListTile(
       contentPadding: widget.contentPadding,
-      enabled: widget.onTap == null ? true : val,
-      onTap: widget.onTap == null ? switchChange : () => widget.onTap!(context),
+      enabled: widget.enabled && (widget.onTap == null || val),
+      onTap: !widget.enabled
+          ? null
+          : widget.onTap == null
+          ? switchChange
+          : () => widget.onTap!(context),
       title: Text(widget.title, style: titleStyle),
       subtitle: widget.subtitle != null
           ? Text(widget.subtitle!, style: subTitleStyle)

@@ -36,6 +36,7 @@ import 'package:PiliPlus/pages/video/post_panel/popup_menu_text.dart';
 import 'package:PiliPlus/pages/video/post_panel/view.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/first_frame_cover.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/mpv_hdr_subtitle.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_control_type.dart';
@@ -1571,6 +1572,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     _longPressPointer = null;
     unawaited(plPlayerController.setLongPressStatus(false));
   }
+
   late final ImmediateTapGestureRecognizer _tapGestureRecognizer;
   late final DoubleTapGestureRecognizer _doubleTapGestureRecognizer;
   late final PlayerScaleGestureRecognizer _scaleGestureRecognizer;
@@ -2477,9 +2479,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               key: _videoKey,
               child: constrainedView,
             );
-          } else if (plPlayerController.videoController == null) {
-            videoChild = const SizedBox.shrink();
-          } else {
+          } else if (plPlayerController.videoController case final output?) {
+            final texture = SimpleVideo(
+              key: ObjectKey(output),
+              controller: output,
+              fill: widget.fill,
+              aspectRatio: videoFit.aspectRatio,
+            );
             videoChild = RepaintBoundary(
               key: _videoKey,
               child: Transform.flip(
@@ -2488,14 +2494,18 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 child: FittedBox(
                   fit: videoFit.boxFit,
                   alignment: widget.alignment,
-                  child: SimpleVideo(
-                    controller: plPlayerController.videoController!,
-                    fill: widget.fill,
-                    aspectRatio: videoFit.aspectRatio,
-                  ),
+                  child: Platform.isAndroid
+                      ? FirstFrameCover(
+                          firstFrame: output.waitUntilFirstFrameRendered,
+                          color: widget.fill,
+                          child: texture,
+                        )
+                      : texture,
                 ),
               ),
             );
+          } else {
+            videoChild = const SizedBox.shrink();
           }
           return MouseInteractiveViewer(
             // 原生播放器自行适配输出，Flutter 不再对其应用手势缩放。

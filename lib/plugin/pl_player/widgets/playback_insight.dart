@@ -332,15 +332,23 @@ class _PlaybackInsightHudState extends State<PlaybackInsightHud> {
                     opacity: _detailsExpanded || insightVisible ? 1 : 0,
                     duration: const Duration(milliseconds: 350),
                     curve: Curves.easeOut,
-                    child: Material(
-                      color: _detailsExpanded
-                          ? const Color(0xD9000000)
-                          : const Color(0xAD000000),
-                      elevation: _detailsExpanded ? 8 : 0,
-                      borderRadius: BorderRadius.circular(
-                        _detailsExpanded ? 14 : 10,
+                    child: ValueListenableBuilder(
+                      valueListenable: playbackInsightTransparencyNotifier,
+                      builder: (context, transparency, child) => Material(
+                        color: transparency == null
+                            ? (_detailsExpanded
+                                  ? const Color(0xD9000000)
+                                  : const Color(0xAD000000))
+                            : Colors.black.withValues(
+                                alpha: 1 - transparency / 100,
+                              ),
+                        elevation: _detailsExpanded ? 8 : 0,
+                        borderRadius: BorderRadius.circular(
+                          _detailsExpanded ? 14 : 10,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: child,
                       ),
-                      clipBehavior: Clip.antiAlias,
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 180),
                         switchInCurve: Curves.easeOut,
@@ -712,12 +720,22 @@ class _PlaybackInsightDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<PlaybackInsightSnapshot>(
-      valueListenable: controller.playbackInsight,
-      builder: (context, snapshot, child) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        controller.playbackInsight,
+        playbackInsightTransparencyNotifier,
+      ]),
+      builder: (context, _) {
+        final snapshot = controller.playbackInsight.value;
+        final transparency = playbackInsightTransparencyNotifier.value;
         final colorScheme = ColorScheme.of(context);
         final maxHeight = MediaQuery.sizeOf(context).height * 0.72;
         return AlertDialog(
+          backgroundColor: transparency == null
+              ? null
+              : colorScheme.surfaceContainerHigh.withValues(
+                  alpha: 1 - transparency / 100,
+                ),
           title: Row(
             children: [
               const Expanded(child: Text('播放器洞察')),

@@ -185,7 +185,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
                       : "我能吞下玻璃而不伤身体"}\n\n'
                   '注：部分字体可能无法应用',
                   style: TextStyle(
-                    fontFamily: _selectedFont ?? '',
+                    fontFamily: _selectedFont ?? FontUtils.defaultFontFamily,
                     fontWeight: .values[_selectedWeight],
                     fontSize: 14 * _selectedScale,
                   ),
@@ -219,10 +219,17 @@ class _FontSettingPageState extends State<FontSettingPage> {
                             child: Text(
                               _appFont.isCustom
                                   ? _selectedFont!.split('/').last
-                                  : _selectedFont ?? '默认',
+                                  : switch (_selectedFont) {
+                                      null =>
+                                        '默认 · ${FontUtils.defaultFontFamily}',
+                                      FontUtils.systemFontFamily => '跟随系统',
+                                      final family => family,
+                                    },
                               style: TextStyle(
                                 fontSize: 15,
-                                fontFamily: _selectedFont ?? '',
+                                fontFamily:
+                                    _selectedFont ??
+                                    FontUtils.defaultFontFamily,
                               ),
                             ),
                           ),
@@ -265,7 +272,21 @@ class _FontSettingPageState extends State<FontSettingPage> {
                               minTileHeight: _tileHeight,
                               tileColor: _tileColor(null),
                               onTap: () => _onFontChanged(null),
-                              title: const Text('默认'),
+                              title: const Text(
+                                '默认 · ${FontUtils.defaultFontFamily}',
+                                style: TextStyle(
+                                  fontFamily: FontUtils.defaultFontFamily,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SliverToBoxAdapter(
+                            child: ListTile(
+                              minTileHeight: _tileHeight,
+                              tileColor: _tileColor(FontUtils.systemFontFamily),
+                              onTap: () =>
+                                  _onFontChanged(FontUtils.systemFontFamily),
+                              title: const Text('跟随系统'),
                             ),
                           ),
                           if (FontUtils.isCustom)

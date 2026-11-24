@@ -12,6 +12,7 @@ class MainActivity : AudioServiceActivity() {
     private var mpvHdrPlugin: MpvHdrPlugin? = null
     private var hapticFeedbackPlugin: HapticFeedbackPlugin? = null
     private var androidUpdatePlugin: AndroidUpdatePlugin? = null
+    private var bluetoothLatencyPlugin: BluetoothLatencyPlugin? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -22,6 +23,10 @@ class MainActivity : AudioServiceActivity() {
         hapticFeedbackPlugin?.register()
         androidUpdatePlugin = AndroidUpdatePlugin(this, flutterEngine.dartExecutor.binaryMessenger)
         androidUpdatePlugin?.register()
+        bluetoothLatencyPlugin = BluetoothLatencyPlugin(
+            this,
+            flutterEngine.dartExecutor.binaryMessenger,
+        )
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
@@ -33,6 +38,8 @@ class MainActivity : AudioServiceActivity() {
         hapticFeedbackPlugin = null
         androidUpdatePlugin?.dispose()
         androidUpdatePlugin = null
+        bluetoothLatencyPlugin?.dispose()
+        bluetoothLatencyPlugin = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 

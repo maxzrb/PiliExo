@@ -26,6 +26,14 @@ void main() {
     expect(defaults['enableMedia3Hdr'], isFalse);
   });
 
+  test('蓝牙延迟补偿默认关闭并使用自动编码', () {
+    final defaults = createDefaultSettingValues();
+
+    expect(defaults['bluetoothLatencyCompensation'], isFalse);
+    expect(defaults['bluetoothLatencyCodec'], 'auto');
+    expect(defaults['bluetoothLatencyTrimMs'], 0);
+  });
+
   test('只补充缺失值，不覆盖已有设置', () {
     final settings = <dynamic, dynamic>{
       'themeMode': 0,

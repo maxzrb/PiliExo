@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:PiliPlus/utils/font_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -21,6 +22,17 @@ void main() {
   tearDownAll(() async {
     await GStorage.setting.close();
     await hiveDirectory.delete(recursive: true);
+  });
+
+  test('默认使用内置鸿蒙黑体，并支持显式选择系统字体', () {
+    final previous = FontUtils.appFont;
+    addTearDown(() => FontUtils.appFont = previous);
+    expect(FontUtils.fontFamily, 'HarmonyOS Sans SC');
+    FontUtils.appFont = (
+      fontFamily: FontUtils.systemFontFamily,
+      isCustom: false,
+    );
+    expect(FontUtils.fontFamily, isNull);
   });
 
   test('旧版默认字重迁移后保持正常字重', () async {

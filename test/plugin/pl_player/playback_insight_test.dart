@@ -7,6 +7,7 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_insight_settings.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/playback_insight.dart';
 import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:material_ui/material_ui.dart';
@@ -296,11 +297,22 @@ void main() {
     );
     await tester.pump();
 
+    final surface = find.byWidgetPredicate(
+      (widget) => widget is Material && widget.clipBehavior == Clip.antiAlias,
+    );
+    expect(tester.widget<Material>(surface).color, const Color(0xAD000000));
+    addTearDown(() => playbackInsightTransparencyNotifier.value = null);
+    await tester.runAsync(() => setPlaybackInsightTransparency(75));
+    await tester.pump();
+    expect(Pref.playbackInsightTransparency, 75);
+    expect(tester.widget<Material>(surface).color?.a, 0.25);
+
     // 点击摘要右侧的留白，而不是文本本身，验证整个黑色 surface 都可点击。
     await tester.tapAt(const Offset(304, 62));
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('播放器洞察'), findsOneWidget);
+    expect(tester.widget<Material>(surface).color?.a, 0.25);
   });
 
   testWidgets('智能摘要渐隐期间仍可以点击展开详情', (tester) async {

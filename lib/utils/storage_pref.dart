@@ -892,6 +892,11 @@ abstract final class Pref {
   static bool get enableAudioFocus =>
       _setting.get(SettingBoxKey.enableAudioFocus, defaultValue: true);
 
+  static int? get playbackInsightTransparency {
+    final value = _setting.get(SettingBoxKey.playbackInsightTransparency);
+    return value is int ? value.clamp(0, 100) : null;
+  }
+
   static PlaybackInsightMode get playbackInsightMode {
     final value = _setting.get(
       SettingBoxKey.playbackInsightMode,
@@ -988,6 +993,19 @@ abstract final class Pref {
     SettingBoxKey.audioOutput,
     defaultValue: AudioOutput.defaultValue,
   );
+
+  static bool get bluetoothLatencyCompensation => _setting.get(
+    SettingBoxKey.bluetoothLatencyCompensation,
+    defaultValue: false,
+  );
+
+  static String get bluetoothLatencyCodec => _setting.get(
+    SettingBoxKey.bluetoothLatencyCodec,
+    defaultValue: 'auto',
+  );
+
+  static int get bluetoothLatencyTrimMs =>
+      _setting.get(SettingBoxKey.bluetoothLatencyTrimMs, defaultValue: 0);
 
   static bool get enableAi =>
       _setting.get(SettingBoxKey.enableAi, defaultValue: false);

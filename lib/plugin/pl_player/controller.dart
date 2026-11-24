@@ -36,6 +36,7 @@ import 'package:PiliPlus/plugin/pl_player/models/playback_telemetry.dart';
 import 'package:PiliPlus/plugin/pl_player/models/video_fit_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/danmaku_options.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/decoder_operating_rate.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/bluetooth_latency_service.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_audio_options.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_frame_drop_policy.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
@@ -130,6 +131,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   static const _longPressDropRecoveryDuration = Duration(milliseconds: 500);
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
+  bool _bluetoothLatencyBound = false;
   VoidCallback? _onInitCallback;
 
   static PlPlayerController? _instance;
@@ -1415,6 +1417,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     assert(_videoPlayerController == null);
     final opt = {
       'video-sync': Pref.videoSync,
+      'audio-delay': BluetoothLatencyService.instance.mpvAudioDelaySeconds,
       ...MpvAudioOptions.forOutput(
         isAndroid: Platform.isAndroid,
         output: Pref.audioOutput,
@@ -1638,6 +1641,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     isBuffering.value = false;
     _heartDuration = 0;
     danmakuController?.clear();
+
+    await BluetoothLatencyService.instance.refreshAndApply();
+    _bindBluetoothLatency();
 
     if (_canUseMedia3Hdr(dataSource)) {
       await _createHdrVideoController(dataSource as HdrNetworkSource, seekTo);
@@ -3068,6 +3074,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
 
     _playerCount = 0;
+    _unbindBluetoothLatency();
     longPressStatus.value = false;
     _rateCoordinator.dispose();
     _longPressDropRecoveryTimer?.cancel();
@@ -3133,6 +3140,22 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _videoController = null;
     _instance = null;
     videoPlayerServiceHandler?.clear();
+  }
+
+  void _bindBluetoothLatency() {
+    if (_bluetoothLatencyBound) return;
+    _bluetoothLatencyBound = true;
+    BluetoothLatencyService.instance.addListener(_applyBluetoothLatency);
+  }
+
+  void _unbindBluetoothLatency() {
+    if (!_bluetoothLatencyBound) return;
+    _bluetoothLatencyBound = false;
+    BluetoothLatencyService.instance.removeListener(_applyBluetoothLatency);
+  }
+
+  void _applyBluetoothLatency() {
+    BluetoothLatencyService.instance.applyToMpv(_videoPlayerController);
   }
 
   static void updatePlayCount() {

@@ -1,5 +1,27 @@
 # PiliExo AI 工作状态
 
+- 2026-11-24 16:52 v14 候选已覆盖安装至 MEP-AN00。蓝牙补偿改用普通设置共用的 SetSwitchItem，开关位于右侧，断开置灰并保留已开启状态。定向测试 18/18、定向分析和 APK 校验通过。手机息屏，页面冷启动待确认。
+
+- 2026-11-24 16:45 v13 候选已覆盖安装至 MEP-AN00，冷启动 474 ms 且窗口可见。内置 HarmonyOS Sans SC 更新为华为 NEXT 官方 2.400；蓝牙开关跟随全局列表主题。22 项定向测试、定向分析及 APK 内字体核对通过。
+
+- 2026-11-24 16:19 v12 候选已覆盖安装至 MEP-AN00。新增蓝牙断开时灰色开启状态、洞察背景透明度、Android mpv 纹理首帧前黑底、默认 HarmonyOS Sans SC。39 项定向测试、定向分析、APK 与字体内置检查通过。手机息屏，页面冷启动与偶发闪灰待真机播放验证。
+
+- 2026-11-24 15:39 蓝牙额外补偿范围改为 ±250 ms，零点居中，步进 5 ms。v11 已覆盖安装到 MEP-AN00，定向测试 17/17，定向分析与 APK 校验通过。手机息屏，页面待真机查看。
+
+- 2026-11-24 15:27 蓝牙额外补偿 v10 已安装至 MEP-AN00。滑杆铺满弹窗内容区，两端用小字标注，范围 −100～+250 ms，步进 5 ms。v9 真机校准在额外补偿归零时的五次闪动均按 +191 ms 安排。v10 定向测试 17/17、静态 APK 校验及覆盖安装通过，设备息屏时进程已启动，页面绘制待确认。
+
+- 2026-11-24 15:04 蓝牙额外补偿 v9 已安装至 MEP-AN00。校准预览使用自动估值和待保存微调，按钮按“声音先到”减 5 ms、“声音后到”加 5 ms。音频按采样帧固定为每 3 秒一声，Flutter 按原生预告时间闪动，音频写入独立工作线程。定向测试 17/17、静态 APK 校验及真机冷启动通过。实际看听节拍和同步待用户验收，工作区未提交。
+
+- 2026-11-24 12:51 蓝牙校准“约 10 秒一串提示音”修复（v4 已安装）：设备日志确认 v3 的 AudioTrack 每次提示音都会 started/stopped，链路在两次提示之间进入空闲；蓝牙侧会把短音频缓冲/合并，表现为约 10 秒才听到一组重复提示音。v4 改为校准期间持续写入 20 ms 零电平静音，保持 A2DP 流活跃，3 秒提示音直接插入同一条流，不再反复启动/停止。提示音仍为 660 Hz、160 ms、立体声、峰值 0.42、3 秒间隔。全量 297/297 通过，arm64 v4 SHA256 `75c4ba20…`/32,805,245 字节已覆盖安装，lastUpdateTime 12:51:31；未做实际听感验收、未提交或发布。
+
+- 2026-11-24 12:43 蓝牙补偿交互/提示音第三轮候选（已安装）：一级视频设置只保留入口；二级页按使用场景重写文案，去掉“默认关闭”等防御性说明。额外补偿弹窗的提示音改为每 3 秒一次，并改为显式首选当前 A2DP 设备的 48 kHz 立体声 AudioTrack：160 ms、660 Hz、峰值 0.42、12 ms 淡入/40 ms 淡出、AudioTrack 音量 1.0。上一版运行日志已确认音轨建立并路由到 A2DP/LHDC，但仍无声，故本次补齐单声道/低增益/短脉冲这几个可能因素。全量 297/297 测试通过；arm64 v3 SHA256 `b687e848…`、32,805,080 字节已覆盖安装，未做实际耳机听感验收，未提交或发布。
+
+- 2026-11-24 11:57 蓝牙补偿交互与提示音修订（候选已安装）：一级视频设置只保留“蓝牙延迟补偿”入口，开关、输出状态、编码和额外补偿全部收进 `/bluetoothLatencySetting` 二级页；原独立“额外补偿”与“现场校准”合并为一个“额外补偿”弹窗，内含滑杆、柔和提示音和闪屏校准。提示音从系统 `ToneGenerator` 改为预热 `AudioTrack` 的 660 Hz 正弦脉冲（10 ms 淡入、衰减、25 ms 淡出，低振幅），修复无声并避免刺耳。全量 297/297 测试通过；arm64 候选 `3805db9e…`/32,804,868 字节已覆盖安装到 MEP-AN00（versionCode 45，首次安装时间保持），未做实际听感验收、未提交或发布。
+
+- 2026-11-24 11:34 蓝牙延迟补偿与现场校准候选（未发布）：参考 FFF Player `f09aa3757` 的协议/编码区间和“屏幕延迟 - 蓝牙延迟 - 额外提前量”模型，在视频设置新增默认关闭的蓝牙延迟补偿。Android 插件识别 A2DP/HFP/LE Audio、设备、刷新率和输出缓冲；支持自动/手动编码与 ±100 ms 微调，mpv 通过 `audio-delay`、Media3 HDR 通过自定义视频渲染器推迟帧；新增提示音+闪屏现场校准。Flutter 3.47.9 全量 297/297 通过；arm64 Release 候选 SHA256 `1e881e2a…`、32,806,708 字节，包名/版本/原证书/插件注册校验通过。新候选未安装、未做真机蓝牙听感验收、未发布。
+
+- 2026-11-24 09:32 竖屏全屏白带修复（未发布）：完整 fetch 后 `main` 从 `a5a6154bc` 快进到 `507b53caa`（v26.11.22.1，260 个提交），当前工作分支 `codex/fix-vertical-fullscreen-white-edge`。定位到全屏视频头仍继承页面残留滚动偏移而收缩，详情区又处于 `Offstage`，底部因此露出浅色 Scaffold；现将全屏视频头固定为完整视口高度，并把三个全屏布局的底层设为黑色。定向 2 个测试文件 4/4 通过，改动文件 Analyze 无问题；本机 Flutter 3.47.7 与仓库要求的 3.47.9 不一致，全 player 目录 109 项通过、3 个既有文件未加载。未构建、真机验收或发布。图二竖屏 9:16 内容扣除顶部系统安全区后，上下留白接近相等，属于当前持续显示比例的预期观感。
+
 - 2026-11-15 分支整理：main 已合并 v26.11.14.1 发布源码（merge `ba4f987e5`）；删除已合并的本地/远端 `codex/readme-*`、`codex/mpv-native-hdr`、`merge/upstream-2.1.4-20260913` 及旧 backup 分支；未合并的 audiotrack 实验已归档为 `archive/2026-11-15/audiotrack-native-20261018`。旧工作树已移除，远端保留 `main/dev/dom`。README、插件注册和定制 libmpv 门禁通过；清单见 docs/codex/分支归档-2026-11-15.md。
 
 - 2026-11-14 12:24 已正式发布 v26.11.14.1：应用 26.11.14+1/code44，发布源码/annotated tag 指向 8d0888d1ddb8da7364fdf186b9032605bc9f942d。修复部分构建误打包 stock libmpv 导致 mpv 原生 HDR 不可用并自动回退 ExoPlayer：删除 media_kit 三个预编译 JAR 内的 stock libmpv，arm64/v7 改用已验定制核心（080829d5…/4be63462…），新增构建前 JAR/核心检查与发布 APK 选项门禁。262项Flutter测试通过；全目录分析仅命中 dist 历史备份2个错误，lib/test/tool 范围0 error、1项既有未使用导入warning、75条info。双ABI原证书V2/16KB通过；arm64 32795357字节 SHA256 b1e777bda9666bf946962033b2cd38cd054b50f1f9200507f7ab625262a1ed7f，v7 32795944字节 SHA256 03b6dc4cb3d46e9fa8c001bd282cfc5b56060b1abc56d6f40080663fcc23d88b。GitHub Release公开、非草稿/非预发布、latest，三资产digest/长度与本地一致；ModelScope releases/v26.11.14.1/ 三文件上传3/3，两个APK HEAD 200且Content-Length/X-Linked-ETag一致。ADB在正式包安装前断开，未执行覆盖安装/冷启动/HDR实播验收，不标记为真机通过。未使用GitHub Actions。
@@ -2152,3 +2174,130 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - GitHub Release <https://github.com/maxzrb/PiliExo/releases/tag/v26.11.12.1> 已公开、非草稿/非预发布、latest，三资产服务器 digest/长度与本地一致。ModelScope `releases/v26.11.12.1/` 三文件上传 3/3、0 failed，完整下载回读 SHA256/长度一致。
 - MEP-AN00 覆盖安装 `26.11.12`/code42，firstInstallTime 保持 2026-09-02 15:19:05；冷启动 330ms 进入首页，无 FATAL/AndroidRuntime/Unhandled Exception/MissingPlugin。默认 main README 已更新并推送 `2ce4314c9ce9359a7e5ae955ea30955ee27da90d`。
 - 未使用 GitHub Actions；作者签名密钥、密码和令牌未写入仓库/发布资产。
+
+## 2026-11-24 09:32 竖屏全屏下方白带修复
+
+- 仓库为完整非浅克隆。`git fetch --all --prune --tags` 拉取全部远端引用后，本地 `main` 从 `a5a6154bc` 快进 260 个提交到 `507b53caa`（`origin/main`，v26.11.22.1）；上游同步到 `217fb54f5`（2.2.1）。已从最新 `main` 新建 `codex/fix-vertical-fullscreen-white-edge`。
+- 两张反馈图均按像素检查：图一为 1272×2800，底部有 354px 连续近白区域；图二为 1264×2736，视频内容 1264×2248，正好为 9:16，顶部 0..312 黑区中包含系统安全区，扣除后上黑边约 153px、下黑区约 134px，另有底部控制条。
+- 白带机制：`VideoHeader` 的 `SliverPinnedDynamicHeader` 会用页面残留滚动偏移缩短可见高度；全屏分支的详情区已 `Offstage`，缩短后底部直接露出 `SimpleScaffold` 默认浅色 Material。该路径可导致“偶尔”复现，是否出现取决于进入全屏时的滚动位置，因而不要求每台设备/每次操作都出现。
+- 修复：`lib/pages/video/view.dart` 在全屏时把视频头 `minExtent` 固定为完整视口高度，阻止残留滚动偏移继续折叠；竖屏、横屏及近似方形三种全屏 Scaffold 均显式使用黑色底层，作为过渡帧和布局空白的兜底。非全屏布局及视频 `BoxFit.contain` 比例未改变。
+- 验证：`test/plugin/pl_player/fixed_video_viewport_test.dart` 新增全屏固定视频头回归，覆盖 0/1/100/600 滚动偏移下尺寸 400×800 且位置始终在顶部；与 `fullscreen_viewport_test.dart` 合并 4/4 通过。修改文件 `flutter analyze --no-pub` 为 No issues found，`git diff --check` 通过。
+- 环境边界：仓库 `.fvmrc`/`pubspec.yaml` 要求 Flutter 3.47.9，本机可用的是项目内 3.47.7；定向测试通过，但 `test/plugin/pl_player` 全目录为 109 项通过、3 个既有文件因缺少 3.47.9 的 `MediaQuery.shortestSideOf` 等 API 未加载，不能记为全量通过。未构建 APK，未连接真机复现或验收，未发布，未提交推送。
+- 图二判断：非 HDR 的竖屏视频在竖屏全屏中保持 9:16、按 `contain` 居中显示。顶部系统安全区与黑色画面连成一片，会放大“上黑边更大”的主观感受；扣除安全区后上下留白基本对称，因此属于当前 PiliPlus/PiliExo 全屏策略的预期行为，不是播放器居中或 HDR 解码错误。若要完全视觉对称，需要另行选择忽略安全区或裁切显示，未纳入本次修复。
+
+## 2026-11-24 11:34 蓝牙延迟补偿与现场校准
+
+- 参考资料：FFF Player `f09aa37574567178f11216e5d9e8d180bbb39e05`（2026-11-23）。采用其 `FFF.Player/Core/蓝牙音频延迟.vb` 的协议区间、编码覆盖、显示延迟和额外提前量模型，以及 `FFF3FP_SetAudioDelay` 正值让声音更晚的语义。
+- 策略：`lib/plugin/pl_player/models/bluetooth_latency.dart` 实现纯算术层。A2DP 150–300 ms、HFP 100–250 ms、LE Audio 30–100 ms、未知 150–300 ms；SBC/AAC/aptX/aptX HD/aptX LL/LDAC/LHDC/L2HC/LC3 可手动覆盖；显示延迟取两个刷新周期加 5 ms，主机输出缓冲按采样率/每缓冲帧数计入；最终偏移限制在 -600..+200 ms，额外提前量限制 ±100 ms。
+- Android 检测：新增 `BluetoothLatencyPlugin.kt`，通过 `AudioManager.getDevices` 识别 A2DP/SCO/BLE/助听器输出，返回设备名、协议、刷新率和输出缓冲；设置开启时每 2 秒刷新，应用暂停时停止。Android 用户态不读活动 codec，因此自动模式按协议估算，编码由用户按耳机实际设置手动覆盖。
+- 播放：mpv 初始化与运行时写入 `audio-delay`；Media3 HDR 通过 `BluetoothLatencyRenderersFactory` 的 `MediaCodecVideoRenderer` 子类推迟帧呈现时间，等价于让画面等待蓝牙声音。设置关闭、非蓝牙或未连接时均下发 0。
+- 设置与现场校准：视频设置新增“蓝牙延迟补偿”（默认关闭）、“蓝牙输出状态”、“蓝牙音频编码”、“额外补偿”和“现场校准”。校准对话框每 1.2 秒播放提示音并延迟闪屏，声音仍晚时向右增加，声音较早时向左减少，保存后立即刷新播放器补偿。校准提示音由原生 `ToneGenerator` 输出到当前媒体路由。
+- 验证：`test/plugin/pl_player/bluetooth_latency_test.dart` 新增 10 项策略/解析回归；`test/utils/default_settings_test.dart` 增加默认关闭、自动编码和 0 微调断言。Flutter 3.47.9 `flutter test --no-pub` 全量 297/297 通过；相关文件 `flutter analyze --no-pub` 为 No issues found。全目录 Analyze 在 6.9 GB 分析进程中长时间满载，未等待完成，不能记为全目录 Analyze 通过。
+- 候选：arm64 Release 构建成功，包名 `com.maxzrb.piliexo`、versionName `26.11.22`、versionCode 45、原 V2 证书，32,806,708 字节，SHA256 `1e881e2a7ae152169e15c95f214263629856a5139e44d52714c6b8dfff2f989b`。`verify_release_apk.py` 的插件注册/AOT 提交/ABI 检查通过。文件位于 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency_arm64-v8a.apk`。
+- 边界：新候选尚未覆盖安装，未做真实蓝牙耳机、A2DP/HFP/LE Audio 切换、mpv/Media3 双路线及校准听感验收；版本号未递增、未提交、未推送、未发布。用户将继续自行真机测试。
+
+## 2026-11-24 11:57 蓝牙补偿二级菜单与提示音修订
+
+- 一级菜单收敛：`video_settings.dart` 删除平铺的 5 项，只保留“蓝牙延迟补偿”入口，显示关闭状态或当前估算结果，点击进入新二级页 `lib/pages/setting/pages/bluetooth_latency_set.dart`（路由 `/bluetoothLatencySetting`）。
+- 二级页包含启用开关、蓝牙输出状态、音频编码和“额外补偿”。关闭时只显示开关；开启后状态每 2 秒有机会刷新，状态行也可点击刷新。
+- 功能合并：删除独立的微调滑杆入口和“现场校准”条目；唯一“额外补偿”条目打开原校准弹窗，弹窗内同时提供 ±100 ms 滑杆、提示音和闪屏，标题改为“蓝牙额外补偿”。
+- 无声修复：Android 不再使用 `ToneGenerator`，改为独立媒体 `AudioTrack`（PCM 16-bit、优先 48 kHz、流模式）；打开弹窗时预热并发送短暂静音，关闭弹窗/插件释放 AudioTrack。提示音为 660 Hz 柔和正弦脉冲，10 ms 淡入、指数衰减、25 ms 淡出，振幅 0.18，避免系统蜂鸣的刺耳感。
+- 验证：相关 Dart 文件定向 Analyze 无问题，Flutter 3.47.9 全量测试 297/297 通过；arm64 Release 本机构建成功，包名/versionName/versionCode、原 V2 证书、AOT 和插件注册校验通过。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v2_arm64-v8a.apk`，32,804,868 字节，SHA256 `3805db9e9333c7d368d0d81ce97f30ddf334ac2f3f9d9f509d2a78250cea8fdf`。
+- 已用 ADB 覆盖安装到 `MEP-AN00`：versionCode 45、versionName 26.11.22，`firstInstallTime` 保持 2026-09-02 15:19:05，`lastUpdateTime` 为 2026-11-24 11:57:11。未由代理启动应用，未验证实际耳机提示音音色/可闻度或播放补偿听感；用户将自行验收。版本、标签、提交和发布状态均未改变。
+
+## 2026-11-24 12:43 蓝牙额外补偿文案、3 秒节拍与提示音增强
+
+- 一级视频设置在未开启时只显示“点击配置蓝牙耳机音画同步”，不再显示“当前关闭”；二级页说明改为“连接蓝牙耳机后，可按协议估算延迟，并用额外补偿按实际听感校准”；开关说明改为“让画面与蓝牙耳机返回的声音保持对齐”，移除“默认关闭/关闭后归零”等说明。
+- 合并后的“额外补偿”弹窗保留滑杆、提示音和闪屏；校准节拍由 1.2 秒改为 3 秒，避免蓝牙输出延迟和短间隔互相掩盖。
+- 无提示音调查：设备端 12:01 日志中，上一版音轨 `piid:11079`、uid 10406 已经创建并每 1.2 秒 started/stopped，路由到设备 `[28]`（A2DP，OPPO Enco Free4 / LHDC），所以不是方法未执行。该版是 48000 Hz 单声道、峰值 0.18、短 90 ms，且当前媒体音量仅 4/17；本轮针对这三项调整。
+- 提示音实现：AudioTrack 使用 48000 Hz 16-bit 立体声（失败回退 44100），优先路由到当前检测到的蓝牙输出；显式设置音量 1.0；音色为 660 Hz、160 ms、峰值 0.42、12 ms 淡入/40 ms 淡出，保留柔和听感。额外增加 `BluetoothLatency` 日志用于后续定位。
+- 三条链路覆盖：mpv 的 `ao=audiotrack,opensles,aaudio` 三个输出后端共用同一 `audio-delay` 时间线偏移；原生 mpv HDR 也走同一 Player；Media3 HDR 通过自定义 `MediaCodecVideoRenderer` 推迟视频帧。校准提示音使用独立 AudioTrack，不依赖 mpv 的 AO 选择。
+- 验证：相关 Dart 文件 Analyze 无问题，Flutter 3.47.9 全量 297/297 通过；arm64 Release v3 构建成功，包名/版本/原 V2 证书/插件注册/AOT 校验通过。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v3_arm64-v8a.apk`，32,805,080 字节，SHA256 `b687e8485a20e1b52eda68434fb3cb47466300a220595bbf0ee4640d36b67228`。
+- 已覆盖安装 MEP-AN00，versionCode 45、versionName 26.11.22，firstInstallTime 保持 2026-09-02 15:19:05，lastUpdateTime 2026-11-24 12:43:10。未启动应用、未做实际听感验收；用户自行检查提示音音色和双路线同步效果。版本、标签、提交和发布状态未改变。
+
+## 2026-11-24 12:51 蓝牙校准持续音频流修复
+
+- 用户反馈 v3 大约每 10 秒才听到一组“嘟嘟嘟嘟”。设备 `dumpsys audio` 日志显示 v3 的 AudioTrack `piid:11167` 在 12:46:54 至 12:47:20 期间每约 3 秒出现一次 `started/stopped`，即每次提示音后才短暂出声，间隔期内 A2DP 输出进入空闲。
+- 根因判断：频繁启动短音频流会被蓝牙音频/耳机侧缓冲或合并，用户感知为隔约 10 秒才集中听到几次提示音。提示音实际已经创建并路由到 A2DP（设备 `[29]`、48 kHz stereo），不是 Flutter 定时器未触发。
+- 修复：`BluetoothLatencyPlugin.kt` 在 AudioTrack 就绪后启动持续音频供给线程，每 20 ms 写入立体声零电平静音，维持 A2DP 流活跃；3 秒提示音通过 `pendingClick` 插入同一条流，不再每次重启 AudioTrack。关闭弹窗时停止供给、暂停/刷新/释放 AudioTrack。缓冲区由约 120 ms 降到约 60 ms。
+- 提示音参数保持稳定可闻但柔和：660 Hz、160 ms、立体声 48 kHz、峰值 0.42、12 ms 淡入、40 ms 淡出；仍每 3 秒一次。
+- 验证：Flutter 3.47.9 全量测试 297/297 通过；原生 Kotlin 编译成功；arm64 v4 Release 为 32,805,245 字节，包名/版本/原 V2 证书/AOT/插件注册检查通过，SHA256 `75c4ba207519e4f62429fee2f5634c7570ba43ec55b35c3624ec34ca8bca58b8`。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v4_arm64-v8a.apk`。已覆盖安装 MEP-AN00，versionCode 45、versionName 26.11.22、firstInstallTime 保持 2026-09-02 15:19:05，lastUpdateTime 2026-11-24 12:51:31。未由代理启动或实听，用户将确认是否仍存在提示音合并/延迟。
+
+## 2026-11-24 13:05 蓝牙校准改为全屏闪动
+
+- 用户实测 v4 的提示音已恢复，但没有观察到闪屏。原实现只在弹窗内 126 高的图标区域切换 120 ms 背景色，面积和持续时间都不足以作为音画对齐参照。
+- `bluetooth_latency_test_dialog.dart` 改为在根 Overlay 插入 `IgnorePointer` 全屏色层，每 3 秒提示音对应的延迟点用主题主色闪动 200 ms；覆盖范围是整个应用窗口，弹窗局部图标仍同步高亮。停止校准或关闭弹窗会移除覆盖层，不会拦截触摸。
+- 验证：改动文件静态分析无问题；Flutter 3.47.9 全量测试 297/297 通过；arm64 v5 Release 通过包名、versionCode 45、versionName 26.11.22、原 V2 证书、AOT 提交、插件注册和必要原生库检查，大小 32,806,284 字节，SHA256 `1e76eff5a39da8f2627da3ba5eb2a47d2dd6a1676bc32c0c850109fa2f3e5d47`。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v5_arm64-v8a.apk`。已覆盖安装 MEP-AN00，firstInstallTime 保持 2026-09-02 15:19:05，lastUpdateTime 2026-11-24 13:05:19。未由代理目视闪屏或实听，等待用户确认。
+
+## 2026-11-24 13:18 蓝牙校准闪动收回弹窗并改为硬切换
+
+- 用户明确否定了 v5 全窗口主题色覆盖，只接受保留在弹窗内约 126 高的提示区；该方案已撤回。
+- v5 全屏覆盖未及时获得用户目视验收，不能据此判断原局部闪动失效。v6 将提示区从 `AnimatedContainer` 改为普通 `Container`，消除隐式动画 ticker、过渡耗时或主题动画造成的不可见风险；提示时直接硬切换为主题主色、反色图标和高对比边框，持续 260 ms，区域仍为 126 高。
+- 增加 `BluetoothLatencyFlash: on/off` 日志，用于确认延迟回调及状态切换是否实际执行；不依赖截屏判断。
+- 验证：改动文件静态分析无问题；Flutter 3.47.9 全量测试 297/297 通过；arm64 v6 Release 通过包名、versionCode 45、versionName 26.11.22、原 V2 证书、AOT 提交、插件注册和必要原生库检查，大小 32,817,420 字节，SHA256 `de881c548e1b32eb3f1d6126025e9f97bb7c1bc338871daad844a1c522c7a99f`。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v6_arm64-v8a.apk`。已覆盖安装 MEP-AN00，firstInstallTime 保持 2026-09-02 15:19:05，lastUpdateTime 2026-11-24 13:18:55；冷启动已通过，日志已清空。未由代理目视闪动或实听，等待用户确认。
+
+## 2026-11-24 14:21 蓝牙校准闪动时长改为串行计时
+
+- 用户实测 v6 能看到闪动，但偶尔一闪而过、亮灭不均匀。日志确认闪动回调执行；问题在 `_flashOn` 与 `_flashOff` 使用两个从同一基准时刻独立计算的定时器。主线程或系统定时器发生延迟时，两个回调可能在同一轮事件循环中连续执行，导致本次闪动仅剩 0–1 ms 或时长明显漂移。
+- v7 改为串行控制：延迟定时器触发亮起并立即调度“从实际亮起时刻起 260 ms 熄灭”的第二个定时器。即使亮起回调被系统延迟，也不会再压缩实际可见时长。
+- 闪动仍只发生在弹窗内 126 高提示区，回退 v7 临时试验的固定黄色和闪电图标，保持主题主色、反色图标与边框，不再影响整个应用窗口。
+- 同步语义：应用无法强制屏幕像素与 A2DP 耳机实际出声同时发生。校准闪动按协议估算延迟到预计出声时刻，剩余误差由“额外补偿”微调；v6 日志中 A2DP 本机链路报告 270 ms，界面估值为 202–207 ms，约 63–68 ms 属于需要现场补偿的偏差。
+- 日志增加毫秒时间戳，便于后续核对真实亮灭间隔。验证：改动文件静态分析无问题；Flutter 3.47.9 全量测试 297/297 通过；arm64 v7 Release 通过包名、versionCode 45、versionName 26.11.22、原 V2 证书、AOT 提交、插件注册和必要原生库检查，大小 32,817,825 字节，SHA256 `790cbfe532a2a0cda20c60bf49f1f2cf2f78c104698be1dbbdaa147efa219b1d`。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v7_arm64-v8a.apk`。已覆盖安装 MEP-AN00，firstInstallTime 保持 2026-09-02 15:19:05，lastUpdateTime 2026-11-24 14:20:59；日志已清空并冷启动，等待用户确认闪动时长。未发布。
+
+## 2026-11-24 14:35 蓝牙校准改为同源触发与 vsync 节拍
+
+- 用户指出闪动与提示音频率仍不均匀，并明确否定了“画面更早/画面更晚”的校准模型。正确模型是闪动和提示音在应用端同时发出，用户听到声音滞后后再调整额外补偿，让实际播放画面等待耳机声音。
+- 删除 `_displayDelayMs` 对校准闪动时间的参与：每个 cue 在同一个事件回调里立即置亮提示区并调用原生 `playClick`，不再先用蓝牙估值推迟闪动。slider 只改变实际播放的额外补偿，不移动校准参考闪动。
+- 删除 Dart 周期 Timer 与独立亮灭 Timer。改用 `SingleTickerProviderStateMixin` 的 vsync Ticker 维护 3 秒绝对节拍；每个 cue 从实际触发时刻重新计时下一个 3 秒。闪动从实际亮起点保持 260 ms，由同一 Ticker 在下一帧关闭。
+- 弹窗文案改为“每 3 秒同时闪动并播放一次柔和提示音”“声音晚于闪动时增加额外补偿”，删除“画面更早/画面更晚”行；二级菜单入口同步改称“提示音与闪动校准”。
+- 验证：改动文件静态分析无问题；Flutter 3.47.9 全量测试 297/297 通过；arm64 v8 Release 通过包名、versionCode 45、versionName 26.11.22、原 V2 证书、AOT 提交、插件注册和必要原生库检查，大小 32,814,495 字节，SHA256 `7586358d7fab209ca15c83a911766cab7053be1c6e975cf05942909af9a31609`。
+- 最终候选：`dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v8_arm64-v8a.apk`。已覆盖安装 MEP-AN00，firstInstallTime 保持 2026-09-02 15:19:05，lastUpdateTime 2026-11-24 14:34:55；日志已清空并冷启动，等待用户确认同源触发和节拍均匀度。未发布。
+
+## 2026-11-24 15:04 蓝牙额外补偿实时预览与固定采样节拍
+
+- 用户明确要求在弹窗内听看应用自动估值后的结果，再微调到对齐。滑杆与“声音先到／声音后到”更新预览，按钮分别减／加 5 ms，保存后沿用既有播放器应用路径。补偿改变弹窗内 126 高图标区的相对闪动时间，亮起约 260 ms。
+- Android 使用独立线程持续写入音频，预热后按固定采样帧排列提示音与静音。每拍提前 700 ms 向 Flutter 发送以单调时钟表示的预计入队时间。原生记录预告和入队时间，Flutter 记录目标与帧时刻。去掉旧版主线程与音频写入共用的锁。取消、保存或切到后台时结束校准。
+- v8 的 Flutter 帧周期会随实际回调推后，原生共享锁内又有阻塞写入。这两处能造成延迟和抖动，本轮未在设备日志中重现 v8 的阻塞。
+- Flutter 3.47.9 定向分析通过，最终定向测试 17/17，覆盖两拍预览、两种调整方向、运行中拖动及保存时结束。插件注册 29/29、AOT 基线、必要原生库、同 v8 的原 V2 证书及 16 KB ZIP 对齐均通过。
+- v9 候选 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v9_arm64-v8a.apk`，32,803,326 字节，SHA256 `9da4fc309344ae3a5863290dbd7fc41f83d62fd576a4df9e740fc2bb35367029`。基于 `507b53caa` 及本地未提交改动构建。已覆盖安装 MEP-AN00，versionName 26.11.22、versionCode 45，lastUpdateTime 15:04:32，firstInstallTime 保持 2026-09-02 15:19:05。ADB 冷启动 531 ms，MainActivity 已恢复到前台。未操作校准弹窗，耳机出声、实际闪动及拖动流畅度留给用户验收。无截屏、未发布。
+
+## 2026-11-24 15:27 蓝牙补偿滑杆宽度和自动补偿核对
+
+- “额外补偿”滑杆独占弹窗内容区，两端改为普通小字，当前微调值居中。范围从 −100～+100 ms 扩为 −100～+250 ms，保留 5 ms 步进和已有保存值。现有协议与编码区间下，总画面延迟上界为 485 ms，在 Media3 的 500 ms 接收范围内。
+- 用户报告归零时总补偿 191 ms。同一部手机 v9 日志中，五次 Flutter 闪动的目标时间均比原生节拍晚 191 ms，确认自动估值已应用到预览。Android 音频输出为 A2DP。额外 +100 ms 对应总计 +291 ms，耳机真实出声和视频播放时的实际偏移本轮未测。
+- Flutter 3.47.9 定向分析无问题，定向测试 17/17，覆盖 360 逻辑像素宽窗口内的滑杆、无按钮端注释、在校准中拖动、+250 ms 预览与保存。插件注册 29/29、必要原生库、AOT 基线、原 V2 签名和 16 KB ZIP 对齐通过。
+- v10 候选 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v10_arm64-v8a.apk`，32,802,183 字节，SHA256 `f7ac8451d8b363da0742877cd967134b0db60bc13522e44851030f68d3d8c1e6`。从 `507b53caa` 与未提交工作区构建。MEP-AN00 上覆盖安装成功，versionName 26.11.22、versionCode 45、lastUpdateTime 15:26:18。启动命令返回成功，进程和 MainActivity 存在。设备处于 Dozing，窗口不可见且未绘制，页面级冷启动待亮屏确认。未发布。
+
+## 2026-11-24 15:39 蓝牙额外补偿滑杆对称范围
+
+- 将额外补偿下限从 −100 ms 改为 −250 ms，得到 −250～+250 ms、5 ms 步进，0 ms 对齐滑杆中心。音频推迟限幅从 200 ms 增至 300 ms，覆盖低延迟编码在滑杆最左端的计算结果。Media3 视频延迟按非负值下发。
+- 定向测试 17/17，覆盖真实点击两端和中点、保存 −250 ms、以及 aptX LL 左端对总偏移的影响。定向分析、29 个 Android 插件注册、APK 必要原生库、AOT 基线、原 V2 签名和 16 KB 对齐均通过。
+- v11 候选 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v11_arm64-v8a.apk`，32,802,178 字节，SHA256 `7034a92b1b0ecc9841156c405726cbb5cfa39ab8ef02634499cc7fa17388233e`。基于 `507b53caa` 与未提交工作区。已覆盖安装至 MEP-AN00，versionName 26.11.22、versionCode 45，lastUpdateTime 15:39:04。设备处于息屏状态，未做页面级冷启动。未提交或发布。
+
+## 2026-11-24 16:19 蓝牙断开暂停、洞察透明度、起播底色及默认字体
+
+- 蓝牙延迟补偿区分已保存的开关与当前生效状态。已启用时断开蓝牙音频，开关保留在开启位置并置灰，播放器补偿归零，正在进行的校准停止；重连恢复用户的补偿量。Android 音频设备连接与断开事件触发刷新，已启用时保留原定期刷新。
+- “播放设置”新增“播放器洞察透明度”，按 0%～100% 调节摘要、展开详情及手动详情的背景，文字保持原不透明度。未设置时使用各面板原有背景。
+- Android mpv 兼容纹理在收到 media-kit 首帧通知前覆盖播放器底色。覆盖层只影响绘制，保留已挂载的纹理，收到通知即移除。此次验证覆盖组件状态切换，用户报告的偶发闪灰未在真机复测。
+- 默认界面字体使用华为 HarmonyOS Sans SC，保留用户显式选择的字体并提供“跟随系统”。从华为官方资源包提取未经修改的 Regular、Medium、Bold 和许可，原包 SHA256 `fb02c86e358cd9aad8d4dfa957ee502381e7ee2e94499a9133add4324b6ce69a`。APK 回读核对三个字体权重、字体字节与许可。
+- Flutter 3.47.9 定向测试 39/39，17 个 Dart 文件定向分析无问题。插件注册 29/29、必要原生库、AOT 基线、原 V2 签名和 16 KB ZIP 对齐通过。候选 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v12_arm64-v8a.apk`，49,576,523 字节，SHA256 `4b9a1692375651576b83bc40597175246e71d7b8591b836b604cbea1e2d6e497`，基于 `507b53caa` 及未提交工作区。MEP-AN00 覆盖安装成功，lastUpdateTime 16:19:51、versionName 26.11.22、versionCode 45；设备息屏，未做页面级冷启动。未提交或发布。
+
+## 2026-11-24 16:45 华为 NEXT 字体更新与蓝牙设置主题布局
+
+- 将内置 HarmonyOS Sans SC 替换为 [华为官方 NEXT 字体包](https://developer.huawei.com/images/download/next/HarmonyOS-Sans.zip) 中未经修改的 Regular、Medium、Bold。同一包的三款字重经字体 name 表核验均为 2.400，原包 SHA256 `ba7ddf71fc4dee33a7170869564ad76d421a2ed5c58e5aac9a573c39945ef654`。华为中文资源页和设计指南指向的另一个 CDN ZIP 返回零字节，本轮无法比对该包版本。APK 内的三个 TTF 与可核验的官方 NEXT 包逐字节一致，字体许可随 APK。
+- 用户最后指定蓝牙补偿开关跟随全局主题。页面不设局部方向，项目全局列表主题为左侧。回归测试分别设置全局左置和右置，核对实际几何位置与蓝牙断开时的灰色状态。
+- Flutter 3.47.9 定向测试 22/22，定向分析无问题。插件注册 29/29、APK 结构、AOT 基线、原 V2 签名、16 KB ZIP 对齐通过。
+- v13 候选 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v13_arm64-v8a.apk`，49,893,655 字节，SHA256 `eb8a2cb7c0e10cf106b628e18485d1ada09a7616752ee62633c151a73e2427c1`。基于 `507b53caa` 与未提交工作区。MEP-AN00 覆盖安装成功，lastUpdateTime 16:45:09、versionName 26.11.22、versionCode 45。冷启动 474 ms，主 Activity 窗口可见。未提交或发布。
+
+## 2026-11-24 16:52 蓝牙开关统一为普通设置布局
+
+- 用户指出大部分普通设置开关位于右侧。普通设置由 `SwitchModel` 构建 `SetSwitchItem`，将开关放在列表项尾部。v13 的蓝牙补偿使用 `SwitchListTile`，因全局列表主题的控件方向而显示在左侧。
+- 蓝牙补偿改用 `SetSwitchItem`。通用控件增加可选的禁用状态，蓝牙断开时保留保存值并将开关置灰。测试在全局控件左置主题下核对右侧布局、断开禁用及重连恢复。
+- Flutter 3.47.9 定向测试 18/18，定向分析无问题。插件注册 29/29、APK 结构、AOT 基线、原 V2 签名和 16 KB ZIP 对齐通过。
+- v14 候选 `dist/integration/bluetooth-latency-20261124/PiliExo_android_v26.11.22_bluetooth-latency-v14_arm64-v8a.apk`，49,901,731 字节，SHA256 `bc2ff4332d8d7340a4f96c8937419eab97b21065f78dda3e44db06fc4d64b609`。基于 `507b53caa` 与未提交工作区。MEP-AN00 覆盖安装成功，lastUpdateTime 16:52:57、versionName 26.11.22、versionCode 45。手机息屏，页面冷启动待确认。未提交或发布。

@@ -20,6 +20,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留缩小动画，原生 HDR 路线固定视频层并裁剪。
 - 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析，以及高采样率 FLAC 的输入缓冲修正。
 - 播放器洞察提供概览、视频、音频、播放和事件详情，显示帧率、编码、解码器、分辨率、码率、音频参数和回退原因。
+- 默认界面字体使用华为 HarmonyOS Sans SC 2.400。[华为官方字体包](https://developer.huawei.com/images/download/next/HarmonyOS-Sans.zip) · [字体许可](assets/fonts/harmonyos_sans/LICENSE.txt)
 - mpv 原生 HDR 支持独立的 4:3 和 16:9 固定画面比例。截图及画面翻转由兼容路线提供。
 - Android 更新优先使用 ModelScope 镜像，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、取消和系统安装器。
 - 独立 `applicationId` `com.maxzrb.piliexo`，Release 按 ABI 拆分并使用独立签名，可与原版 PiliPlus 共存。

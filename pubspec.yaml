@@ -272,8 +272,17 @@ flutter:
     - path: assets/images/live/
     - path: assets/images/paycoins/
     - path: assets/shaders/
+    - path: assets/fonts/harmonyos_sans/LICENSE.txt
 
   fonts:
+    - family: HarmonyOS Sans SC
+      fonts:
+        - asset: assets/fonts/harmonyos_sans/HarmonyOS_Sans_SC_Regular.ttf
+          weight: 400
+        - asset: assets/fonts/harmonyos_sans/HarmonyOS_Sans_SC_Medium.ttf
+          weight: 500
+        - asset: assets/fonts/harmonyos_sans/HarmonyOS_Sans_SC_Bold.ttf
+          weight: 700
     - family: digital_id_num
       fonts:
         - asset: assets/fonts/digital_id_num.ttf

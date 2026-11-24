@@ -506,6 +506,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   Widget childWhenDisabled(bool isFullScreen) {
     return SimpleScaffold(
+      backgroundColor: isFullScreen ? Colors.black : null,
       appBar: removeAppBar(isFullScreen)
           ? null
           : Obx(
@@ -579,7 +580,9 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
               : videoDetailController.videoHeight;
           return [
             VideoHeader(
-              minExtent: kToolbarHeight,
+              // 全屏视频头不能继承页面滚动偏移而收缩，否则 Offstage 的
+              // 详情区下方会露出 Scaffold 的浅色底色。
+              minExtent: isFullScreen ? height : kToolbarHeight,
               maxExtent: height,
               minVideoHeight: videoDetailController.minVideoHeight,
               onScrollRatioChanged: videoDetailController.scrollRatio.call,
@@ -789,6 +792,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   Widget childWhenDisabledLandscape(bool isFullScreen) {
     return SimpleScaffold(
+      backgroundColor: isFullScreen ? Colors.black : null,
       appBar: removeAppBar(isFullScreen)
           ? null
           : SimpleAppBar(
@@ -1019,6 +1023,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   Widget childWhenDisabledAlmostSquare(bool isFullScreen) {
     return SimpleScaffold(
+      backgroundColor: isFullScreen ? Colors.black : null,
       appBar: removeAppBar(isFullScreen)
           ? null
           : SimpleAppBar(
