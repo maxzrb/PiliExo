@@ -12,7 +12,9 @@ import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/theme/theme_color_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/bluetooth_latency_service.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/router/app_pages.dart';
+import 'package:PiliPlus/router/page_transitions.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/services/logger.dart';
@@ -300,8 +302,31 @@ class MyApp extends StatelessWidget {
       fallbackLocale: const Locale("zh", "CN"),
       supportedLocales: const [Locale("zh", "CN"), Locale("en", "US")],
       initialRoute: '/',
-      getPages: Routes.getPages,
-      defaultTransition: Pref.pageTransition,
+      onGenerateRoute: AppPageRoute.generate,
+      onInit: () {
+        Get.addPages(Routes.getPages);
+        var transition = Pref.pageTransition;
+        var predictiveBack = Pref.predictiveBackEnabled;
+        if (transition == PageTransitions.predictiveBackIndex) {
+          // 旧版本把预测性返回混在过渡动画列表里，迁移为独立开关。
+          transition = Transition.native.index;
+          predictiveBack = true;
+          unawaited(
+            GStorage.setting.putAll({
+              SettingBoxKey.pageTransition: transition,
+              SettingBoxKey.predictiveBackEnabled: predictiveBack,
+            }),
+          );
+        }
+        PageTransitions.selectStyleIndex(Pref.predictiveBackStyle);
+        PageTransitions.selectMotion(
+          slidePercent: Pref.predictiveBackSlidePercent,
+          fadePercent: Pref.predictiveBackFadePercent,
+          scalePercent: Pref.predictiveBackScalePercent,
+        );
+        PageTransitions.select(transition);
+        PageTransitions.setEnabled(predictiveBack);
+      },
       builder: FlutterSmartDialog.init(
         toastBuilder: CustomToast.new,
         loadingBuilder: LoadingWidget.new,

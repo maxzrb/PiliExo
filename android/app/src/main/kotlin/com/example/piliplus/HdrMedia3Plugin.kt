@@ -80,6 +80,22 @@ internal fun ambientArgbToRgba(colors: IntArray): ByteArray {
     return pixels
 }
 
+internal fun hdrSnapshotSize(width: Int, height: Int): Pair<Int, Int> {
+    val scale = minOf(1.0, 512.0 / maxOf(width, height))
+    return (width * scale).toInt().coerceAtLeast(1) to
+        (height * scale).toInt().coerceAtLeast(1)
+}
+
+internal fun setHdrBackPreviewHidden(view: View, surface: SurfaceView, hidden: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+    if (hidden) {
+        surface.setSurfaceLifecycle(SurfaceView.SURFACE_LIFECYCLE_FOLLOWS_ATTACHMENT)
+    }
+    val visibility = if (hidden) View.INVISIBLE else View.VISIBLE
+    surface.visibility = visibility
+    view.visibility = visibility
+}
+
 /** Android 原生 HDR 播放器的 Flutter 桥接层。 */
 @UnstableApi
 class HdrMedia3Plugin(
@@ -185,13 +201,20 @@ class HdrMedia3Plugin(
                     result.success(null)
                 }
 
+                "setBackPreviewHidden" -> {
+                    manager.getSession(call).setBackPreviewHidden(call.argument<Boolean>("hidden") == true)
+                    result.success(null)
+                }
+
                 "captureAmbientFrame" -> {
                     val width = (call.argument<Number>("width")?.toInt() ?: 96)
                         .coerceIn(16, 256)
                     val height = (call.argument<Number>("height")?.toInt() ?: 54)
                         .coerceIn(16, 256)
-                    manager.getSession(call).captureAmbientFrame(width, height,
-                        call.argument<String>("format") == "rgba8888") {
+                    manager.getSession(call).captureAmbientFrame(
+                        width, height, call.argument<String>("format") == "rgba8888",
+                        call.argument<Boolean>("snapshot") == true,
+                    ) {
                         result.success(it)
                     }
                 }
@@ -781,6 +804,9 @@ private class HdrMedia3Session(
 
     fun attach(view: PlayerView) {
         if (released) return
+        // 新 PlatformView 建立时旧视图可能尚未被 Flutter 移除；
+        // 先隐藏旧 SurfaceView，避免两个 HDR 输出窗口短暂叠在一起。
+        playerView?.takeIf { it !== view }?.let(::hideSurface)
         playerView = view
         view.useController = false
         view.setKeepContentOnPlayerReset(true)
@@ -810,13 +836,25 @@ private class HdrMedia3Session(
         playerView?.let(::hideSurface)
     }
 
+    fun setBackPreviewHidden(hidden: Boolean) {
+        val view = playerView ?: return
+        val surface = view.videoSurfaceView as? SurfaceView ?: return
+        setHdrBackPreviewHidden(view, surface, hidden)
+    }
+
     /**
      * 从 HDR SurfaceView 复制一张很小的当前帧，供 Flutter 顶部系统状态栏做环境背景。
      *
      * 这里使用 PixelCopy 只读取 SurfaceView 的画面，HDR 播放链路仍然直接输出到
      * SurfaceView，不会经过 TextureView、Flutter Texture 或软件视频合成。
      */
-    fun captureAmbientFrame(width: Int, height: Int, rawPixels: Boolean, callback: (Any?) -> Unit) {
+    fun captureAmbientFrame(
+        width: Int,
+        height: Int,
+        rawPixels: Boolean,
+        snapshot: Boolean,
+        callback: (Any?) -> Unit,
+    ) {
         if (released || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             callback(null)
             return
@@ -824,25 +862,30 @@ private class HdrMedia3Session(
         val surfaceView = playerView?.videoSurfaceView as? SurfaceView
         if (surfaceView == null || !surfaceView.isAttachedToWindow ||
             surfaceView.width <= 0 || surfaceView.height <= 0 ||
-            ambientCaptureInFlight
+            (!snapshot && ambientCaptureInFlight)
         ) {
             callback(null)
             return
         }
 
+        val (copyWidth, copyHeight) = if (snapshot) {
+            hdrSnapshotSize(surfaceView.width, surfaceView.height)
+        } else {
+            width to height
+        }
         val bitmap = try {
-            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            Bitmap.createBitmap(copyWidth, copyHeight, Bitmap.Config.ARGB_8888)
         } catch (_: Throwable) {
             callback(null)
             return
         }
-        ambientCaptureInFlight = true
+        if (!snapshot) ambientCaptureInFlight = true
         try {
             PixelCopy.request(
                 surfaceView,
                 bitmap,
                 { copyResult ->
-                    ambientCaptureInFlight = false
+                    if (!snapshot) ambientCaptureInFlight = false
                     if (copyResult != PixelCopy.SUCCESS || released) {
                         bitmap.recycle()
                         callback(null)
@@ -851,11 +894,11 @@ private class HdrMedia3Session(
                     if (rawPixels) {
                         // getPixels明确返回ARGB颜色整数；逐通道输出RGBA，避免平台字节序差异。
                         val message = try {
-                            val colors = IntArray(width * height)
-                            bitmap.getPixels(colors, 0, width, 0, 0, width, height)
+                            val colors = IntArray(copyWidth * copyHeight)
+                            bitmap.getPixels(colors, 0, copyWidth, 0, 0, copyWidth, copyHeight)
                             val pixels = ambientArgbToRgba(colors)
                             mapOf("format" to "rgba8888", "width" to width,
-                                "height" to height, "rowBytes" to width * 4, "pixels" to pixels)
+                                "height" to copyHeight, "rowBytes" to copyWidth * 4, "pixels" to pixels)
                         } catch (_: Throwable) {
                             null
                         } finally {
@@ -877,7 +920,7 @@ private class HdrMedia3Session(
                 handler,
             )
         } catch (_: Throwable) {
-            ambientCaptureInFlight = false
+            if (!snapshot) ambientCaptureInFlight = false
             bitmap.recycle()
             callback(null)
         }

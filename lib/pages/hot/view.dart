@@ -10,6 +10,7 @@ import 'package:PiliPlus/models/model_hot_video_item.dart';
 import 'package:PiliPlus/pages/home/controller.dart';
 import 'package:PiliPlus/pages/hot/controller.dart';
 import 'package:PiliPlus/pages/rank/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:get/get.dart';
@@ -85,7 +86,7 @@ class _HotPageState extends State<HotPage>
                           if (index != -1) {
                             homeController.tabController.animateTo(index);
                           } else {
-                            Get.to(
+                            AppPageRoute.push(
                               SimpleScaffold(
                                 appBar: AppBar(title: const Text('排行榜')),
                                 body: const ViewSafeArea(child: RankPage()),

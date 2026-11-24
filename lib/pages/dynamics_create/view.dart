@@ -26,6 +26,7 @@ import 'package:PiliPlus/pages/dynamics_select_topic/controller.dart';
 import 'package:PiliPlus/pages/dynamics_select_topic/view.dart';
 import 'package:PiliPlus/pages/emote/controller.dart';
 import 'package:PiliPlus/pages/emote/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/grid.dart';
@@ -650,7 +651,7 @@ class _CreateDynPanelState extends CommonRichTextPubPageState<CreateDynPanel> {
         (e) => e.type == RichTextType.vote,
       );
       final voteInfo = await Navigator.of(context).push<VoteInfo>(
-        GetPageRoute(
+        AppPageRoute(
           page: () => CreateVotePage(
             voteId: voteItem?.id == null ? null : int.parse(voteItem!.id!),
           ),
@@ -861,7 +862,7 @@ class _CreateDynPanelState extends CommonRichTextPubPageState<CreateDynPanel> {
 
   Future<void> _onReserve() async {
     final ReserveInfoData? reserveInfo = await Navigator.of(context).push(
-      GetPageRoute(
+      AppPageRoute(
         page: () => CreateReservePage(sid: _reserveCard.value?.id),
       ),
     );

@@ -12,6 +12,7 @@ import 'package:PiliPlus/grpc/im.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/msg.dart';
 import 'package:PiliPlus/pages/whisper_secondary/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
@@ -215,7 +216,7 @@ class WhisperSessionItem extends StatelessWidget {
             _ => null,
           };
           if (sessionPageType != null) {
-            Get.to(
+            AppPageRoute.push(
               WhisperSecPage(
                 name: item.sessionInfo.sessionName,
                 sessionPageType: sessionPageType,

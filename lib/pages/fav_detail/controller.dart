@@ -11,6 +11,7 @@ import 'package:PiliPlus/pages/common/multi_select/base.dart';
 import 'package:PiliPlus/pages/common/multi_select/multi_select_controller.dart';
 import 'package:PiliPlus/pages/common/page_order/page_order_mixin.dart';
 import 'package:PiliPlus/pages/fav_sort/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -221,7 +222,7 @@ class FavDetailController
           SmartDialog.showToast('内容太多啦！超过1000不支持排序');
           return;
         }
-        Get.to(FavSortPage(favDetailController: this));
+        AppPageRoute.push(FavSortPage(favDetailController: this));
       }
     }
   }

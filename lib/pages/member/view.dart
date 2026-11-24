@@ -34,6 +34,7 @@ import 'package:PiliPlus/pages/member_pgc/view.dart';
 import 'package:PiliPlus/pages/member_shop/view.dart';
 import 'package:PiliPlus/pages/member_video_web/archive/view.dart';
 import 'package:PiliPlus/pages/member_video_web/season_series/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
@@ -467,7 +468,7 @@ class _MemberPageState extends State<MemberPage> {
                 ),
               ),
             PopupMenuItem(
-              onTap: () => Get.to(const LoginDevicesPage()),
+              onTap: () => AppPageRoute.push(const LoginDevicesPage()),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -478,7 +479,7 @@ class _MemberPageState extends State<MemberPage> {
               ),
             ),
             PopupMenuItem(
-              onTap: () => Get.to(
+              onTap: () => AppPageRoute.push(
                 const LogPage(),
                 arguments: LoginLogController(),
               ),
@@ -492,7 +493,7 @@ class _MemberPageState extends State<MemberPage> {
               ),
             ),
             PopupMenuItem(
-              onTap: () => Get.to(
+              onTap: () => AppPageRoute.push(
                 const LogPage(),
                 arguments: CoinLogController(),
               ),
@@ -506,7 +507,7 @@ class _MemberPageState extends State<MemberPage> {
               ),
             ),
             PopupMenuItem(
-              onTap: () => Get.to(
+              onTap: () => AppPageRoute.push(
                 const LogPage(),
                 arguments: ExpLogController(),
               ),

@@ -185,6 +185,10 @@ class HdrMedia3Controller {
     }
   }
 
+  Future<void> setBackPreviewHidden(bool hidden) async {
+    if (_created) await _invoke('setBackPreviewHidden', {'hidden': hidden});
+  }
+
   /// 读取原生 HDR SurfaceView 的低分辨率当前帧，供系统状态栏环境背景使用。
   ///
   /// 该调用只复制画面用于 UI 氛围渲染，不会改变 HDR 视频的 SurfaceView 输出链路。
@@ -209,6 +213,7 @@ class HdrMedia3Controller {
   Future<AmbientRgbaFrame?> captureAmbientPixels({
     int width = 96,
     int height = 54,
+    bool snapshot = false,
   }) async {
     if (_released || !_created) return null;
     final value = await _methodChannel.invokeMethod<Object?>(
@@ -218,9 +223,13 @@ class HdrMedia3Controller {
         'width': width,
         'height': height,
         'format': 'rgba8888',
+        if (snapshot) 'snapshot': true,
       },
     );
-    return AmbientRgbaFrame.fromMessage(value);
+    return AmbientRgbaFrame.fromMessage(
+      value,
+      maxDimension: snapshot ? 512 : 256,
+    );
   }
 
   Future<void> setSubtitle({

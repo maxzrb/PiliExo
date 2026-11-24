@@ -170,6 +170,10 @@ class MpvHdrController {
 
   Future<void> hideSurface() => _invoke('hide');
 
+  Future<void> setBackPreviewHidden(bool hidden) async {
+    if (_created) await _invoke('setBackPreviewHidden', {'hidden': hidden});
+  }
+
   /// 读取 mpv 原生 SurfaceView 的低分辨率当前帧，供状态栏环境背景使用。
   Future<Uint8List?> captureAmbientFrame({
     int width = 96,
@@ -192,6 +196,7 @@ class MpvHdrController {
   Future<AmbientRgbaFrame?> captureAmbientPixels({
     int width = 96,
     int height = 54,
+    bool snapshot = false,
   }) async {
     if (_released || !_created) return null;
     final value = await _methods.invokeMethod<Object?>(
@@ -201,9 +206,13 @@ class MpvHdrController {
         'width': width,
         'height': height,
         'format': 'rgba8888',
+        if (snapshot) 'snapshot': true,
       },
     );
-    return AmbientRgbaFrame.fromMessage(value);
+    return AmbientRgbaFrame.fromMessage(
+      value,
+      maxDimension: snapshot ? 512 : 256,
+    );
   }
 
   Widget buildView({Key? key}) => PlatformViewLink(

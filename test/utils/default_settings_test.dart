@@ -1,3 +1,4 @@
+import 'package:PiliPlus/router/predictive_back_transition.dart';
 import 'package:PiliPlus/utils/default_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -34,10 +35,25 @@ void main() {
     expect(defaults['bluetoothLatencyTrimMs'], 0);
   });
 
+  test('预测性返回默认启用缩小渐隐并按样式设置渐隐幅度', () {
+    final defaults = createDefaultSettingValues();
+
+    expect(defaults['predictiveBackEnabled'], isTrue);
+    expect(defaults['predictiveBackStyle'], PredictiveBackStyle.zoomFade.index);
+    expect(defaults['predictiveBackSlidePercent'], 70);
+    expect(defaults['predictiveBackScalePercent'], 20);
+    expect(defaults, isNot(contains('predictiveBackFadePercent')));
+    for (final style in PredictiveBackStyle.values) {
+      expect(style.defaultFadePercent, style.isSlide ? 0 : 100);
+    }
+  });
+
   test('只补充缺失值，不覆盖已有设置', () {
     final settings = <dynamic, dynamic>{
       'themeMode': 0,
       'danmakuBlockType': <int>[42],
+      'predictiveBackEnabled': false,
+      'predictiveBackStyle': PredictiveBackStyle.alwaysLeft.index,
     };
 
     final added = applyMissingDefaultValues(
@@ -48,9 +64,14 @@ void main() {
 
     expect(settings['themeMode'], 0);
     expect(settings['danmakuBlockType'], <int>[42]);
+    expect(settings['predictiveBackEnabled'], isFalse);
+    expect(
+      settings['predictiveBackStyle'],
+      PredictiveBackStyle.alwaysLeft.index,
+    );
     expect(settings['defaultVideoQa'], 129);
     expect(settings['msgUnReadTypeV2'], <int>[0, 1, 2, 4]);
-    expect(added, createDefaultSettingValues().length - 2);
+    expect(added, createDefaultSettingValues().length - 4);
   });
 
   test('列表默认值每次创建独立实例', () {

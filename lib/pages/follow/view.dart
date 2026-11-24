@@ -11,6 +11,7 @@ import 'package:PiliPlus/pages/follow/child/child_controller.dart';
 import 'package:PiliPlus/pages/follow/child/child_view.dart';
 import 'package:PiliPlus/pages/follow/controller.dart';
 import 'package:PiliPlus/pages/follow_tag_sort/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/bili_utils.dart';
 import 'package:PiliPlus/utils/parse_int.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -111,7 +112,9 @@ class _FollowPageState extends State<FollowPage>
                 if (_followController.followState.value is! Success) {
                   return;
                 }
-                Get.to(FollowTagSortPage(controller: _followController));
+                AppPageRoute.push(
+                  FollowTagSortPage(controller: _followController),
+                );
               },
               icon: const Icon(Icons.sort),
               tooltip: '分组排序',

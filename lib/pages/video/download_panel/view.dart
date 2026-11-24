@@ -17,6 +17,7 @@ import 'package:PiliPlus/pages/download/download/view.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/controller.dart';
 import 'package:PiliPlus/pages/video/introduction/ugc/widgets/page.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
@@ -620,7 +621,7 @@ class _DownloadPanelState extends State<DownloadPanel> {
           _buildBottomBtn(
             text: '查看缓存',
             onTap: () => Navigator.of(context).push(
-              GetPageRoute(page: () => const DownloadPage()),
+              AppPageRoute(page: () => const DownloadPage()),
             ),
           ),
         ],

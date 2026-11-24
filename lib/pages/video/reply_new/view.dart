@@ -22,6 +22,7 @@ import 'package:PiliPlus/pages/emote/controller.dart';
 import 'package:PiliPlus/pages/emote/view.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/pages/video/reply_search_item/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/latex_to_unicode.dart';
@@ -280,7 +281,7 @@ class _ReplyPageState extends CommonRichTextPubPageState<ReplyPage> {
         children: [
           item(
             onTap: () async {
-              final ({String title, String url})? res = await Get.to(
+              final ({String title, String url})? res = await AppPageRoute.push(
                 ReplySearchPage(type: widget.replyType, oid: widget.oid),
               );
               if (res != null) {

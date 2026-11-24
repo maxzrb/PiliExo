@@ -4,6 +4,7 @@ import 'package:PiliPlus/common/widgets/self_sized_horizontal_list.dart';
 import 'package:PiliPlus/common/widgets/view_insets_safe_area.dart';
 import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/pages/contact/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/extension/scroll_controller_ext.dart';
 import 'package:PiliPlus/utils/request_utils.dart';
 import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
@@ -178,7 +179,7 @@ class _SharePanelState extends State<SharePanel> {
                     _focusNode.unfocus();
                     final UserModel? userModel = await Navigator.of(context)
                         .push(
-                          GetPageRoute(page: () => const ContactPage()),
+                          AppPageRoute(page: () => const ContactPage()),
                         );
                     if (userModel != null) {
                       _userList

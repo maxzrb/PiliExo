@@ -19,6 +19,7 @@ import 'package:PiliPlus/pages/emote/view.dart';
 import 'package:PiliPlus/pages/whisper_detail/controller.dart';
 import 'package:PiliPlus/pages/whisper_detail/widget/chat_item.dart';
 import 'package:PiliPlus/pages/whisper_link_setting/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/extension/file_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
@@ -107,7 +108,7 @@ class _WhisperDetailPageState
         actions: [
           IconButton(
             tooltip: '设置',
-            onPressed: () => Get.to(
+            onPressed: () => AppPageRoute.push(
               WhisperLinkSettingPage(
                 talkerUid: _whisperDetailController.talkerId,
               ),

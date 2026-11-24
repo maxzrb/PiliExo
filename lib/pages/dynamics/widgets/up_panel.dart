@@ -6,6 +6,7 @@ import 'package:PiliPlus/pages/dynamics/controller.dart';
 import 'package:PiliPlus/pages/follow_search/view.dart';
 import 'package:PiliPlus/pages/live_follow/view.dart';
 import 'package:PiliPlus/pages/share/view.dart' show UserModel;
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/dynamics_up_navigation.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -35,10 +36,10 @@ class _UpPanelState extends State<UpPanel> {
   late final isTop = controller.upPanelPosition == UpPanelPosition.top;
   UpItem? _searchedUp;
 
-  void toFollowPage() => Get.to(const LiveFollowPage());
+  void toFollowPage() => AppPageRoute.push(const LiveFollowPage());
 
   Future<void> _searchFollowedUp() async {
-    final selected = await Get.to<UserModel>(
+    final selected = await AppPageRoute.push<UserModel>(
       FollowSearchPage(
         mid: Accounts.main.mid,
         isFromSelect: true,

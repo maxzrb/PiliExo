@@ -1474,7 +1474,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         player,
         configuration: VideoControllerConfiguration(
           enableHardwareAcceleration: hwdec != null,
-          androidAttachSurfaceAfterVideoParameters: false,
+          androidAttachSurfaceAfterVideoParameters: true,
           hwdec: hwdec,
         ),
       );

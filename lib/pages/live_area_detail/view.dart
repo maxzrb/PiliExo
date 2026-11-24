@@ -9,6 +9,7 @@ import 'package:PiliPlus/pages/live_area_detail/child/controller.dart';
 import 'package:PiliPlus/pages/live_area_detail/child/view.dart';
 import 'package:PiliPlus/pages/live_area_detail/controller.dart';
 import 'package:PiliPlus/pages/live_search/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
@@ -49,7 +50,7 @@ class _LiveAreaDetailPageState extends State<LiveAreaDetailPage> {
         title: Text(widget.parentName),
         actions: [
           IconButton(
-            onPressed: () => Get.to(const LiveSearchPage()),
+            onPressed: () => AppPageRoute.push(const LiveSearchPage()),
             icon: const Icon(Icons.search),
           ),
           const SizedBox(width: 16),

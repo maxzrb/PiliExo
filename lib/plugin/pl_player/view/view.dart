@@ -37,6 +37,7 @@ import 'package:PiliPlus/pages/video/post_panel/view.dart';
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/backends/media3_hdr.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/first_frame_cover.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/hdr_startup_cover.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/mpv_hdr_subtitle.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_control_type.dart';
@@ -102,6 +103,7 @@ class PLVideoPlayer extends StatefulWidget {
     this.danmuWidget,
     this.showEpisodes,
     this.showViewPoints,
+    this.startupCover,
     this.fill = Colors.black,
     this.alignment = Alignment.center,
     super.key,
@@ -117,6 +119,7 @@ class PLVideoPlayer extends StatefulWidget {
   final Widget? danmuWidget;
   final ugc.ShowEpisodes? showEpisodes;
   final VoidCallback? showViewPoints;
+  final Widget? startupCover;
   final Color fill;
   final Alignment alignment;
 
@@ -2450,10 +2453,24 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             }
           }
           final Widget videoChild;
+          final startupCover =
+              isNativeOutput && !plPlayerController.onlyPlayAudio.value
+              ? widget.startupCover
+              : null;
           if (nativeMpv != null) {
+            final surface = nativeMpv.buildView(
+              key: ValueKey(nativeMpv.sessionId),
+            );
             videoChild = KeyedSubtree(
               key: _videoKey,
-              child: nativeMpv.buildView(key: ValueKey(nativeMpv.sessionId)),
+              child: startupCover != null
+                  ? HdrStartupCover(
+                      key: ObjectKey(nativeMpv),
+                      mpv: nativeMpv,
+                      cover: startupCover,
+                      child: surface,
+                    )
+                  : surface,
             );
           } else if (isHdr) {
             final Widget hdrView;
@@ -2477,7 +2494,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   );
             videoChild = KeyedSubtree(
               key: _videoKey,
-              child: constrainedView,
+              child: startupCover != null && hdrController != null
+                  ? HdrStartupCover(
+                      key: ObjectKey(hdrController),
+                      media3: hdrController,
+                      cover: startupCover,
+                      child: constrainedView,
+                    )
+                  : constrainedView,
             );
           } else if (plPlayerController.videoController case final output?) {
             final texture = SimpleVideo(

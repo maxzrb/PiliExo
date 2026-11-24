@@ -19,6 +19,7 @@ import 'package:PiliPlus/models_new/music/bgm_detail.dart';
 import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
 import 'package:PiliPlus/pages/music/controller.dart';
 import 'package:PiliPlus/pages/music/video/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
@@ -563,7 +564,7 @@ class _MusicDetailPageState extends CommonDynPageState<MusicDetailPage> {
                   _buildRank(
                     item.musicRelation,
                     '使用稿件量',
-                    () => Get.to(
+                    () => AppPageRoute.push(
                       const MusicRecommendPage(),
                       arguments: (id: controller.musicId, item: item),
                     ),

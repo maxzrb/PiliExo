@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:PiliPlus/common/assets.dart';
 import 'package:PiliPlus/common/style.dart';
@@ -56,6 +57,7 @@ import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
 import 'package:PiliPlus/plugin/pl_player/view/view.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/fixed_video_viewport.dart';
+import 'package:PiliPlus/router/page_transitions.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
@@ -74,6 +76,7 @@ import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:extended_nested_scroll_view/extended_nested_scroll_view.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, clampDouble;
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -94,6 +97,13 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   late final VideoDetailController videoDetailController;
   late final VideoReplyController _videoReplyController;
   PlPlayerController? plPlayerController;
+  ValueNotifier<bool>? _backGesture;
+  ModalRoute<dynamic>? _videoRoute;
+  bool _videoHiddenForBackGesture = false;
+  final _predictiveBackCoverVisible = ValueNotifier<bool>(false);
+  final _predictiveBackSnapshot = ValueNotifier<ui.Image?>(null);
+  Future<void>? _hdrBackCapture;
+  int _backGestureGeneration = 0;
 
   // intro ctr
   late final CommonIntroController introController;
@@ -345,6 +355,11 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
 
   @override
   void dispose() {
+    _predictiveBackSnapshot.value?.dispose();
+    _predictiveBackSnapshot.dispose();
+    _predictiveBackCoverVisible.dispose();
+    _backGesture?.removeListener(_onBackGestureChanged);
+    PageTransitions.predictiveBack.removeListener(_onPageTransitionChanged);
     plPlayerController
       ?..removeStatusLister(playerListener)
       ..removePositionListener(positionListener);
@@ -468,6 +483,12 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (Platform.isAndroid && _backGesture == null) {
+      _videoRoute = ModalRoute.of(context);
+      _backGesture = Navigator.of(context).userGestureInProgressNotifier
+        ..addListener(_onBackGestureChanged);
+      PageTransitions.predictiveBack.addListener(_onPageTransitionChanged);
+    }
     if (videoDetailController.removeSafeArea) {
       padding = .zero;
     } else {
@@ -497,6 +518,93 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     theme = videoDetailController.plPlayerController.darkVideoPage
         ? ThemeUtils.darkTheme
         : Theme.of(context);
+  }
+
+  void _onPageTransitionChanged() => setState(() {});
+
+  void _onBackGestureChanged() {
+    final player = videoDetailController.plPlayerController;
+    if (_backGesture!.value) {
+      if (_videoRoute?.isCurrent == true &&
+          (player.mpvHdrActive.value || player.media3HdrActive.value)) {
+        _backGestureGeneration += 1;
+        _videoHiddenForBackGesture = true;
+        _hdrBackCapture = _freezeHdrForBackGesture(player);
+      }
+    } else if (_videoHiddenForBackGesture) {
+      _videoHiddenForBackGesture = false;
+      if (_videoRoute?.isCurrent == true) _restoreAfterBackGesture(player);
+    }
+  }
+
+  Future<void> _freezeHdrForBackGesture(PlPlayerController player) async {
+    final generation = _backGestureGeneration;
+    ui.Image? image;
+    try {
+      final capture =
+          player.hdrMedia3Controller?.captureAmbientPixels(snapshot: true) ??
+          player.mpvHdrController?.captureAmbientPixels(snapshot: true);
+      final pixels = await capture?.timeout(
+        const Duration(milliseconds: 60),
+        onTimeout: () => null,
+      );
+      image = await pixels?.toImage();
+    } on Exception {
+      image = null;
+    }
+    if (!mounted ||
+        generation != _backGestureGeneration ||
+        !_backGesture!.value ||
+        _videoRoute?.isCurrent != true) {
+      image?.dispose();
+      return;
+    }
+    final previous = _predictiveBackSnapshot.value;
+    _predictiveBackSnapshot.value = image;
+    previous?.dispose();
+    _predictiveBackCoverVisible.value = true;
+    await _setHdrBackPreviewHidden(player, true);
+  }
+
+  Future<void> _setHdrBackPreviewHidden(
+    PlPlayerController player,
+    bool hidden,
+  ) async {
+    try {
+      await (player.hdrMedia3Controller?.setBackPreviewHidden(hidden) ??
+          player.mpvHdrController?.setBackPreviewHidden(hidden));
+    } on PlatformException {
+      // 返回提交后原生视图可能已释放。
+    }
+  }
+
+  Future<void> _restoreAfterBackGesture(PlPlayerController player) async {
+    final generation = _backGestureGeneration;
+    await _hdrBackCapture;
+    if (!mounted ||
+        generation != _backGestureGeneration ||
+        _backGesture!.value ||
+        _videoRoute?.isCurrent != true ||
+        !_predictiveBackCoverVisible.value) {
+      return;
+    }
+
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted &&
+        generation == _backGestureGeneration &&
+        !_backGesture!.value &&
+        _videoRoute?.isCurrent == true) {
+      await _setHdrBackPreviewHidden(player, false);
+      if (mounted &&
+          generation == _backGestureGeneration &&
+          !_backGesture!.value &&
+          _videoRoute?.isCurrent == true) {
+        _predictiveBackCoverVisible.value = false;
+        final image = _predictiveBackSnapshot.value;
+        _predictiveBackSnapshot.value = null;
+        image?.dispose();
+      }
+    }
   }
 
   bool removeAppBar(bool isFullScreen) =>
@@ -1242,27 +1350,33 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   }) => Obx(
     () => popScope(
       key: videoDetailController.videoPlayerKey,
-      // Android 三条路线都先完成视频层隐藏，再开始返回动画。
       canPop:
           (!Platform.isAndroid ||
+              PageTransitions.predictiveBack.value ||
               videoDetailController
                   .plPlayerController
                   .videoOutputHidden
                   .value) &&
+          (!PageTransitions.predictiveBack.value ||
+              !videoDetailController.plPlayerController.controlsLock.value) &&
           !isFullScreen &&
           !videoDetailController.plPlayerController.isDesktopPip &&
           (videoDetailController.horizontalScreen || isPortrait),
       onPopInvokedWithResult: (didPop, result) {
+        final player = videoDetailController.plPlayerController;
         final route = ModalRoute.of(context);
         if (!didPop && route?.willHandlePopInternally == true) {
           // 评论弹层/局部历史只关闭弹层，不能隐藏仍在下方的视频层。
           Get.back();
           return;
         }
-        videoDetailController.plPlayerController.onPopInvokedWithResult(
-          didPop,
-          result,
-        );
+        if (didPop && Platform.isAndroid && !player.videoOutputHidden.value) {
+          if (player.mpvHdrActive.value || player.media3HdrActive.value) {
+            _predictiveBackCoverVisible.value = true;
+          }
+          player.hideHdrSurface();
+        }
+        player.onPopInvokedWithResult(didPop, result);
       },
       child: Obx(
         () {
@@ -1275,37 +1389,42 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
             outputReady: outputReady,
             isMedia3Hdr: isHdr,
           );
-          return !shouldBuild || controller!.videoOutputHidden.value
-              ? const SizedBox.shrink()
-              : PLVideoPlayer(
-                  maxWidth: width,
-                  maxHeight: height,
-                  plPlayerController: controller,
-                  videoDetailController: videoDetailController,
-                  introController: introController,
-                  headerControl: HeaderControl(
-                    key: videoDetailController.headerCtrKey,
-                    isPortrait: isPortrait,
-                    controller: videoDetailController.plPlayerController,
-                    videoDetailCtr: videoDetailController,
-                    heroTag: heroTag,
+          if (controller?.videoOutputHidden.value == true) {
+            return const SizedBox.shrink();
+          }
+          if (!shouldBuild || controller == null) {
+            return const SizedBox.shrink();
+          }
+          return PLVideoPlayer(
+            maxWidth: width,
+            maxHeight: height,
+            plPlayerController: controller,
+            videoDetailController: videoDetailController,
+            introController: introController,
+            headerControl: HeaderControl(
+              key: videoDetailController.headerCtrKey,
+              isPortrait: isPortrait,
+              controller: videoDetailController.plPlayerController,
+              videoDetailCtr: videoDetailController,
+              heroTag: heroTag,
+            ),
+            danmuWidget: isPipMode && pipNoDanmaku
+                ? null
+                : Obx(
+                    () => PlDanmaku(
+                      key: ValueKey(videoDetailController.cid.value),
+                      isPipMode: isPipMode,
+                      cid: videoDetailController.cid.value,
+                      playerController: controller,
+                      isFullScreen: controller.isFullScreen.value,
+                      isFileSource: videoDetailController.isFileSource,
+                      size: Size(width, height),
+                    ),
                   ),
-                  danmuWidget: isPipMode && pipNoDanmaku
-                      ? null
-                      : Obx(
-                          () => PlDanmaku(
-                            key: ValueKey(videoDetailController.cid.value),
-                            isPipMode: isPipMode,
-                            cid: videoDetailController.cid.value,
-                            playerController: controller,
-                            isFullScreen: controller.isFullScreen.value,
-                            isFileSource: videoDetailController.isFileSource,
-                            size: Size(width, height),
-                          ),
-                        ),
-                  showEpisodes: showEpisodes,
-                  showViewPoints: showViewPoints,
-                );
+            showEpisodes: showEpisodes,
+            showViewPoints: showViewPoints,
+            startupCover: isPipMode ? null : _playbackCover(width, height),
+          );
         },
       ),
     ),
@@ -1517,21 +1636,72 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     );
   }
 
+  Widget _playbackCover(double width, double height) => IgnorePointer(
+    child: ColoredBox(
+      color: Colors.black,
+      child: Obx(() {
+        final cover = videoDetailController.cover.value;
+        if (cover.isEmpty) return SizedBox(width: width, height: height);
+        return NetworkImgLayer(
+          type: .emote,
+          quality: 60,
+          src: cover,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          borderRadius: BorderRadius.zero,
+          cacheWidth: true,
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
+          getPlaceHolder: () => const SizedBox.shrink(),
+        );
+      }),
+    ),
+  );
+
   Widget videoPlayer({required double width, required double height}) {
     final isFullScreen = this.isFullScreen;
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Positioned.fill(
-          child: Obx(
-            () =>
-                videoDetailController.plPlayerController.videoOutputHidden.value
-                ? const SizedBox.shrink()
-                : const ColoredBox(color: Colors.black, isAntiAlias: false),
+        const Positioned.fill(
+          child: ColoredBox(
+            color: Colors.black,
+            isAntiAlias: false,
           ),
         ),
 
         plPlayer(width: width, height: height),
+
+        Positioned.fill(
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _predictiveBackCoverVisible,
+            child: _playbackCover(width, height),
+            builder: (context, visible, child) {
+              if (!visible) return const SizedBox.shrink();
+              return ValueListenableBuilder<ui.Image?>(
+                valueListenable: _predictiveBackSnapshot,
+                child: child,
+                builder: (context, image, fallback) {
+                  if (image == null) return fallback!;
+                  final fit =
+                      videoDetailController.plPlayerController.videoFit.value;
+                  return IgnorePointer(
+                    child: ColoredBox(
+                      color: Colors.black,
+                      child: RawImage(
+                        image: image,
+                        fit: fit.mpvResizeMode == 'fit'
+                            ? BoxFit.contain
+                            : fit.boxFit,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
 
         Obx(() {
           if (!videoDetailController.autoPlay) {

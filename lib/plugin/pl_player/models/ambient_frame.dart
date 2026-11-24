@@ -70,7 +70,10 @@ class AmbientRgbaFrame {
   final int height;
   final int rowBytes;
 
-  static AmbientRgbaFrame? fromMessage(Object? message) {
+  static AmbientRgbaFrame? fromMessage(
+    Object? message, {
+    int maxDimension = 256,
+  }) {
     if (message is! Map || message['format'] != 'rgba8888') return null;
     final width = message['width'];
     final height = message['height'];
@@ -81,11 +84,11 @@ class AmbientRgbaFrame {
         rowBytes is! int ||
         pixels is! Uint8List ||
         width < 1 ||
-        width > 256 ||
+        width > maxDimension ||
         height < 1 ||
-        height > 256 ||
+        height > maxDimension ||
         rowBytes < width * 4 ||
-        rowBytes > 256 * 4 ||
+        rowBytes > maxDimension * 4 ||
         pixels.length != rowBytes * height) {
       return null;
     }

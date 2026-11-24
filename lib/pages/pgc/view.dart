@@ -20,6 +20,7 @@ import 'package:PiliPlus/pages/pgc/widgets/pgc_card_v_timeline.dart';
 import 'package:PiliPlus/pages/pgc_index/controller.dart';
 import 'package:PiliPlus/pages/pgc_index/view.dart';
 import 'package:PiliPlus/pages/pgc_index/widgets/pgc_card_v_pgc_index.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -239,7 +240,7 @@ class _PgcPageState extends State<PgcPage> with AutomaticKeepAliveClientMixin {
             padding: const EdgeInsets.symmetric(vertical: 2),
             onTap: () {
               if (widget.tabType == HomeTabType.bangumi) {
-                Get.to(const PgcIndexPage());
+                AppPageRoute.push(const PgcIndexPage());
               } else {
                 List<String> titles = const [
                   '全部',
@@ -249,7 +250,7 @@ class _PgcPageState extends State<PgcPage> with AutomaticKeepAliveClientMixin {
                   '综艺',
                 ];
                 List<int> types = const [102, 2, 5, 3, 7];
-                Get.to(
+                AppPageRoute.push(
                   SimpleScaffold(
                     appBar: AppBar(title: const Text('索引')),
                     body: DefaultTabController(

@@ -8,6 +8,7 @@ import 'package:PiliPlus/models_new/download/bili_download_entry_info.dart';
 import 'package:PiliPlus/models_new/download/download_info.dart';
 import 'package:PiliPlus/pages/common/multi_select/base.dart';
 import 'package:PiliPlus/pages/download/page/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -122,7 +123,7 @@ class SeasonInfoItem extends StatelessWidget {
             controller.onSelect(season);
             return;
           }
-          Get.to(
+          AppPageRoute.push(
             DownloadPagePage(
               seasonInfo: seasonInfo,
               progress: progress,

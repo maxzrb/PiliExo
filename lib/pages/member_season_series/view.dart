@@ -9,6 +9,7 @@ import 'package:PiliPlus/models_new/space/space_season_series/season.dart'
 import 'package:PiliPlus/pages/member_season_series/controller.dart';
 import 'package:PiliPlus/pages/member_season_series/widget/season_series_card.dart';
 import 'package:PiliPlus/pages/member_video/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -80,7 +81,7 @@ class _SeasonSeriesPageState extends State<SeasonSeriesPage>
                       dynamic id = isSeason
                           ? item.meta!.seasonId
                           : item.meta!.seriesId;
-                      Get.to(
+                      AppPageRoute.push(
                         SimpleScaffold(
                           appBar: AppBar(title: Text(item.meta!.name!)),
                           body: ViewSafeArea(

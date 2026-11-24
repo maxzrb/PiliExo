@@ -4,6 +4,7 @@ import 'package:PiliPlus/pages/fan/view.dart';
 import 'package:PiliPlus/pages/follow/child/child_view.dart';
 import 'package:PiliPlus/pages/follow_search/view.dart';
 import 'package:PiliPlus/pages/share/view.dart' show UserModel;
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -47,7 +48,7 @@ class _ContactPageState extends State<ContactPage>
           IconButton(
             onPressed: () async {
               final UserModel? userModel = await Navigator.of(context).push(
-                GetPageRoute(
+                AppPageRoute(
                   page: () => FollowSearchPage(
                     mid: mid,
                     isFromSelect: widget.isFromSelect,

@@ -7,6 +7,7 @@ import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/pages/whisper_block/view.dart';
 import 'package:PiliPlus/pages/whisper_settings/controller.dart';
 import 'package:PiliPlus/pages/whisper_settings/widgets/item.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
@@ -68,7 +69,7 @@ class _WhisperSettingsPageState extends State<WhisperSettingsPage> {
     Setting item,
   ) {
     if (item.redirect.settingPage.hasParentSettingType()) {
-      Get.to(
+      AppPageRoute.push(
         WhisperSettingsPage(
           imSettingType: item.redirect.settingPage.parentSettingType,
           onUpdate: (value) {
@@ -137,7 +138,7 @@ class _WhisperSettingsPageState extends State<WhisperSettingsPage> {
       }
     } else if (item.redirect.settingPage.hasUrl()) {
       if (item.redirect.title == '消息屏蔽词') {
-        Get.to(const WhisperBlockPage());
+        AppPageRoute.push(const WhisperBlockPage());
       } else if (item.redirect.settingPage.url.startsWith('http')) {
         Get.toNamed(
           '/webview',

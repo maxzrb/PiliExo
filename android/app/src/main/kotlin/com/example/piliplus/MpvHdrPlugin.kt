@@ -179,7 +179,12 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                     width,
                     height,
                     call.argument<String>("format") == "rgba8888",
+                    call.argument<Boolean>("snapshot") == true,
                 ) { result.success(it) }
+            }
+            "setBackPreviewHidden" -> {
+                session.view?.setBackPreviewHidden(call.argument<Boolean>("hidden") == true)
+                result.success(null)
             }
             "hide" -> {
                 val hiddenView = session.view
@@ -261,9 +266,10 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
             width: Int,
             height: Int,
             rawPixels: Boolean,
+            snapshot: Boolean,
             callback: (Any?) -> Unit,
         ) {
-            view?.captureAmbientFrame(width, height, rawPixels, callback) ?: callback(null)
+            view?.captureAmbientFrame(width, height, rawPixels, snapshot, callback) ?: callback(null)
         }
 
         fun fail(error: Throwable) {
@@ -293,8 +299,17 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
             addView(surface, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
         }
 
-        init { session.view = this }
+        init {
+            // 替换 PlatformView 时先隐藏旧视图，避免新 Surface 建立后
+            // 旧窗口仍留在 Flutter 组合层里形成叠影。
+            session.view?.takeIf { it !== this }?.hide()
+            session.view = this
+        }
         override fun getView(): View = root
+
+        fun setBackPreviewHidden(hidden: Boolean) {
+            setHdrBackPreviewHidden(root, surface, hidden)
+        }
 
         fun hide() {
             // 连黑色父容器一起隐藏，避免 Surface 消失后仍留下缩小的黑窗。
@@ -311,28 +326,34 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
             width: Int,
             height: Int,
             rawPixels: Boolean,
+            snapshot: Boolean,
             callback: (Any?) -> Unit,
         ) {
             if (session.released || Build.VERSION.SDK_INT < Build.VERSION_CODES.N ||
                 !surface.isAttachedToWindow || surface.width <= 0 || surface.height <= 0 ||
-                ambientCaptureInFlight
+                (!snapshot && ambientCaptureInFlight)
             ) {
                 callback(null)
                 return
             }
+            val (copyWidth, copyHeight) = if (snapshot) {
+                hdrSnapshotSize(surface.width, surface.height)
+            } else {
+                width to height
+            }
             val bitmap = try {
-                Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                Bitmap.createBitmap(copyWidth, copyHeight, Bitmap.Config.ARGB_8888)
             } catch (_: Throwable) {
                 callback(null)
                 return
             }
-            ambientCaptureInFlight = true
+            if (!snapshot) ambientCaptureInFlight = true
             try {
                 PixelCopy.request(
                     surface,
                     bitmap,
                     { copyResult ->
-                        ambientCaptureInFlight = false
+                        if (!snapshot) ambientCaptureInFlight = false
                         if (copyResult != PixelCopy.SUCCESS || session.released) {
                             bitmap.recycle()
                             callback(null)
@@ -340,14 +361,14 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                         }
                         if (rawPixels) {
                             val message = try {
-                                val colors = IntArray(width * height)
-                                bitmap.getPixels(colors, 0, width, 0, 0, width, height)
+                                val colors = IntArray(copyWidth * copyHeight)
+                                bitmap.getPixels(colors, 0, copyWidth, 0, 0, copyWidth, copyHeight)
                                 val pixels = ambientArgbToRgba(colors)
                                 mapOf(
                                     "format" to "rgba8888",
-                                    "width" to width,
-                                    "height" to height,
-                                    "rowBytes" to width * 4,
+                                    "width" to copyWidth,
+                                    "height" to copyHeight,
+                                    "rowBytes" to copyWidth * 4,
                                     "pixels" to pixels,
                                 )
                             } catch (_: Throwable) {
@@ -371,7 +392,7 @@ class MpvHdrPlugin(private val activity: Activity, engine: FlutterEngine) {
                     main,
                 )
             } catch (_: Throwable) {
-                ambientCaptureInFlight = false
+                if (!snapshot) ambientCaptureInFlight = false
                 bitmap.recycle()
                 callback(null)
             }

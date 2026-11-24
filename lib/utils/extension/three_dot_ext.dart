@@ -4,6 +4,7 @@ import 'package:PiliPlus/grpc/bilibili/app/im/v1.pb.dart'
 import 'package:PiliPlus/pages/common/common_whisper_controller.dart';
 import 'package:PiliPlus/pages/contact/view.dart';
 import 'package:PiliPlus/pages/whisper_settings/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -59,7 +60,7 @@ extension ThreeDotItemTypeExt on ThreeDotItemType {
           onConfirm: controller.onDeleteList,
         );
       case ThreeDotItemType.THREE_DOT_ITEM_TYPE_MSG_SETTING:
-        Get.to(
+        AppPageRoute.push(
           const WhisperSettingsPage(
             imSettingType: IMSettingType.SETTING_TYPE_NEED_ALL,
           ),
@@ -82,7 +83,7 @@ extension ThreeDotItemTypeExt on ThreeDotItemType {
           );
         }
       case ThreeDotItemType.THREE_DOT_ITEM_TYPE_CONTACTS:
-        Get.to(const ContactPage(isFromSelect: false));
+        AppPageRoute.push(const ContactPage(isFromSelect: false));
       default:
         SmartDialog.showToast('TODO: $name');
     }

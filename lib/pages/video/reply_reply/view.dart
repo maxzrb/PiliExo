@@ -16,6 +16,7 @@ import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
 import 'package:PiliPlus/pages/common/slide/common_slide_page.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/pages/video/reply_reply/controller.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/extension/widget_ext.dart';
 import 'package:PiliPlus/utils/num_utils.dart';
@@ -58,7 +59,7 @@ class VideoReplyReplyPanel extends CommonSlidePage {
     required int type,
     Uri? uri,
   }) {
-    return Get.to(
+    return AppPageRoute.push(
       arguments: {
         'oid': oid,
         'rpid': rootId,

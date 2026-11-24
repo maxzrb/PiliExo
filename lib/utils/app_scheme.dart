@@ -19,6 +19,7 @@ import 'package:PiliPlus/pages/live/view.dart';
 import 'package:PiliPlus/pages/rank/view.dart';
 import 'package:PiliPlus/pages/subscription_detail/view.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/id_utils.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
 import 'package:PiliPlus/utils/parse_string.dart';
@@ -361,7 +362,7 @@ abstract final class PiliScheme {
             }
             return false;
           case 'livearea':
-            Get.to(
+            AppPageRoute.push(
               SimpleScaffold(
                 appBar: AppBar(title: const Text('直播')),
                 body: const ViewSafeArea(child: LivePage()),
@@ -369,7 +370,7 @@ abstract final class PiliScheme {
             );
             return true;
           case 'rank':
-            Get.to(
+            AppPageRoute.push(
               SimpleScaffold(
                 appBar: AppBar(title: const Text('排行榜')),
                 body: const ViewSafeArea(child: RankPage()),

@@ -824,18 +824,18 @@ class VideoDetailController extends GetxController
         indices.add(index);
       }
     }
-    final lowerIndices = [
-      for (var index = 0; index < videos.length; index++)
-        if (index != currentIndex &&
-            !indices.contains(index) &&
-            isLowerResolution(videos[index]))
-          index,
-    ];
-    lowerIndices.sort((a, b) {
-      final aArea = (videos[a].width ?? 0) * (videos[a].height ?? 0);
-      final bArea = (videos[b].width ?? 0) * (videos[b].height ?? 0);
-      return bArea.compareTo(aArea);
-    });
+    final lowerIndices =
+        [
+          for (var index = 0; index < videos.length; index++)
+            if (index != currentIndex &&
+                !indices.contains(index) &&
+                isLowerResolution(videos[index]))
+              index,
+        ]..sort((a, b) {
+          final aArea = (videos[a].width ?? 0) * (videos[a].height ?? 0);
+          final bArea = (videos[b].width ?? 0) * (videos[b].height ?? 0);
+          return bArea.compareTo(aArea);
+        });
     indices.addAll(lowerIndices);
 
     return [
@@ -887,15 +887,38 @@ class VideoDetailController extends GetxController
     playerInit();
   }
 
+  Future<void>? _pendingPlayerInit;
+
   Future<void>? initPlayerIfNeeded(bool autoFullScreenFlag) {
+    // 起播阶段查询回调可能重复触发；复用同一个初始化任务，
+    // 避免并发创建两套 HDR 播放器和原生窗口。
+    if (_pendingPlayerInit case final pending?) {
+      return pending;
+    }
     if (_autoPlay.value ||
         (plPlayerController.preInitPlayer && !plPlayerController.processing) &&
             (isFileSource
                 ? true
                 : videoPlayerKey.currentState?.mounted == true)) {
-      return playerInit(
+      final future = playerInit(
         autoFullScreenFlag: autoFullScreenFlag && _autoPlay.value,
       );
+      _pendingPlayerInit = future;
+      unawaited(
+        future.then<void>(
+          (_) {
+            if (identical(_pendingPlayerInit, future)) {
+              _pendingPlayerInit = null;
+            }
+          },
+          onError: (Object _, StackTrace _) {
+            if (identical(_pendingPlayerInit, future)) {
+              _pendingPlayerInit = null;
+            }
+          },
+        ),
+      );
+      return future;
     }
     return null;
   }

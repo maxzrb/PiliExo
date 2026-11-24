@@ -80,6 +80,20 @@ void main() {
     expect(AmbientRgbaFrame.fromMessage(null), isNull);
   });
 
+  test('返回快照允许 512 像素长边，环境采样保留原尺寸限制', () {
+    final snapshot = {
+      ...message(),
+      'width': 512,
+      'rowBytes': 512 * 4,
+      'pixels': Uint8List(512 * 4),
+    };
+    expect(AmbientRgbaFrame.fromMessage(snapshot), isNull);
+    expect(
+      AmbientRgbaFrame.fromMessage(snapshot, maxDimension: 512)?.width,
+      512,
+    );
+  });
+
   const texture = AmbientTextureFrame(
     textureId: 17,
     viewportSize: Size(400, 300),

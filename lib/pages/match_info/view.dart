@@ -9,6 +9,7 @@ import 'package:PiliPlus/pages/common/dyn/common_dyn_page.dart';
 import 'package:PiliPlus/pages/match_info/controller.dart';
 import 'package:PiliPlus/pages/match_info/widgets/match_info_item.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/widget_ext.dart';
 import 'package:easy_debounce/easy_throttle.dart';
@@ -79,7 +80,7 @@ class _MatchInfoPageState extends CommonDynPageState<MatchInfoPage> {
     EasyThrottle.throttle('replyReply', const Duration(milliseconds: 500), () {
       int oid = replyItem.oid.toInt();
       int rpid = replyItem.id.toInt();
-      Get.to(
+      AppPageRoute.push(
         SimpleScaffold(
           appBar: AppBar(
             title: const Text('评论详情'),

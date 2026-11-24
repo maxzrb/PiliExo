@@ -13,6 +13,7 @@ import 'package:PiliPlus/pages/download/download/widgets/page.dart';
 import 'package:PiliPlus/pages/download/download/widgets/season.dart';
 import 'package:PiliPlus/pages/download/download_action_mixin.dart';
 import 'package:PiliPlus/pages/download/search/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/grid.dart';
@@ -182,7 +183,7 @@ class _DownloadPageState extends State<DownloadPage>
                   onPressed: () async {
                     await downloadService.waitForInitialization;
                     if (!mounted) return;
-                    Get.to(DownloadSearchPage(progress: _progress));
+                    AppPageRoute.push(DownloadSearchPage(progress: _progress));
                   },
                   icon: const Icon(Icons.search),
                 ),

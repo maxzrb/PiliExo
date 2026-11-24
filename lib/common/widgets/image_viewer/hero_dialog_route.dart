@@ -1,3 +1,4 @@
+import 'package:PiliPlus/router/page_transitions.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// https://github.com/qq326646683/interactiveviewer_gallery
@@ -6,7 +7,7 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// Similar to calling [showDialog] except it can be used with a [Navigator] to
 /// show a [Hero] animation.
-class HeroDialogRoute<T> extends PageRoute<T> {
+class HeroDialogRoute<T> extends PageRoute<T> with PredictiveBackPageRoute<T> {
   HeroDialogRoute({
     required this.pageBuilder,
   });
@@ -37,12 +38,19 @@ class HeroDialogRoute<T> extends PageRoute<T> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) {
-    return FadeTransition(
+  ) => buildWithPredictiveBack(
+    context,
+    animation,
+    secondaryAnimation,
+    child,
+    (
+      context,
+      child,
+    ) => FadeTransition(
       opacity: animation.drive(CurveTween(curve: Curves.easeOut)),
       child: child,
-    );
-  }
+    ),
+  );
 
   @override
   Widget buildPage(

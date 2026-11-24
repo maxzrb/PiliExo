@@ -12,6 +12,7 @@ import 'package:PiliPlus/common/widgets/route_aware_mixin.dart';
 import 'package:PiliPlus/models/common/nav_bar_config.dart';
 import 'package:PiliPlus/pages/home/view.dart';
 import 'package:PiliPlus/pages/main/controller.dart';
+import 'package:PiliPlus/pages/main/widgets/main_tab_view.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
@@ -317,22 +318,32 @@ class _MainAppState extends PopScopeState<MainApp>
     Widget? bottomNav;
     if (_mainController.navigationBars.length > 1) {
       if (_mainController.floatingNavBar) {
+        final destinations = _mainController.navigationBars
+            .map(
+              (tab) => FloatingNavigationDestination(
+                label: tab.label,
+                icon: _buildIcon(type: tab),
+                selectedIcon: _buildIcon(type: tab, selected: true),
+              ),
+            )
+            .toList();
         bottomNav = Obx(
           () => FloatingNavigationBar(
             onDestinationSelected: _mainController.setIndex,
             selectedIndex: _mainController.selectedIndex.value,
-            destinations: _mainController.navigationBars
-                .map(
-                  (e) => FloatingNavigationDestination(
-                    label: e.label,
-                    icon: _buildIcon(type: e),
-                    selectedIcon: _buildIcon(type: e, selected: true),
-                  ),
-                )
-                .toList(),
+            destinations: destinations,
           ),
         );
       } else if (_mainController.enableMYBar) {
+        final destinations = _mainController.navigationBars
+            .map(
+              (tab) => NavigationDestination(
+                label: tab.label,
+                icon: _buildIcon(type: tab),
+                selectedIcon: _buildIcon(type: tab, selected: true),
+              ),
+            )
+            .toList();
         bottomNav = Obx(
           () => NavigationBar(
             backgroundColor: Colors.transparent,
@@ -341,18 +352,19 @@ class _MainAppState extends PopScopeState<MainApp>
             maintainBottomViewPadding: true,
             onDestinationSelected: _mainController.setIndex,
             selectedIndex: _mainController.selectedIndex.value,
-            destinations: _mainController.navigationBars
-                .map(
-                  (e) => NavigationDestination(
-                    label: e.label,
-                    icon: _buildIcon(type: e),
-                    selectedIcon: _buildIcon(type: e, selected: true),
-                  ),
-                )
-                .toList(),
+            destinations: destinations,
           ),
         );
       } else {
+        final items = _mainController.navigationBars
+            .map(
+              (tab) => BottomNavigationBarItem(
+                label: tab.label,
+                icon: _buildIcon(type: tab),
+                activeIcon: _buildIcon(type: tab, selected: true),
+              ),
+            )
+            .toList();
         bottomNav = Obx(
           () => BottomNavigationBar(
             currentIndex: _mainController.selectedIndex.value,
@@ -361,21 +373,13 @@ class _MainAppState extends PopScopeState<MainApp>
             selectedFontSize: 12,
             unselectedFontSize: 12,
             type: .fixed,
-            items: _mainController.navigationBars
-                .map(
-                  (e) => BottomNavigationBarItem(
-                    label: e.label,
-                    icon: _buildIcon(type: e),
-                    activeIcon: _buildIcon(type: e, selected: true),
-                  ),
-                )
-                .toList(),
+            items: items,
           ),
         );
       }
 
       if (!_mainController.floatingNavBar) {
-        bottomNav = FrostedSurface(showBorder: false, child: bottomNav);
+        bottomNav = FrostedSurface(child: bottomNav);
       }
 
       if (_mainController.hideBottomBar) {
@@ -490,15 +494,20 @@ class _MainAppState extends PopScopeState<MainApp>
   Widget build(BuildContext context) {
     Widget child;
     if (_mainController.mainTabBarView) {
-      child = TabBarView(
-        controller: _mainController.controller,
-        physics: const NeverScrollableScrollPhysics(),
-        scrollDirection: _mainController.useBottomNav ? .horizontal : .vertical,
-        children: _mainController.navigationBars.map((i) => i.page).toList(),
+      final pages = _mainController.navigationBars
+          .map((tab) => tab.page)
+          .toList();
+      child = Obx(
+        () => MainTabView(
+          index: _mainController.selectedIndex.value,
+          axis: _mainController.useBottomNav ? .horizontal : .vertical,
+          onSettled: _mainController.onTabSettled,
+          children: pages,
+        ),
       );
     } else {
       child = PageView(
-        controller: _mainController.controller,
+        controller: _mainController.pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: _mainController.navigationBars.map((i) => i.page).toList(),
       );

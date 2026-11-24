@@ -34,6 +34,7 @@ import 'package:PiliPlus/pages/setting/widgets/ordered_multi_select_dialog.dart'
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
+import 'package:PiliPlus/router/page_transitions.dart';
 import 'package:PiliPlus/utils/extension/file_ext.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -116,9 +117,33 @@ List<SettingsModel> get styleSettings => [
   NormalModel(
     title: '页面过渡动画',
     leading: const Icon(Icons.animation),
-    getSubtitle: () => '当前：${Pref.pageTransition.name}',
+    getSubtitle: () => '当前：${PageTransitions.label(Pref.pageTransition)}',
     onTap: _showTransitionDialog,
   ),
+  if (PageTransitions.supportsPredictiveBack())
+    const SwitchModel(
+      title: '预测性返回',
+      subtitle: '返回时预览上一页，开启后覆盖页面过渡动画',
+      leading: Icon(Icons.gesture),
+      setKey: SettingBoxKey.predictiveBackEnabled,
+      defaultVal: true,
+      onChanged: PageTransitions.setEnabled,
+    ),
+  if (PageTransitions.supportsPredictiveBack())
+    NormalModel(
+      title: '预测性返回设置',
+      leading: const Icon(Icons.tune),
+      getSubtitle: () {
+        final style = PredictiveBackStyle.fromIndex(
+          Pref.predictiveBackStyle,
+        );
+        final slide = style.isSlide
+            ? ' · 位移${Pref.predictiveBackSlidePercent}%'
+            : '';
+        return '${style.label}$slide · 渐隐${Pref.predictiveBackFadePercent}%';
+      },
+      onTap: (context, setState) => Get.toNamed('/predictiveBackSetting'),
+    ),
   const SwitchModel(
     title: '优化平板导航栏',
     leading: Icon(Icons.auto_fix_high),
@@ -710,17 +735,20 @@ Future<void> _showTransitionDialog(
   BuildContext context,
   VoidCallback setState,
 ) async {
-  final res = await showDialog<Transition>(
+  final res = await showDialog<int>(
     context: context,
-    builder: (context) => SelectDialog<Transition>(
+    builder: (context) => SelectDialog<int>(
       title: '页面过渡动画',
       value: Pref.pageTransition,
-      values: Transition.values.map((e) => (e, e.name)).toList(),
+      values: [
+        for (final transition in Transition.values)
+          (transition.index, transition.name),
+      ],
     ),
   );
   if (res != null) {
-    Get.rootController.defaultTransition = res;
-    await GStorage.setting.put(SettingBoxKey.pageTransition, res.index);
+    PageTransitions.select(res);
+    await GStorage.setting.put(SettingBoxKey.pageTransition, res);
     setState();
   }
 }

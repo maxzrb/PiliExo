@@ -15,6 +15,7 @@ import 'package:PiliPlus/models/common/image_type.dart';
 import 'package:PiliPlus/models_new/msg/msg_like/item.dart';
 import 'package:PiliPlus/pages/msg_feed_top/like_me/controller.dart';
 import 'package:PiliPlus/pages/whisper_settings/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/app_scheme.dart';
 import 'package:PiliPlus/utils/date_utils.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
@@ -39,7 +40,7 @@ class _LikeMePageState extends State<LikeMePage> {
         title: const Text('收到的赞'),
         actions: [
           IconButton(
-            onPressed: () => Get.to(
+            onPressed: () => AppPageRoute.push(
               const WhisperSettingsPage(
                 imSettingType: IMSettingType.SETTING_TYPE_OLD_RECEIVE_LIKE,
               ),

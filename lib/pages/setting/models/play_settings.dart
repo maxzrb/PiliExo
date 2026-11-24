@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
 
 import 'package:PiliPlus/common/widgets/custom_icon.dart';
@@ -328,7 +329,7 @@ List<SettingsModel> get playSettings => [
     title: '全屏 SuperChat 设置',
     subtitle: '全屏 SuperChat (醒目留言) 大小、不透明度、缩放设置',
     leading: const Icon(Icons.open_in_full),
-    onTap: (_, _) => Get.to(const FullScreenSc()),
+    onTap: (_, _) => AppPageRoute.push(const FullScreenSc()),
   ),
   const SwitchModel(
     title: '竖屏扩大展示',

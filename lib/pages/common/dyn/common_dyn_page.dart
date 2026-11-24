@@ -18,6 +18,7 @@ import 'package:PiliPlus/pages/common/reply/reply_footer_mixin.dart';
 import 'package:PiliPlus/pages/common/reply/vote/reply_vote_item.dart';
 import 'package:PiliPlus/pages/video/reply/widgets/reply_item_grpc.dart';
 import 'package:PiliPlus/pages/video/reply_reply/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/extension/size_ext.dart';
 import 'package:PiliPlus/utils/feed_back.dart';
@@ -318,7 +319,7 @@ mixin CommonDynPageMixin<T extends StatefulWidget>
       }
     }
 
-    Get.to(
+    AppPageRoute.push(
       replyReplyPage,
       routeName: 'dynamicDetail-Copy',
       arguments: arguments,

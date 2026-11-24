@@ -17,6 +17,7 @@ import 'package:PiliPlus/pages/live/widgets/sliver_pinned_header.dart';
 import 'package:PiliPlus/pages/live_area/view.dart';
 import 'package:PiliPlus/pages/live_follow/view.dart';
 import 'package:PiliPlus/pages/search/widgets/search_text.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/extension/theme_ext.dart';
 import 'package:PiliPlus/utils/grid.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -176,7 +177,7 @@ class _LivePageState extends State<LivePage>
             context: context,
             tooltip: '全部标签',
             icon: const Icon(Icons.widgets),
-            onPressed: () => Get.to(const LiveAreaPage()),
+            onPressed: () => AppPageRoute.push(const LiveAreaPage()),
           ),
         ],
       ),
@@ -305,7 +306,7 @@ class _LivePageState extends State<LivePage>
             ),
           ),
           moreTextButton(
-            onTap: () => Get.to(const LiveFollowPage()),
+            onTap: () => AppPageRoute.push(const LiveFollowPage()),
             color: colorScheme.outline,
           ),
         ],
@@ -337,7 +338,7 @@ class _LivePageState extends State<LivePage>
                 return Align(
                   alignment: const Alignment(0, -0.3),
                   child: GestureDetector(
-                    onTap: () => Get.to(const LiveFollowPage()),
+                    onTap: () => AppPageRoute.push(const LiveFollowPage()),
                     child: Container(
                       width: 40,
                       height: 40,

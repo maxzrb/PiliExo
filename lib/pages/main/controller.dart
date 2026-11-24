@@ -12,6 +12,7 @@ import 'package:PiliPlus/models/common/nav_bar_config.dart';
 import 'package:PiliPlus/pages/dynamics/controller.dart';
 import 'package:PiliPlus/pages/home/controller.dart';
 import 'package:PiliPlus/pages/mine/view.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/services/account_service.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
@@ -25,8 +26,7 @@ import 'package:easy_debounce/easy_throttle.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
 
-class MainController extends GetxController
-    with GetSingleTickerProviderStateMixin, AccountMixin {
+class MainController extends GetxController with AccountMixin {
   @override
   final AccountService accountService = Get.find<AccountService>();
 
@@ -37,7 +37,7 @@ class MainController extends GetxController
   late final bool hideBottomBar;
   late final barHideType = Pref.barHideType;
   bool useBottomNav = true;
-  late dynamic controller;
+  PageController? pageController;
   final RxInt selectedIndex = 0.obs;
 
   final RxInt dynCount = 0.obs;
@@ -82,13 +82,9 @@ class MainController extends GetxController
 
     setNavBarConfig();
 
-    controller = mainTabBarView
-        ? TabController(
-            vsync: this,
-            initialIndex: selectedIndex.value,
-            length: navigationBars.length,
-          )
-        : PageController(initialPage: selectedIndex.value);
+    if (!mainTabBarView) {
+      pageController = PageController(initialPage: selectedIndex.value);
+    }
 
     hideBottomBar =
         !useSideBar && navigationBars.length > 1 && Pref.hideBottomBar;
@@ -276,12 +272,13 @@ class MainController extends GetxController
   }
 
   int? _mineIndex;
+
   void toMinePage() {
     _mineIndex ??= navigationBars.indexOf(NavigationBarType.mine);
     if (_mineIndex != -1) {
       setIndex(_mineIndex!);
     } else {
-      Get.to(
+      AppPageRoute.push(
         const Material(
           child: ViewSafeArea(
             top: true,
@@ -292,6 +289,13 @@ class MainController extends GetxController
     }
   }
 
+  void onTabSettled(int index) {
+    if (isClosed || selectedIndex.value != index) return;
+    if (navigationBars[index] == NavigationBarType.home) {
+      checkDefaultSearch();
+    }
+  }
+
   void setIndex(int value) {
     // 所有底栏和侧栏导航项都从这里进入，统一触发可调强度的震动反馈。
     feedBack();
@@ -299,16 +303,12 @@ class MainController extends GetxController
     final currentNav = navigationBars[value];
     if (value != selectedIndex.value) {
       selectedIndex.value = value;
-      if (mainTabBarView) {
-        controller.animateTo(value);
-      } else {
-        controller.jumpToPage(value);
-      }
-      if (currentNav == NavigationBarType.home) {
-        checkDefaultSearch();
-        checkUnread();
-      } else if (currentNav == NavigationBarType.dynamics) {
+      pageController?.jumpToPage(value);
+      if (currentNav == NavigationBarType.dynamics) {
         setDynCount();
+      } else if (currentNav == NavigationBarType.home) {
+        if (!mainTabBarView) checkDefaultSearch();
+        checkUnread();
       }
     } else {
       int now = DateTime.now().millisecondsSinceEpoch;
@@ -352,7 +352,7 @@ class MainController extends GetxController
   @override
   void onClose() {
     barOffset?.close();
-    controller.dispose();
+    pageController?.dispose();
     super.onClose();
   }
 

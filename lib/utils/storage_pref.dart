@@ -35,6 +35,7 @@ import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hdr_playback_route.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/models/playback_insight_mode.dart';
+import 'package:PiliPlus/router/predictive_back_transition.dart';
 import 'package:PiliPlus/utils/device_utils.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
 import 'package:PiliPlus/utils/global_data.dart';
@@ -853,11 +854,53 @@ abstract final class Pref {
         : FrostedSurfaceStyle.standard;
   }
 
-  static Transition get pageTransition =>
-      Transition.values[_setting.get(
-        SettingBoxKey.pageTransition,
-        defaultValue: Transition.native.index,
-      )];
+  static int get pageTransition => _setting.get(
+    SettingBoxKey.pageTransition,
+    defaultValue: Transition.native.index,
+  );
+
+  static int get predictiveBackStyle {
+    final value = _setting.get(
+      SettingBoxKey.predictiveBackStyle,
+      defaultValue: defaultPredictiveBackStyle.index,
+    );
+    return value is num
+        ? PredictiveBackStyle.fromIndex(value.toInt()).index
+        : defaultPredictiveBackStyle.index;
+  }
+
+  static bool get predictiveBackEnabled =>
+      _setting.get(SettingBoxKey.predictiveBackEnabled, defaultValue: true);
+
+  static int get predictiveBackSlidePercent {
+    final value = _setting.get(
+      SettingBoxKey.predictiveBackSlidePercent,
+      defaultValue: defaultPredictiveBackSlidePercent,
+    );
+    final percent = value is num
+        ? value.toInt()
+        : defaultPredictiveBackSlidePercent;
+    return percent.clamp(20, 100);
+  }
+
+  static int get predictiveBackFadePercent {
+    final style = PredictiveBackStyle.fromIndex(predictiveBackStyle);
+    final value = _setting.get(SettingBoxKey.predictiveBackFadePercent);
+    return value is num
+        ? value.toInt().clamp(0, 100)
+        : style.defaultFadePercent;
+  }
+
+  static int get predictiveBackScalePercent {
+    final value = _setting.get(
+      SettingBoxKey.predictiveBackScalePercent,
+      defaultValue: defaultPredictiveBackScalePercent,
+    );
+    final percent = value is num
+        ? value.toInt()
+        : defaultPredictiveBackScalePercent;
+    return percent.clamp(0, 40);
+  }
 
   static bool get enableQuickDouble =>
       _setting.get(SettingBoxKey.enableQuickDouble, defaultValue: true);

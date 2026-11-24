@@ -1,3 +1,5 @@
+import 'package:PiliPlus/router/predictive_back_transition.dart';
+
 /// 用户确认的默认设置。仅在设置键不存在时写入，不覆盖已有用户选择。
 Map<String, Object?> createDefaultSettingValues() => {
   'CDNService': 'ali',
@@ -65,6 +67,10 @@ Map<String, Object?> createDefaultSettingValues() => {
   'msgUnReadTypeV2': <int>[0, 1, 2, 4],
   'openInBrowser': true,
   'pageTransition': 15,
+  'predictiveBackEnabled': true,
+  'predictiveBackStyle': defaultPredictiveBackStyle.index,
+  'predictiveBackSlidePercent': defaultPredictiveBackSlidePercent,
+  'predictiveBackScalePercent': defaultPredictiveBackScalePercent,
   'pgcSkipType': 3,
   'pipNoDanmaku': true,
   'preInitPlayer': true,
