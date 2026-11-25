@@ -111,7 +111,7 @@ void main() async {
     _initDownPath(),
     _initTmpPath(),
     CacheManager.ensureInitialized(),
-    ?FontUtils.init(),
+    FontUtils.init(),
   ]);
   Get
     ..lazyPut(AccountService.new)

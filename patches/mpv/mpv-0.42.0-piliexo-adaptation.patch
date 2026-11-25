@@ -1,0 +1,967 @@
+--- a/audio/out/ao_audiotrack.c
++++ b/audio/out/ao_audiotrack.c
+@@ -745,8 +745,10 @@
+     max = MP_ALIGN_UP(max, bps);
+     p->size = MPCLAMP(buffer_size * 2, min, max);
+     MP_VERBOSE(ao, "Setting bufferSize = %d (driver=%d, min=%d, max=%d)\n", p->size, buffer_size, min, max);
+-    mp_assert(p->size % bps == 0);
+-    ao->device_buffer = p->size / bps;
++    const int frame_bytes = bps * ao->channels.num;
++    p->size = (p->size + frame_bytes - 1) / frame_bytes * frame_bytes;
++    // 设备容量以帧为单位，每帧包含所有声道。
++    ao->device_buffer = p->size / frame_bytes;
+ 
+     p->chunksize = p->size;
+     p->chunk = talloc_size(ao, p->size);
+--- a/filters/f_decoder_wrapper.c
++++ b/filters/f_decoder_wrapper.c
+@@ -233,6 +233,9 @@
+     bool attached_picture;
+     bool pts_reset;
+     int attempt_framedrops; // try dropping this many frames
++#if HAVE_ANDROID
++    int pending_operating_rate;
++#endif
+     int dropped_frames; // total frames _probably_ dropped
+     int extra_hw_frames; // extra surfaces retained outside the decoder
+ 
+@@ -565,6 +568,16 @@
+     mp_mutex_unlock(&p->cache_lock);
+ }
+ 
++#if HAVE_ANDROID
++void mp_decoder_wrapper_set_operating_rate(struct mp_decoder_wrapper *d, int rate)
++{
++    struct priv *p = d->f->priv;
++    mp_mutex_lock(&p->cache_lock);
++    p->pending_operating_rate = rate;
++    mp_mutex_unlock(&p->cache_lock);
++}
++#endif
++
+ int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d)
+ {
+     struct priv *p = d->f->priv;
+@@ -1005,7 +1018,16 @@
+         mp_mutex_lock(&p->cache_lock);
+         if (p->attempt_framedrops)
+             framedrop_type = 1;
++#if HAVE_ANDROID
++        int operating_rate = p->pending_operating_rate;
++        p->pending_operating_rate = 0;
++#endif
+         mp_mutex_unlock(&p->cache_lock);
++#if HAVE_ANDROID
++        // 只在解码线程设置参数，播放器线程不等待 MediaCodec 的回执。
++        if (operating_rate != 0)
++            p->decoder->control(p->decoder->f, VDCTRL_SET_OPERATING_RATE, &operating_rate);
++#endif
+ 
+         if (start_pts != MP_NOPTS_VALUE && packet && p->play_dir > 0 &&
+             packet->pts < start_pts - .005 && !p->has_broken_packet_pts)
+--- a/filters/f_decoder_wrapper.h
++++ b/filters/f_decoder_wrapper.h
+@@ -49,6 +49,9 @@
+ 
+ // Legacy decoder framedrop control.
+ void mp_decoder_wrapper_set_frame_drops(struct mp_decoder_wrapper *d, int num);
++#if HAVE_ANDROID
++void mp_decoder_wrapper_set_operating_rate(struct mp_decoder_wrapper *d, int rate);
++#endif
+ int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d);
+ 
+ double mp_decoder_wrapper_get_container_fps(struct mp_decoder_wrapper *d);
+@@ -81,6 +84,9 @@
+     // int*: extra hw surfaces retained
+     VDCTRL_SET_EXTRA_HW_FRAMES,
+     VDCTRL_CHECK_FORCED_EOF,
++#if HAVE_ANDROID
++    VDCTRL_SET_OPERATING_RATE,
++#endif
+ };
+ 
+ int mp_decoder_wrapper_control(struct mp_decoder_wrapper *d,
+--- a/include/mpv/client.h
++++ b/include/mpv/client.h
+@@ -1733,6 +1733,15 @@
+  * Safe to be called from mpv render API threads.
+  */
+ MPV_EXPORT void mpv_wakeup(mpv_handle *ctx);
++
++/**
++ * Calls av_jni_set_java_vm() with the given JavaVM*.
++ * https://github.com/FFmpeg/FFmpeg/blob/0ba719f726632d73592311615087a0d64aa2fb60/libavcodec/jni.h#L26-L36
++ *
++ * The av_jni_set_java_vm() symbol is not visible when statically linking with libavcodec.
++ * It is important to call this method so that libavcodec can access JNI environment & thus, mediacodec APIs.
++ */
++MPV_EXPORT int mpv_lavc_set_java_vm(void *vm);
+ 
+ /**
+  * Set a custom function that should be called when there are new events. Use
+--- a/options/options.c
++++ b/options/options.c
+@@ -827,7 +827,11 @@
+         {"no", 0},
+         {"vo", 1},
+         {"decoder", 2},
+-        {"decoder+vo", 3})},
++        {"decoder+vo", 3}
++#if HAVE_ANDROID
++         ,{"decoder+late", 6}
++#endif
++    )},
+     {"video-latency-hacks", OPT_BOOL(video_latency_hacks)},
+ 
+     {"untimed", OPT_BOOL(untimed)},
+--- a/player/audio.c
++++ b/player/audio.c
+@@ -219,6 +219,9 @@
+ static void ao_chain_reset_state(struct ao_chain *ao_c)
+ {
+     ao_c->last_out_pts = MP_NOPTS_VALUE;
++#if HAVE_ANDROID
++    piliexo_audio_clock_reset(&ao_c->audio_clock);
++#endif
+     ao_c->out_eof = false;
+     ao_c->start_pts_known = false;
+     ao_c->start_pts = MP_NOPTS_VALUE;
+@@ -244,6 +247,9 @@
+ {
+     struct ao_chain *ao_c = mpctx->ao_chain;
+     if (ao_c) {
++#if HAVE_ANDROID
++        piliexo_audio_clock_reset(&ao_c->audio_clock);
++#endif
+         ao_c->ao_queue = NULL;
+         TA_FREEP(&ao_c->queue_filter);
+         ao_c->ao = NULL;
+@@ -655,6 +661,14 @@
+     return mpctx->ao_chain ? mpctx->ao_chain->last_out_pts : MP_NOPTS_VALUE;
+ }
+ 
++#if HAVE_ANDROID
++double buffered_audio_media_duration(struct MPContext *mpctx)
++{
++    return piliexo_audio_clock_delay(&mpctx->ao_chain->audio_clock,
++                                    ao_get_delay(mpctx->ao), mpctx->audio_speed);
++}
++#endif
++
+ // Return pts value corresponding to currently playing audio adjusted for AO delay
+ // and playback speed.
+ double playing_audio_pts(struct MPContext *mpctx)
+@@ -662,7 +676,11 @@
+     double pts = written_audio_pts(mpctx);
+     if (pts == MP_NOPTS_VALUE || !mpctx->ao)
+         return pts;
++#if HAVE_ANDROID
++    return pts - buffered_audio_media_duration(mpctx);
++#else
+     return pts - mpctx->audio_speed * ao_get_delay(mpctx->ao);
++#endif
+ }
+ 
+ // This garbage is needed for untimed AOs. These consume audio infinitely fast,
+@@ -753,7 +771,15 @@
+         }
+ 
+         mpctx->shown_aframes += samples;
++#if HAVE_ANDROID
++        // 已处理的旧音频帧仍携带自己的倍率，不能按新倍速累计。
++        double real_samplerate = mp_aframe_get_effective_rate(af);
++        piliexo_audio_clock_write(&ao_c->audio_clock,
++                                  samples / (double)mp_aframe_get_rate(af),
++                                  mp_aframe_get_speed(af));
++#else
+         double real_samplerate = mp_aframe_get_rate(af) / mpctx->audio_speed;
++#endif
+         if (mpctx->video_status != STATUS_EOF)
+             mpctx->delay += samples / real_samplerate;
+         ao_c->last_out_pts = mp_aframe_end_pts(af);
+@@ -964,7 +990,7 @@
+             mpctx->audio_status = STATUS_EOF;
+             mp_wakeup_core(mpctx);
+             // stops untimed AOs, stops pull AOs from streaming silence
+-            ao_reset(ao_c->ao);
++            clear_audio_output_buffers(mpctx);
+         } else {
+             if (!ao_c->ao_underrun) {
+                 MP_WARN(mpctx, "Audio device underrun detected.\n");
+@@ -1008,6 +1034,10 @@
+ // Drop data queued for output, or which the AO is currently outputting.
+ void clear_audio_output_buffers(struct MPContext *mpctx)
+ {
++#if HAVE_ANDROID
++    if (mpctx->ao_chain)
++        piliexo_audio_clock_reset(&mpctx->ao_chain->audio_clock);
++#endif
+     if (mpctx->ao)
+         ao_reset(mpctx->ao);
+ }
+--- a/player/client.c
++++ b/player/client.c
+@@ -21,6 +21,8 @@
+ #include <stddef.h>
+ #include <stdint.h>
+ #include <stdlib.h>
++
++#include <libavcodec/jni.h>
+ 
+ #include "common/common.h"
+ #include "common/global.h"
+@@ -976,6 +978,10 @@
+     ctx->queued_wakeup = true;
+     wakeup_client(ctx);
+     mp_mutex_unlock(&ctx->lock);
++}
++
++int mpv_lavc_set_java_vm(void *vm) {
++    return av_jni_set_java_vm(vm, NULL);
+ }
+ 
+ // map client API types to internal types
+--- a/player/core.h
++++ b/player/core.h
+@@ -22,6 +22,10 @@
+ #include <stdbool.h>
+ 
+ #include "audio/aframe.h"
++#include "config.h"
++#if HAVE_ANDROID
++#include "piliexo_audio_clock.h"
++#endif
+ #include "clipboard/clipboard.h"
+ #include "common/common.h"
+ #include "filters/f_output_chain.h"
+@@ -163,12 +167,19 @@
+ }
+ 
+ // Summarizes video filtering and output.
++#if HAVE_ANDROID
++#include "piliexo_late_drop.h"
++#endif
++
+ struct vo_chain {
+     struct mp_log *log;
+ 
+     struct mp_output_chain *filter;
+ 
+     struct vo *vo;
++#if HAVE_ANDROID
++    int requested_codec_rate;
++#endif
+ 
+     struct track *track;
+     struct mp_pin *filter_src;
+@@ -180,6 +191,11 @@
+     // - video consists of sparse still images
+     bool is_sparse;
+     bool sparse_eof_signalled;
++#if HAVE_ANDROID
++    bool release_dropped_output;
++    struct piliexo_video_speed_transition speed_transition;
++    int64_t last_output_pts_ns;
++#endif
+ 
+     bool underrun;
+     bool underrun_signaled;
+@@ -198,6 +214,9 @@
+     struct mp_async_queue *ao_queue;
+     struct mp_filter *queue_filter;
+     struct mp_filter *ao_filter;
++#if HAVE_ANDROID
++    struct piliexo_audio_clock audio_clock;
++#endif
+     double ao_resume_time;
+ 
+     bool out_eof;
+@@ -519,6 +538,9 @@
+ void fill_audio_out_buffers(struct MPContext *mpctx);
+ double written_audio_pts(struct MPContext *mpctx);
+ void clear_audio_output_buffers(struct MPContext *mpctx);
++#if HAVE_ANDROID
++double buffered_audio_media_duration(struct MPContext *mpctx);
++#endif
+ void update_playback_speed(struct MPContext *mpctx);
+ void uninit_audio_out(struct MPContext *mpctx);
+ void uninit_audio_chain(struct MPContext *mpctx);
+--- a/player/piliexo_audio_clock.h
++++ b/player/piliexo_audio_clock.h
+@@ -0,0 +1,57 @@
++#ifndef PILIEXO_AUDIO_CLOCK_H
++#define PILIEXO_AUDIO_CLOCK_H
++
++#define PILIEXO_AUDIO_RATE_HISTORY 64
++
++struct piliexo_audio_clock {
++    struct {
++        double duration;
++        double rate;
++    } runs[PILIEXO_AUDIO_RATE_HISTORY];
++    unsigned next;
++    unsigned count;
++};
++
++static inline void piliexo_audio_clock_reset(struct piliexo_audio_clock *clock)
++{
++    clock->next = 0;
++    clock->count = 0;
++}
++
++static inline void piliexo_audio_clock_write(struct piliexo_audio_clock *clock,
++                                            double duration, double rate)
++{
++    if (!(duration > 0) || !__builtin_isfinite(duration) ||
++        !(rate > 0) || !__builtin_isfinite(rate))
++        return;
++    unsigned last = (clock->next + PILIEXO_AUDIO_RATE_HISTORY - 1) %
++                    PILIEXO_AUDIO_RATE_HISTORY;
++    if (clock->count && clock->runs[last].rate == rate) {
++        clock->runs[last].duration += duration;
++        return;
++    }
++    clock->runs[clock->next].duration = duration;
++    clock->runs[clock->next].rate = rate;
++    clock->next = (clock->next + 1) % PILIEXO_AUDIO_RATE_HISTORY;
++    if (clock->count < PILIEXO_AUDIO_RATE_HISTORY)
++        clock->count++;
++}
++
++static inline double piliexo_audio_clock_delay(const struct piliexo_audio_clock *clock,
++                                               double delay, double current_rate)
++{
++    double media_delay = 0;
++    unsigned slot = clock->next;
++    // 从最新一段向前，把设备仍排队的物理时长按各段的处理倍速换算。
++    for (unsigned i = 0; i < clock->count && delay > 0; i++) {
++        slot = (slot + PILIEXO_AUDIO_RATE_HISTORY - 1) % PILIEXO_AUDIO_RATE_HISTORY;
++        double duration = clock->runs[slot].duration;
++        double queued = delay < duration ? delay : duration;
++        media_delay += queued * clock->runs[slot].rate;
++        delay -= queued;
++    }
++    // 输出设备估算的延迟可能包含尚无时间戳的部分，沿用原估算。
++    return media_delay + delay * current_rate;
++}
++
++#endif
+--- a/player/piliexo_codec_rate.h
++++ b/player/piliexo_codec_rate.h
+@@ -0,0 +1,16 @@
++#ifndef MPV_PILIEXO_CODEC_RATE_H
++#define MPV_PILIEXO_CODEC_RATE_H
++
++#include <math.h>
++
++// 提示解码器预留吞吐；用户选择的实际播放倍率由播放时钟控制。
++static inline int piliexo_codec_operating_rate(double fps, double speed)
++{
++    if (!(fps > 0 && fps <= 240 && isfinite(speed) && speed > 0))
++        return 0;
++    double demand = fps * fmax(1, speed);
++    int rate = (int)ceil(fmin(24000, demand));
++    return speed > 1.01 ? rate : -rate;
++}
++
++#endif
+--- a/player/piliexo_late_drop.h
++++ b/player/piliexo_late_drop.h
+@@ -0,0 +1,81 @@
++#ifndef MPV_PILIEXO_LATE_DROP_H
++#define MPV_PILIEXO_LATE_DROP_H
++
++#include <stdbool.h>
++#include <stdint.h>
++
++#define PILIEXO_RELEASE_NS INT64_C(250000000)
++#define PILIEXO_VO_RECOVERY_MAX_NS INT64_C(3000000000)
++
++struct piliexo_video_speed_transition {
++    double speed;
++    int64_t release_ns;
++    bool vo_recovered;
++};
++
++// 以实际减速开始计时，恢复到 1.25x 等基础倍速也进入同一过渡。
++static inline bool piliexo_video_speed_changed(struct piliexo_video_speed_transition *s,
++                                                double speed, int64_t now)
++{
++    if (s->speed == speed)
++        return false;
++    s->release_ns = s->speed > 1.01 && speed < s->speed ? now : 0;
++    s->vo_recovered = false;
++    s->speed = speed;
++    return s->release_ns > 0;
++}
++
++static inline bool piliexo_video_releasing(const struct piliexo_video_speed_transition *s,
++                                           int64_t now)
++{
++    return s->release_ns > 0 && now >= s->release_ns &&
++           now - s->release_ns < PILIEXO_RELEASE_NS;
++}
++
++static inline bool piliexo_release_can_drop(const struct piliexo_video_speed_transition *s,
++                                           int64_t now, bool dropped_output)
++{
++    return !dropped_output && piliexo_video_releasing(s, now);
++}
++
++// 先保留复速后的画面。音画靠近后恢复输出策略，避免普通时钟抖动重新触发保护。
++static inline bool piliexo_vo_recovery_can_drop(struct piliexo_video_speed_transition *s,
++                                               int64_t now, double av_difference)
++{
++    if (s->release_ns <= 0 || now < s->release_ns || s->vo_recovered)
++        return true;
++    int64_t elapsed = now - s->release_ns;
++    if (elapsed < PILIEXO_RELEASE_NS)
++        return false;
++    s->vo_recovered = elapsed >= PILIEXO_VO_RECOVERY_MAX_NS ||
++                      (av_difference >= -0.050 && av_difference <= 0.050);
++    return s->vo_recovered;
++}
++
++// 松手后保持接近基础送显节拍，给正常的调度抖动留出一成余量。
++static inline int64_t piliexo_release_output_pts(int64_t now, int64_t target,
++                                                 int64_t previous, double fps,
++                                                 double speed)
++{
++    if (!(fps > 20 && fps < 500 && speed > 0) || previous <= 0 ||
++        previous > now || now - previous >= PILIEXO_RELEASE_NS)
++        return target;
++    int64_t earliest = previous + (int64_t)(900000000.0 / (fps * speed));
++    return target < earliest ? earliest : target;
++}
++
++// 只在明显迟到时追赶；留出三个源帧或 80ms 的媒体时间容差。
++static inline bool piliexo_late_output_due(double audio_pts, double pts, double fps)
++{
++    return fps > 20 && fps < 500 && audio_pts - pts >= 0.080 &&
++           (audio_pts - pts) * fps >= 3;
++}
++
++// 保留尚未到呈现时刻的后继画面，拒绝倒序或跨时间戳断点替换。
++static inline bool piliexo_late_output_can_replace(double audio_pts, double pts,
++                                                   double next_pts)
++{
++    return next_pts > pts && next_pts - pts <= 0.125 && next_pts <= audio_pts;
++}
++
++#endif
+--- a/player/video.c
++++ b/player/video.c
+@@ -43,6 +43,10 @@
+ #include "video/out/vo.h"
+ 
+ #include "core.h"
++
++#if HAVE_ANDROID
++#include "piliexo_codec_rate.h"
++#endif
+ #include "command.h"
+ #include "screenshot.h"
+ 
+@@ -94,6 +98,11 @@
+     vo_seek_reset(vo_c->vo);
+     vo_c->underrun = false;
+     vo_c->underrun_signaled = false;
++#if HAVE_ANDROID
++    vo_c->release_dropped_output = false;
++    vo_c->speed_transition = (struct piliexo_video_speed_transition){0};
++    vo_c->last_output_pts_ns = 0;
++#endif
+ }
+ 
+ void reset_video_state(struct MPContext *mpctx)
+@@ -355,6 +364,12 @@
+ {
+     struct MPOpts *opts = mpctx->opts;
+     // check for frame-drop:
++#if HAVE_ANDROID
++    // 原生 HDR 回退到 GPU 输出时，常速仍不启用解码前丢帧。
++    if ((opts->frame_dropping & 4) && opts->playback_speed <= 1.01)
++        return;
++#endif
++
+     if (mpctx->video_status == STATUS_PLAYING && !mpctx->paused &&
+         mpctx->audio_status == STATUS_PLAYING && !ao_untimed(mpctx->ao) &&
+         vo_c->track && vo_c->track->dec && (opts->frame_dropping & 2))
+@@ -370,6 +385,54 @@
+     }
+ }
+ 
++#if HAVE_ANDROID
++static bool use_live_decoder_framedrop(struct MPContext *mpctx, struct vo_chain *vo_c)
++{
++    return (mpctx->opts->frame_dropping & 2) &&
++           strcmp(vo_c->vo->driver->name, "mediacodec_embed") == 0 &&
++           ((mpctx->opts->frame_dropping & 4) ||
++            mpctx->opts->playback_speed > 1.01);
++}
++
++static double mediacodec_audio_deadline(struct MPContext *mpctx,
++                                      struct vo_chain *vo_c)
++{
++    if (mpctx->video_status != STATUS_PLAYING ||
++        mpctx->audio_status != STATUS_PLAYING || !mpctx->ao_chain ||
++        mpctx->ao_chain->ao_underrun || ao_untimed(mpctx->ao) ||
++        vo_c->vo->opts->video_sync == VS_NONE || mpctx->display_sync_active ||
++        mpctx->paused || mpctx->hrseek_active || mpctx->step_frames ||
++        mpctx->play_dir != 1 || vo_c->is_sparse ||
++        mpctx->video_pts == MP_NOPTS_VALUE ||
++        (mpctx->opts->playback_speed <= 1.01 &&
++         !piliexo_video_releasing(&vo_c->speed_transition, mp_time_ns())))
++        return MP_NOPTS_VALUE;
++
++    double audio_pts = playing_audio_pts(mpctx);
++    return audio_pts == MP_NOPTS_VALUE ? audio_pts : audio_pts + mpctx->opts->audio_delay;
++}
++
++static void update_live_decoder_framedrop(struct MPContext *mpctx,
++                                          struct vo_chain *vo_c)
++{
++    if (!vo_c->track || !vo_c->track->dec)
++        return;
++
++    int drops = 0;
++    double fps = vo_c->filter->container_fps;
++    double deadline = mediacodec_audio_deadline(mpctx, vo_c);
++    if (deadline != MP_NOPTS_VALUE &&
++        !piliexo_video_releasing(&vo_c->speed_transition, mp_time_ns()) &&
++        piliexo_late_output_due(deadline, mpctx->video_pts, fps))
++    {
++        // 解码器只跳过可独立安全丢弃的完整访问单元。
++        drops = MPCLAMP((deadline - mpctx->video_pts) * fps - 2, 0, 12);
++    }
++    // 不把上一次的丢帧需求留给无音频或已追上的窗口。
++    mp_decoder_wrapper_set_frame_drops(vo_c->track->dec, drops);
++}
++#endif
++
+ /* Modify video timing to match the audio timeline. There are two main
+  * reasons this is needed. First, video and audio can start from different
+  * positions at beginning of file or after a seek (MPlayer starts both
+@@ -443,7 +506,54 @@
+     for (int n = 0; n < mpctx->num_next_frames - 1; n++)
+         mpctx->next_frames[n] = mpctx->next_frames[n + 1];
+     mpctx->num_next_frames -= 1;
+-}
++#if HAVE_ANDROID
++    if (mpctx->vo_chain)
++        mpctx->vo_chain->release_dropped_output = false;
++#endif
++}
++
++#if HAVE_ANDROID
++static void drop_expired_mediacodec_output_after_release(struct MPContext *mpctx,
++                                                        struct vo_chain *vo_c)
++{
++    if (!(mpctx->opts->frame_dropping & 4) ||
++        !use_live_decoder_framedrop(mpctx, vo_c) || mpctx->num_next_frames != 1 ||
++        !piliexo_release_can_drop(&vo_c->speed_transition, mp_time_ns(),
++                                  vo_c->release_dropped_output))
++        return;
++
++    struct mp_image *old = mpctx->next_frames[0];
++    double deadline = mediacodec_audio_deadline(mpctx, vo_c);
++    if (deadline == MP_NOPTS_VALUE ||
++        !piliexo_late_output_due(deadline, old->pts, vo_c->filter->container_fps))
++        return;
++
++    // 只有后继画面已就绪才替换。持按期间保留已解码画面，不为追赶而等待。
++    struct mp_pin *pin = vo_c->filter->f->pins[1];
++    if (!mp_pin_out_request_data(pin))
++        return;
++
++    struct mp_frame frame = mp_pin_out_read(pin);
++    struct mp_image *next = frame.type == MP_FRAME_VIDEO ? frame.data : NULL;
++    double end_pts = get_play_end_pts(mpctx);
++    if (!next || !piliexo_late_output_can_replace(deadline, old->pts, next->pts) ||
++        (end_pts != MP_NOPTS_VALUE && next->pts >= end_pts) ||
++        !mp_image_params_static_equal(&old->params, &next->params))
++    {
++        mp_pin_out_unread(pin, frame);
++        return;
++    }
++
++    double advance = next->pts - old->pts;
++    mpctx->time_frame += advance / mpctx->video_speed;
++    if (mpctx->ao_chain && !mpctx->ao_chain->delaying_audio_start)
++        mpctx->delay -= advance;
++    mpctx->next_frames[0] = next;
++    vo_c->release_dropped_output = true;
++    talloc_free(old);
++    vo_increment_drop_count(vo_c->vo, 1);
++}
++#endif
+ 
+ static bool use_video_lookahead(struct MPContext *mpctx)
+ {
+@@ -537,6 +647,10 @@
+     // Get a new frame if we need one.
+     int r = VD_PROGRESS;
+     if (needs_new_frame(mpctx)) {
++#if HAVE_ANDROID
++        if (use_live_decoder_framedrop(mpctx, vo_c))
++            update_live_decoder_framedrop(mpctx, vo_c);
++#endif
+         // Filter a new frame.
+         struct mp_image *img = NULL;
+         struct mp_frame frame = mp_pin_out_read(vo_c->filter->f->pins[1]);
+@@ -656,6 +770,9 @@
+         // don't touch the timing
+     } else if (mpctx->audio_status == STATUS_PLAYING && !ao_untimed(mpctx->ao)) {
+         double buffered_audio = ao_get_delay(mpctx->ao);
++#if HAVE_ANDROID
++        buffered_audio = buffered_audio_media_duration(mpctx);
++#endif
+ 
+         double predicted = mpctx->delay / mpctx->video_speed +
+                            mpctx->time_frame;
+@@ -1092,6 +1209,18 @@
+     struct vo_chain *vo_c = mpctx->vo_chain;
+     struct vo *vo = vo_c->vo;
+ 
++#if HAVE_ANDROID
++    if (!mpctx->opts->untimed && track && track->dec)
++    {
++        int rate = piliexo_codec_operating_rate(vo_c->filter->container_fps,
++                                               opts->playback_speed);
++        if (rate != vo_c->requested_codec_rate) {
++            vo_c->requested_codec_rate = rate;
++            mp_decoder_wrapper_set_operating_rate(track->dec, rate);
++        }
++    }
++#endif
++
+     if (vo_c->filter->reconfig_happened) {
+         mp_notify(mpctx, MPV_EVENT_VIDEO_RECONFIG, NULL);
+         vo_c->filter->reconfig_happened = false;
+@@ -1101,8 +1230,30 @@
+     if (mpctx->video_status == STATUS_READY)
+         return;
+ 
+-    if (mpctx->paused && mpctx->video_status >= STATUS_READY)
+-        return;
++    if (mpctx->paused && mpctx->video_status >= STATUS_READY) {
++#if HAVE_ANDROID
++        vo_c->speed_transition = (struct piliexo_video_speed_transition){0};
++#endif
++        return;
++    }
++
++#if HAVE_ANDROID
++    if (piliexo_video_speed_changed(&vo_c->speed_transition, opts->playback_speed,
++                                    mp_time_ns()))
++    {
++        // 降速前后的帧间隔不同，复速时从新的显示误差开始累计。
++        mpctx->display_sync_error = 0;
++    }
++
++    // 声卡短时断供时先保留最后画面，等待音频队列补齐并由原路径唤醒。
++    if ((opts->frame_dropping & 4) && use_live_decoder_framedrop(mpctx, vo_c) &&
++        vo->opts->video_sync != VS_NONE && !mpctx->hrseek_active && !mpctx->step_frames &&
++        mpctx->audio_status == STATUS_PLAYING && mpctx->ao_chain &&
++        mpctx->ao_chain->ao_underrun && !mpctx->ao_chain->out_eof &&
++        (opts->playback_speed > 1.01 ||
++         piliexo_video_releasing(&vo_c->speed_transition, mp_time_ns())))
++        return;
++#endif
+ 
+     // Once the chain reached EOF nothing is read from it again.
+     bool logical_eof = false;
+@@ -1215,6 +1366,11 @@
+         }
+     }
+ 
++#if HAVE_ANDROID
++    if (!logical_eof)
++        drop_expired_mediacodec_output_after_release(mpctx, vo_c);
++#endif
++
+     // Inject vo crop to notify and reconfig if needed
+     apply_video_crop(mpctx, vo);
+ 
+@@ -1267,6 +1423,18 @@
+ 
+     double time_frame = MPMAX(mpctx->time_frame, -1);
+     int64_t pts = mp_time_ns() + (int64_t)(time_frame * 1e9);
++#if HAVE_ANDROID
++    int64_t now = mp_time_ns();
++    if (!logical_eof && (vo->driver->caps & VO_CAP_UNTIMED) == 0 && !opts->untimed &&
++        vo->opts->video_sync != VS_NONE && !mpctx->display_sync_active &&
++        !mpctx->hrseek_active && !mpctx->step_frames &&
++        piliexo_video_releasing(&vo_c->speed_transition, now))
++    {
++        pts = piliexo_release_output_pts(now, pts, vo_c->last_output_pts_ns,
++                                         vo_c->filter->container_fps,
++                                         mpctx->video_speed);
++    }
++#endif
+ 
+     // wait until VO wakes us up to get more frames
+     // (NB: in theory, the 1st frame after display sync mode change uses the
+@@ -1292,11 +1460,19 @@
+ 
+     int req = vo_get_num_req_frames(mpctx->video_out);
+     mp_assert(req >= 1 && req <= VO_MAX_REQ_FRAMES);
++    bool can_drop = opts->frame_dropping & 1;
++#if HAVE_ANDROID
++    if (can_drop) {
++        // 纹理输出复速时会重新启用 vo。先让显示时钟收敛，再恢复丢帧及重复帧纠偏。
++        can_drop = piliexo_vo_recovery_can_drop(&vo_c->speed_transition, now,
++                                               mpctx->last_av_difference);
++    }
++#endif
+     struct vo_frame dummy = {
+         .pts = pts,
+         .duration = -1,
+         .still = mpctx->step_frames > 0,
+-        .can_drop = opts->frame_dropping & 1,
++        .can_drop = can_drop,
+         .num_frames = MPMIN(mpctx->num_next_frames, req),
+         .num_vsyncs = 1,
+     };
+@@ -1319,13 +1495,19 @@
+     shift_frames(mpctx);
+ 
+     schedule_frame(mpctx, frame);
++#if HAVE_ANDROID
++    vo_c->last_output_pts_ns = MPMAX(frame->pts, mp_time_ns());
++#endif
+ 
+     mpctx->osd_force_update = true;
+     update_osd_msg(mpctx);
+ 
+     vo_queue_frame(vo, frame);
+ 
+-    check_framedrop(mpctx, vo_c);
++#if HAVE_ANDROID
++    if (!use_live_decoder_framedrop(mpctx, vo_c))
++#endif
++        check_framedrop(mpctx, vo_c);
+ 
+     // The frames were shifted down; "initialize" the new first entry.
+     if (mpctx->num_next_frames >= 1)
+--- a/video/decode/vd_lavc.c
++++ b/video/decode/vd_lavc.c
+@@ -1425,6 +1425,13 @@
+ {
+     vd_ffmpeg_ctx *ctx = vd->priv;
+     switch (cmd) {
++#if HAVE_ANDROID
++    case VDCTRL_SET_OPERATING_RATE:
++        if (ctx->avctx && ctx->avctx->priv_data)
++            av_opt_set_int(ctx->avctx->priv_data, "piliexo_live_operating_rate",
++                           *(int *)arg, 0);
++        return CONTROL_TRUE;
++#endif
+     case VDCTRL_SET_FRAMEDROP:
+         ctx->framedrop_flags = *(int *)arg;
+         return CONTROL_TRUE;
+--- a/video/out/gpu/context.c
++++ b/video/out/gpu/context.c
+@@ -214,6 +214,7 @@
+             OPT_SETTINGSLIST(context_list, &ra_ctx_obj_list)},
+         {"gpu-api",
+             OPT_SETTINGSLIST(context_type_list, &ra_ctx_type_obj_list)},
++        {"android-hdr-signal-passthrough", OPT_BOOL(android_hdr)},
+         {"gpu-debug", OPT_BOOL(debug)},
+         {"gpu-sw", OPT_BOOL(allow_sw)},
+         {0}
+--- a/video/out/gpu/context.h
++++ b/video/out/gpu/context.h
+@@ -12,6 +12,7 @@
+     bool want_alpha;      // create an alpha framebuffer if possible
+     bool debug;           // enable debugging layers/callbacks etc.
+     bool probing;        // the backend was auto-probed
++    bool android_hdr;    // 启用 Android 原生 HDR 颜色与元数据输出
+     bool composition;    // enable swapchain composition
+     struct m_obj_settings *context_list; // list of `ra_ctx_fns.name` to probe
+     struct m_obj_settings *context_type_list;  // list of `ra_ctx_fns.type` to probe
+--- a/video/out/opengl/android_hdr.h
++++ b/video/out/opengl/android_hdr.h
+@@ -0,0 +1,40 @@
++#pragma once
++
++#include <math.h>
++#include <EGL/egl.h>
++#include <EGL/eglext.h>
++#include <libplacebo/colorspace.h>
++
++// EGL 的色度坐标和亮度均使用 50000 倍缩放，不能混用 HEVC 的单位。
++static inline EGLint mpv_android_hdr_scaled(float value, float limit)
++{
++    if (!isfinite(value) || value < 0 || value > limit)
++        return EGL_DONT_CARE;
++    return (EGLint) llround((double)value * EGL_METADATA_SCALING_EXT);
++}
++
++static inline void mpv_android_hdr_metadata(const struct pl_hdr_metadata *hdr,
++                                            EGLint values[12])
++{
++    for (int i = 0; i < 12; i++) values[i] = EGL_DONT_CARE;
++    if (!hdr) return;
++    const struct pl_raw_primaries *p = &hdr->prim;
++    const float xy[] = {p->red.x, p->red.y, p->green.x, p->green.y,
++                        p->blue.x, p->blue.y, p->white.x, p->white.y};
++    bool valid_primaries = true;
++    for (int i = 0; i < 8; i += 2) {
++        valid_primaries &= isfinite(xy[i]) && isfinite(xy[i+1]) &&
++            xy[i] >= 0 && xy[i+1] > 0 && xy[i] + xy[i+1] <= 1.00001f;
++    }
++    if (valid_primaries)
++        for (int i = 0; i < 8; i++) values[i] = mpv_android_hdr_scaled(xy[i], 1);
++    if (isfinite(hdr->min_luma) && isfinite(hdr->max_luma) &&
++        hdr->min_luma >= 0 && hdr->max_luma > hdr->min_luma && hdr->max_luma <= 10000) {
++        values[8] = mpv_android_hdr_scaled(hdr->max_luma, 10000);
++        values[9] = mpv_android_hdr_scaled(hdr->min_luma, 10000);
++    }
++    if (hdr->max_cll > 0)
++        values[10] = mpv_android_hdr_scaled(hdr->max_cll, 10000);
++    if (hdr->max_fall > 0 && (!hdr->max_cll || hdr->max_fall <= hdr->max_cll))
++        values[11] = mpv_android_hdr_scaled(hdr->max_fall, 10000);
++}
+--- a/video/out/opengl/context_android.c
++++ b/video/out/opengl/context_android.c
+@@ -22,17 +22,93 @@
+ #include "egl_helpers.h"
+ #include "common/common.h"
+ #include "context.h"
++#include "android_hdr.h"
++#include "video/mp_image.h"
+ 
+ struct priv {
+     struct GL gl;
+     EGLDisplay egl_display;
+     EGLContext egl_context;
+     EGLSurface egl_surface;
++    EGLConfig egl_config;
++    EGLint hdr_colorspace;
++    bool has_mastering_metadata, cta861_3;
++    EGLint metadata[12];
+ };
+ 
++// 在渲染前切换 EGLSurface，避免将 HLG 像素误标成 PQ；普通路径不变。
++static bool android_configure_surface(struct ra_ctx *ctx, bool hlg)
++{
++    struct priv *p = ctx->priv;
++    EGLint colorspace = hlg ? EGL_GL_COLORSPACE_BT2020_HLG_EXT : EGL_GL_COLORSPACE_BT2020_PQ_EXT;
++    if (!ctx->opts.android_hdr) colorspace = 0;
++    if (p->egl_surface && colorspace == p->hdr_colorspace) return true;
++    const char *ext = eglQueryString(p->egl_display, EGL_EXTENSIONS);
++    const char *required = hlg ? "EGL_EXT_gl_colorspace_bt2020_hlg" : "EGL_EXT_gl_colorspace_bt2020_pq";
++    if (colorspace && (!ext || !strstr(ext, required))) {
++        MP_ERR(ctx, "Android HDR EGL colorspace extension unavailable.\n");
++        return false;
++    }
++    if (p->egl_surface) {
++        eglMakeCurrent(p->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
++        eglDestroySurface(p->egl_display, p->egl_surface);
++    }
++    EGLint attrs[] = {EGL_GL_COLORSPACE_KHR, colorspace, EGL_NONE};
++    p->egl_surface = eglCreateWindowSurface(p->egl_display, p->egl_config,
++        (EGLNativeWindowType)vo_android_native_window(ctx->vo), colorspace ? attrs : NULL);
++    if (p->egl_surface == EGL_NO_SURFACE ||
++        !eglMakeCurrent(p->egl_display, p->egl_surface, p->egl_surface, p->egl_context)) {
++        MP_ERR(ctx, "Android HDR EGL surface creation/binding failed.\n");
++        return false;
++    }
++    p->hdr_colorspace = colorspace;
++    p->has_mastering_metadata = colorspace && ext && strstr(ext, "EGL_EXT_surface_SMPTE2086_metadata");
++    p->cta861_3 = colorspace && ext && strstr(ext, "EGL_EXT_surface_CTA861_3_metadata");
++    for (int i = 0; i < 12; i++) p->metadata[i] = EGL_DONT_CARE;
++    if (colorspace) MP_INFO(ctx, "EGL BT.2020/%s surface enabled; SMPTE2086=%d CTA861_3=%d.\n",
++        hlg ? "HLG" : "PQ", p->has_mastering_metadata, p->cta861_3);
++    return true;
++}
++
++static void android_update_hdr_metadata(struct ra_ctx *ctx)
++{
++    struct priv *p = ctx->priv;
++    if (!ctx->opts.android_hdr) return;
++    struct mp_image_params source = vo_get_current_params(ctx->vo);
++    struct mp_image_params target = vo_get_target_params(ctx->vo);
++    // 只传递仍适用于输出像素的 PQ 静态元数据；HLG 或缺失字段清除旧值，不伪造。
++    bool passthrough = source.color.transfer == PL_COLOR_TRC_PQ &&
++        target.color.transfer == PL_COLOR_TRC_PQ &&
++        source.color.primaries == target.color.primaries &&
++        target.color.hdr.max_luma >= source.color.hdr.max_luma;
++    EGLint values[12];
++    mpv_android_hdr_metadata(passthrough ? &source.color.hdr : NULL, values);
++    const EGLint attrs[] = {EGL_SMPTE2086_DISPLAY_PRIMARY_RX_EXT, EGL_SMPTE2086_DISPLAY_PRIMARY_RY_EXT,
++        EGL_SMPTE2086_DISPLAY_PRIMARY_GX_EXT, EGL_SMPTE2086_DISPLAY_PRIMARY_GY_EXT,
++        EGL_SMPTE2086_DISPLAY_PRIMARY_BX_EXT, EGL_SMPTE2086_DISPLAY_PRIMARY_BY_EXT,
++        EGL_SMPTE2086_WHITE_POINT_X_EXT, EGL_SMPTE2086_WHITE_POINT_Y_EXT,
++        EGL_SMPTE2086_MAX_LUMINANCE_EXT, EGL_SMPTE2086_MIN_LUMINANCE_EXT,
++        EGL_CTA861_3_MAX_CONTENT_LIGHT_LEVEL_EXT, EGL_CTA861_3_MAX_FRAME_AVERAGE_LEVEL_EXT};
++    bool changed = false, ok = true;
++    for (int i = 0; i < 12; i++) {
++        if ((i < 10 ? !p->has_mastering_metadata : !p->cta861_3) || values[i] == p->metadata[i]) continue;
++        changed = true;
++        EGLint actual = EGL_DONT_CARE;
++        ok &= eglSurfaceAttrib(p->egl_display, p->egl_surface, attrs[i], values[i]) &&
++            eglQuerySurface(p->egl_display, p->egl_surface, attrs[i], &actual) && actual == values[i];
++        p->metadata[i] = values[i];
++    }
++    if (changed) {
++        MP_INFO(ctx, "EGL HDR metadata: verified=%d max=%d min=%d cll=%d fall=%d (scale=50000).\n",
++            ok, values[8], values[9], values[10], values[11]);
++        if (!ok) MP_WARN(ctx, "HDR metadata rejected; display matching is not verified.\n");
++    }
++}
++
+ static void android_swap_buffers(struct ra_ctx *ctx)
+ {
+     struct priv *p = ctx->priv;
++    android_update_hdr_metadata(ctx);
+     eglSwapBuffers(p->egl_display, p->egl_surface);
+ }
+ 
+@@ -74,19 +150,8 @@
+     eglGetConfigAttrib(p->egl_display, config, EGL_NATIVE_VISUAL_ID, &format);
+     ANativeWindow_setBuffersGeometry(native_window, 0, 0, format);
+ 
+-    p->egl_surface = eglCreateWindowSurface(p->egl_display, config,
+-                                    (EGLNativeWindowType)native_window, NULL);
+-
+-    if (p->egl_surface == EGL_NO_SURFACE) {
+-        MP_FATAL(ctx, "Could not create EGL surface!\n");
+-        goto fail;
+-    }
+-
+-    if (!eglMakeCurrent(p->egl_display, p->egl_surface, p->egl_surface,
+-                        p->egl_context)) {
+-        MP_FATAL(ctx, "Failed to set context!\n");
+-        goto fail;
+-    }
++    p->egl_config = config;
++    if (!android_configure_surface(ctx, false)) goto fail;
+ 
+     mpegl_load_functions(&p->gl, ctx->log);
+ 
+@@ -105,6 +170,8 @@
+ 
+ static bool android_reconfig(struct ra_ctx *ctx)
+ {
++    struct mp_image_params source = vo_get_current_params(ctx->vo);
++    if (!android_configure_surface(ctx, source.color.transfer == PL_COLOR_TRC_HLG)) return false;
+     int w, h;
+     if (!vo_android_surface_size(ctx->vo, &w, &h))
+         return false;
+--- a/video/out/vo_gpu_next.c
++++ b/video/out/vo_gpu_next.c
+@@ -1249,6 +1249,12 @@
+         target->color.transfer = opts->target_trc;
+     if (opts->target_peak && (!target->color.hdr.max_luma || !hint))
+         target->color.hdr.max_luma = opts->target_peak;
++    // Android 原生 HLG 保留编码和参考 OOTF，让系统根据面板亮度处理。
++    if (p->ra_ctx->opts.android_hdr && p->ra_ctx->vo->params &&
++        p->ra_ctx->vo->params->color.transfer == PL_COLOR_TRC_HLG) {
++        target->color.transfer = PL_COLOR_TRC_HLG;
++        target->color.hdr.max_luma = PL_COLOR_HLG_PEAK;
++    }
+     if (target_ref_luma && (!target->color.hdr.max_luma || !hint) &&
+         use_ref_luma(&target->color, target_csp)) {
+         target->color.hdr.max_luma = target_ref_luma;

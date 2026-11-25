@@ -414,6 +414,10 @@ abstract final class Api {
   static const String latestApp =
       'https://api.github.com/repos/maxzrb/PiliExo/releases/latest';
 
+  // github 按标签获取指定 Release
+  static String releaseByTag(String tag) =>
+      'https://api.github.com/repos/maxzrb/PiliExo/releases/tags/${Uri.encodeComponent(tag)}';
+
   // 多少人在看
   // https://api.bilibili.com/x/player/online/total?aid=913663681&cid=1203559746&bvid=BV1MM4y1s7NZ&ts=56427838
   static const String onlineTotal = '/x/player/online/total';

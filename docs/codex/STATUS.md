@@ -1,5 +1,42 @@
 # PiliExo AI 工作状态
 
+- 2026-11-25 19:46 v26.11.25.1 默认 Android 音频输出为 OpenSL ES → AudioTrack → AAudio。32.83 MB arm64 试机包已覆盖安装 MEP-AN00，哈希回读一致，已采集手动启动 Activity 事件。双 ABI 核心静态检查通过。正式包冷启动和发布待完成。
+
+- 2026-11-25 19:20 预测性返回最底层使用应用深色主题的页面底色，AMOLED 纯黑关闭为黑灰、开启为纯黑，浅色主题下同样适用。移除霞鹜文楷 Lite 下载项并在启动时清理旧缓存。29 项测试通过，32.82 MB arm64 候选已覆盖安装到 MEP-AN00，设备回读一致，滑动观感待手测。
+
+- 2026-11-25 18:56 App字体设置新增可下载的 MiSans 可变字体和霞鹜文楷 Lite 常规，保留 HarmonyOS Sans SC 下载与已有缓存。未安装显示下载，安装后显示删除字体，删除当前字族回到系统字体。arm64 候选 32.83 MB，已覆盖安装 MEP-AN00 并回读核对哈希。26 项定向测试、官方下载与渲染、下载和删除按钮切换均通过，手机端交互待手测。
+
+- 2026-11-25 18:29 arm64 轻量候选从 49.90 MB 降至 32.82 MB，已覆盖安装到 MEP-AN00 并核对哈希。包体增量来自三个内置 HarmonyOS Sans SC 字重，改为在 App字体设置直接从华为官方下载完整 2.400 字体，首次约 17.1 MB，之后读设备缓存。25 项定向测试和官方字体下载、字节与渲染验证通过，手机端的下载入口仍待手测。
+
+- 2026-11-25 18:01 HDR 预测性返回封面闪烁候选已装到 MEP-AN00，设备回读哈希一致。两条 HDR 路线并行暂停和抓帧，拿到有效冻结帧后才切换原生画面，抓帧超时或快速提交手势时跳过封面。41 项定向测试和 APK 校验通过，49,898,773 字节，真机侧滑观感待手测。
+
+- 2026-11-25 17:54 HDR 预测性返回去重影候选已覆盖安装到 MEP-AN00，哈希回读一致。冻结请求发出后即隐藏原生 HDR 并停止合成原视频层，背景位移露出的边缘使用实色底。默认改为跟手方向、70% 位移、0% 渐隐，已保存值优先。候选 49,898,773 字节，比上一正式 arm64 小 25,491 字节。40 项 Flutter 定向测试通过，HDR 实际侧滑观感待用户验收。
+
+- 2026-11-25 17:47 两条 Android HDR 路线在预测性返回开始时请求冻结帧并暂停，取消时恢复画面及原播放状态。静态复核升级时修正 FFmpeg Android CA 目录优先级和部分解析失败处理。arm64 Release 候选为 49,894,677 字节，较 v26.11.24.1 小 29,587 字节，已覆盖安装至 MEP-AN00、哈希一致，MainActivity 启动事件用时 284 ms。HDR 两条路线的取消和提交由用户稍后手动验收。
+
+- 2026-11-25 16:42 FFmpeg 已验证可独立于 mpv 源码升级。本轮固定到 `master@bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2`（`9.1.git`），新增 `commit` 清单字段，重新生成动态 HDR 补丁，并让构建入口支持独立源码、安装前缀、Meson 输出目录和固定版本字符串。mpv 0.42.0 源码无需改动，arm64 核心重新链接成功；55 个导出、16 KB、无 RPATH/RUNPATH 和 ABI 门禁通过。APK 为 49,894,677 字节，SHA-256 `71cd70e0b6974398fb04e0a053eb9073048ec3979475dcab73fe5e83e3dd30ee`，已覆盖安装到 MEP-AN00且设备端回读一致。实际起播已确认，约 71 fps、0 丢弃；seek、倍速、HDR/SDR 和三大页首切仍待用户手动验收。
+- 2026-11-25 14:56 已整理完整的 mpv 与 FFmpeg Android 升级流程，新增 `docs/mpv与FFmpeg升级流程-2026-11-25.md`。同时修正 libplacebo 清单为 v7.387.0，清除旧电脑 FFmpeg 路径和 `--cross-prefix` 隐患，将本地构建入口纳入可跟踪范围，并删除错误候选、诊断包、重复补丁、旧核心二进制和含账号参数的原始日志。最终 arm64 候选哈希仍为 `0a1735eaa88f40ef52bed7512e48de73a154d83bb8390f0ef71c06feb18dfd43`。
+- 2026-11-25 14:44 mpv 0.42.0 首轮候选的“视频加载中”已定位并修复。0.42 将 `tls-verify` 默认改为 `yes`，而 FFmpeg mbedTLS 没有默认 CA 链，HTTPS 因 `BADCERT_NOT_TRUSTED` 打开失败。新增 Android 系统 CA 目录加载补丁后，MEP-AN00 诊断包已实际完成 HTTP 206、HEVC 硬解、AudioTrack、1920×1080 首帧和约 60 fps 持续渲染。最终 arm64 APK 为 51,086,613 字节，SHA-256 `0a1735eaa88f40ef52bed7512e48de73a154d83bb8390f0ef71c06feb18dfd43`，已安装且设备回读哈希一致；HDR/SDR、seek、倍速和三页冷启动仍待人工验收集。
+- 2026-11-25 10:21 已修复跟手方向下背景页固定从左侧归位的问题。左右边缘回归和定向测试 14/14 通过，已覆盖安装到 MEP-AN00，息屏时完成安装，手动滑动观感待确认。
+
+- 2026-11-25 10:11 预测性返回圆角版已覆盖安装至 MEP-AN00，哈希回读一致，15 项定向测试通过。圆角最大 32 dp，随手势过渡。最新包刚安装时设备息屏，实际圆角观感待看。
+
+- 2026-11-25 10:07 逐帧调度候选已安装且用户反馈效果不错。MEP-AN00 手势期间 EGL 提交间隔中位数 21.92 ms 降至 10.85 ms（各取一段），系统同步约 10.94 ms。已接续处理用户提出的预测性返回圆角。
+
+- 2026-11-25 09:58 MEP-AN00 已测过渡组件复用候选。系统和手势约 90 Hz，Flutter 拖动阶段实测约 45 帧/秒。已补逐帧调度且仅在拖动时启用，14 项定向测试通过，逐帧候选构建中。
+
+- 2026-11-25 09:42 MEP-AN00 前台可达 90 Hz。已修复预测性返回开始及取消时整页子树重新挂接，并移除逐次手势事件的重复状态更新。回归及路由定向测试 11 项通过，改动尚未装机。
+
+- 2026-11-25 09:18 已改成按三大页卡片实际裁切所需像素解码，复用同一份图。11 项测试通过，本机 arm64 候选已覆盖安装于 MEP-AN00，回读哈希一致。设备息屏，页面级冷启动及清晰度、切页手感待验。
+
+- 2026-11-25 08:18 已修复三大页共用图片组件在成功显示时绕过缩略图缓存、可能重复解码与纹理上传的问题。回归样例修复前显示 512×512，修复后复用 80×80。11 项定向测试及静态分析通过，真机表现待复测。
+
+- 2026-11-25 08:10 MEP-AN00 追踪已通过网络 ADB 完整取回并核对 SHA-256。两次冷启动后的触摸区间记录到 43～170 ms 栅格帧，最长一帧等待 165 ms，两段等待均由正在上传图片纹理的 Flutter I/O 线程唤醒。优先排查上传与绘制并发，页面及图片归属待确认。本轮只分析和更新记录。
+
+- 2026-11-25 07:58 已按用户复测结果撤回发布后的三大页卡顿尝试，恢复 v26.11.24.1 切页逻辑并保留关于页更新日志。27 项定向测试和相关文件分析通过。查到首次挂载与计时同帧，模拟验证了长帧会放大位移。MEP-AN00 手动试切未明显复现，设备侧追踪已保存，ADB 断开待取回，卡顿根因待确认。
+
+- 2026-11-25 00:15 已定位并优化切三大页（尤其切动态页）滑动中的偶发卡顿，同时将关于页 Build Time 条目点击改为弹出 Release Notes。27 项定向测试与静态分析通过，工作区未提交、未真机验证。
+
 - 2026-11-24 23:56 已发布 `v26.11.24.1`，标签对应 `abdc2e076`。GitHub 和 ModelScope 两个 ABI 包及校验清单一致。MEP-AN00 覆盖安装并冷启动至首页。
 
 - 2026-11-24 23:30 v15 已覆盖安装。主标签滑动减小末段残余位移，目标页到零位后的下一帧再隐藏离场页。切页定向测试通过，真机尾段观感待确认。
@@ -447,7 +484,7 @@
 ### 2026-08-28 16:22 (+08:00)
 
 - 应用项目 Flutter 补丁脚本并恢复损坏的 `flutter_inappwebview_android` Git 缓存文件后，Android debug APK 构建成功。
-- 用户设备 `AN5UUT6225004417`（HONOR MEP-AN00，Android 16）在线；ADB `install -r -d` 和 shell 安装均返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，判断为设备端安装授权未确认。
+- 用户设备 `MEP-AN00`（HONOR MEP-AN00，Android 16）在线；ADB `install -r -d` 和 shell 安装均返回 `INSTALL_FAILED_ABORTED: User rejected permissions`，判断为设备端安装授权未确认。
 - 用户明确要求仅提供安装命令，不再由代理发起安装操作。
 
 ### 2026-08-28 16:53 (+08:00)
@@ -1468,7 +1505,7 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 
 ## 2026-10-17 23:57 — 8e 切速过渡重新验收
 
-- ADB仅AN5UUT6225004417，MEP-AN00/SM8750/Android17/1264×2736，正式v26.10.17.1/code30、arm64，备份SHA与发布72fa7913一致。不沿用旧备用机解锁信息。
+- ADB仅MEP-AN00，MEP-AN00/SM8750/Android17/1264×2736，正式v26.10.17.1/code30、arm64，备份SHA与发布72fa7913一致。不沿用旧备用机解锁信息。
 - 正式包M417复现：正常60/s，启动窗口约39.8/s，稳定3倍180/s；松手首窗Discarded62.7/s，之后恢复60/s。上一版稳态恢复不能覆盖启动/结束瞬态。
 - 第一轮诊断三AO均真实切换；用户原ao列表audiotrack,opensles,aaudio。AudioTrack200ms松手新增71/72个输出掉帧，解码器掉帧0；OpenSL ES200ms69/70；AAudio200ms53/53，AAudio50ms40/40。音频PTS切速时反向跳变约0.7–1.27秒；不能归因于解码吞吐不足。
 - 发现video-pts在本机mpv v0.41.0-dirty不可用，下一轮改采支持的time-pos，不能伪造物理视频PTS。20ms debugPrint高频超出限流，日志输出延后并导致首轮尾部未收全；保留已完整窗口，下一轮debugPrintSynchronously+40ms并按事件内时间计算。
@@ -1822,7 +1859,7 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - Flutter3.47.9独立SDK位于C:/Users/maxzr/.codex/vendor_imports/flutter-3.47.9，官方tag c197ca5199e9ee5661e865596c9c07294dfab51c，engine89c39edfdfae2949f6806e4a315c0c08522238b7，Dart3.13.7；25个framework补丁全部应用。Material1.9.0与9个Android补丁通过。原SDK及旧构建树保留。
 - D盘测试首轮运行停滞于洞察测试加载，终止本任务对应进程并转移独立C盘树C:/Users/maxzr/.codex/worktrees/upstream-integration-20261031/piliexo；该树源码由当前工作区逐文件同步。C盘全量测试最新175/175通过，含8项整体适配和2项Hive兼容新增回归；全量Analyze退出0，无error/warning。键盘HDR判定末次小修需随最终同步验证，不能把此前通过扩大到之后所有改动。
 - Android双ABI本机构建首轮在媒体JAR下载遭遇Java PKIX证书链失败，未关闭证书校验；从旧本机构建缓存复用3份JAR，逐项SHA256与插件声明一致。重试已进入Gradle/AOT构建，结果待确认。29插件注册与README门禁通过；后续仍需正式元数据、mpv替换/签名/对齐和产物校验。
-- 当前源码/锁文件已修改并部分暂存，尚未提交整合源码、推送或发布；未改版本/正式标签，未使用GitHub Actions。日志在C:/Users/maxzr/.codex/vendor_imports/piliexo-upstream-20261031-*.log。设备AN5UUT6225004417在线，尚未对其安装或验收本轮候选。
+- 当前源码/锁文件已修改并部分暂存，尚未提交整合源码、推送或发布；未改版本/正式标签，未使用GitHub Actions。日志在C:/Users/maxzr/.codex/vendor_imports/piliexo-upstream-20261031-*.log。设备MEP-AN00在线，尚未对其安装或验收本轮候选。
 
 ## 2026-10-31 11:34 整体适配、本机验证与原包桌面图标调查收尾
 
@@ -1916,7 +1953,7 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 
 ## 2026-11-04 22:44 用户追加ADB实播，发现并修复两个交接边界（验证中）
 
-- 用户明确“adb测试一下/继续”；不使用computer use，仅ADB shell/UI XML/截图/媒体会话。MEP-AN00（序列AN5UUT6225004417）arm64/API37在线。覆盖前原正式APK完整拉取，SHA256与v26.11.1.1的7d153ff1...一致；appId10406、firstInstallTime2026-09-02 15:19:05已采集。
+- 用户明确“adb测试一下/继续”；不使用computer use，仅ADB shell/UI XML/截图/媒体会话。MEP-AN00（序列MEP-AN00）arm64/API37在线。覆盖前原正式APK完整拉取，SHA256与v26.11.1.1的7d153ff1...一致；appId10406、firstInstallTime2026-09-02 15:19:05已采集。
 - 手机多次拒绝streamed install（INSTALL_FAILED_ABORTED/User rejected permissions）；用户明确允许后原候选9d成功覆盖。修复256包流式仍被直接拒绝，改ADB原生--no-streaming -r成功，不绕过权限、不清数据/卸载。设备当前安装25658abea包，SHA2567f77fbc6ac98286feb24f6bb0f74a3f9ec066f40006e3a122868d85249831def完整回读匹配；新3afd尚在构建。
 - 固定片源BV1tfei6MEMn，真实126/DolbyVision/3840×2160/23.976fps，已观察c2.qti.hevc.decoder硬解。原候选正常播放E→mpv实测107033→108099ms、1.5x继续；暂停mpv→E实测54928→54929ms、1.5x保持并有画面。首次片尾拖回实际续播但旧playWhenReady仍false，切换误暂停；256在入口合并实际isPlaying与意图，并新增固定参考样例，210/210通过。
 - 暂停E→mpv则进度228003ms/1.5x保持，但视频区域全黑；提前挂载纹理仍未通过真实首帧检查。确认暂停下滑动进度能重绘且不播放。3afd补等待VideoController.rect有效后精确seek同一位置一次，检查播放器、来源及暂停意图有效；不是周期seek、不改倍速/AV同步策略。5秒无尺寸超时保留加载，不当作解码失败。
@@ -2415,3 +2452,171 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 本机产物位于 `dist/release/v26.11.24.1/`。arm64 APK 为 49,924,264 字节，SHA-256 `7dd178796829f8b6b6c9f2b775ef4060d96ced7b5cf0068859f09fd1460af772`。v7a APK 为 49,926,042 字节，SHA-256 `e12de1262c05b59b7c2f0bea78801b17dd456d6770e89de1e24cd882dcfae363`。校验清单 SHA-256 `ba34703bbd484c780e690aa08830bc8fab3f3d79499f5bad3e6bad71ea53242b`。
 - GitHub Release 已设为 Latest，ModelScope 同版本目录下三份文件的长度及 SHA-256 与本机构建产物完全一致。默认分支 README 的下载入口与版本标签已核对。[GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.24.1) · [ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
 - 本机已恢复 SDK、工程 Pub 依赖及 Android 生成配置的真实路径，重新通过插件注册检查，已移除本次 P 盘映射。
+
+## 2026-11-25 00:15 三大页切换滑动优化与关于页 Release Notes
+
+- 静态分析切三大页滑动中（尤其切往动态页）的偶发卡顿原因：
+  1. `lib/pages/dynamics/view.dart` 顶栏 `FrostedPreferredSize` 未传 `backgroundIsUniform: true`，而 `Scaffold` 未开启 `extendBodyBehindAppBar`，导致动态页顶部 50px 栏位在横向滑入期间每帧执行真实 `BackdropFilter` 高斯模糊与离屏读回，并叠在悬浮底栏实时模糊之上（首页顶栏已启用纯色优化，故仅动态页独有）。
+  2. `lib/pages/main/widgets/main_tab_view.dart` 滑动期间对进场页与离场页均保持 `TickerMode(enabled: true)`，首次切入或处于加载态时，动态页 10 个 `DynamicCardSkeleton` 的 `Skeleton`（每帧 `setState` + `ShaderMask`）及列表内部动画会与外层 300 ms 切页动画争抢帧预算。
+  3. `lib/pages/dynamics/widgets/up_panel.dart` 每个 UP 项都包裹了 `Opacity`（包括 `isCurrent == true` 的全部默认项），且首次切入动态页时 `DynamicsController` 与 `DynamicsTabController` 在 `onReady` 发起两次请求，回包和首次列表解码若恰落在 300 ms 滑动中段也会形成单帧抖动。
+- 实现改动：
+  - `lib/common/widgets/frosted_surface.dart`：`FrostedPreferredSize` 支持透传 `backgroundIsUniform`。
+  - `lib/pages/dynamics/view.dart`：动态页顶栏启用 `backgroundIsUniform: true`，复用纯色磨砂优化与 `RepaintBoundary` 隔离，外观保持一致。
+  - `lib/pages/main/widgets/main_tab_view.dart`：滑动期间关闭进出页内部 `TickerMode`（静止且选中时立即恢复），不暂停底栏实时模糊。
+  - `lib/pages/dynamics/widgets/up_panel.dart`：仅对非当前项应用 `Opacity(0.6)`，默认全选态移除多余的 `Opacity` 包装。
+  - `lib/http/api.dart`、`lib/utils/update.dart`、`lib/pages/about/view.dart`：将关于页 `Build Time / Commit Hash` 条目的点击改为调用 `Update.showReleaseNotes()`，优先拉取当前版本标签对应的 GitHub Release Notes（404 或无版本元数据时回退最新正式版）并在弹窗中展示，同时保留跳转 GitHub Release 与长按复制 Commit Hash。
+- 验证：9 个改动文件 `flutter analyze --no-pub` 0 错误/0 警告；`main_tab_view_test.dart`、`frosted_surface_test.dart`、`update_asset_test.dart`、`main_tab_initial_load_test.dart` 共 27 项定向测试通过（测试期间临时建立并已移除 `subst P:`）。未打包、未真机验收、工作区未提交。
+
+## 2026-11-25 07:58 恢复三大页正式版切换逻辑，排查冷启动首切
+
+- 用户反馈发布后的切页修复包未改善冷启动后三大页滑动中的短暂停顿。已把动态顶栏磨砂、可见页面 TickerMode、UP 列表透明度及对应切页测试恢复为 `v26.11.24.1`（`abdc2e076`），五个文件与标签逐一核对无差异。保留同批关于页 Release Notes。当前分支 `codex/fix-vertical-fullscreen-white-edge` 在 `bb93f1468`，`git pull --ff-only origin main` 已同步，仍有关于页和记录改动及原有未跟踪文件，未提交、打包或发布。
+- Flutter 3.47.9 下四份定向测试共 27 项通过，九个相关 Dart 文件静态分析无问题。一次性组件测试确认，未访问页在选中帧首次构建、布局并运行首个帧后回调，已访问页再次切入时复用子树。模拟把选中帧到下一帧的间隔从 16 ms 拉到 64 ms，目标页移动距离从 23.5% 增至 64.1% 屏宽。这里只验证动画对帧间隔的反应。
+- 静态候选依次核对选中帧的子树挂载及布局，随后是动态页两个控制器的 `onReady` 和回包模型转换、我的页首次资料及分帧列表加载，以及首批栅格化和系统合成耗时。用真机对比同一目标的冷启动首切、已访问后重切，再根据长帧所在的 UI、Raster 或 Android 合成时间段缩小范围。
+- MEP-AN00 安装包 SHA-256 `b0b253eaf7a7deadafd4f9ead4c0ea3dba5804d05c7560d59169c12c94c72693` 与本地 `dist/integration/main-tab-swipe-20261125/PiliExo_android_v26.11.24_main-tab-swipe.apk` 一致。按 ZIP 条目大小和 CRC 对照，候选与正式 arm64 包仅 Flutter AOT 和签名条目有差异。用户手动操作时主观反馈本轮卡顿不明显。手机侧 Perfetto 写出 128,780,595 字节，拉取时 MEP-AN00 从 ADB 断开。可在同一设备重新连上后拉取 `/data/misc/perfetto-traces/piliexo-main-tab-20261125.pftrace` 到 `dist/integration/main-tab-swipe-20261125/manual-frame-trace/`，核对实际录到的启动和切换时间窗。当前尚无可分析的真机帧数据。
+
+## 2026-11-25 08:10 取回三大页切换追踪并定位栅格线程等待
+
+- USB ADB 多次 `read failed`。通过 ADB 已公布的无线端点连回同一台 MEP-AN00，核对设备序列号后取回原追踪。手机和本机 SHA-256 一致（`e0c4da9d490d581eb2f81aaab4b8a32e3f2c0bb87020b3e254d388f24d663e04`），128,780,595 字节，位于 `dist/integration/main-tab-swipe-20261125/manual-frame-trace/trace.pftrace`。沿用上一轮用户手动试切，应用为发布后修复候选，未重新操作、安装或构建。
+- 用 Perfetto 59.1 的 `slice`、`thread_state` 和 `waker_utid` 对齐 51.991 秒追踪，包含两次冷启动。Android FrameTimeline 主要记录窗口交易和 Splash，切页本身使用 Flutter 引擎 `GPURasterizer::Draw`、`Animator::BeginFrame` 及应用输入区间核对。
+- 追踪相对 29.0492 s、33.2824 s、50.0198 s 出现 55.16、43.32、169.68 ms 栅格帧，距离相应触摸簇结束约 177、157、227 ms。同一段触摸到结束后 350 ms 的 UI 帧最高为 1.11、2.26、1.79 ms。55.16 ms 帧主要耗在 `LayerTree::Paint`，43.32 ms 帧主要耗在 `eglSwapBuffers`，两者均出现被 `1.io` 唤醒的阻塞。169.68 ms 帧的 `LayerTree::Paint` 占 168.46 ms，栅格线程合计等待 165.05 ms，其中两段 79.09 和 85.96 ms 都由当时执行 `UploadRasterImage / MakeCrossContextImageFromPixmap` 的 `1.io`（TID 467）唤醒。另在 41.6702 s 的 159.73 ms 栅格帧中，绘制线程在 `GrDirectContext::flushAndSubmit` 的两段主要等待也由该上传线程唤醒，该帧距对应触摸结束约 352 ms。
+- 现有证据支持优先检查图片纹理上传与栅格绘制的并发等待。这些切页时段的主要长帧集中在栅格线程，之前的首建推测无法解释这些长帧。追踪缺少具体页面与图片标记，尚不清楚是哪张图、哪个列表或驱动内哪个同步点。后续用相同账号、设备和切页序列对照首批图片正常上传及避开滑动窗口的行为，并对比冷切与热切；先核对副作用和重复跑出的长帧。
+- 本轮只补充追踪分析和记录，应用源码沿用上一轮回退结果。查询脚本保存在同一忽略产物目录，工作区仍未提交。
+
+## 2026-11-25 08:18 修复共用缩略图重复解码
+
+- 根据 MEP-AN00 已取得的帧追踪，静态检查首页推荐卡片、动态封面和头像、我的列表共用的 `NetworkImgLayer`。当前锁定依赖中，`CachedNetworkImage` 先经 `OctoImage` 用 `memCacheWidth / memCacheHeight` 得到 `ResizeImageKey`。成功回调的 `_octoImageBuilder` 传回未包装的 `CachedNetworkImageProvider`，原组件用它构建另一个 `Image`，另走原尺寸缓存键。冷缓存时同一图可分别按缩略图尺寸与原尺寸解码和上传，符合先前抓到的栅格线程等待图像上传的现象。该样本仍无法归因到具体图片或排除其他长帧来源。
+- `lib/common/widgets/image/network_img_layer.dart` 的成功回调现在使用 `ResizeImage.resizeIfNeeded` 按原本的缓存宽高构造显示 provider，使渲染复用已解码的缩略图。仅处理已有公开尺寸参数，保留重试、占位、淡入和减光行为。未引入按切页冻结图片的时序控制。
+- 新增 `test/common/widgets/network_img_layer_test.dart`，在同一 URL 同时预置 512×512 原尺寸与 80×80 缩略图缓存。修复前实际显示 512×512，修复后实际显示 80×80，覆盖按宽和按高两种路径。Flutter 3.47.9 的缩略图、图片重试、主标签动画、首次请求和磨砂定向测试共 11 项通过。改动文件分析、格式与 `git diff --check` 通过。
+- `git pull --ff-only origin main` 已同步，基线 `bb93f1468`。本轮源码及测试未提交、打包或真机复测。后续用同设备进行多次冷切及热切，比较切页窗口的上传峰值和栅格长帧。
+
+## 2026-11-25 09:18 按卡片裁切尺寸解码并安装真机候选
+
+- 上一轮复用缩略图时只按一条预设边解码，宽高比与容器不相符的图在 `BoxFit.cover` 裁切前可能被再次放大。现在在解码回调中结合源图尺寸和显示物理像素选择满足铺满的边，保持源比例，输出不超过源图；不同显示尺寸使用各自的缓存键。按现有 `CachedNetworkImageProvider` 获取磁盘或网络数据，使用已锁定的 `OctoImage` 直接绘制同一个 stream。原有非 cover 或约束不完整时沿用单边尺寸，继续使用原重试、占位、淡入和减光配置。仅将 `octo_image` 从传递提升为直接依赖，锁定提交 `78472680933ac632e2f1ee1eb5994ca2951d562c`。
+- 实际 PNG 解码的 3 种测试输入为 240×120、120×240、40×20。在 50×50 逻辑像素、DPR=2 的方形组件上，输出分别为 200×100、100×200、40×20，重新挂载命中内存缓存，每个尺寸只读缓存文件一次。Flutter 3.47.9 的 11 项定向测试通过。相关文件 Analyze 无 error/warning，有一条 cascade_invocations 风格提示。
+- 本机生成 arm64 Release 候选 `dist/integration/main-tab-swipe-20261125/PiliExo_android_v26.11.24_cover-decode_arm64-v8a.apk`。包名 `com.maxzrb.piliexo`，版本 26.11.24/code 46，49,932,123 字节，SHA-256 `49908166e5a27ae3c04ecb0f6bbc9ca40e56f820d9ba5533ae707f9343c4f462`。29 个 Android 插件注册、DEX、AOT 基线 `bb93f1468` 加工作区改动、必要原生库、16 KB 对齐和原正式 V2 证书校验通过。
+- MEP-AN00 于 09:16:52 覆盖安装成功，设备 APK 回读 SHA-256 一致。息屏待机时 `am start -S -W` 返回 `Status: ok`、`LaunchState: UNKNOWN`，尚未确认首页进入可操作状态。设备亮屏后补测冷启动和三页切换，记录清晰度与帧耗时。工作区未提交，候选未发布。
+
+## 2026-11-25 09:42 预测性返回复用过渡组件
+
+- 用户确认 MEP-AN00 的系统自动档交互能升至 90 Hz，但预测性返回仍有顿挫。ADB 在应用前台采样期间分别读取到 60 和 90 Hz，未同步记录具体返回手势。此轮未改帧率策略或手机设置。
+- 静态检查发现路由在静止和预测手势间替换两种过渡子树。Flutter ModalScope 用 GlobalKey 保持真实页面状态，换父时仍会对页面子树执行 deactivate 和重新挂接。新增用例在原实现中观察到手势第一帧发生一次 deactivate。
+- `lib/router/predictive_back_transition.dart` 改为同一个过渡组件承接平时显示、预览、取消和松手，避免切换阶段时换父。手势进度由路由动画驱动，手势回调不再逐事件额外 setState。被覆盖页的深度值在取消回到静止或路由释放时清理，继续沿用原有缩放、位移和收尾参数。
+- Flutter 3.47.9 预测性返回和主标签测试共 11 项通过，新增用例在手势开始和取消后均未观察到 deactivate。改动文件分析、格式及 `git diff --check` 通过。源码未提交、未构建新包或真机复测，设备仍是前一轮已安装的缩略图候选，实际手势流畅度待对照。
+
+## 2026-11-25 09:58 真机抓到预测性返回隔帧调度
+
+- 本机 arm64 候选 `dist/integration/predictive-back-20261125/PiliExo_android_v26.11.24_predictive-back-stable_arm64-v8a.apk` 已在 09:47:47 覆盖安装到 MEP-AN00，APK 49,933,742 字节，SHA-256 `6531a5bbf84477f2595eee6e588890a727b9f550e646e94837027acd70a92f24`，设备回读一致。Android 29 插件注册、AOT `bb93f1468` 加工作区补丁、必要原生库、16 KB 对齐和原 V2 签名通过。用户手动操作，Perfetto 记录冷启动 382.82 ms，用户反馈预测性返回略有顿挫。
+- 追踪 `dist/integration/predictive-back-20261125/predictive-back.pftrace` 长 52.0293 s，55,540,630 字节，解析未报告 data loss/error。只有一段 `flutter/backgesture` 被完整捕获。50.5242～51.7057 s 共 103 次消息，间隔中位数 10.94 ms，系统 VSYNC-app/VSYNC-sf 主要在 10.9～11.0 ms。同期 Flutter 仅有 52 次 AsyncWaitForVsync、51 次 BeginFrame 和 51 次栅格化，完成间隔中位数 21.89 ms（UI）和 21.70 ms（Raster）。UI 最大 0.81 ms，GPU Raster 最大 15.45 ms、51 帧中 5 帧超过 11.11 ms。连续缺少 Flutter 帧请求的周期支持调度隔帧的判断。当前不能区分这段手势的正式提交与取消。
+- 已加拖动期间逐帧请求的 Ticker，提交、取消和销毁时结束。新测试在改前观察到拖动期间未保持帧请求，改后通过，提交和取消后均可停靠。Flutter 3.47.9 针对路由、主标签、HDR 路由、图片共 14 项通过，相关代码分析无问题。逐帧调度的新候选本机构建中，需安装并按相同设置页、同一自动刷新率用短手势对照。
+
+## 2026-11-25 10:07 真机确认拖动期间出帧跟随系统同步
+
+- 逐帧调度 arm64 候选 `dist/integration/predictive-back-20261125/PiliExo_android_v26.11.24_predictive-back-vsync_arm64-v8a.apk` 于 10:00:47 覆盖安装至 MEP-AN00。49,930,331 字节，SHA-256 `24f06d499b3b23463345c429554683b9c346b42b921b81a13e95f9e19e8b50ef` 与设备安装包一致。原正式 V2 签名、16 KB 对齐、AOT 基线和插件注册核验通过。
+- 对照原始记录 `predictive-back.pftrace` 与新记录 `predictive-back-vsync.pftrace`（均在 `dist/integration/predictive-back-20261125/`），前者捕获 1 段具有应用出帧的手势，后者捕获 4 段具有应用出帧的手势。后者启动在追踪之前，由系统 `AChoreographer_frameCallback64` 和应用 Raster 线程 `eglSwapBuffers` 作为两份 trace 共同口径。较长的对照段 30.253～32.198 s，系统周期中位 10.94 ms，Flutter 同步回调及 EGL 提交间隔中位 10.93 和 10.85 ms。原段相应中位数为 21.87 和 21.92 ms。新段 177 次 EGL 提交、3 个间隔超过 20 ms，未见原先持续隔帧的节奏。其他三段 EGL 间隔中位 10.22～11.27 ms。用户反馈效果不错。第二轮已实际操作到应用内页面，启动发生在追踪开启前，未取得这包的独立冷启动耗时。
+- 用户随后请求给预测性返回页面边缘加 R 角。已在统一过渡层内按手势进度计算圆角（最大 32 dp），背景收缩按深度同步，全屏半径归零并关闭裁切。保留统一组件树，使用 `Clip.antiAlias`，正在验证圆角候选。
+
+## 2026-11-25 10:11 预测性返回圆角候选已安装
+
+- 返回预览和松手动画的页面圆角跟随原过渡进度，最大 32 dp。滑动样式下露出的背景页圆角跟随背景深度。取消恢复全屏时圆角归零并关闭裁切。圆角组件在静止和手势期间保留同一层级，采用 `Clip.antiAlias`。
+- Flutter 3.47.9 定向测试 15/15。覆盖圆角出现、取消归零、松手首帧连续、背景裁切，以及手势逐帧调度和内容复用。两个相关 Dart 文件 Analyze 和格式检查通过，`git diff --check` 通过。
+- 本机构建 arm64 候选 `dist/integration/predictive-back-20261125/PiliExo_android_v26.11.24_predictive-back-corners_arm64-v8a.apk`，49,930,515 字节，SHA-256 `e16408780dab89ab69b37e0f2e00e7c4886a51046e27142449195bcc8c54efbd`。原正式 V2、16 KB 对齐、29 个插件注册、DEX 和必要原生库核验通过，AOT 基线 `bb93f1468` 和圆角组件标记已核对。
+- 10:10:30 已覆盖安装到 MEP-AN00，设备回读 SHA-256 一致。手机处于息屏待机，用户选择手动操作，安装后尚未取得圆角候选的冷启动、手势观感或第二份帧耗时。逐帧调度版的真机对照仍记录在前一条。当前源码未提交，候选未发布。
+
+## 2026-11-25 10:21 修复预测性返回背景页跟手方向
+
+- 原背景页起始水平偏移写死在左侧，右边缘起手向左滑时背景仍向右归位。手势开始时现在解析并保存同一个退出方向供前景与背景使用。背景从前景退出方向的对侧进入，随原进度向中间归位，左右互为镜像。固定左、右滑动样式同样使用所选方向，过渡进度、圆角及逐帧调度仍沿用原逻辑。
+- 新回归覆盖左右屏幕边缘、拖动时前景和背景实际位移、取消归零、松手首帧连续及完成归位。旧实现右侧用例失败，修复后 Flutter 3.47.9 路由及主标签 14/14 通过，相关文件 Analyze 和格式检查无问题，`git diff --check` 通过。
+- arm64 候选 `dist/integration/predictive-back-20261125/PiliExo_android_v26.11.24_predictive-back-direction_arm64-v8a.apk` 通过 29 个插件注册、DEX、AOT 基线 `bb93f1468`、定制核心与必要库、原正式 V2 签名和 16 KB 对齐。49,931,528 字节，SHA-256 `7b5b596e93022a9b45e6f2ed96a80b6a3a8826420eff2ed0b15d4237a2555c1d`。
+- 10:20:22 覆盖安装至 MEP-AN00，设备端哈希一致。安装时手机息屏，按用户既定的手动操作方式，本轮未取得首启或左右滑实机观感。代码未提交，候选未发布。
+
+## 2026-11-25 14:03 mpv 0.42.0 arm64 候选打包与静态验收
+
+- mpv 源码基线为 `mpv-v0.42.0.tar.gz`，7,515,468 字节，SHA-256 `bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd`。最终总补丁已放入跟踪目录 `patches/mpv/mpv-0.42.0-piliexo-adaptation.patch`，SHA-256 `36a3c55cdf06408af54f1862402bdb9c85cc7574614ecd4c58d8174ef863cffe`，共 18 个文件差异；旧补丁中的 `display_sync_drift_dir`、`piliexo_ao_delay` 残留已移除。
+- 最终补丁在另一份干净归档上回放后与候选源码逐文件一致，候选源码也能反向应用。`tools/mpv-0.42.0-upgrade/apply_mp42_patches.py` 已改为先 `git apply --check`、失败即停止，并直接应用总补丁；四个 `.rej` 已清理。`build_arm64.py` 会在 Ninja 链接前删除 Meson 写入的 NDK 宿主 `RUNPATH`。
+- arm64 `libmpv.so` 重新链接、验证并 strip，14,139,312 字节，SHA-256 `0acbe444e2671d63b93fa0be5c3757f0f4037b737400e4465a6ca863dfafe327`。AArch64，55 个 `mpv_*` 导出，依赖 `libm/libz/libandroid/libmediandk/libdl/libOpenSLES/libEGL/libc`，无 `RPATH/RUNPATH`、无宿主路径字符串，4 个 LOAD 段均为 `0x4000`。生成版本头为 `v0.42.0`；未 strip 和无 RUNPATH 前后的证据保存在 `tmp/mpv-0.42.0-upgrade/evidence/`。
+- 候选包基于方向修复包替换同名 `libmpv.so` 并使用原正式证书 V2 重签，路径 `dist/integration/mpv-0.42.0-20261125/PiliExo_android_v26.11.24_mpv-0.42.0_arm64-v8a.apk`。51,086,613 字节，SHA-256 `92db8fa56b133b8b2c7f406351cf8a11e9d5a8f048ad91a01d90031622303b6d`；682 个非替换条目逐字节不变，包内核心哈希一致，同签名证书和 16 KB zipalign 通过。
+- `lib/scripts/verify_android_plugins.ps1` 通过，29 个原生插件注册；`tool/verify_release_apk.py --source-commit bb93f14682eb5710be34f9b078922df77fb1fbf6 --version 26.11.24` 通过，确认 AOT 提交/版本、GeneratedPluginRegistrant、libapp/libffmpegJNI/libmpv 和定制 HDR 标记。该包只含 arm64。
+- MEP-AN00/`MEP-AN00` 覆盖安装返回 Success。安装后设备从 `adb devices` 消失，未完成设备端 APK 哈希回读；本轮未启动应用，未取得冷启动、三大页首切、预测性返回圆角/方向或 mpv 0.42.0 的 HDR/SDR、seek、倍速、字幕和音轨实播结果。
+- 早期错误 DESTDIR 产生的 `C:\lib` 与 `C:\include` 已逐文件核对只含本次 libass/libplacebo 依赖并清理。当前源码未提交、未发布、未使用 GitHub Actions、未移动标签。构建辅助脚本位于被 `.gitignore` 忽略的 `tools/mpv-0.42.0-upgrade/`，总补丁和说明位于已跟踪的 `patches/mpv/`。
+- 下一步：重新连接 MEP-AN00，按用户手动操作方式完成新包冷启动和三页首切观感；播放 HDR/SDR 样本验证 mpv 0.42.0 起播、seek、倍速、字幕、音轨与 HDR VO，并检查 `logcat` 中 dlopen、MissingPlugin、HDR 和崩溃信息。设备允许读取安装包时补做端上 SHA-256 回读。
+
+## 2026-11-25 14:44 修复 mpv 0.42.0 HTTPS 证书链导致的视频加载失败
+
+- 用户报告首轮 0.42.0 候选“卡视频加载中”。临时诊断构建在 MEP-AN00 抓到 `mpv` 初始化、Surface、打开媒体均正常，实际失败为 `tls: The certificate is not correctly signed by the trusted CA`，随后 `mbedtls_ssl_get_verify_result` 返回 flags 8（`MBEDTLS_X509_BADCERT_NOT_TRUSTED`）并 `Failed to open`。根因是 mpv 0.42.0 文档明确把 `--tls-verify` 默认值从 `no` 改为 `yes`，而 FFmpeg 9.0.1 的 mbedTLS 后端在未显式给 `ca_file` 时使用空 CA 链。
+- 新增已跟踪补丁 `patches/mpv/ffmpeg-android-system-ca.patch`，SHA-256 `bd462ef9595e2547b4c3c0882e19f629017166399343815823a1657443b64524`。Android 下默认把 `/system/etc/security/cacerts` 交给 mbedTLS，按目录调用 `mbedtls_x509_crt_parse_path`，单文件配置仍走 `parse_file`。补丁已在干净 FFmpeg 9.0.1 上应用通过，并登记进 `sources.json` 正式补丁列表；`prepare_mpv_sources.py --check` 对 mpv 总补丁、FFmpeg 动态 HDR 和 CA 补丁均通过。
+- `sources.json` 的 mpv 基线已更新为 v0.42.0：归档 SHA-256 `bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd`、7,515,468 字节；正式列表改为总适配补丁 `mpv-0.42.0-piliexo-adaptation.patch`（SHA-256 `36a3c55c…`）。旧分项补丁保留为历史追溯，不再按旧顺序应用。
+- FFmpeg `libavformat` 与 mpv 重新编译后，arm64 `libmpv.so` 为 14,139,472 字节，SHA-256 `d6ef0bbee0364637c6e5a5480d7b7e7d8a002434df68fc8d90884fa52d67c447`。AArch64、55 个 `mpv_*` 导出、无 `RPATH/RUNPATH`、无宿主路径、4 个 LOAD 段 `0x4000` 对齐，且包含 Android CA 路径。
+- CA 修复诊断包在 MEP-AN00 实际打开视频：两次 HTTPS 请求返回 `HTTP/1.1 206 Partial Content`；创建 `c2.qti.hevc.decoder`，AudioTrack 启动；表面更新为 1920×1080；`TraceLog` 从 14:40:12 到 14:40:23 连续报告约 58–60 fps 渲染、丢弃约 0。修复后的日志中证书错误和 `Failed to open` 均为 0。一次无直通 Surface 的 `hevc_mediacodec-copy` 初始化打印 `Both surface and native_window are NULL`，随后 MediaCodec 显示 started successfully 并继续渲染，属于当前 copy 回退提示而非本次阻断原因。
+- 临时播放器诊断插桩已从源码完全移除。最终候选不带诊断日志，基于方向修复 AOT 包替换修复后的核心：`dist/integration/mpv-0.42.0-20261125/PiliExo_android_v26.11.24_mpv-0.42.0-system-ca_arm64-v8a.apk`。51,086,613 字节，SHA-256 `0a1735eaa88f40ef52bed7512e48de73a154d83bb8390f0ef71c06feb18dfd43`；682 个未替换条目一致，原证书 V2，v2 签名通过，16 KB zipalign 通过。
+- 最终包 manifest 为 `com.maxzrb.piliexo`、versionName `26.11.24`、versionCode 46、minSdk 24、targetSdk 37、仅 arm64-v8a。`verify_android_plugins.ps1` 通过 29 个插件；`verify_release_apk.py` 对 AOT `bb93f1468`/版本、GeneratedPluginRegistrant、定制核心及必要库通过。已覆盖安装到 MEP-AN00，并用 `adb exec-out cat` 二进制回读 51,086,613 字节，设备端 SHA-256 与本地完全一致。
+- 当前仍需人工验收：最终无诊断包的实际起播/seek/倍速、HDR10 与 SDR 切换、字幕和音轨、后台返回，以及冷启动后的三大页首切和预测性返回圆角/方向观感。代码未提交、未发布、未使用 GitHub Actions。
+
+## 2026-11-25 14:56 固化 mpv/FFmpeg 升级流程并清理弯路残留
+
+- 新增 `docs/mpv与FFmpeg升级流程-2026-11-25.md`，按源码归档、正式补丁、FFmpeg 静态库、libass/libplacebo、libmpv、Android 系统 CA、ELF strip 门禁、APK 签名、设备回读和真机验收顺序记录实际命令与判断标准。
+- 修正 `patches/mpv/sources.json` 中 `libplacebo` 的实际版本、归档长度和 SHA-256 为 v7.387.0、972,798 字节和 `f9e62d37…1df5`。十个组件归档的当前本地文件均重新计算哈希通过，正式补丁与研究补丁哈希通过，`prepare_mpv_sources.py --check` 通过。
+- 移除 `tools/mpv-0.42.0-upgrade/apply_mp42_patches.py`。该临时脚本按所有非 mpv 文件名应用 FFmpeg 补丁，可能误带研究补丁。正式流程统一使用 `tool/prepare_mpv_sources.py` 和 `sources.json` 的 `patches` 列表。
+- FFmpeg 参数文件中的旧电脑 `D:/pyprogram` 前缀已替换为 `PROJECT_PREFIX`，并删除无效 `--cross-prefix`。214 个 shlex 参数边界和项目内前缀替换验证通过，Git Bash `bash -n` 与 Python 语法检查通过。
+- `build_arm64.py` 增加依赖前缀必须位于项目 `tmp/` 的断言，同名头文件改为覆盖复制，并移除未使用的导入和变量。`.gitignore` 只放行 `tools/mpv-0.42.0-upgrade/` 下的 10 个构建入口文件，源码、下载归档、build 和 core 仍被忽略。
+- `package_android_native.py` 在签名、同证书和未变条目验证成功后自动删除 `.unsigned.apk` 与 `.aligned.apk`。最终候选按同一输入重新打包后仍为 51,086,613 字节和 SHA-256 `0a1735ea…18dfd43`，目录只保留 APK 与 `.artifact.json`。
+- 已删除错误核心候选及诊断 APK、诊断目录、重复总补丁、临时源树回放副本、约 100 MB 旧/未 strip 核心、设备 APK 副本和原始 logcat。原始日志含带时效签名 URL、账号参数和设备标识，已脱敏为仅含计数和 ELF 结果的 `summary.json`。`rg` 复核脱敏证据不含 URL、账号参数或设备序列号。
+- 当前未提交、未发布。最终包仍需人工验收 seek、倍速、HDR/SDR、字幕、音轨和三大页冷启动首切。
+
+## 2026-11-25 16:42 将 FFmpeg 独立升级到 Git master 快照
+
+- 上游 `master` 固定为 `bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2`，提交时间为 2026-11-25 04:05:36 +0000，源码 `RELEASE` 为 `9.1.git`。GitHub 提交归档为 18,341,856 字节，SHA-256 `261b6ea5c174b286598b4e9c1a88bbb0e87b73a392730bafb3565bf0f2cdf50d`，已写入 `sources.json` 的 `tag`、`commit`、字节数和哈希。
+- 动态 HDR / MediaCodec 倍率 / 解码前丢帧总补丁已按最新源码重新生成。上游把视频私有状态改为 `MediaCodecContext`，并调整初始化及 flush 上下文；新补丁 SHA-256 为 `59e77515bb5f518dbe13f8ab5bdb6289eae49131e7c3ed0dee689a2a3a78e856`。动态 HDR 和系统 CA 两项正式补丁已在干净源码上按 `prepare_mpv_sources.py` 应用并复核通过，研究补丁仅做兼容检查。
+- `build_ffmpeg.sh` 现支持 `FFMPEG_SOURCE_DIR`、`FFMPEG_INSTALL_PREFIX` 和 `FFMPEG_REVISION`，构建与安装分步执行，安装使用 `V=1` 避开 FFmpeg 9.1 静默安装宏在 Git Bash 下的未闭合引号问题。`run_ffmpeg_configure.py` 不再写死 n9.0.1 源码路径，`pkg-config.py` 把 Windows sysroot 转成 8.3 短路径，`build_arm64.py` 支持独立前缀、源码和 Meson 输出目录。
+- 最新源码已经不再接受 `latm`、`mpeg4` demuxer/parser 和 `hls`、`srt` protocol 别名，这些无效参数已从正式 flags 删除。最终完整 configure 无对应 mismatch 警告，`FFMPEG_CONFIGURATION` 也不再包含旧参数。
+- FFmpeg 9.1.git 的 ABI 版本为 libavcodec 63.28.100、libavformat 63.21.100、libavutil 61.21.101、libswscale 10.6.100、libswresample 7.7.100。前述五个静态库和 JNI/MediaCodec/mbedTLS/dav1d/WebP 依赖均完成链接。
+- 最终 strip 核心为 14,449,720 字节，SHA-256 `8d4c34ef167d9e586c4c3df20eabb2686303b55c52eee7c83a9fc3a69a010482`；内嵌 `FFmpeg version git-2026-11-25-bf11bea4`，AArch64、55 个 `mpv_*` 导出、四个 `0x4000` LOAD 段、无 RPATH/RUNPATH、系统 CA 路径存在。
+- 候选 APK 为 `dist/integration/ffmpeg-git-bf11bea4-20261125/PiliExo_android_v26.11.24_ffmpeg-git-bf11bea4_arm64-v8a.apk`，49,894,677 字节，SHA-256 `71cd70e0b6974398fb04e0a053eb9073048ec3979475dcab73fe5e83e3dd30ee`。29 个插件、AOT `bb93f1468`/version、原证书 V2 和 16 KB 对齐通过；MEP-AN00 覆盖安装成功，设备端回读字节数与哈希一致。
+- 原生策略测试 6 项通过。FFmpeg 独立升级完成的是可复现构建和静态/装机门禁；实际起播已确认，观测到 73/s 入队、71/s 渲染、0/s 丢弃，AudioTrack 已启动；seek、倍速、HDR/SDR、字幕和冷启动三大页首切仍须用户在设备上手动验收。工作区未提交、未发布、未使用 GitHub Actions。
+
+## 2026-11-25 17:47 mpv / FFmpeg 静态复核与两条 HDR 预测性返回暂停候选
+
+- 原生复核覆盖 MediaCodec/动态 HDR 补丁适配、关键 FFmpeg 协议与解码配置、JNI 与 libmpv 导出、依赖和 ELF 对齐。mpv 0.42.0 与 FFmpeg `bf11bea4` 固定版本一致，arm64 55 个导出与上一正式核心一致，四个 LOAD 段均为 16 KB，无 RPATH/RUNPATH。候选和正式包的 Media3 `libffmpegJNI.so` 内容相同。
+- `ffmpeg-android-system-ca.patch` 改为优先读取 Conscrypt APEX，目录缺失或为空时回落系统分区。部分解析失败时保留可用 CA，空信任链报错，保留 TLS 校验。更新补丁哈希和升级文档，`prepare_mpv_sources.py --check` 通过。
+- `lib/pages/video/view.dart` 在两条 HDR 路线开始预测性返回时并行请求快照、暂停；取消后等暂停及 Surface 恢复完成，只有手势前在播放或等待播放时才续播。完成返回时沿用现有 Surface 释放路径。定向分析无问题，Flutter 定向 33 项、原生策略 6 项通过。
+- 候选 `dist/integration/hdr-predictive-back-20261125/PiliExo_android_v26.11.24_hdr-back_ffmpeg-git_arm64-v8a.apk`，49,894,677 字节，SHA-256 `02df73649a97dbe3bf36f3215f1bdc753dec8203b67c5c4e577c62536fdce050`。核心 14,449,848 字节，SHA-256 `03d9777563471afe64ae71565548fd786e91470255069a28f1c3b2228afce7a3`。Android 插件 29 个、APK AOT / 版本静态门禁、原正式证书 V2、ZIP 对齐通过。AOT 内嵌 `bb93f14682eb5710be34f9b078922df77fb1fbf6`，实编包含未提交工作区改动。
+- 17:44 覆盖安装成功，设备回读 SHA-256 与候选一致。安装后的 MainActivity 启动事件为 284 ms，本次进程日志未见插件注册、动态库加载或崩溃错误。用户选择稍后自行测试 mpv HDR / ExoPlayer HDR 的取消与完成手势，本候选的 HTTPS 实际起播和两条路线的手势仍待验收。armv7 核心未升级，工作区未提交、未发布。
+
+## 2026-11-25 17:54 HDR 预测性返回重影与默认手势
+
+- 两条 HDR 路线在发出抓帧请求后马上隐藏原生 Surface、用冻结画面或封面补位，并在 Flutter 侧禁止原视频层参与该帧绘制。手势取消继续复用同一播放器与 Surface，沿用原播放状态恢复逻辑。
+- 滑动样式的背景页缩放、位移和圆角会露出边缘，该区域现在用不透明主题底色覆盖。新增背景底色覆盖整屏及取消后移除的断言。默认样式为跟手、位移上限 70%、渐隐 0%，保留设备已有设置。相关静态分析及 40 项 Flutter 定向测试通过。
+- 候选 `dist/integration/hdr-predictive-back-20261125/PiliExo_android_v26.11.24_hdr-back-layer_ffmpeg-git_arm64-v8a.apk`，49,898,773 字节，SHA-256 `01876890301e4ff239c1a1c077bf9e8129ff7c74692f7274b95b75da66b63ddb`。继续使用上轮已通过 6 项原生策略测试的 mpv 0.42.0 / FFmpeg `bf11bea4` 核心，APK 原证书 V2、16 KB 对齐、29 个插件和 AOT 门禁通过。本机于 2026-11-25 17:53:38 覆盖装到 MEP-AN00，设备端哈希一致。新版实机画面和两条 HDR 路线续播待用户手动检查。工作区未提交，候选未发布。
+
+## 2026-11-25 18:01 HDR 预测性返回封面闪烁
+
+- 用户在 17:53 候选上看到封面短暂露出再换成冻结画面。该版本在 PixelCopy 请求发出时立即打开覆盖层，冻结图像尚未返回就会渲染封面占位。
+- `lib/pages/video/view.dart` 保留两条 HDR 路线手势开始即暂停；等待抓帧与 Flutter 图像生成，先填入有效冻结图像，再打开覆盖层并隐藏原生 Surface。抓帧失败或超时继续保留暂停画面。预测性手势快速提交时跳过封面，保留现有原生层清理。若当时无冻结帧，退出中的视频区域保持原底色。常规返回沿用原有封面逻辑。
+- Dart 格式、定向分析、41 项 Flutter 测试、29 个插件、AOT 元数据、原证书 V2、APK 对齐和设备回读哈希通过。候选 `dist/integration/hdr-predictive-back-20261125/PiliExo_android_v26.11.24_hdr-back-no-flash_ffmpeg-git_arm64-v8a.apk`，49,898,773 字节，SHA-256 `9ce1dc2758d1d636d48a6c6b4852d1698db34d56748710c91b6772ad8ee2735e`，2026-11-25 18:00:56 已覆盖装机。mpv / FFmpeg 核心哈希沿用 `03d9777563471afe64ae71565548fd786e91470255069a28f1c3b2228afce7a3`。本轮真机手势由用户手动验证，未提交、未发布。
+
+## 2026-11-25 18:29 恢复约 33 MB 并保留 HarmonyOS Sans SC
+
+- 对比 32.80 MB 的上一批 v11 候选及 49.90 MB 的 HDR 候选，内置 Regular、Medium、Bold 三个 TTF 的压缩大小为 17,081,203 字节，构成绝大多数增量。APK 只保留字体许可，原始字体用于核对官方下载内容。
+- 默认先用系统字体，保留所选系统字体、字号、字重、自定义导入和旧版空字串设置的兼容。App字体设置内可选择 HarmonyOS Sans SC；选择后从华为官方 2.400 ZIP 读取三段，累计 17,081,203 字节，校验 SHA-256 后解压原版字形并保存。下次读取设备本地缓存。固定范围或压缩哈希改变时，下载报错并保留已选字体，需按华为官方包重新核对三段。
+- 华为官方服务器实测响应 206。Flutter 实际网络测试确认缓存的三份 TTF 与上一版逐字节一致、三种字重渲染结果不同、重复选择可离线。25 项字体、预测性返回和 HDR 启动封面定向测试通过，相关静态分析无问题。
+- 新候选 `dist/integration/lightweight-harmony-font-20261125/PiliExo_android_v26.11.24_lightweight_arm64-v8a.apk`，32,818,082 字节，较 HDR 候选少 17,080,691 字节。SHA-256 `ab62bbc2a56a2dab761a0c0418c99a6ce9181968d5baac37a352d86b55797ef9`。APK 内 mpv、Media3 FFmpeg JNI、mpv Surface 和 Aria2-next 与上一候选字节一致。29 个插件、AOT 和原证书 V2 门禁及 16 KB 对齐通过。
+- 2026-11-25 18:29:08 覆盖安装到 MEP-AN00，设备回读哈希一致。按此前约定由用户手动进入 App字体设置验收，本轮未提交、未发布。
+
+## 2026-11-25 18:56 可下载字体与删除入口
+
+- `lib/utils/downloadable_font.dart` 统一下载、哈希校验、加载和磁盘缓存删除。HarmonyOS Sans SC 沿用三个官方 TTF 和旧缓存路径，MiSans 从小米官方 ZIP 分段读取 MiSansVF.ttf（14,410,630 字节），霞鹜文楷 Lite 下载作者 v1.530 Regular TTF（13,949,472 字节）。三款字体在 APK 内无字形资源，页面显示来源和许可链接。
+- App字体设置未安装显示下载量，安装后显示删除字体，点字体名称选择，点确定应用。删除当前已生效字族后持久化系统字体并更新主题，删除其他字族保留当前选择。老华为缓存继续可用。
+- 本机实测三个官方下载、文件 SHA-256、渲染与离线复用，MiSans 可变字重 400/500/700 渲染不同。Widget 测试覆盖下载按钮与删除后恢复状态。定向分析、26 项 Flutter 测试和两项独立验证通过。早期静态 OTF 因字重表映射不适用已撤回，清理了对应探测文件。
+- 候选 `dist/integration/optional-fonts-20261125/PiliExo_android_v26.11.24_optional-fonts_arm64-v8a.apk`，32,830,370 字节，较上一版增加 12,288 字节。SHA-256 `a9b2222a0b8deec2ef2f484d6f1cc89ddf95bce6aad45e32ba8185952ad292a8`。核心和 Aria2 文件与上一候选字节一致，29 个插件、AOT、原证书 V2 与 16 KB APK 对齐通过。2026-11-25 18:56:02 覆盖安装到 MEP-AN00，设备端哈希一致。未操作手机上的设置页，工作区未提交、未发布。
+
+## 2026-11-25 19:20 预测性返回衬底跟随 AMOLED 纯黑开关
+
+- 最底层直接使用 `ThemeUtils.darkTheme.scaffoldBackgroundColor`。纯黑开关统一更新两套主题，浅色模式下也能立即更新预测性返回衬底。测试在同一次浅色主题使用过程里验证黑灰、纯黑两种状态和取消后移除衬底。
+- 移除霞鹜文楷 Lite 下载项、URL 和文档入口，简化现有下载器。启动时删除旧版下载目录 `lxgw-wenkai-lite-1.530`，若以前选用了该字族则恢复系统字体，其他字体目录及导入文件继续保留。
+- 29 项定向测试通过，包含两款官方字体下载、选项删除、文楷升级清理和衬底切换。静态分析、29 插件、原正式证书 V2、AOT 和 16 KB APK 对齐通过。候选 `dist/integration/black-back-20261125/PiliExo_android_v26.11.24_black-back_arm64-v8a.apk`，32,818,082 字节，SHA-256 `922e50440a69c1f3c1c6bd29ee1dda5c6b567d17d3108f7f4c6b41cfa5fb054f`；2026-11-25 19:19:42 覆盖安装至 MEP-AN00，哈希一致。真机侧滑与启动后的字体迁移待用户手测，未提交、未发布。
+
+## 2026-11-25 19:46 v26.11.25.1 音频默认顺序与试机包
+
+- Android 未保存音频输出时依次尝试 OpenSL ES、AudioTrack、AAudio。沿用用户已保存的顺序。Flutter 全量 324 项通过，Analyze 0 错误、0 警告、73 项信息提示。
+- 32,826,274 字节 arm64 试机包 SHA-256 为 `0ec1883f50c7b999764a540d0a34444db1a2604493c724097c821f72b224d48d`。2026-11-25 19:43 覆盖安装到 MEP-AN00，设备 APK 哈希一致。19:44 捕获到对应进程启动、Activity 恢复和首个 Activity 启动计时事件。包内嵌试机构建基线 `bb93f1468`。
+- 正式包的双 ABI 核心均为 mpv 0.42.0 / FFmpeg `bf11bea4`，含 Android CA、HDR 与三种音频后端标识。与上一版导出集合一致（55 项），各有四个 16 KB LOAD 段，无 RPATH、RUNPATH 或 TEXTREL。仅有 arm64 测试设备。
+- 正式包以本次源码提交构建。发布前须覆盖安装该产物，观察手动冷启动至可用页面。Github Actions 开关经远端 API 查询为关闭。

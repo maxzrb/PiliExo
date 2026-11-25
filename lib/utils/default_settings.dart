@@ -1,3 +1,4 @@
+import 'package:PiliPlus/plugin/pl_player/models/audio_output_type.dart';
 import 'package:PiliPlus/router/predictive_back_transition.dart';
 
 /// 用户确认的默认设置。仅在设置键不存在时写入，不覆盖已有用户选择。
@@ -8,7 +9,7 @@ Map<String, Object?> createDefaultSettingValues() => {
   'appRcmd': false,
   'appRcmdRatio': 50,
   'audioNormalization': '1',
-  'audioOutput': 'audiotrack,opensles,aaudio',
+  'audioOutput': AudioOutput.defaultValue,
   'bluetoothLatencyCompensation': false,
   'bluetoothLatencyCodec': 'auto',
   'bluetoothLatencyTrimMs': 0,

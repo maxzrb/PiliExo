@@ -9,7 +9,7 @@ import 'package:material_ui/material_ui.dart';
 abstract final class ThemeUtils {
   static late ThemeData lightTheme;
 
-  static late ThemeData darkTheme;
+  static ThemeData darkTheme = ThemeData.dark();
 
   static late ThemeMode themeMode;
 

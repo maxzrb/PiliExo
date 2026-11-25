@@ -2,38 +2,23 @@
   {
     "name": "mpv",
     "repo": "mpv-player/mpv",
-    "tag": "v0.41.0",
-    "archiveSha256": "ee21092a5ee427353392360929dc64645c54479aefdb5babc5cfbb5fad626209",
-    "bytes": 7262018,
+    "tag": "v0.42.0",
+    "archiveSha256": "bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd",
+    "bytes": 7515468,
     "patches": [
       {
-        "file": "mpv-lavc-java-vm.patch",
-        "sha256": "e03a5ca2a64de75e0c8026e73344e9b72abd714c3acbf5df4dc1f20d47a6edf0"
-      },
-      {
-        "file": "android-egl-bt2020-pq.patch",
-        "sha256": "df5aaf0ef99b11e8583f2804d8b255827c291c6ba19d8357b18f4440ace8be5d"
-      },
-      {
-        "file": "mpv-android-late-output-drop.patch",
-        "sha256": "a18fdcbf206a3f235a76dff53182992dda09b2591d395d52089fcd0141718dc2"
-      },
-      {
-        "file": "mpv-android-audio-clock.patch",
-        "sha256": "bf95fe5faee98aeca8e08c2570802ffff7a153b5583176e6c8b5d1ca4ab720fb"
-      },
-      {
-        "file": "mpv-android-codec-operating-rate.patch",
-        "sha256": "f4190cef6f58616c436515fa4a24975da647865fd85145705c89b349668c4373"
+        "file": "mpv-0.42.0-piliexo-adaptation.patch",
+        "sha256": "36a3c55cdf06408af54f1862402bdb9c85cc7574614ecd4c58d8174ef863cffe"
       }
     ]
   },
   {
     "name": "ffmpeg",
     "repo": "FFmpeg/FFmpeg",
-    "tag": "n9.0.1",
-    "archiveSha256": "195d54bebe1a27f84d77f4b989d193466f305b355da92292766a69f16880b18a",
-    "bytes": 17306989,
+    "tag": "master",
+    "commit": "bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2",
+    "archiveSha256": "261b6ea5c174b286598b4e9c1a88bbb0e87b73a392730bafb3565bf0f2cdf50d",
+    "bytes": 18341856,
     "researchPatches": [
       {
         "file": "ffmpeg-mediacodec-hdr-static-info.patch",
@@ -44,7 +29,11 @@
     "patches": [
       {
         "file": "ffmpeg-android-dynamic-hdr.patch",
-        "sha256": "268c0b264f932c392123f47e708883c05b62e8fccd4890d7cd0bd7dba412d020"
+        "sha256": "59e77515bb5f518dbe13f8ab5bdb6289eae49131e7c3ed0dee689a2a3a78e856"
+      },
+      {
+        "file": "ffmpeg-android-system-ca.patch",
+        "sha256": "b5b16958917fe4df4f3449a1c04645dc65e853c333e6cb98700cf273bc47b5c2"
       }
     ]
   },
@@ -93,9 +82,9 @@
   {
     "name": "libplacebo",
     "repo": "haasn/libplacebo",
-    "tag": "v7.360.1",
-    "archiveSha256": "d05fdf90bea2f629eaa2d115e909fd356388ac639e54f77b87a018a6d76224bd",
-    "bytes": 862269
+    "tag": "v7.387.0",
+    "archiveSha256": "f9e62d3774a9c4cfd198ec3abaa88294aaade2e31c04d5ab02bcf4abc98b1df5",
+    "bytes": 972798
   },
   {
     "name": "harfbuzz",

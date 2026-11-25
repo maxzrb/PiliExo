@@ -57,7 +57,24 @@ analysis_benchmark.json
 .pub-cache/
 .pub/
 /build/
+/tmp/
 /tools/
+# 保留 mpv/FFmpeg 本地构建入口，排除源码、编译目录和下载归档。
+!/tools/
+/tools/*
+!/tools/mpv-0.42.0-upgrade/
+/tools/mpv-0.42.0-upgrade/*
+!/tools/mpv-0.42.0-upgrade/android-arm64.ini
+!/tools/mpv-0.42.0-upgrade/baseline-build-flags.txt
+!/tools/mpv-0.42.0-upgrade/build_arm64.py
+!/tools/mpv-0.42.0-upgrade/build_armv7.py
+!/tools/mpv-0.42.0-upgrade/build_ffmpeg.sh
+!/tools/mpv-0.42.0-upgrade/build_ffmpeg_with_vs.cmd
+!/tools/mpv-0.42.0-upgrade/load_vs_environment.cmd
+!/tools/mpv-0.42.0-upgrade/pkg-config.py
+!/tools/mpv-0.42.0-upgrade/prepare_fribidi_generators.py
+!/tools/mpv-0.42.0-upgrade/run_ffmpeg_configure.py
+!/tools/mpv-0.42.0-upgrade/windows-native.ini
 flutter_*.png
 linked_*.ds
 unlinked.ds

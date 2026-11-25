@@ -155,9 +155,7 @@ Commit Hash: ${BuildConfig.commitHash}''',
               style: const TextStyle(fontSize: 14),
             ),
             leading: const Icon(Icons.info_outline),
-            onTap: () => PageUtils.launchURL(
-              '${Constants.sourceCodeUrl}/commit/${BuildConfig.commitHash}',
-            ),
+            onTap: Update.showReleaseNotes,
             onLongPress: () => Utils.copyText(BuildConfig.commitHash),
             onSecondaryTap: PlatformUtils.isMobile
                 ? null

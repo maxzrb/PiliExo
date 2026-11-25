@@ -1,6 +1,8 @@
+diff --git a/libavcodec/mediacodec_wrapper.c b/libavcodec/mediacodec_wrapper.c
+index 895b9aa..073dd43 100644
 --- a/libavcodec/mediacodec_wrapper.c
 +++ b/libavcodec/mediacodec_wrapper.c
-@@ -174,6 +174,7 @@
+@@ -188,6 +188,7 @@ struct JNIAMediaCodecFields {
      jmethodID get_name_id;
  
      jmethodID configure_id;
@@ -8,7 +10,7 @@
      jmethodID start_id;
      jmethodID flush_id;
      jmethodID stop_id;
-@@ -228,6 +229,7 @@
+@@ -242,6 +243,7 @@ static const struct FFJniField jni_amediacodec_mapping[] = {
  
          { "android/media/MediaCodec", "configure", "(Landroid/media/MediaFormat;Landroid/view/Surface;Landroid/media/MediaCrypto;I)V", FF_JNI_METHOD, OFFSET(configure_id), 1 },
          { "android/media/MediaCodec", "start", "()V", FF_JNI_METHOD, OFFSET(start_id), 1 },
@@ -16,7 +18,7 @@
          { "android/media/MediaCodec", "flush", "()V", FF_JNI_METHOD, OFFSET(flush_id), 1 },
          { "android/media/MediaCodec", "stop", "()V", FF_JNI_METHOD, OFFSET(stop_id), 1 },
          { "android/media/MediaCodec", "release", "()V", FF_JNI_METHOD, OFFSET(release_id), 1 },
-@@ -1411,6 +1413,49 @@
+@@ -1511,6 +1513,49 @@ fail:
      return ret;
  }
  
@@ -66,7 +68,7 @@
  static int mediacodec_jni_start(FFAMediaCodec* ctx)
  {
      int ret = 0;
-@@ -1803,6 +1848,7 @@
+@@ -1903,6 +1948,7 @@ static const FFAMediaCodec media_codec_jni = {
  
      .configure = mediacodec_jni_configure,
      .start = mediacodec_jni_start,
@@ -74,9 +76,11 @@
      .stop = mediacodec_jni_stop,
      .flush = mediacodec_jni_flush,
  
+diff --git a/libavcodec/mediacodec_wrapper.h b/libavcodec/mediacodec_wrapper.h
+index 18d0796..1a3dba4 100644
 --- a/libavcodec/mediacodec_wrapper.h
 +++ b/libavcodec/mediacodec_wrapper.h
-@@ -240,6 +240,7 @@
+@@ -240,6 +240,7 @@ struct FFAMediaCodec {
      int (*setAsyncNotifyCallback)(FFAMediaCodec *codec,
                                    const FFAMediaCodecOnAsyncNotifyCallback *callback,
                                    void *userdata);
@@ -84,9 +88,16 @@
  };
  
  static inline char *ff_AMediaCodec_getName(FFAMediaCodec *codec)
+diff --git a/libavcodec/mediacodecdec.c b/libavcodec/mediacodecdec.c
+index 0551370..eb4be20 100644
 --- a/libavcodec/mediacodecdec.c
 +++ b/libavcodec/mediacodecdec.c
-@@ -31,6 +31,7 @@
+@@ -27,10 +27,12 @@
+ 
+ #include "libavutil/avassert.h"
+ #include "libavutil/common.h"
++#include "libavutil/dovi_meta.h"
+ #include "libavutil/mem.h"
  #include "libavutil/opt.h"
  #include "libavutil/intreadwrite.h"
  #include "libavutil/pixfmt.h"
@@ -94,18 +105,17 @@
  #include "libavutil/internal.h"
  
  #include "avcodec.h"
-@@ -43,7 +44,10 @@
+@@ -44,7 +46,9 @@
  #include "internal.h"
  #include "jni.h"
  #include "mediacodec_wrapper.h"
 +#include "piliexo_decode_budget.h"
  #include "mediacodecdec_common.h"
-+#include "libavutil/dovi_meta.h"
 +#include "piliexo_hdr_metadata.h"
  
- typedef struct MediaCodecH264DecContext {
+ typedef struct MediaCodecContext {
  
-@@ -58,7 +62,14 @@
+@@ -59,7 +63,14 @@ typedef struct MediaCodecContext {
  
      int use_ndk_codec;
      // Ref. MediaFormat KEY_OPERATING_RATE
@@ -117,10 +127,10 @@
 +    int64_t piliexo_metadata_callback;
 +    int64_t piliexo_metadata_opaque;
 +    int early_drop_logged;
- } MediaCodecH264DecContext;
+ } MediaCodecContext;
  
  static av_cold int mediacodec_decode_close(AVCodecContext *avctx)
-@@ -347,6 +358,36 @@
+@@ -349,6 +360,36 @@ static av_cold int mediacodec_decode_init(AVCodecContext *avctx)
  #if CONFIG_HEVC_MEDIACODEC_DECODER
      case AV_CODEC_ID_HEVC:
          codec_mime = "video/hevc";
@@ -157,7 +167,7 @@
  
          ret = hevc_set_extradata(avctx, format);
          if (ret < 0)
-@@ -486,6 +527,114 @@
+@@ -488,6 +529,114 @@ done:
      return ret;
  }
  
@@ -259,7 +269,7 @@
 +static int piliexo_receive_and_measure(AVCodecContext *avctx,
 +                                       AVFrame *frame, bool wait)
 +{
-+    MediaCodecH264DecContext *s = avctx->priv_data;
++    MediaCodecContext *s = avctx->priv_data;
 +    int ret = ff_mediacodec_dec_receive(avctx, s->ctx, frame, wait);
 +    if (s->piliexo_live_operating_rate > 0 || s->drop_budget.demand > 0) {
 +        piliexo_decode_budget_measure(&s->drop_budget, s->piliexo_live_operating_rate,
@@ -271,8 +281,8 @@
 +
  static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
  {
-     MediaCodecH264DecContext *s = avctx->priv_data;
-@@ -500,8 +649,19 @@
+     MediaCodecContext *s = avctx->priv_data;
+@@ -502,8 +651,19 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
          }
      }
  
@@ -293,7 +303,7 @@
      if (ret != AVERROR(EAGAIN))
          return ret;
  
-@@ -512,7 +672,7 @@
+@@ -514,7 +674,7 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
              index = ff_AMediaCodec_dequeueInputBuffer(s->ctx->codec, 0);
              if (index < 0) {
                  /* no space, block for an output frame to appear */
@@ -302,7 +312,7 @@
                  /* Try again if both input port and output port return EAGAIN.
                   * If no data is consumed and no frame in output, it can make
                   * both avcodec_send_packet() and avcodec_receive_frame()
-@@ -553,6 +713,14 @@
+@@ -555,6 +715,14 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
  
          /* fetch new packet or eof */
          ret = ff_decode_get_packet(avctx, &s->buffered_pkt);
@@ -317,7 +327,7 @@
          if (ret == AVERROR_EOF) {
              AVPacket null_pkt = { 0 };
              ret = ff_mediacodec_dec_send(avctx, s->ctx, &null_pkt, true);
-@@ -564,6 +732,19 @@
+@@ -566,6 +734,19 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
          } else if (ret < 0) {
              return ret;
          }
@@ -337,10 +347,10 @@
      }
  
      return AVERROR(EAGAIN);
-@@ -572,8 +753,12 @@
+@@ -574,8 +755,12 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
  static void mediacodec_decode_flush(AVCodecContext *avctx)
  {
-     MediaCodecH264DecContext *s = avctx->priv_data;
+     MediaCodecContext *s = avctx->priv_data;
 +    if (s->piliexo_metadata_callback)
 +        ((PiliexoHdrCallback)(uintptr_t)s->piliexo_metadata_callback)(
 +            (uintptr_t)s->piliexo_metadata_opaque, 0, 0, NULL, 0);
@@ -350,7 +360,7 @@
  
      ff_mediacodec_dec_flush(avctx, s->ctx);
  }
-@@ -596,10 +781,18 @@
+@@ -598,10 +783,18 @@ static const AVCodecHWConfigInternal *const mediacodec_hw_configs[] = {
  static const AVOption ff_mediacodec_vdec_options[] = {
      { "delay_flush", "Delay flush until hw output buffers are returned to the decoder",
                       OFFSET(delay_flush), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, VD },
@@ -369,9 +379,11 @@
      { NULL }
  };
  
+diff --git a/libavcodec/mediacodecdec_common.c b/libavcodec/mediacodecdec_common.c
+index 4fe8998..8179f77 100644
 --- a/libavcodec/mediacodecdec_common.c
 +++ b/libavcodec/mediacodecdec_common.c
-@@ -773,6 +773,8 @@
+@@ -783,6 +783,8 @@ static int mediacodec_dec_get_video_codec(AVCodecContext *avctx, MediaCodecDecCo
      }
  
      profile = ff_AMediaCodecProfile_getProfileFromAVCodecContext(avctx);
@@ -380,6 +392,9 @@
      if (profile < 0) {
          av_log(avctx, AV_LOG_WARNING, "Unsupported or unknown profile\n");
      }
+diff --git a/libavcodec/piliexo_decode_budget.h b/libavcodec/piliexo_decode_budget.h
+new file mode 100644
+index 0000000..6fd4d6f
 --- /dev/null
 +++ b/libavcodec/piliexo_decode_budget.h
 @@ -0,0 +1,65 @@
@@ -448,6 +463,9 @@
 +}
 +
 +#endif
+diff --git a/libavcodec/piliexo_hdr_metadata.h b/libavcodec/piliexo_hdr_metadata.h
+new file mode 100644
+index 0000000..23b0440
 --- /dev/null
 +++ b/libavcodec/piliexo_hdr_metadata.h
 @@ -0,0 +1,112 @@

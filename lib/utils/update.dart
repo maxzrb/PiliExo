@@ -95,6 +95,38 @@ String? updateCheckResponseError({
   return null;
 }
 
+/// 区分 Release Notes 查询失败原因，便于在关于页给出明确提示。
+String? releaseNotesResponseError({
+  required int? statusCode,
+  required Map<String, dynamic>? data,
+}) {
+  if (statusCode == null || statusCode < 200 || statusCode >= 300) {
+    if (statusCode == 404) {
+      return '未找到当前版本对应的 Release Notes';
+    }
+    if (statusCode == 403 || statusCode == 429) {
+      return '获取更新说明失败：GitHub 访问触发限流，请稍后重试';
+    }
+    if (statusCode == null || statusCode < 0) {
+      return '获取更新说明失败：网络请求异常，请检查网络或代理';
+    }
+    return '获取更新说明失败：接口返回 HTTP $statusCode';
+  }
+  if (data == null) {
+    return '获取更新说明失败：接口返回数据异常';
+  }
+  return null;
+}
+
+/// 整理 Release Notes 正文，空白时统一回退提示文案。
+String formatReleaseNotesBody(Object? body) {
+  final text = body?.toString().trim();
+  if (text == null || text.isEmpty) {
+    return '暂无更新说明';
+  }
+  return text;
+}
+
 abstract final class Update {
   static const _androidUpdateChannel = MethodChannel(
     'com.maxzrb.piliexo/update',
@@ -152,6 +184,68 @@ abstract final class Update {
       );
     } catch (e) {
       if (kDebugMode) debugPrint('failed to check update: $e');
+    }
+  }
+
+  // 查看当前版本（或最新正式版）的 Release Notes
+  static Future<void> showReleaseNotes() async {
+    final current = ReleaseVersion.current;
+    final requestUrl = current != null
+        ? Api.releaseByTag(current.tag)
+        : Api.latestApp;
+    SmartDialog.showLoading(msg: '正在获取更新说明…');
+    try {
+      var res = await Request().get(
+        requestUrl,
+        options: Options(
+          headers: {'user-agent': BrowserUa.mob},
+          extra: {'account': const NoAccount()},
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+      // 本地测试版或尚未发布该标签时，自动回退展示最新正式版的 Release Notes。
+      if (current != null && res.statusCode == 404) {
+        res = await Request().get(
+          Api.latestApp,
+          options: Options(
+            headers: {'user-agent': BrowserUa.mob},
+            extra: {'account': const NoAccount()},
+            validateStatus: (status) => status != null && status < 500,
+          ),
+        );
+      }
+      SmartDialog.dismiss(status: SmartStatus.loading);
+      final data = _asMap(res.data);
+      final error = releaseNotesResponseError(
+        statusCode: res.statusCode,
+        data: data,
+      );
+      if (error != null) {
+        SmartDialog.showToast(error);
+        return;
+      }
+      final tag =
+          data!['tag_name']?.toString().trim().isNotEmpty == true
+          ? data['tag_name'].toString().trim()
+          : (current?.tag ?? 'Release Notes');
+      final body = formatReleaseNotesBody(data['body']);
+      final htmlUrl =
+          data['html_url']?.toString().trim().isNotEmpty == true
+          ? data['html_url'].toString().trim()
+          : '${Constants.sourceCodeUrl}/releases/tag/${Uri.encodeComponent(tag)}';
+
+      SmartDialog.show(
+        animationType: SmartAnimationType.centerFade_otherSlide,
+        builder: (_) => _ReleaseNotesDialog(
+          tag: tag,
+          body: body,
+          releaseUrl: htmlUrl,
+        ),
+      );
+    } catch (e) {
+      SmartDialog.dismiss(status: SmartStatus.loading);
+      if (kDebugMode) debugPrint('failed to load release notes: $e');
+      SmartDialog.showToast('获取更新说明失败：网络请求异常，请检查网络或代理');
     }
   }
 
@@ -824,4 +918,54 @@ String _formatBytes(int bytes) {
 
 class _UpdateCancelled implements Exception {
   const _UpdateCancelled();
+}
+
+class _ReleaseNotesDialog extends StatelessWidget {
+  const _ReleaseNotesDialog({
+    required this.tag,
+    required this.body,
+    required this.releaseUrl,
+  });
+
+  final String tag;
+  final String body;
+  final String releaseUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.of(context);
+    return AlertDialog(
+      title: const Text('更新日志'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 320,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(tag, style: const TextStyle(fontSize: 18)),
+              const SizedBox(height: 8),
+              SelectableText(body),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => PageUtils.launchURL(releaseUrl),
+          child: Text(
+            'GitHub Release',
+            style: TextStyle(color: colorScheme.primary),
+          ),
+        ),
+        TextButton(
+          onPressed: SmartDialog.dismiss,
+          child: Text(
+            '关闭',
+            style: TextStyle(color: colorScheme.outline),
+          ),
+        ),
+      ],
+    );
+  }
 }

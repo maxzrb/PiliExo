@@ -395,11 +395,7 @@ List<SettingsModel> get styleSettings => [
     title: '纯黑主题',
     setKey: SettingBoxKey.isPureBlackTheme,
     defaultVal: false,
-    onChanged: (value) {
-      if (ThemeUtils.isDarkMode || Pref.darkVideoPage) {
-        Get.updateMyAppTheme();
-      }
-    },
+    onChanged: (_) => Get.updateMyAppTheme(),
   ),
   NormalModel(
     onTap: (context, setState) => Get.toNamed('/colorSetting'),

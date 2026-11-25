@@ -1287,7 +1287,7 @@ packages:
     source: hosted
     version: "9.6.4"
   octo_image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       path: "."
       ref: dev

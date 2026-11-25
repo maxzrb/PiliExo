@@ -1,9 +1,10 @@
 import 'dart:ffi';
-import 'dart:io' show File;
+import 'dart:io' show Directory, File;
 import 'dart:typed_data';
 import 'dart:ui' show loadFontFromList;
 
 import 'package:PiliPlus/utils/android/bindings.g.dart';
+import 'package:PiliPlus/utils/downloadable_font.dart';
 import 'package:PiliPlus/utils/fontconfig.g.dart';
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -24,8 +25,6 @@ abstract final class FontUtils {
   static bool _initialized = false;
 
   static const kFontName = 'customFont.otf';
-  static const defaultFontFamily = 'HarmonyOS Sans SC';
-  static const systemFontFamily = '';
   static const _kFontExts = ['ttf', 'ttc', 'otf'];
 
   /// 新版将当前自定义字体统一保存为一个文件；该文件名用于兼容迁移。
@@ -55,7 +54,8 @@ abstract final class FontUtils {
         return const (fontFamily: null, isCustom: false);
       }
     } else {
-      return (fontFamily: appFont, isCustom: false);
+      // 兼容之前版本保存的“跟随系统”空字符串。
+      return (fontFamily: appFont == '' ? null : appFont, isCustom: false);
     }
   }
 
@@ -80,18 +80,44 @@ abstract final class FontUtils {
     }
   }
 
-  static String? get fontFamily => switch (_appFont.fontFamily) {
-    null => defaultFontFamily,
-    systemFontFamily => null,
-    final family => family,
-  };
+  static String? get fontFamily => _appFont.fontFamily;
   static bool get isCustom => _appFont.isCustom;
 
-  static Future<void>? init() {
+  static Future<void> init() async {
+    await _removeRetiredFont();
     if (isCustom) {
       return _readAndLoad();
     }
-    return null;
+    for (final font in DownloadableFont.values) {
+      if (fontFamily == font.family && font.isInstalled) {
+        return font.loadCached().catchError((_) {});
+      }
+    }
+  }
+
+  static Future<void> _removeRetiredFont() async {
+    // 只清理上一版字体目录中由应用下载的文楷缓存。
+    final directory = Directory(
+      path.join(appSupportDirPath, 'lxgw-wenkai-lite-1.530'),
+    );
+    try {
+      await _resetIfSelected('LXGW WenKai Lite');
+      if (directory.existsSync()) await directory.delete(recursive: true);
+    } catch (error) {
+      if (kDebugMode) debugPrint('旧字体缓存清理失败：$error');
+    }
+  }
+
+  static Future<bool> removeDownloadedFont(DownloadableFont font) async {
+    await font.remove();
+    return _resetIfSelected(font.family);
+  }
+
+  static Future<bool> _resetIfSelected(String family) async {
+    if (fontFamily != family) return false;
+    await GStorage.setting.put(SettingBoxKey.appFont, null);
+    _appFont = (fontFamily: null, isCustom: false);
+    return true;
   }
 
   @pragma('vm:notify-debugger-on-exception')

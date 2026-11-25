@@ -1,0 +1,53 @@
+--- a/libavformat/tls_mbedtls.c
++++ b/libavformat/tls_mbedtls.c
+@@ -20,6 +20,9 @@
+  */
+ 
+ #include <mbedtls/version.h>
++#ifdef __ANDROID__
++#include <sys/stat.h>
++#endif
+ #include <mbedtls/ctr_drbg.h>
+ #include <mbedtls/entropy.h>
+ #include <mbedtls/net_sockets.h>
+@@ -550,12 +553,40 @@
+     }
+ 
+     // load trusted CA
++#ifdef __ANDROID__
++    if (shr->ca_file || shr->verify) {
++        const char *ca_file = shr->ca_file;
++        struct stat ca_stat;
++        int is_dir = 1;
++        if (ca_file) {
++            is_dir = !stat(ca_file, &ca_stat) && S_ISDIR(ca_stat.st_mode);
++            ret = is_dir ? mbedtls_x509_crt_parse_path(&tls_ctx->ca_cert, ca_file) :
++                           mbedtls_x509_crt_parse_file(&tls_ctx->ca_cert, ca_file);
++        } else {
++            // 优先使用新版 Android 可更新的根证书目录，旧系统使用系统分区目录。
++            ca_file = "/apex/com.android.conscrypt/cacerts";
++            ret = !stat(ca_file, &ca_stat) && S_ISDIR(ca_stat.st_mode) ?
++                  mbedtls_x509_crt_parse_path(&tls_ctx->ca_cert, ca_file) : 0;
++            if (ret == 0 && !tls_ctx->ca_cert.raw.p) {
++                ca_file = "/system/etc/security/cacerts";
++                ret = mbedtls_x509_crt_parse_path(&tls_ctx->ca_cert, ca_file);
++            }
++        }
++        // 目录解析的正返回值是失败条目数，已解析的证书仍可用于正常校验。
++        if (ret < 0 || (!is_dir && ret != 0) || !tls_ctx->ca_cert.raw.p) {
++            av_log(h, AV_LOG_ERROR, "mbedtls failed to load Android CA database %s: %d\n",
++                   ca_file, ret);
++            goto fail;
++        }
++    }
++#else
+     if (shr->ca_file) {
+         if ((ret = mbedtls_x509_crt_parse_file(&tls_ctx->ca_cert, shr->ca_file)) != 0) {
+             av_log(h, AV_LOG_ERROR, "mbedtls_x509_crt_parse_file for CA cert returned %d\n", ret);
+             goto fail;
+         }
+     }
++#endif
+ 
+     // load own certificate
+     if (shr->cert_file) {

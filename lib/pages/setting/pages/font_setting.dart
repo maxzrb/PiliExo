@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:PiliPlus/common/widgets/button/icon_button.dart';
 import 'package:PiliPlus/common/widgets/scaffold/simple_scaffold.dart';
+import 'package:PiliPlus/utils/downloadable_font.dart';
 import 'package:PiliPlus/utils/extension/box_ext.dart';
 import 'package:PiliPlus/utils/extension/get_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
@@ -14,6 +15,7 @@ import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FontSettingPage extends StatefulWidget {
   const FontSettingPage({super.key});
@@ -32,6 +34,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
   // ignore: deprecated_member_use
   int _selectedWeight = Pref.appFontWeight.index;
   double _selectedScale = Pref.defaultTextScale;
+  bool _changingDownloadedFont = false;
 
   final Map<String, Uint8List> _customFonts = {};
 
@@ -102,6 +105,70 @@ class _FontSettingPageState extends State<FontSettingPage> {
     if (_selectedFont == value) return;
     _appFont = (fontFamily: value, isCustom: isCustom);
     setState(() {});
+  }
+
+  Future<void> _selectDownloadedFont(DownloadableFont font) async {
+    if (_changingDownloadedFont) return;
+    _changingDownloadedFont = true;
+    final needsDownload = !font.isInstalled;
+    if (needsDownload) {
+      SmartDialog.showLoading(msg: '正在下载字体（约 ${font.downloadSize}）…');
+    }
+    var loaded = false;
+    try {
+      await font.install();
+      loaded = true;
+    } catch (_) {
+      SmartDialog.showToast('字体加载失败，请稍后重试');
+    } finally {
+      if (needsDownload) SmartDialog.dismiss(status: SmartStatus.loading);
+      _changingDownloadedFont = false;
+    }
+    if (mounted && loaded) {
+      setState(() {
+        _appFont = (fontFamily: font.family, isCustom: false);
+      });
+    }
+  }
+
+  Future<void> _deleteDownloadedFont(DownloadableFont font) async {
+    if (_changingDownloadedFont) return;
+    _changingDownloadedFont = true;
+    try {
+      final resetTheme = await FontUtils.removeDownloadedFont(font);
+      if (mounted) {
+        setState(() {
+          if (_selectedFont == font.family) {
+            _appFont = (fontFamily: null, isCustom: false);
+          }
+        });
+      }
+      if (resetTheme) Get.updateMyAppTheme();
+    } catch (_) {
+      SmartDialog.showToast('删除字体失败，请重试');
+    } finally {
+      _changingDownloadedFont = false;
+    }
+  }
+
+  Widget _downloadableFontTile(DownloadableFont font) {
+    final installed = font.isInstalled;
+    return ListTile(
+      minTileHeight: _tileHeight,
+      tileColor: _tileColor(font.family),
+      onTap: installed ? () => _selectDownloadedFont(font) : null,
+      title: Text(font.family),
+      subtitle: GestureDetector(
+        onTap: () => launchUrl(Uri.parse(font.license)),
+        child: Text('${font.source} · 字体许可'),
+      ),
+      trailing: TextButton(
+        onPressed: installed
+            ? () => _deleteDownloadedFont(font)
+            : () => _selectDownloadedFont(font),
+        child: Text(installed ? '删除字体' : '下载 ${font.downloadSize}'),
+      ),
+    );
   }
 
   Color? _tileColor(String? value) {
@@ -185,7 +252,7 @@ class _FontSettingPageState extends State<FontSettingPage> {
                       : "我能吞下玻璃而不伤身体"}\n\n'
                   '注：部分字体可能无法应用',
                   style: TextStyle(
-                    fontFamily: _selectedFont ?? FontUtils.defaultFontFamily,
+                    fontFamily: _selectedFont ?? '',
                     fontWeight: .values[_selectedWeight],
                     fontSize: 14 * _selectedScale,
                   ),
@@ -219,17 +286,10 @@ class _FontSettingPageState extends State<FontSettingPage> {
                             child: Text(
                               _appFont.isCustom
                                   ? _selectedFont!.split('/').last
-                                  : switch (_selectedFont) {
-                                      null =>
-                                        '默认 · ${FontUtils.defaultFontFamily}',
-                                      FontUtils.systemFontFamily => '跟随系统',
-                                      final family => family,
-                                    },
+                                  : _selectedFont ?? '跟随系统',
                               style: TextStyle(
                                 fontSize: 15,
-                                fontFamily:
-                                    _selectedFont ??
-                                    FontUtils.defaultFontFamily,
+                                fontFamily: _selectedFont ?? '',
                               ),
                             ),
                           ),
@@ -272,22 +332,13 @@ class _FontSettingPageState extends State<FontSettingPage> {
                               minTileHeight: _tileHeight,
                               tileColor: _tileColor(null),
                               onTap: () => _onFontChanged(null),
-                              title: const Text(
-                                '默认 · ${FontUtils.defaultFontFamily}',
-                                style: TextStyle(
-                                  fontFamily: FontUtils.defaultFontFamily,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SliverToBoxAdapter(
-                            child: ListTile(
-                              minTileHeight: _tileHeight,
-                              tileColor: _tileColor(FontUtils.systemFontFamily),
-                              onTap: () =>
-                                  _onFontChanged(FontUtils.systemFontFamily),
                               title: const Text('跟随系统'),
                             ),
+                          ),
+                          SliverList.list(
+                            children: DownloadableFont.values
+                                .map(_downloadableFontTile)
+                                .toList(),
                           ),
                           if (FontUtils.isCustom)
                             SliverToBoxAdapter(

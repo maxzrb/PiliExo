@@ -4,6 +4,7 @@ import 'package:PiliPlus/common/widgets/flutter/pop_scope.dart' show popScope;
 import 'package:PiliPlus/common/widgets/image_viewer/hero_dialog_route.dart';
 import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/router/page_transitions.dart';
+import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +14,11 @@ import 'package:material_ui/material_ui.dart';
 const _home = '首页';
 const _detail = '详情';
 const _field = ValueKey('详情输入');
+
+Finder _transitionPart(Finder page, String key) => find.ancestor(
+  of: page,
+  matching: find.byKey(ValueKey(key), skipOffstage: false),
+);
 
 Future<void> _sendBackGesture(WidgetTester tester, MethodCall call) =>
     tester.binding.defaultBinaryMessenger.handlePlatformMessage(
@@ -36,12 +42,13 @@ Future<void> _startGesture(
 Future<void> _moveGesture(
   WidgetTester tester, {
   int swipeEdge = 0,
+  double progress = 0.45,
 }) async {
   await _sendBackGesture(
     tester,
     MethodCall('updateBackGestureProgress', {
       'touchOffset': const <double>[160, 300],
-      'progress': 0.45,
+      'progress': progress,
       'swipeEdge': swipeEdge,
     }),
   );
@@ -65,6 +72,7 @@ Future<void> _launch(
   await tester.pumpWidget(
     GetMaterialApp(
       initialRoute: '/',
+      themeMode: ThemeMode.light,
       builder: FlutterSmartDialog.init(),
       navigatorObservers: [FlutterSmartDialog.observer],
       onGenerateRoute: AppPageRoute.generate,
@@ -125,6 +133,120 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('开始及取消预测性返回时页面内容不脱离组件树', (tester) async {
+    await _launch(tester, style: PredictiveBackStyle.zoomFade);
+    var deactivations = 0;
+    unawaited(
+      AppPageRoute.push<void>(
+        _TrackedPage(onDeactivate: () => deactivations++),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _startGesture(tester);
+    await _moveGesture(tester);
+    expect(deactivations, 0);
+
+    await _finishGesture(tester, 'cancelBackGesture');
+    expect(deactivations, 0);
+    expect(find.text(_detail), findsOneWidget);
+  });
+
+  testWidgets('返回预览圆角随手势出现，取消复原且松手时连续', (tester) async {
+    await _launch(tester, style: PredictiveBackStyle.zoomFade);
+    unawaited(Get.toNamed<void>('/details?id=7'));
+    await tester.pumpAndSettle();
+
+    final detail = find.text('详情 7: null');
+    final clip = _transitionPart(detail, 'predictive-back-corners');
+    ClipRRect corners() => tester.widget<ClipRRect>(clip);
+    double radius() =>
+        corners().borderRadius.resolve(TextDirection.ltr).topLeft.x;
+
+    expect(radius(), 0);
+    expect(corners().clipBehavior, Clip.none);
+
+    await _startGesture(tester);
+    await _moveGesture(tester);
+    expect(radius(), greaterThan(20));
+    expect(corners().clipBehavior, Clip.antiAlias);
+
+    await _finishGesture(tester, 'cancelBackGesture');
+    expect(radius(), 0);
+    expect(corners().clipBehavior, Clip.none);
+
+    await _startGesture(tester);
+    await _moveGesture(tester);
+    final beforeRelease = radius();
+    await _sendBackGesture(tester, const MethodCall('commitBackGesture'));
+    await tester.pump();
+    expect(radius(), closeTo(beforeRelease, 0.01));
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(radius(), greaterThan(beforeRelease));
+
+    await tester.pumpAndSettle();
+    expect(detail, findsNothing);
+  });
+
+  testWidgets('预测性返回拖动期间逐帧调度，取消和提交后停止', (tester) async {
+    await _launch(tester, style: PredictiveBackStyle.zoomFade);
+    unawaited(Get.toNamed<void>('/details?id=1'));
+    await tester.pumpAndSettle();
+
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    for (final finish in ['cancelBackGesture', 'commitBackGesture']) {
+      await _startGesture(tester);
+      await _moveGesture(tester);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 11));
+        expect(tester.binding.hasScheduledFrame, isTrue);
+      }
+
+      await _finishGesture(tester, finish);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    }
+  });
+
+  testWidgets('跟手方向中背景页逆着左右手势镜像归位', (tester) async {
+    await _launch(tester);
+    final background = _transitionPart(
+      find.text(_home, skipOffstage: false),
+      'predictive-back-corners',
+    );
+    final center = tester.getCenter(background).dx;
+    unawaited(Get.toNamed<void>('/details?id=4'));
+    await tester.pumpAndSettle();
+    final foreground = _transitionPart(
+      find.text('详情 4: null'),
+      'predictive-back-corners',
+    );
+
+    for (final (edge, direction) in [(0, 1), (1, -1)]) {
+      await _startGesture(tester, swipeEdge: edge);
+      await _moveGesture(tester, swipeEdge: edge, progress: 0.25);
+      final early = tester.getCenter(background).dx;
+      expect((early - center) * direction, greaterThan(0));
+
+      await _moveGesture(tester, swipeEdge: edge, progress: 0.6);
+      final late = tester.getCenter(background).dx;
+      expect((late - early) * direction, lessThan(0));
+      expect(
+        (tester.getCenter(foreground).dx - center) * direction,
+        greaterThan(0),
+      );
+
+      if (edge == 0) {
+        await _finishGesture(tester, 'cancelBackGesture');
+      } else {
+        await _sendBackGesture(tester, const MethodCall('commitBackGesture'));
+        await tester.pump();
+        expect(tester.getCenter(background).dx, closeTo(late, 0.01));
+        await tester.pumpAndSettle();
+      }
+      expect(tester.getCenter(background).dx, center);
+    }
+  });
+
   testWidgets('半程松手时背景继续放大并轻微回弹', (tester) async {
     await _launch(tester, style: PredictiveBackStyle.alwaysRight);
     unawaited(Get.toNamed<void>('/details?id=1'));
@@ -134,13 +256,21 @@ void main() {
     await _moveGesture(tester);
     double backgroundScale() => tester
         .widget<Transform>(
-          find.byKey(const ValueKey('predictive-back-covered-scale')),
+          _transitionPart(find.text(_home), 'predictive-back-covered-scale'),
         )
         .transform
         .entry(0, 0);
 
     final releasedFrom = backgroundScale();
     expect(releasedFrom, lessThan(0.99));
+    final backgroundCorners = _transitionPart(
+      find.text(_home),
+      'predictive-back-corners',
+    );
+    expect(
+      tester.widget<ClipRRect>(backgroundCorners).clipBehavior,
+      Clip.antiAlias,
+    );
     await _sendBackGesture(tester, const MethodCall('commitBackGesture'));
     await tester.pump();
     expect(backgroundScale(), closeTo(releasedFrom, 0.001));
@@ -282,7 +412,7 @@ void main() {
     await _startGesture(tester);
     await _moveGesture(tester);
     final opacity = tester.widget<Opacity>(
-      find.byKey(const ValueKey('predictive-back-opacity')),
+      _transitionPart(detail, 'predictive-back-opacity'),
     );
     expect(opacity.opacity, lessThan(0.65));
     expect(tester.getTopLeft(detail).dx, original.dx);
@@ -295,7 +425,7 @@ void main() {
     expect(
       tester
           .widget<Opacity>(
-            find.byKey(const ValueKey('predictive-back-opacity')),
+            _transitionPart(detail, 'predictive-back-opacity'),
           )
           .opacity,
       1,
@@ -308,10 +438,10 @@ void main() {
     await _startGesture(tester);
     await _moveGesture(tester);
     final zoomOpacity = tester.widget<Opacity>(
-      find.byKey(const ValueKey('predictive-back-opacity')),
+      _transitionPart(detail, 'predictive-back-opacity'),
     );
     final zoomTransform = tester.widget<Transform>(
-      find.byKey(const ValueKey('predictive-back-scale')),
+      _transitionPart(detail, 'predictive-back-scale'),
     );
     expect(zoomOpacity.opacity, lessThan(0.65));
     expect(zoomTransform.transform.entry(0, 0), lessThan(0.95));
@@ -362,7 +492,13 @@ void main() {
     expect(find.text(_home), findsOneWidget);
   });
 
-  testWidgets('位移与渐隐幅度可调，背景页带层次', (tester) async {
+  testWidgets('位移与渐隐幅度可调，衬底跟随深色主题和纯黑设置', (tester) async {
+    const darkBackdrop = Color(0xFF202125);
+    final previousTheme = ThemeUtils.darkTheme;
+    addTearDown(() => ThemeUtils.darkTheme = previousTheme);
+    ThemeUtils.darkTheme = ThemeData.dark().copyWith(
+      scaffoldBackgroundColor: darkBackdrop,
+    );
     await _launch(
       tester,
       style: PredictiveBackStyle.alwaysRight,
@@ -381,33 +517,55 @@ void main() {
     final wideDistance = tester.getTopLeft(detail).dx - original.dx;
     expect(wideDistance, greaterThan(pageWidth * 0.75));
     final wideOpacity = tester.widget<Opacity>(
-      find.byKey(const ValueKey('predictive-back-opacity')).last,
+      _transitionPart(detail, 'predictive-back-opacity'),
     );
     expect(wideOpacity.opacity, 1);
     final coveredScale = tester.widget<Transform>(
-      find
-          .byKey(
-            const ValueKey('predictive-back-covered-scale'),
-            skipOffstage: false,
-          )
-          .last,
+      _transitionPart(find.text(_home), 'predictive-back-covered-scale'),
     );
     expect(coveredScale.transform.entry(0, 0), lessThan(0.99));
+    final backing = find.byKey(const ValueKey('predictive-back-background'));
+    expect(tester.widget<ColoredBox>(backing).color, darkBackdrop);
+    expect(tester.getRect(backing), Offset.zero & tester.getSize(backing));
+    expect(tester.getSize(backing).width, pageWidth);
     await _finishGesture(tester, 'cancelBackGesture');
+    expect(backing, findsNothing);
 
+    ThemeUtils.darkTheme = ThemeUtils.darkenTheme(ThemeUtils.darkTheme);
     PageTransitions.selectMotion(slidePercent: 30, fadePercent: 80);
     // 切换页面过渡动画不应关闭已经开启的预测性返回。
     PageTransitions.select(Transition.fade.index);
     await tester.pumpAndSettle();
     await _startGesture(tester);
     await _moveGesture(tester);
+    expect(tester.widget<ColoredBox>(backing).color, Colors.black);
     final narrowDistance = tester.getTopLeft(detail).dx - original.dx;
     expect(narrowDistance, greaterThan(pageWidth * 0.2));
     expect(narrowDistance, lessThanOrEqualTo(pageWidth * 0.3 + 1));
     final fadedOpacity = tester.widget<Opacity>(
-      find.byKey(const ValueKey('predictive-back-opacity')).last,
+      _transitionPart(detail, 'predictive-back-opacity'),
     );
     expect(fadedOpacity.opacity, closeTo(1 - 0.8 * 0.45, 0.02));
     await _finishGesture(tester, 'cancelBackGesture');
   });
+}
+
+class _TrackedPage extends StatefulWidget {
+  const _TrackedPage({required this.onDeactivate});
+
+  final VoidCallback onDeactivate;
+
+  @override
+  State<_TrackedPage> createState() => _TrackedPageState();
+}
+
+class _TrackedPageState extends State<_TrackedPage> {
+  @override
+  void deactivate() {
+    widget.onDeactivate();
+    super.deactivate();
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: Text(_detail));
 }

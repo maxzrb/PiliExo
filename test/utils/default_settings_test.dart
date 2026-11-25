@@ -35,11 +35,22 @@ void main() {
     expect(defaults['bluetoothLatencyTrimMs'], 0);
   });
 
-  test('预测性返回默认启用缩小渐隐并按样式设置渐隐幅度', () {
+  test('默认音频输出依次尝试 OpenSL ES、AudioTrack、AAudio', () {
+    expect(
+      createDefaultSettingValues()['audioOutput'],
+      'opensles,audiotrack,aaudio',
+    );
+  });
+
+  test('预测性返回默认跟手、位移 70%、渐隐 0%', () {
     final defaults = createDefaultSettingValues();
 
     expect(defaults['predictiveBackEnabled'], isTrue);
-    expect(defaults['predictiveBackStyle'], PredictiveBackStyle.zoomFade.index);
+    final style = PredictiveBackStyle.fromIndex(
+      defaults['predictiveBackStyle']! as int,
+    );
+    expect(style, PredictiveBackStyle.followGesture);
+    expect(style.defaultFadePercent, 0);
     expect(defaults['predictiveBackSlidePercent'], 70);
     expect(defaults['predictiveBackScalePercent'], 20);
     expect(defaults, isNot(contains('predictiveBackFadePercent')));

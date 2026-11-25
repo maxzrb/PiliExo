@@ -63,4 +63,6 @@ with zipfile.ZipFile(base) as src, zipfile.ZipFile(out) as dst:
 subprocess.run([str(tools/'zipalign.exe'), '-c', '-P', '16', '4', str(out)], check=True)
 meta = {'apk': str(out), 'sha256': hashlib.sha256(out.read_bytes()).hexdigest(), 'bytes': out.stat().st_size, 'nativeSha256': hashlib.sha256(native.read_bytes()).hexdigest(), 'unchangedEntries': len(unchanged), 'sameSigningCertificate': True, 'removedOtherAbiEntries': removed}
 out.with_suffix('.artifact.json').write_text(json.dumps(meta, indent=2), encoding='utf-8')
+for intermediate in (unsigned, aligned):
+    intermediate.unlink(missing_ok=True)
 print(json.dumps(meta))

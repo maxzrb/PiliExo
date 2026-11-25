@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:PiliPlus/utils/downloadable_font.dart';
 import 'package:PiliPlus/utils/font_utils.dart';
+import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
@@ -17,6 +19,30 @@ void main() {
     );
     Hive.init(hiveDirectory.path);
     GStorage.setting = await Hive.openBox('setting');
+    appSupportDirPath = hiveDirectory.path;
+    await GStorage.setting.put(SettingBoxKey.appFont, '');
+  });
+
+  test('删除已下载字体时只重置正在使用的字族', () async {
+    final previous = FontUtils.appFont;
+    addTearDown(() => FontUtils.appFont = previous);
+    const active = DownloadableFont.harmonyOs;
+    const inactive = DownloadableFont.miSans;
+    await Directory('$appSupportDirPath/harmonyos-sans-2.400').create();
+    await Directory('$appSupportDirPath/misans-vf').create();
+    FontUtils.appFont = (fontFamily: active.family, isCustom: false);
+    await GStorage.setting.put(SettingBoxKey.appFont, active.family);
+
+    expect(await FontUtils.removeDownloadedFont(inactive), isFalse);
+    expect(inactive.isInstalled, isFalse);
+    expect(active.isInstalled, isTrue);
+    expect(FontUtils.fontFamily, active.family);
+    expect(GStorage.setting.get(SettingBoxKey.appFont), active.family);
+
+    expect(await FontUtils.removeDownloadedFont(active), isTrue);
+    expect(active.isInstalled, isFalse);
+    expect(FontUtils.fontFamily, isNull);
+    expect(GStorage.setting.get(SettingBoxKey.appFont), isNull);
   });
 
   tearDownAll(() async {
@@ -24,15 +50,36 @@ void main() {
     await hiveDirectory.delete(recursive: true);
   });
 
-  test('默认使用内置鸿蒙黑体，并支持显式选择系统字体', () {
+  test('默认使用系统字体，兼容旧版保存的空字符串', () {
     final previous = FontUtils.appFont;
     addTearDown(() => FontUtils.appFont = previous);
-    expect(FontUtils.fontFamily, 'HarmonyOS Sans SC');
+    expect(previous, (fontFamily: null, isCustom: false));
+    expect(FontUtils.fontFamily, isNull);
     FontUtils.appFont = (
-      fontFamily: FontUtils.systemFontFamily,
+      fontFamily: 'Noto Sans CJK SC',
       isCustom: false,
     );
+    expect(FontUtils.fontFamily, 'Noto Sans CJK SC');
+  });
+
+  test('升级时清理文楷缓存并恢复系统字体', () async {
+    final previous = FontUtils.appFont;
+    addTearDown(() => FontUtils.appFont = previous);
+    final retired = await Directory(
+      '$appSupportDirPath/lxgw-wenkai-lite-1.530',
+    ).create();
+    final retained = await Directory('$appSupportDirPath/misans-vf').create();
+    await File('${retired.path}/Regular.ttf').writeAsBytes([1]);
+    const previousFamily = 'LXGW WenKai Lite';
+    FontUtils.appFont = (fontFamily: previousFamily, isCustom: false);
+    await GStorage.setting.put(SettingBoxKey.appFont, previousFamily);
+
+    await FontUtils.init();
+
+    expect(retired.existsSync(), isFalse);
+    expect(retained.existsSync(), isTrue);
     expect(FontUtils.fontFamily, isNull);
+    expect(GStorage.setting.get(SettingBoxKey.appFont), isNull);
   });
 
   test('旧版默认字重迁移后保持正常字重', () async {

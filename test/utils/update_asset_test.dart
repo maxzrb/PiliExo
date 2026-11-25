@@ -185,4 +185,34 @@ void main() {
       );
     });
   });
+
+  group('Release Notes 响应处理', () {
+    test('正常响应通过校验并整理空白正文', () {
+      expect(
+        releaseNotesResponseError(
+          statusCode: 200,
+          data: {'tag_name': 'v26.11.24.1', 'body': '更新说明'},
+        ),
+        isNull,
+      );
+      expect(formatReleaseNotesBody('  [新增] 说明  '), '[新增] 说明');
+      expect(formatReleaseNotesBody('   '), '暂无更新说明');
+      expect(formatReleaseNotesBody(null), '暂无更新说明');
+    });
+
+    test('404、限流与网络错误返回明确文案', () {
+      expect(
+        releaseNotesResponseError(statusCode: 404, data: null),
+        contains('未找到'),
+      );
+      expect(
+        releaseNotesResponseError(statusCode: 403, data: null),
+        contains('限流'),
+      );
+      expect(
+        releaseNotesResponseError(statusCode: -1, data: null),
+        contains('网络请求异常'),
+      );
+    });
+  });
 }

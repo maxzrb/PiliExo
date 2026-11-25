@@ -99,10 +99,11 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   PlPlayerController? plPlayerController;
   ValueNotifier<bool>? _backGesture;
   ModalRoute<dynamic>? _videoRoute;
-  bool _videoHiddenForBackGesture = false;
+  bool _hdrBackGestureActive = false;
   final _predictiveBackCoverVisible = ValueNotifier<bool>(false);
   final _predictiveBackSnapshot = ValueNotifier<ui.Image?>(null);
   Future<void>? _hdrBackCapture;
+  Future<void>? _hdrBackPause;
   int _backGestureGeneration = 0;
 
   // intro ctr
@@ -525,14 +526,24 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   void _onBackGestureChanged() {
     final player = videoDetailController.plPlayerController;
     if (_backGesture!.value) {
-      if (_videoRoute?.isCurrent == true &&
+      if (PageTransitions.predictiveBack.value &&
+          _videoRoute?.isCurrent == true &&
           (player.mpvHdrActive.value || player.media3HdrActive.value)) {
         _backGestureGeneration += 1;
-        _videoHiddenForBackGesture = true;
+        _hdrBackGestureActive = true;
         _hdrBackCapture = _freezeHdrForBackGesture(player);
+        if (player.playWhenReady || player.isPlaying) {
+          // 截图和暂停并行，手势期间不再继续解码和播放音频。
+          _hdrBackPause ??= player.pause().onError<PlatformException>((
+            error,
+            _,
+          ) {
+            debugPrint('预测性返回暂停 HDR 播放失败：${error.code}');
+          });
+        }
       }
-    } else if (_videoHiddenForBackGesture) {
-      _videoHiddenForBackGesture = false;
+    } else if (_hdrBackGestureActive) {
+      _hdrBackGestureActive = false;
       if (_videoRoute?.isCurrent == true) _restoreAfterBackGesture(player);
     }
   }
@@ -552,17 +563,19 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     } on Exception {
       image = null;
     }
+    if (image == null) return;
     if (!mounted ||
         generation != _backGestureGeneration ||
         !_backGesture!.value ||
         _videoRoute?.isCurrent != true) {
-      image?.dispose();
+      image.dispose();
       return;
     }
+    // 冻结帧和原生画面同帧切换，抓帧期间保留刚暂停的视频画面。
     final previous = _predictiveBackSnapshot.value;
     _predictiveBackSnapshot.value = image;
-    previous?.dispose();
     _predictiveBackCoverVisible.value = true;
+    previous?.dispose();
     await _setHdrBackPreviewHidden(player, true);
   }
 
@@ -581,29 +594,29 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
   Future<void> _restoreAfterBackGesture(PlPlayerController player) async {
     final generation = _backGestureGeneration;
     await _hdrBackCapture;
-    if (!mounted ||
-        generation != _backGestureGeneration ||
-        _backGesture!.value ||
-        _videoRoute?.isCurrent != true ||
-        !_predictiveBackCoverVisible.value) {
-      return;
-    }
-
-    await WidgetsBinding.instance.endOfFrame;
-    if (mounted &&
+    await _hdrBackPause;
+    bool stillCurrent() =>
+        mounted &&
         generation == _backGestureGeneration &&
         !_backGesture!.value &&
-        _videoRoute?.isCurrent == true) {
+        _videoRoute?.isCurrent == true &&
+        !player.videoOutputHidden.value;
+    if (!stillCurrent()) return;
+
+    if (_predictiveBackCoverVisible.value) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!stillCurrent()) return;
       await _setHdrBackPreviewHidden(player, false);
-      if (mounted &&
-          generation == _backGestureGeneration &&
-          !_backGesture!.value &&
-          _videoRoute?.isCurrent == true) {
-        _predictiveBackCoverVisible.value = false;
-        final image = _predictiveBackSnapshot.value;
-        _predictiveBackSnapshot.value = null;
-        image?.dispose();
-      }
+      if (!stillCurrent()) return;
+      _predictiveBackCoverVisible.value = false;
+      final image = _predictiveBackSnapshot.value;
+      _predictiveBackSnapshot.value = null;
+      image?.dispose();
+    }
+
+    if (_hdrBackPause != null) {
+      _hdrBackPause = null;
+      await player.play(hideControls: false);
     }
   }
 
@@ -1371,7 +1384,8 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           return;
         }
         if (didPop && Platform.isAndroid && !player.videoOutputHidden.value) {
-          if (player.mpvHdrActive.value || player.media3HdrActive.value) {
+          if (!_hdrBackGestureActive &&
+              (player.mpvHdrActive.value || player.media3HdrActive.value)) {
             _predictiveBackCoverVisible.value = true;
           }
           player.hideHdrSurface();
@@ -1671,7 +1685,14 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           ),
         ),
 
-        plPlayer(width: width, height: height),
+        ValueListenableBuilder<bool>(
+          valueListenable: _predictiveBackCoverVisible,
+          child: plPlayer(width: width, height: height),
+          builder: (context, visible, child) => Opacity(
+            opacity: visible ? 0 : 1,
+            child: child,
+          ),
+        ),
 
         Positioned.fill(
           child: ValueListenableBuilder<bool>(

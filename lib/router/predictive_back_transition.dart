@@ -1,10 +1,11 @@
 import 'dart:ui' show clampDouble;
 
+import 'package:PiliPlus/utils/theme_utils.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-const defaultPredictiveBackStyle = PredictiveBackStyle.zoomFade;
+const defaultPredictiveBackStyle = PredictiveBackStyle.followGesture;
 const defaultPredictiveBackSlidePercent = 70;
 const defaultPredictiveBackScalePercent = 20;
 
@@ -37,6 +38,7 @@ enum PredictiveBackStyle {
 abstract final class PredictiveBackDriver {
   static final ValueNotifier<bool> active = ValueNotifier(false);
   static final ValueNotifier<double> depth = ValueNotifier(0);
+  static final _exitSide = ValueNotifier(_ExitSide.right);
   static PageRoute<dynamic>? _owner;
 
   static bool covers(PageRoute<dynamic> route) {
@@ -46,8 +48,13 @@ abstract final class PredictiveBackDriver {
         owner.navigator == route.navigator;
   }
 
-  static void begin(PageRoute<dynamic> owner, double routeProgress) {
+  static void _begin(
+    PageRoute<dynamic> owner,
+    double routeProgress,
+    _ExitSide exitSide,
+  ) {
     _owner = owner;
+    _exitSide.value = exitSide;
     depth.value = Curves.easeOutCubic.transform(routeProgress);
     active.value = true;
   }
@@ -105,40 +112,20 @@ class AppPredictiveBackPageTransitionsBuilder extends PageTransitionsBuilder {
   ) {
     return _PredictiveBackGestureDetector(
       route: route,
-      builder:
-          (
-            context,
-            phase,
-            commitStartProgress,
-            startBackEvent,
-            currentBackEvent,
-          ) {
-            // popGestureInProgress 是整条 Navigator 的全局状态，被覆盖页同样
-            // 为 true。这里只看本路由是否真的接手了手势，否则背景页会失去
-            // 独立的层次效果。
-            final showPredictive = phase != _PredictiveBackPhase.idle;
-            if (!showPredictive) {
-              return _PredictiveBackRouteSurface(
-                route: route,
-                animation: animation,
-                coveredEffect: style.isSlide,
-                child: child,
-              );
-            }
-            return _PredictiveBackTransition(
-              route: route,
-              style: style,
-              slideFraction: slideFraction,
-              fadeFraction: fadeFraction,
-              scaleFraction: scaleFraction,
-              phase: phase,
-              commitStartProgress: commitStartProgress,
-              animation: animation,
-              startBackEvent: startBackEvent,
-              currentBackEvent: currentBackEvent,
-              child: child,
-            );
-          },
+      style: style,
+      builder: (context, phase, commitStartProgress, exitSide) =>
+          _PredictiveBackTransition(
+            route: route,
+            style: style,
+            slideFraction: slideFraction,
+            fadeFraction: fadeFraction,
+            scaleFraction: scaleFraction,
+            phase: phase,
+            commitStartProgress: commitStartProgress,
+            animation: animation,
+            exitSide: exitSide,
+            child: child,
+          ),
     );
   }
 }
@@ -147,19 +134,20 @@ typedef _PredictiveBackBuilder = Widget Function(
   BuildContext context,
   _PredictiveBackPhase phase,
   double commitStartProgress,
-  PredictiveBackEvent? startBackEvent,
-  PredictiveBackEvent? currentBackEvent,
+  _ExitSide exitSide,
 );
 
-enum _PredictiveBackPhase { idle, start, update, commit, cancel }
+enum _PredictiveBackPhase { idle, preview, commit, cancel }
 
 class _PredictiveBackGestureDetector extends StatefulWidget {
   const _PredictiveBackGestureDetector({
     required this.route,
+    required this.style,
     required this.builder,
   });
 
   final PageRoute<dynamic> route;
+  final PredictiveBackStyle style;
   final _PredictiveBackBuilder builder;
 
   @override
@@ -169,79 +157,68 @@ class _PredictiveBackGestureDetector extends StatefulWidget {
 
 class _PredictiveBackGestureDetectorState
     extends State<_PredictiveBackGestureDetector>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   _PredictiveBackPhase _phase = _PredictiveBackPhase.idle;
-  PredictiveBackEvent? _startBackEvent;
-  PredictiveBackEvent? _currentBackEvent;
+  _ExitSide _exitSide = _ExitSide.right;
   double _commitStartProgress = 0;
   bool _gestureStarted = false;
+  Ticker? _previewFrames;
 
   bool get _isEnabled =>
       widget.route.isCurrent && widget.route.popGestureEnabled;
 
-  void _setPhase(_PredictiveBackPhase phase) {
-    if (mounted && _phase != phase) {
-      setState(() => _phase = phase);
-    }
-  }
-
-  void _setEvents(
-    PredictiveBackEvent? startBackEvent,
-    PredictiveBackEvent? currentBackEvent,
-  ) {
-    if (!mounted) return;
-    setState(() {
-      _startBackEvent = startBackEvent;
-      _currentBackEvent = currentBackEvent;
-    });
-  }
-
   @override
   bool handleStartBackGesture(PredictiveBackEvent backEvent) {
-    if (backEvent.isButtonEvent || !_isEnabled) return false;
-    _setPhase(_PredictiveBackPhase.start);
+    if (_gestureStarted || backEvent.isButtonEvent || !_isEnabled) return false;
+    setState(() {
+      _phase = _PredictiveBackPhase.preview;
+      _exitSide = _ExitSide.fromGesture(widget.style, backEvent.swipeEdge);
+    });
     _gestureStarted = true;
+    // 手势回调可能紧接在同一显示周期的 Flutter 帧之前到达。拖动期间
+    // 保持下一帧已排队，让每次显示同步都能使用最新的手势进度。
+    (_previewFrames ??= createTicker((_) {})).start();
     final routeProgress = 1 - backEvent.progress;
-    PredictiveBackDriver.begin(widget.route, routeProgress);
+    PredictiveBackDriver._begin(widget.route, routeProgress, _exitSide);
     widget.route.handleStartBackGesture(progress: routeProgress);
-    _setEvents(backEvent, backEvent);
     return true;
   }
 
   @override
   void handleUpdateBackGestureProgress(PredictiveBackEvent backEvent) {
     if (!_gestureStarted) return;
-    _setPhase(_PredictiveBackPhase.update);
     final routeProgress = 1 - backEvent.progress;
     PredictiveBackDriver.update(
       widget.route,
       Curves.easeOutCubic.transform(routeProgress),
     );
+    // 路由动画已驱动页面绘制，手势进度不需要再触发一次状态更新。
     widget.route.handleUpdateBackGestureProgress(progress: routeProgress);
-    _setEvents(_startBackEvent, backEvent);
   }
 
   @override
   void handleCancelBackGesture() {
-    if (!_gestureStarted || _phase == _PredictiveBackPhase.idle) return;
+    if (!_gestureStarted) return;
     _gestureStarted = false;
-    _setPhase(_PredictiveBackPhase.cancel);
+    _previewFrames?.stop();
+    setState(() => _phase = _PredictiveBackPhase.cancel);
     widget.route.handleCancelBackGesture();
-    _setEvents(null, null);
   }
 
   @override
   void handleCommitBackGesture() {
-    if (!_gestureStarted || _phase == _PredictiveBackPhase.idle) return;
+    if (!_gestureStarted) return;
     _gestureStarted = false;
-    _setPhase(_PredictiveBackPhase.commit);
-    _commitStartProgress = clampDouble(
-      1 - widget.route.animation!.value,
-      0,
-      1,
-    );
+    _previewFrames?.stop();
+    setState(() {
+      _phase = _PredictiveBackPhase.commit;
+      _commitStartProgress = clampDouble(
+        1 - widget.route.animation!.value,
+        0,
+        1,
+      );
+    });
     widget.route.handleCommitBackGesture();
-    _setEvents(null, null);
   }
 
   @override
@@ -253,6 +230,7 @@ class _PredictiveBackGestureDetectorState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _previewFrames?.dispose();
     super.dispose();
   }
 
@@ -260,8 +238,7 @@ class _PredictiveBackGestureDetectorState
   Widget build(BuildContext context) {
     var phase = _phase;
     if (!_gestureStarted && !widget.route.popGestureInProgress) {
-      if (phase == _PredictiveBackPhase.start ||
-          phase == _PredictiveBackPhase.update) {
+      if (phase == _PredictiveBackPhase.preview) {
         phase = _PredictiveBackPhase.idle;
       } else if (phase == _PredictiveBackPhase.cancel) {
         final animation = widget.route.animation;
@@ -275,13 +252,27 @@ class _PredictiveBackGestureDetectorState
       context,
       phase,
       _commitStartProgress,
-      _startBackEvent,
-      _currentBackEvent,
+      _exitSide,
     );
   }
 }
 
-enum _ExitSide { left, right }
+enum _ExitSide {
+  left(-1),
+  right(1);
+
+  const _ExitSide(this.sign);
+
+  final double sign;
+
+  static _ExitSide fromGesture(PredictiveBackStyle style, SwipeEdge edge) =>
+      switch (style) {
+        PredictiveBackStyle.followGesture =>
+          edge == SwipeEdge.right ? left : right,
+        PredictiveBackStyle.alwaysLeft => left,
+        _ => right,
+      };
+}
 
 class _PredictiveBackTransition extends StatefulWidget {
   const _PredictiveBackTransition({
@@ -293,8 +284,7 @@ class _PredictiveBackTransition extends StatefulWidget {
     required this.phase,
     required this.commitStartProgress,
     required this.animation,
-    required this.startBackEvent,
-    required this.currentBackEvent,
+    required this.exitSide,
     required this.child,
   });
 
@@ -306,8 +296,7 @@ class _PredictiveBackTransition extends StatefulWidget {
   final _PredictiveBackPhase phase;
   final double commitStartProgress;
   final Animation<double> animation;
-  final PredictiveBackEvent? startBackEvent;
-  final PredictiveBackEvent? currentBackEvent;
+  final _ExitSide exitSide;
   final Widget child;
 
   @override
@@ -317,6 +306,7 @@ class _PredictiveBackTransition extends StatefulWidget {
 
 class _PredictiveBackTransitionState extends State<_PredictiveBackTransition>
     with SingleTickerProviderStateMixin {
+  static const _backCornerRadius = 32.0;
   static const _pageSettleMs = 220;
   static const _backgroundSettleMs = 280;
   static final _backgroundSettle = TweenSequence<double>([
@@ -337,33 +327,8 @@ class _PredictiveBackTransitionState extends State<_PredictiveBackTransition>
   ]);
 
   late final AnimationController _commitController;
-  late final Listenable _repaintListenable;
-  _ExitSide _followSide = _ExitSide.right;
-
-  _ExitSide get _exitSide {
-    switch (widget.style) {
-      case PredictiveBackStyle.followGesture:
-        return _followSide;
-      case PredictiveBackStyle.alwaysRight:
-        return _ExitSide.right;
-      case PredictiveBackStyle.alwaysLeft:
-        return _ExitSide.left;
-      case PredictiveBackStyle.fade:
-      case PredictiveBackStyle.zoomFade:
-        return _ExitSide.right;
-    }
-  }
-
-  void _updateFollowSide() {
-    if (widget.currentBackEvent?.swipeEdge case final swipeEdge?) {
-      final side = swipeEdge == SwipeEdge.right
-          ? _ExitSide.left
-          : _ExitSide.right;
-      if (side != _followSide) {
-        _followSide = side;
-      }
-    }
-  }
+  late final Listenable _motion;
+  late final Listenable _repaint;
 
   @override
   void initState() {
@@ -371,11 +336,14 @@ class _PredictiveBackTransitionState extends State<_PredictiveBackTransition>
     _commitController = AnimationController(
       vsync: this,
     );
-    _repaintListenable = Listenable.merge([
-      widget.animation,
-      _commitController,
+    _motion = Listenable.merge([widget.animation, _commitController]);
+    _repaint = Listenable.merge([
+      _motion,
+      PredictiveBackDriver.active,
+      PredictiveBackDriver.depth,
+      PredictiveBackDriver._exitSide,
     ]);
-    _repaintListenable.addListener(_syncDriverProgress);
+    _motion.addListener(_syncDriverProgress);
     // 极快的手势可能在同一帧内走完 start 与 commit，此时状态直接
     // 以 commit 创建，需要在这里也启动补完动画。
     if (widget.phase == _PredictiveBackPhase.commit) {
@@ -396,6 +364,10 @@ class _PredictiveBackTransitionState extends State<_PredictiveBackTransition>
   @override
   void didUpdateWidget(covariant _PredictiveBackTransition oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.phase == _PredictiveBackPhase.idle &&
+        oldWidget.phase != _PredictiveBackPhase.idle) {
+      PredictiveBackDriver.end(widget.route);
+    }
     if (widget.phase == _PredictiveBackPhase.commit &&
         oldWidget.phase != _PredictiveBackPhase.commit) {
       _startCommit();
@@ -409,7 +381,7 @@ class _PredictiveBackTransitionState extends State<_PredictiveBackTransition>
 
   @override
   void dispose() {
-    _repaintListenable.removeListener(_syncDriverProgress);
+    _motion.removeListener(_syncDriverProgress);
     PredictiveBackDriver.end(widget.route);
     _commitController.dispose();
     super.dispose();
@@ -442,135 +414,109 @@ class _PredictiveBackTransitionState extends State<_PredictiveBackTransition>
 
   @override
   Widget build(BuildContext context) {
-    _updateFollowSide();
     final width = MediaQuery.widthOf(context);
     final pixelRatio = MediaQuery.devicePixelRatioOf(context);
     final slideFraction = clampDouble(widget.slideFraction, 0.2, 1);
     final fadeFraction = clampDouble(widget.fadeFraction, 0, 1);
     final scaleFraction = clampDouble(widget.scaleFraction, 0, 0.4);
     final releaseEased = Curves.easeOutCubic.transform(
-      clampDouble(widget.commitStartProgress, 0, 1),
+      widget.commitStartProgress,
     );
+    final isSlide = widget.style.isSlide;
     return AnimatedBuilder(
-      animation: _repaintListenable,
+      animation: isSlide ? _repaint : _motion,
       child: widget.child,
       builder: (context, child) {
-        final isCommit = widget.phase == _PredictiveBackPhase.commit;
-        final commitProgress = isCommit ? _pageSettleProgress : 0.0;
-        final rawProgress = isCommit
-            ? widget.commitStartProgress +
-                  (1 - widget.commitStartProgress) * commitProgress
-            : _dragProgress;
-        // 拖动阶段最多走到用户设定比例；松手后补完剩余距离并滑出整屏，
-        // 避免路由销毁时页面仍留在屏内造成跳变。
-        final distanceProgress = isCommit
-            ? releaseEased + (1 - releaseEased) * commitProgress
-            : Curves.easeOutCubic.transform(rawProgress);
-        final exitFraction = isCommit
-            ? slideFraction * releaseEased +
-                  (1 - slideFraction * releaseEased) * commitProgress
-            : slideFraction * distanceProgress;
-        final dragOpacity = 1 - fadeFraction * rawProgress;
-        // 平移样式最终会完全离开屏幕；渐隐样式需要把透明度收到 0，
-        // 否则路由销毁时还会残留半透明页面。
-        final fadeOpacity = isCommit && !widget.style.isSlide
-            ? dragOpacity * (1 - commitProgress)
-            : dragOpacity;
-        final fadeChild = Opacity(
-          key: const ValueKey('predictive-back-opacity'),
-          opacity: fadeOpacity,
-          child: child,
-        );
-
-        return switch (widget.style) {
-          PredictiveBackStyle.fade => fadeChild,
-          PredictiveBackStyle.zoomFade => Transform.scale(
-            key: const ValueKey('predictive-back-scale'),
-            scale: 1 - scaleFraction * distanceProgress,
-            child: fadeChild,
-          ),
-          PredictiveBackStyle.followGesture ||
-          PredictiveBackStyle.alwaysRight ||
-          PredictiveBackStyle.alwaysLeft => Transform.translate(
-            offset: Offset(
-              _snapToPixel(
-                (_exitSide == _ExitSide.right ? 1 : -1) * width * exitFraction,
-                pixelRatio,
-              ),
-              0,
-            ),
-            child: fadeChild,
-          ),
-        };
-      },
-    );
-  }
-
-  double _snapToPixel(double value, double pixelRatio) =>
-      (value * pixelRatio).roundToDouble() / pixelRatio;
-}
-
-/// 预测性返回开启时统一接管进入/退出与背景层，避免 Material Zoom 在
-/// 手势刚开始时就把被覆盖页淡出，失去层次。
-class _PredictiveBackRouteSurface extends StatelessWidget {
-  const _PredictiveBackRouteSurface({
-    required this.route,
-    required this.animation,
-    required this.coveredEffect,
-    required this.child,
-  });
-
-  final PageRoute<dynamic> route;
-  final Animation<double> animation;
-  final bool coveredEffect;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.widthOf(context);
-    final pixelRatio = MediaQuery.devicePixelRatioOf(context);
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        animation,
-        PredictiveBackDriver.active,
-        PredictiveBackDriver.depth,
-      ]),
-      child: FadeTransition(opacity: animation, child: child),
-      builder: (context, child) {
-        final enter = clampDouble(animation.value, 0, 1);
-        final enterEased = Curves.easeOutCubic.transform(enter);
-        final result = Transform.scale(
-          scale: 0.9 + 0.1 * enterEased,
-          child: child,
-        );
-        if (!coveredEffect) return result;
-
-        final depth = PredictiveBackDriver.covers(route)
+        final idle = widget.phase == _PredictiveBackPhase.idle;
+        final depth =
+            idle && isSlide && PredictiveBackDriver.covers(widget.route)
             ? PredictiveBackDriver.depth.value
             : 0.0;
-        final scale = 1 - 0.065 * depth;
-        final offset =
-            (width * 0.08 * depth * pixelRatio).roundToDouble() / pixelRatio;
+        double offset;
+        double scale;
+        double opacity;
+        double cornerRadius;
+        if (idle) {
+          opacity = clampDouble(widget.animation.value, 0, 1);
+          scale =
+              (0.9 + 0.1 * Curves.easeOutCubic.transform(opacity)) *
+              (1 - 0.065 * depth);
+          final exitSign = PredictiveBackDriver._exitSide.value.sign;
+          // 跟手方向下，背景从前景退出的一侧向中间归位。
+          final backgroundSign =
+              widget.style == PredictiveBackStyle.followGesture
+              ? exitSign
+              : -exitSign;
+          offset = backgroundSign * width * 0.08 * depth;
+          cornerRadius = _backCornerRadius * clampDouble(depth, 0, 1);
+        } else {
+          final isCommit = widget.phase == _PredictiveBackPhase.commit;
+          final commitProgress = isCommit ? _pageSettleProgress : 0.0;
+          final rawProgress = isCommit
+              ? widget.commitStartProgress +
+                    (1 - widget.commitStartProgress) * commitProgress
+              : _dragProgress;
+          final distanceProgress = isCommit
+              ? releaseEased + (1 - releaseEased) * commitProgress
+              : Curves.easeOutCubic.transform(rawProgress);
+          final exitFraction = isCommit
+              ? slideFraction * releaseEased +
+                    (1 - slideFraction * releaseEased) * commitProgress
+              : slideFraction * distanceProgress;
+          offset = isSlide ? widget.exitSide.sign * width * exitFraction : 0;
+          scale = widget.style == PredictiveBackStyle.zoomFade
+              ? 1 - scaleFraction * distanceProgress
+              : 1;
+          cornerRadius = _backCornerRadius * distanceProgress;
+          opacity = 1 - fadeFraction * rawProgress;
+          if (isCommit && !isSlide) opacity *= 1 - commitProgress;
+        }
+
+        // 手势进入、取消或结束时保留同一层级，避免重新挂接页面子树。
+        final page = Transform.translate(
+          offset: Offset((offset * pixelRatio).roundToDouble() / pixelRatio, 0),
+          child: Transform.scale(
+            key: ValueKey(
+              isSlide
+                  ? 'predictive-back-covered-scale'
+                  : 'predictive-back-scale',
+            ),
+            scale: scale,
+            child: ClipRRect(
+              key: const ValueKey('predictive-back-corners'),
+              borderRadius: BorderRadius.circular(cornerRadius),
+              clipBehavior: cornerRadius == 0 ? Clip.none : Clip.antiAlias,
+              child: Opacity(
+                key: const ValueKey('predictive-back-opacity'),
+                opacity: opacity,
+                child: child,
+              ),
+            ),
+          ),
+        );
+        if (!isSlide) return page;
         return Stack(
           fit: StackFit.passthrough,
           children: [
-            Transform.translate(
-              offset: Offset(-offset, 0),
-              child: Transform.scale(
-                key: const ValueKey('predictive-back-covered-scale'),
-                scale: scale,
-                child: result,
-              ),
-            ),
-            Positioned.fill(
-              child: IgnorePointer(
+            // 背景页位移和圆角露出的区域保持不透明，遮住下面的旧合成层。
+            if (depth != 0 && widget.route.opaque)
+              Positioned.fill(
                 child: ColoredBox(
-                  color: Colors.black.withValues(
-                    alpha: 0.2 * clampDouble(depth, 0, 1),
+                  key: const ValueKey('predictive-back-background'),
+                  color: ThemeUtils.darkTheme.scaffoldBackgroundColor,
+                ),
+              ),
+            page,
+            if (depth > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(
+                      alpha: 0.2 * clampDouble(depth, 0, 1),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         );
       },

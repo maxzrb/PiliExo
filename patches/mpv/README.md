@@ -2,7 +2,15 @@
 
 本目录保存播放器原生改动及对应上游源码版本。正式 APK 使用本机交叉编译的 mpv，不依赖 GitHub Actions。
 
-`sources.json` 记录各组件的仓库、标签、源码归档 SHA-256、长度及正式补丁顺序。mpv 基线为 v0.41.0。AudioTrack 小缓冲实验补丁单独保留。原生库须导出原有 55 个 `mpv_*` API。
+完整的源码准备、FFmpeg/mpv 构建、CA 处理、ELF 门禁、APK 打包和真机验收流程见
+[`docs/mpv与FFmpeg升级流程-2026-11-25.md`](../../docs/mpv与FFmpeg升级流程-2026-11-25.md)。
+
+`sources.json` 记录各组件的仓库、标签、Git 提交（仅滚动 Git 源需要）、源码归档
+SHA-256、长度及正式补丁顺序。mpv 当前基线为 v0.42.0，FFmpeg 为
+`master@bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2`。正式清单只应用一份与本项目
+完整的 mpv 适配总补丁，以及 FFmpeg 的动态 HDR 与 Android 系统 CA 补丁；下列旧
+分项补丁说明保留用于历史追溯，不再按旧顺序应用。原生库须导出原有 55 个
+`mpv_*` API。
 
 FFmpeg 的动态 HDR、运行中吞吐提示和解码前丢帧共用
 `ffmpeg-android-dynamic-hdr.patch`。mpv 在播放倍率变化时把源帧率乘以目标倍率提交给解码线程。
@@ -77,3 +85,50 @@ python tool/prepare_mpv_sources.py --mpv-source <mpv源码目录> --ffmpeg-sourc
 FFmpeg HEVC MediaCodec 的 `hevc_mp4toannexb` 位流过滤器保证送入解码器的是 Annex B，因此补丁明确传入 `nal_length_size=0`。独立解析调用需要明确给出 1～4 字节长度前缀，禁止按 `00 00 01` 猜测输入格式。
 
 本轮修改了 FFmpeg 内嵌解析头，必须重新准备并编译双 ABI 核心，再与当前 Dart/Kotlin/JNI 一起构建。不得把旧正式核心和新源码混包后宣称全部修复已进入 APK；源码修复和设备实播验收分别记录。
+
+## mpv 0.42.0 arm64 候选（2026-11-25）
+
+候选源码基线为 `mpv-v0.42.0.tar.gz`，7,515,468 字节，SHA-256
+`bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd`。
+`mpv-0.42.0-piliexo-adaptation.patch` 是相对该原始包的总适配补丁，SHA-256
+`36a3c55cdf06408af54f1862402bdb9c85cc7574614ecd4c58d8174ef863cffe`；
+它包含本项目 HDR、AudioTrack、音频时钟、MediaCodec 倍率和迟送帧策略，以及
+mpv 0.42.0 删除 `display_sync_drift_dir` 后的兼容调整。
+
+mpv 0.42.0 把 `--tls-verify` 默认值从 `no` 改为 `yes`。首轮候选因 FFmpeg
+mbedTLS 没有默认 CA 链而在 HTTPS 播放时持续缓冲，错误为
+`The certificate is not correctly signed by the trusted CA`。新增
+`ffmpeg-android-system-ca.patch`，优先读取 Android 的 Conscrypt APEX CA，旧设备使用
+`/system/etc/security/cacerts`，区分目录和单文件两种 mbedTLS 解析路径；
+补丁 SHA-256 为
+`b5b16958917fe4df4f3449a1c04645dc65e853c333e6cb98700cf273bc47b5c2`，已登记在
+`sources.json` 的 FFmpeg 正式补丁列表中。
+
+总补丁已在另一份干净归档上回放，回放结果与候选源码逐文件一致；候选源码也能反向
+应用该补丁。工作区中的 `tools/mpv-0.42.0-upgrade/build_arm64.py` 使用 NDK
+28.2.13676358、API 24，并允许分别指定 FFmpeg 源码、安装前缀和 Meson 输出目录。
+链接后移除 Meson 写入的 NDK 宿主 RUNPATH，再用 `llvm-strip --strip-unneeded`
+处理共享库。
+
+FFmpeg 随后独立升级到
+`master@bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2`，源码版本为
+`9.1.git`，内嵌版本为 `git-2026-11-25-bf11bea4`。动态 HDR 补丁按最新源码的
+`MediaCodecContext` 类型和初始化顺序重新生成，系统 CA 补丁原样应用。mpv
+0.42.0 源码没有随 FFmpeg 提交变化。
+
+arm64 `libmpv.so` 为 14,449,720 字节，SHA-256
+`8d4c34ef167d9e586c4c3df20eabb2686303b55c52eee7c83a9fc3a69a010482`。
+静态核对为 AArch64、55 个 `mpv_*` 导出、无 `RPATH/RUNPATH`、四个 LOAD 段
+均按 `0x4000` 对齐，并确认核心内包含 Android 系统 CA 路径。字符串表中仍有少量
+只读编译源码路径，但没有运行时宿主库依赖。
+
+当前 FFmpeg Git arm64 候选为
+`dist/integration/ffmpeg-git-bf11bea4-20261125/PiliExo_android_v26.11.24_ffmpeg-git-bf11bea4_arm64-v8a.apk`，
+49,894,677 字节，SHA-256
+`71cd70e0b6974398fb04e0a053eb9073048ec3979475dcab73fe5e83e3dd30ee`。
+候选已覆盖安装到 MEP-AN00，设备端回读哈希一致。真机日志已确认起播、
+AudioTrack 和约 71 fps、0 丢弃渲染；seek、倍速、HDR/SDR 和三大页冷启动
+切页仍须由用户操作验收。
+
+此前的 FFmpeg 9.0.1 / mpv 0.42 arm64 候选仍保留为已知可用对照，其 APK SHA-256
+为 `0a1735eaa88f40ef52bed7512e48de73a154d83bb8390f0ef71c06feb18dfd43`。
