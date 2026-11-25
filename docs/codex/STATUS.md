@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-25 20:03 `v26.11.25.1` 已发布，标签 `74b52f37a`。arm64 32.90 MB、ARMv7 32.96 MB，GitHub 和 ModelScope 哈希一致。最终 arm64 已在 MEP-AN00 覆盖安装并由用户手动冷启动验收。
+
 - 2026-11-25 19:46 v26.11.25.1 默认 Android 音频输出为 OpenSL ES → AudioTrack → AAudio。32.83 MB arm64 试机包已覆盖安装 MEP-AN00，哈希回读一致，已采集手动启动 Activity 事件。双 ABI 核心静态检查通过。正式包冷启动和发布待完成。
 
 - 2026-11-25 19:20 预测性返回最底层使用应用深色主题的页面底色，AMOLED 纯黑关闭为黑灰、开启为纯黑，浅色主题下同样适用。移除霞鹜文楷 Lite 下载项并在启动时清理旧缓存。29 项测试通过，32.82 MB arm64 候选已覆盖安装到 MEP-AN00，设备回读一致，滑动观感待手测。
@@ -2620,3 +2622,11 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 32,826,274 字节 arm64 试机包 SHA-256 为 `0ec1883f50c7b999764a540d0a34444db1a2604493c724097c821f72b224d48d`。2026-11-25 19:43 覆盖安装到 MEP-AN00，设备 APK 哈希一致。19:44 捕获到对应进程启动、Activity 恢复和首个 Activity 启动计时事件。包内嵌试机构建基线 `bb93f1468`。
 - 正式包的双 ABI 核心均为 mpv 0.42.0 / FFmpeg `bf11bea4`，含 Android CA、HDR 与三种音频后端标识。与上一版导出集合一致（55 项），各有四个 16 KB LOAD 段，无 RPATH、RUNPATH 或 TEXTREL。仅有 arm64 测试设备。
 - 正式包以本次源码提交构建。发布前须覆盖安装该产物，观察手动冷启动至可用页面。Github Actions 开关经远端 API 查询为关闭。
+
+## 2026-11-25 20:03 v26.11.25.1 正式发布
+
+- 正式标签 `v26.11.25.1` 指向 `74b52f37a0c4f88599904319c752b436c331bcf9`，两个 APK 的 AOT 与标签源码一致。Android 版本为 `26.11.25`，versionCode 47。已推送源码至 `origin/main`，GitHub Actions 保持禁用。
+- arm64-v8a 为 32,896,339 字节，SHA-256 `0b75f1c032937ad0c387901fd65275039d9060c36388c3548b3c2305e940a139`。armeabi-v7a 为 32,961,186 字节，SHA-256 `9ef86cb5c5fd3a659cc402389697881844e19cb178549319561c892e1a04274f`。218 字节校验清单 SHA-256 为 `c42e9db627bea7bb8c3b59c31964a1188d1f89a803fddab672e90735ed06ab63`。产物保存在 `dist/release/v26.11.25.1/`。
+- Flutter 测试 324 项通过。两个 APK 已核对原正式证书 V2、16 KB APK 对齐、29 个插件注册、目标 ABI、包名、AOT 提交和 mpv 核心哈希。两颗核心使用 mpv 0.42.0、FFmpeg `bf11bea4`。
+- MEP-AN00 在 19:53 覆盖安装最终 arm64 包，设备回读哈希一致。19:54 用户手动冷启动并确认可发布，主 Activity 启动计时为 238 ms。ARMv7 只有静态证据。
+- GitHub 与 ModelScope 三份文件均核对字节数和 SHA-256。GitHub 已设为 Latest。[GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.25.1) · [ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
