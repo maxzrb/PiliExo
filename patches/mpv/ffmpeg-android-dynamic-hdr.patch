@@ -89,7 +89,7 @@ index 18d0796..1a3dba4 100644
  
  static inline char *ff_AMediaCodec_getName(FFAMediaCodec *codec)
 diff --git a/libavcodec/mediacodecdec.c b/libavcodec/mediacodecdec.c
-index 0551370..eb4be20 100644
+index 0551370..f27951d 100644
 --- a/libavcodec/mediacodecdec.c
 +++ b/libavcodec/mediacodecdec.c
 @@ -27,10 +27,12 @@
@@ -115,7 +115,7 @@ index 0551370..eb4be20 100644
  
  typedef struct MediaCodecContext {
  
-@@ -59,7 +63,14 @@ typedef struct MediaCodecContext {
+@@ -59,7 +63,15 @@
  
      int use_ndk_codec;
      // Ref. MediaFormat KEY_OPERATING_RATE
@@ -127,10 +127,11 @@ index 0551370..eb4be20 100644
 +    int64_t piliexo_metadata_callback;
 +    int64_t piliexo_metadata_opaque;
 +    int early_drop_logged;
++    int piliexo_nonref_drops;
  } MediaCodecContext;
  
  static av_cold int mediacodec_decode_close(AVCodecContext *avctx)
-@@ -349,6 +360,36 @@ static av_cold int mediacodec_decode_init(AVCodecContext *avctx)
+@@ -349,6 +361,36 @@
  #if CONFIG_HEVC_MEDIACODEC_DECODER
      case AV_CODEC_ID_HEVC:
          codec_mime = "video/hevc";
@@ -167,7 +168,7 @@ index 0551370..eb4be20 100644
  
          ret = hevc_set_extradata(avctx, format);
          if (ret < 0)
-@@ -488,6 +529,114 @@ done:
+@@ -488,6 +530,114 @@
      return ret;
  }
  
@@ -282,7 +283,7 @@ index 0551370..eb4be20 100644
  static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
  {
      MediaCodecContext *s = avctx->priv_data;
-@@ -502,8 +651,19 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
+@@ -502,8 +652,19 @@
          }
      }
  
@@ -303,7 +304,7 @@ index 0551370..eb4be20 100644
      if (ret != AVERROR(EAGAIN))
          return ret;
  
-@@ -514,7 +674,7 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
+@@ -514,7 +675,7 @@
              index = ff_AMediaCodec_dequeueInputBuffer(s->ctx->codec, 0);
              if (index < 0) {
                  /* no space, block for an output frame to appear */
@@ -312,7 +313,7 @@ index 0551370..eb4be20 100644
                  /* Try again if both input port and output port return EAGAIN.
                   * If no data is consumed and no frame in output, it can make
                   * both avcodec_send_packet() and avcodec_receive_frame()
-@@ -555,6 +715,14 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
+@@ -555,6 +716,14 @@
  
          /* fetch new packet or eof */
          ret = ff_decode_get_packet(avctx, &s->buffered_pkt);
@@ -327,7 +328,7 @@ index 0551370..eb4be20 100644
          if (ret == AVERROR_EOF) {
              AVPacket null_pkt = { 0 };
              ret = ff_mediacodec_dec_send(avctx, s->ctx, &null_pkt, true);
-@@ -566,6 +734,19 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
+@@ -566,6 +735,20 @@
          } else if (ret < 0) {
              return ret;
          }
@@ -335,6 +336,7 @@ index 0551370..eb4be20 100644
 +            piliexo_decode_budget_due(&s->drop_budget) &&
 +            piliexo_should_drop_nonref_au(avctx, &s->buffered_pkt)) {
 +            piliexo_decode_budget_drop(&s->drop_budget);
++            s->piliexo_nonref_drops++;
 +            if (!s->early_drop_logged) {
 +                s->early_drop_logged = 1;
 +                av_log(avctx, AV_LOG_DEBUG,
@@ -347,7 +349,7 @@ index 0551370..eb4be20 100644
      }
  
      return AVERROR(EAGAIN);
-@@ -574,8 +755,12 @@ static int mediacodec_receive_frame(AVCodecContext *avctx, AVFrame *frame)
+@@ -574,8 +757,13 @@
  static void mediacodec_decode_flush(AVCodecContext *avctx)
  {
      MediaCodecContext *s = avctx->priv_data;
@@ -357,15 +359,18 @@ index 0551370..eb4be20 100644
  
      av_packet_unref(&s->buffered_pkt);
 +    s->drop_budget = (struct piliexo_decode_budget){0};
++    s->piliexo_nonref_drops = 0;
  
      ff_mediacodec_dec_flush(avctx, s->ctx);
  }
-@@ -598,10 +783,18 @@ static const AVCodecHWConfigInternal *const mediacodec_hw_configs[] = {
+@@ -598,10 +786,20 @@
  static const AVOption ff_mediacodec_vdec_options[] = {
      { "delay_flush", "Delay flush until hw output buffers are returned to the decoder",
                       OFFSET(delay_flush), AV_OPT_TYPE_BOOL, {.i64 = 0}, 0, 1, VD },
 +    { "piliexo_live_operating_rate", "Running decoder operating-rate hint",
 +                   OFFSET(piliexo_live_operating_rate), AV_OPT_TYPE_INT, {.i64 = 0}, -24000, 24000, VD },
++    { "piliexo_nonref_drops", "Internal count of non-reference access units skipped before decoding",
++                   OFFSET(piliexo_nonref_drops), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, VD },
      { "ndk_codec", "Use MediaCodec from NDK",
                     OFFSET(use_ndk_codec), AV_OPT_TYPE_BOOL, {.i64 = -1}, -1, 1, VD },
      { "operating_rate", "The desired operating rate that the codec will need to operate at, zero for unspecified",

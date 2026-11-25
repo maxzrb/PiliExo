@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-25 20:14 倍速洞察排除 Android MediaCodec 前确认的非参考跳帧。双 ABI 候选静态验证通过，已开始准备同版本替换包，真机验收通过后更新两处下载源。
+
 - 2026-11-25 20:03 `v26.11.25.1` 已发布，标签 `74b52f37a`。arm64 32.90 MB、ARMv7 32.96 MB，GitHub 和 ModelScope 哈希一致。最终 arm64 已在 MEP-AN00 覆盖安装并由用户手动冷启动验收。
 
 - 2026-11-25 19:46 v26.11.25.1 默认 Android 音频输出为 OpenSL ES → AudioTrack → AAudio。32.83 MB arm64 试机包已覆盖安装 MEP-AN00，哈希回读一致，已采集手动启动 Activity 事件。双 ABI 核心静态检查通过。正式包冷启动和发布待完成。
@@ -2630,3 +2632,10 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - Flutter 测试 324 项通过。两个 APK 已核对原正式证书 V2、16 KB APK 对齐、29 个插件注册、目标 ABI、包名、AOT 提交和 mpv 核心哈希。两颗核心使用 mpv 0.42.0、FFmpeg `bf11bea4`。
 - MEP-AN00 在 19:53 覆盖安装最终 arm64 包，设备回读哈希一致。19:54 用户手动冷启动并确认可发布，主 Activity 启动计时为 238 ms。ARMv7 只有静态证据。
 - GitHub 与 ModelScope 三份文件均核对字节数和 SHA-256。GitHub 已设为 Latest。[GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.25.1) · [ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
+
+## 2026-11-25 20:14 倍速非参考帧与播放器洞察计数
+
+- MEP-AN00 正式包的 4K 30 fps HEVC 样本在约 2 倍速时送显大多为 57 至 60 帧/秒，观测窗口的 MediaCodec 丢弃速率为零。一次 97.2 帧/秒的丢弃紧随两次 MediaCodec flush，其后恢复 30 帧/秒。厂商日志从 MediaCodec 入队开始，不能证明送入前是否跳过非参考帧。
+- FFmpeg 在 Android MediaCodec 前确认并主动跳过非参考访问单元时增加专用计数。mpv 解码线程每个输出采样取走计数，仅从该次洞察所用估算值扣除，原追帧逻辑及输出逾期统计同样生效。对无法确认的解码估算保留计数。
+- 两份正式补丁及清单哈希已更新，干净上游回放、双 ABI 编译、核心导出和对齐检查、6 项原生回归及专项原生计数用例、58 项 Flutter 测试均通过。候选 arm64 32,830,370 字节，SHA-256 `09338eeaeeb6bd269fa295321491f1f422835d04a03258bafcc2fdd45c4bd90e`。候选 AOT 仍是原发布源码，仅用于装机先测。
+- 用户要求手机验收通过后替换同版本文件。正式替换包使用本次修订提交重新构建，最终产物须再次真机冷启动。标签 `v26.11.25.1` 继续指向 `74b52f37a`。

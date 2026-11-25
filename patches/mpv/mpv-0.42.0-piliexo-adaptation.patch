@@ -59,6 +59,28 @@
  
          if (start_pts != MP_NOPTS_VALUE && packet && p->play_dir > 0 &&
              packet->pts < start_pts - .005 && !p->has_broken_packet_pts)
+@@ -1108,13 +1130,20 @@
+     if (!frame.type)
+         return;
+ 
++    int nonref_drops = 0;
++#if HAVE_ANDROID
++    if (p->header->type == STREAM_VIDEO && p->decoder->control)
++        p->decoder->control(p->decoder->f, VDCTRL_TAKE_NONREF_DROPS, &nonref_drops);
++#endif
++
+     mp_mutex_lock(&p->cache_lock);
+     if (p->attached_picture && frame.type == MP_FRAME_VIDEO)
+         p->decoded_coverart = frame;
+     if (p->attempt_framedrops) {
+         int dropped = MPMAX(0, p->packets_without_output - 1);
+         p->attempt_framedrops = MPMAX(0, p->attempt_framedrops - dropped);
+-        p->dropped_frames += dropped;
++        // 保留追帧策略的原有反馈，只从洞察计数中扣除已确认的主动跳帧。
++        p->dropped_frames += MPMAX(0, dropped - nonref_drops);
+     }
+     mp_mutex_unlock(&p->cache_lock);
+ 
 --- a/filters/f_decoder_wrapper.h
 +++ b/filters/f_decoder_wrapper.h
 @@ -49,6 +49,9 @@
@@ -71,12 +93,14 @@
  int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d);
  
  double mp_decoder_wrapper_get_container_fps(struct mp_decoder_wrapper *d);
-@@ -81,6 +84,9 @@
+@@ -81,6 +84,11 @@
      // int*: extra hw surfaces retained
      VDCTRL_SET_EXTRA_HW_FRAMES,
      VDCTRL_CHECK_FORCED_EOF,
 +#if HAVE_ANDROID
 +    VDCTRL_SET_OPERATING_RATE,
++    // int*：取走并清零本采样区间的主动非参考帧跳过数。
++    VDCTRL_TAKE_NONREF_DROPS,
 +#endif
  };
  
@@ -746,7 +770,7 @@
      if (mpctx->num_next_frames >= 1)
 --- a/video/decode/vd_lavc.c
 +++ b/video/decode/vd_lavc.c
-@@ -1425,6 +1425,13 @@
+@@ -1425,6 +1425,24 @@
  {
      vd_ffmpeg_ctx *ctx = vd->priv;
      switch (cmd) {
@@ -756,6 +780,17 @@
 +            av_opt_set_int(ctx->avctx->priv_data, "piliexo_live_operating_rate",
 +                           *(int *)arg, 0);
 +        return CONTROL_TRUE;
++    case VDCTRL_TAKE_NONREF_DROPS: {
++        void *priv = ctx->avctx ? ctx->avctx->priv_data : NULL;
++        int64_t drops;
++        if (!priv || av_opt_get_int(priv, "piliexo_nonref_drops", 0, &drops) < 0)
++            return CONTROL_UNKNOWN;
++        if (drops > 0) {
++            av_opt_set_int(priv, "piliexo_nonref_drops", 0, 0);
++            *(int *)arg = (int)drops;
++        }
++        return CONTROL_TRUE;
++    }
 +#endif
      case VDCTRL_SET_FRAMEDROP:
          ctx->framedrop_flags = *(int *)arg;
