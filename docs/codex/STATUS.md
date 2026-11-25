@@ -1,6 +1,6 @@
 # PiliExo AI 工作状态
 
-- 2026-11-25 23:50 准备发布 `v26.11.25.2`：修复片尾拖回不续播、系统媒体状态不同步和迟到 completed 事件，播放器洞察只统计实际未呈现的 VO 丢帧。用户已在 MEP-AN00 实机确认可以发布；正在构建和核验双 ABI 正式包。
+- 2026-11-25 23:59 `v26.11.25.2` 已发布，标签和 annotated tag object 分别为 `c9fc4142b`、源码 `68f996ff0`。双 ABI APK 与 SHA-256 清单已上传 GitHub/ModelScope 并完成远端哈希回读。
 
 - 2026-11-25 20:14 倍速洞察排除 Android MediaCodec 前确认的非参考跳帧。双 ABI 候选静态验证通过，已开始准备同版本替换包，真机验收通过后更新两处下载源。
 
@@ -2649,9 +2649,12 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 定向电影指标测试 9/9、播放器测试组 149/149、相关 Analyze 均通过。arm64 试机包 `dist/integration/playback-drop-accounting-20261125/PiliExo_android_v26.11.25_drop-accounting_arm64-v8a.apk` 为 32,830,370 字节，SHA-256 `826f6bc1db8e0f69df9921bb59470bd634c9747b7f40a6385b158eabd268a58a`；原正式证书 V2、16 KB 对齐、29 个插件、AOT 基线和定制核心检查通过。
 - 22:30 覆盖安装到 MEP-AN00，设备端回读字节数和哈希一致；冷启动到 `MainActivity` 成功，未发现应用级崩溃、插件缺失或动态库加载错误。4K 30 fps 长按倍速时洞察是否保持 0，以及恶性 VO 丢帧是否仍显示，尚待用户手动复测。
 
-## 2026-11-25 23:50 片尾拖回恢复与 v26.11.25.2 发布准备
+## 2026-11-25 23:59 片尾拖回恢复与 v26.11.25.2 发布
 
 - 用户确认播放结束冻结末帧正常，但拖回进度条仍不能恢复声画，系统媒体播放状态未同步，且偶发被迟到的片尾 completed 事件重新拉回冻结。片尾 seek 现在立即广播播放意图，并在后端位置真正越过新目标前屏蔽旧 completed 和旧暂停事件；普通暂停、直播及仍在片尾附近的 seek 保持原行为。
 - MEP-AN00 试机包覆盖安装、设备端哈希回读和冷启动通过；用户实机确认修复效果后明确允许发布。Flutter 全量 331 项测试通过，Analyze 0 error、0 warning（72 项既有 info）。
 - 双 ABI 的 ARM64 核心为 14,459,208 字节，SHA-256 `be409cfaad0abfa15685f78876938c6c1297c2cadecee89729590e6a1ebc365f`；ARMv7 核心为 12,993,664 字节，SHA-256 `3d59afd161fcb1ef0d42efc9a99586c61ea74bde34d50a7c18590731097df9e8`。两者均为 55 个 `mpv_*` 导出、四个 `0x4000` LOAD 段、无 RPATH/RUNPATH，并包含 FFmpeg `git-2026-11-25-bf11bea4`、Android 系统 CA 和直接洞察属性。
-- 新版本使用应用版本 `26.11.25+2`、Android `versionCode=48`，发布标签 `v26.11.25.2`。标签 `v26.11.25.1` 保持不动，正式资产替换步骤取消。
+- 正式源码提交为 `68f996ff01bf6a8b2e2a2e2c47ead4f0083aadd7`，annotated tag `v26.11.25.2` 的 tag object 为 `c9fc4142ba07f097758bbfad60b3ba6b49248710`。应用版本 `26.11.25+2`、Android `versionCode=48`；标签 `v26.11.25.1` 保持不动。
+- arm64 APK 为 34,059,170 字节，SHA-256 `97f805ece41a33cf89d463b9e9b3e71fd3dc7e08a35876cf49f5571af65f4028`；ARMv7 APK 为 33,747,896 字节，SHA-256 `d0d25915f5f48cb417c357d19b2ba08473970b2b025b7c88735d09d0aca82ab1`。两包均通过 AOT 提交、`versionCode=48`、单 ABI、29 个插件、定制核心、原证书 V2、16 KB 对齐和 `git diff --check`。
+- 最终 arm64 正式包已覆盖安装到 MEP-AN00，设备端长度与 SHA-256 一致，`MainActivity` 进程启动并处于 resumed；系统锁屏层保持前台，因此本轮没有把可见首页写成自动验收。用户已在此之前于同一最终逻辑试机包上手动确认播放修复并明确允许发布。
+- [GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.25.2) 已公开、非预发布并设为 Latest，三份资产服务器 digest 与本地一致。ModelScope `releases/v26.11.25.2/` 已清除非资产元数据，三份文件完整下载回读的 HTTP 状态、长度和 SHA-256 均与本地一致。[ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
