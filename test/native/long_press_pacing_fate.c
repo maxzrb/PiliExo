@@ -7,7 +7,11 @@
 
 enum { AV_CODEC_ID_H264, AV_CODEC_ID_HEVC, AV_PKT_FLAG_KEY = 1 };
 enum { AV_PKT_DATA_NEW_EXTRADATA };
-typedef struct { int codec_id; } AVCodecContext;
+typedef struct {
+    int codec_id;
+    uint8_t *extradata;
+    int extradata_size;
+} AVCodecContext;
 typedef struct {
     uint8_t *data;
     int size, flags, extradata;
@@ -22,6 +26,18 @@ static const uint8_t *av_packet_get_side_data(const AVPacket *pkt, int type,
 }
 
 #include "piliexo_nonref_au.h"
+
+static int parse_hex(const char *hex, uint8_t *data)
+{
+    int size = 0;
+    for (size_t i = 0; hex[i]; i += 2) {
+        unsigned byte;
+        if (strlen(hex + i) < 2 || sscanf(hex + i, "%2x", &byte) != 1)
+            return -1;
+        data[size++] = byte;
+    }
+    return size;
+}
 
 int main(void)
 {
@@ -77,16 +93,37 @@ int main(void)
             uint8_t data[60];
             AVPacket pkt = {.data = data};
             if (scanf("%4s %d %d %119s", codec, &pkt.flags, &pkt.extradata, hex)
-                != 4 || strlen(hex) % 2)
+                != 4 || (pkt.size = parse_hex(hex, data)) < 0)
                 return 1;
-            for (size_t i = 0; i < strlen(hex); i += 2) {
-                unsigned byte;
-                if (sscanf(hex + i, "%2x", &byte) != 1)
-                    return 1;
-                data[pkt.size++] = byte;
-            }
             AVCodecContext ctx = {
                 .codec_id = !strcmp(codec, "hevc") ? AV_CODEC_ID_HEVC : AV_CODEC_ID_H264,
+            };
+            printf("%s %s\n", name,
+                   piliexo_should_drop_nonref_au(&ctx, &pkt) ? "eligible" : "keep");
+        } else if (operation == 'x') {
+            char codec[5], hex[120];
+            int length_size, flags;
+            uint8_t data[60];
+            uint8_t extradata[22] = {1};
+            int extradata_size;
+            AVPacket pkt = {.data = data};
+            if (scanf("%4s %d %d %119s", codec, &length_size, &flags, hex) != 4 ||
+                length_size < 1 || length_size > 4 ||
+                (pkt.size = parse_hex(hex, data)) < 0)
+                return 1;
+            pkt.flags = flags;
+            int hevc = !strcmp(codec, "hevc");
+            if (hevc) {
+                extradata_size = 22;
+                extradata[21] = 0xfc | (length_size - 1);
+            } else {
+                extradata_size = 5;
+                extradata[4] = 0xfc | (length_size - 1);
+            }
+            AVCodecContext ctx = {
+                .codec_id = hevc ? AV_CODEC_ID_HEVC : AV_CODEC_ID_H264,
+                .extradata = extradata,
+                .extradata_size = extradata_size,
             };
             printf("%s %s\n", name,
                    piliexo_should_drop_nonref_au(&ctx, &pkt) ? "eligible" : "keep");

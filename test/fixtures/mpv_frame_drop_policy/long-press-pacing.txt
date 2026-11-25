@@ -22,3 +22,14 @@ n hevc-nonref hevc 0 0 000000010001aa
 n hevc-reference hevc 0 0 000000010201aa
 n hevc-unrecognized-vcl hevc 0 0 0000010001aa0000011401bb
 n hevc-invalid-header hevc 0 0 0000010000aa
+x h264-length2-nonref h264 2 0 000201aa
+x h264-length4-reference h264 4 0 000000020141aa
+x h264-length4-parameter-set h264 4 0 000000020167aa
+x h264-length4-key-packet h264 4 1 000000020101aa
+x h264-length4-mixed-reference h264 4 0 000000020101aa000000020141bb
+x h264-length4-malformed h264 4 0 000000050101aa
+x hevc-length4-nonref hevc 4 0 000000030001aa
+x hevc-length4-reference hevc 4 0 000000020201aa
+x hevc-length4-parameter-set hevc 4 0 000000022001aa
+x hevc-length4-mixed-reference hevc 4 0 000000030001aa000000030201bb
+x hevc-length4-malformed hevc 4 0 000000050001aa

@@ -1,6 +1,8 @@
+diff --git a/audio/out/ao_audiotrack.c b/audio/out/ao_audiotrack.c
+index f483ccc8e8d8b70f4daf9f1e2c26aa54b80e3fd5..25cb8ca495ef5c770c7045ce60e93eea760e8254 100644
 --- a/audio/out/ao_audiotrack.c
 +++ b/audio/out/ao_audiotrack.c
-@@ -745,8 +745,10 @@
+@@ -745,8 +745,10 @@ static int init(struct ao *ao)
      max = MP_ALIGN_UP(max, bps);
      p->size = MPCLAMP(buffer_size * 2, min, max);
      MP_VERBOSE(ao, "Setting bufferSize = %d (driver=%d, min=%d, max=%d)\n", p->size, buffer_size, min, max);
@@ -13,9 +15,11 @@
  
      p->chunksize = p->size;
      p->chunk = talloc_size(ao, p->size);
+diff --git a/filters/f_decoder_wrapper.c b/filters/f_decoder_wrapper.c
+index 4a2a3e4a185b967b67e6ce82e3cb13bdcccdadc6..a1c9965cf0ed0d8e485a21bb2d0cbe769d1b1c8d 100644
 --- a/filters/f_decoder_wrapper.c
 +++ b/filters/f_decoder_wrapper.c
-@@ -233,6 +233,9 @@
+@@ -233,6 +233,9 @@ struct priv {
      bool attached_picture;
      bool pts_reset;
      int attempt_framedrops; // try dropping this many frames
@@ -25,7 +29,7 @@
      int dropped_frames; // total frames _probably_ dropped
      int extra_hw_frames; // extra surfaces retained outside the decoder
  
-@@ -565,6 +568,16 @@
+@@ -565,6 +568,16 @@ void mp_decoder_wrapper_set_frame_drops(struct mp_decoder_wrapper *d, int num)
      mp_mutex_unlock(&p->cache_lock);
  }
  
@@ -42,7 +46,7 @@
  int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d)
  {
      struct priv *p = d->f->priv;
-@@ -1005,7 +1018,16 @@
+@@ -1005,7 +1018,16 @@ static void feed_packet(struct priv *p)
          mp_mutex_lock(&p->cache_lock);
          if (p->attempt_framedrops)
              framedrop_type = 1;
@@ -59,7 +63,7 @@
  
          if (start_pts != MP_NOPTS_VALUE && packet && p->play_dir > 0 &&
              packet->pts < start_pts - .005 && !p->has_broken_packet_pts)
-@@ -1108,13 +1130,20 @@
+@@ -1108,13 +1130,20 @@ static void read_frame(struct priv *p)
      if (!frame.type)
          return;
  
@@ -81,9 +85,11 @@
      }
      mp_mutex_unlock(&p->cache_lock);
  
+diff --git a/filters/f_decoder_wrapper.h b/filters/f_decoder_wrapper.h
+index b39d3f5f2a90dc65187084a0c4c4563102b215e1..493fa5024388a933aeb4731be6bc70e63eca30ce 100644
 --- a/filters/f_decoder_wrapper.h
 +++ b/filters/f_decoder_wrapper.h
-@@ -49,6 +49,9 @@
+@@ -49,6 +49,9 @@ void mp_decoder_wrapper_set_extra_hw_frames(struct mp_decoder_wrapper *d, int n)
  
  // Legacy decoder framedrop control.
  void mp_decoder_wrapper_set_frame_drops(struct mp_decoder_wrapper *d, int num);
@@ -93,7 +99,7 @@
  int mp_decoder_wrapper_get_frames_dropped(struct mp_decoder_wrapper *d);
  
  double mp_decoder_wrapper_get_container_fps(struct mp_decoder_wrapper *d);
-@@ -81,6 +84,11 @@
+@@ -81,6 +84,11 @@ enum dec_ctrl {
      // int*: extra hw surfaces retained
      VDCTRL_SET_EXTRA_HW_FRAMES,
      VDCTRL_CHECK_FORCED_EOF,
@@ -105,13 +111,14 @@
  };
  
  int mp_decoder_wrapper_control(struct mp_decoder_wrapper *d,
+diff --git a/include/mpv/client.h b/include/mpv/client.h
+index f970b9ab5dc792a20c8a5d4eca5a4526fbadb594..1b6511875876f81ba8b072290f320427caafc9ae 100644
 --- a/include/mpv/client.h
 +++ b/include/mpv/client.h
-@@ -1733,6 +1733,15 @@
-  * Safe to be called from mpv render API threads.
+@@ -1734,6 +1734,15 @@ MPV_EXPORT mpv_event *mpv_wait_event(mpv_handle *ctx, double timeout);
   */
  MPV_EXPORT void mpv_wakeup(mpv_handle *ctx);
-+
+ 
 +/**
 + * Calls av_jni_set_java_vm() with the given JavaVM*.
 + * https://github.com/FFmpeg/FFmpeg/blob/0ba719f726632d73592311615087a0d64aa2fb60/libavcodec/jni.h#L26-L36
@@ -120,12 +127,15 @@
 + * It is important to call this method so that libavcodec can access JNI environment & thus, mediacodec APIs.
 + */
 +MPV_EXPORT int mpv_lavc_set_java_vm(void *vm);
- 
++
  /**
   * Set a custom function that should be called when there are new events. Use
+  * this if blocking in mpv_wait_event() to wait for new events is not feasible.
+diff --git a/options/options.c b/options/options.c
+index a43241455191197d70b2f4588a369691a07b4514..208d4c09ef92329cefc40166f52729df2437ec8e 100644
 --- a/options/options.c
 +++ b/options/options.c
-@@ -827,7 +827,11 @@
+@@ -827,7 +827,11 @@ static const m_option_t mp_opts[] = {
          {"no", 0},
          {"vo", 1},
          {"decoder", 2},
@@ -138,9 +148,11 @@
      {"video-latency-hacks", OPT_BOOL(video_latency_hacks)},
  
      {"untimed", OPT_BOOL(untimed)},
+diff --git a/player/audio.c b/player/audio.c
+index 553873b6e1fa9268d6ae9f3507c252112f7a9999..2382ebc082a592aa7b75d6b1fc93e44f3fa3332a 100644
 --- a/player/audio.c
 +++ b/player/audio.c
-@@ -219,6 +219,9 @@
+@@ -219,6 +219,9 @@ static bool has_video_track(struct MPContext *mpctx)
  static void ao_chain_reset_state(struct ao_chain *ao_c)
  {
      ao_c->last_out_pts = MP_NOPTS_VALUE;
@@ -150,7 +162,7 @@
      ao_c->out_eof = false;
      ao_c->start_pts_known = false;
      ao_c->start_pts = MP_NOPTS_VALUE;
-@@ -244,6 +247,9 @@
+@@ -244,6 +247,9 @@ void uninit_audio_out(struct MPContext *mpctx)
  {
      struct ao_chain *ao_c = mpctx->ao_chain;
      if (ao_c) {
@@ -160,7 +172,7 @@
          ao_c->ao_queue = NULL;
          TA_FREEP(&ao_c->queue_filter);
          ao_c->ao = NULL;
-@@ -655,6 +661,14 @@
+@@ -655,6 +661,14 @@ double written_audio_pts(struct MPContext *mpctx)
      return mpctx->ao_chain ? mpctx->ao_chain->last_out_pts : MP_NOPTS_VALUE;
  }
  
@@ -175,7 +187,7 @@
  // Return pts value corresponding to currently playing audio adjusted for AO delay
  // and playback speed.
  double playing_audio_pts(struct MPContext *mpctx)
-@@ -662,7 +676,11 @@
+@@ -662,7 +676,11 @@ double playing_audio_pts(struct MPContext *mpctx)
      double pts = written_audio_pts(mpctx);
      if (pts == MP_NOPTS_VALUE || !mpctx->ao)
          return pts;
@@ -187,7 +199,7 @@
  }
  
  // This garbage is needed for untimed AOs. These consume audio infinitely fast,
-@@ -753,7 +771,15 @@
+@@ -753,7 +771,15 @@ static void ao_process(struct mp_filter *f)
          }
  
          mpctx->shown_aframes += samples;
@@ -203,7 +215,7 @@
          if (mpctx->video_status != STATUS_EOF)
              mpctx->delay += samples / real_samplerate;
          ao_c->last_out_pts = mp_aframe_end_pts(af);
-@@ -964,7 +990,7 @@
+@@ -964,7 +990,7 @@ void fill_audio_out_buffers(struct MPContext *mpctx)
              mpctx->audio_status = STATUS_EOF;
              mp_wakeup_core(mpctx);
              // stops untimed AOs, stops pull AOs from streaming silence
@@ -212,7 +224,7 @@
          } else {
              if (!ao_c->ao_underrun) {
                  MP_WARN(mpctx, "Audio device underrun detected.\n");
-@@ -1008,6 +1034,10 @@
+@@ -1008,6 +1034,10 @@ void fill_audio_out_buffers(struct MPContext *mpctx)
  // Drop data queued for output, or which the AO is currently outputting.
  void clear_audio_output_buffers(struct MPContext *mpctx)
  {
@@ -223,28 +235,62 @@
      if (mpctx->ao)
          ao_reset(mpctx->ao);
  }
+diff --git a/player/client.c b/player/client.c
+index de977a99f44c62fba13cfd9a4e42253c7a439036..978be3166e3fb5693a85c1c0cbbdc7108b0f2128 100644
 --- a/player/client.c
 +++ b/player/client.c
-@@ -21,6 +21,8 @@
- #include <stddef.h>
+@@ -22,6 +22,8 @@
  #include <stdint.h>
  #include <stdlib.h>
-+
-+#include <libavcodec/jni.h>
  
++#include <libavcodec/jni.h>
++
  #include "common/common.h"
  #include "common/global.h"
-@@ -976,6 +978,10 @@
-     ctx->queued_wakeup = true;
-     wakeup_client(ctx);
+ #include "common/msg.h"
+@@ -978,6 +980,10 @@ void mpv_wakeup(mpv_handle *ctx)
      mp_mutex_unlock(&ctx->lock);
-+}
-+
-+int mpv_lavc_set_java_vm(void *vm) {
-+    return av_jni_set_java_vm(vm, NULL);
  }
  
++int mpv_lavc_set_java_vm(void *vm) {
++    return av_jni_set_java_vm(vm, NULL);
++}
++
  // map client API types to internal types
+ static const struct m_option type_conv[] = {
+     [MPV_FORMAT_STRING]     = { .type = CONF_TYPE_STRING },
+diff --git a/player/command.c b/player/command.c
+index 981fe47a4d3f6dacc824ff598f7568d23dc2ec5e..64241426ed7132aebd02cc3da3f0838a3f4430d7 100644
+--- a/player/command.c
++++ b/player/command.c
+@@ -817,6 +817,17 @@ static int mp_property_frame_drop_vo(void *ctx, struct m_property *prop,
+     return m_property_int_ro(action, arg, vo_get_drop_count(mpctx->video_out));
+ }
+ 
++static int mp_property_insight_frame_drop_vo(void *ctx, struct m_property *prop,
++                                             int action, void *arg)
++{
++    MPContext *mpctx = ctx;
++    if (!mpctx->vo_chain)
++        return M_PROPERTY_UNAVAILABLE;
++
++    return m_property_int_ro(action, arg,
++                             vo_get_insight_drop_count(mpctx->video_out));
++}
++
+ static int mp_property_vo_delayed_frame_count(void *ctx, struct m_property *prop,
+                                               int action, void *arg)
+ {
+@@ -4714,6 +4725,7 @@ static const struct m_property mp_properties_base[] = {
+     {"display-height", mp_property_display_resolution},
+     {"decoder-frame-drop-count", mp_property_frame_drop_dec},
+     {"frame-drop-count", mp_property_frame_drop_vo},
++    {"piliexo-insight-vo-drop-count", mp_property_insight_frame_drop_vo},
+     {"vo-delayed-frame-count", mp_property_vo_delayed_frame_count},
+     {"percent-pos", mp_property_percent_pos},
+     {"time-pos", mp_property_time_pos},
+diff --git a/player/core.h b/player/core.h
+index f0124c7fe10d7fdcb115a7c2f46798018866baf7..1243bffbc63ecbd7b1456d7606a47e7780abb3b5 100644
 --- a/player/core.h
 +++ b/player/core.h
 @@ -22,6 +22,10 @@
@@ -258,7 +304,7 @@
  #include "clipboard/clipboard.h"
  #include "common/common.h"
  #include "filters/f_output_chain.h"
-@@ -163,12 +167,19 @@
+@@ -163,12 +167,19 @@ static inline bool track_has_program(const struct track *track, int program_id)
  }
  
  // Summarizes video filtering and output.
@@ -278,7 +324,7 @@
  
      struct track *track;
      struct mp_pin *filter_src;
-@@ -180,6 +191,11 @@
+@@ -180,6 +191,11 @@ struct vo_chain {
      // - video consists of sparse still images
      bool is_sparse;
      bool sparse_eof_signalled;
@@ -290,7 +336,7 @@
  
      bool underrun;
      bool underrun_signaled;
-@@ -198,6 +214,9 @@
+@@ -198,6 +214,9 @@ struct ao_chain {
      struct mp_async_queue *ao_queue;
      struct mp_filter *queue_filter;
      struct mp_filter *ao_filter;
@@ -300,7 +346,7 @@
      double ao_resume_time;
  
      bool out_eof;
-@@ -519,6 +538,9 @@
+@@ -519,6 +538,9 @@ double playing_audio_pts(struct MPContext *mpctx);
  void fill_audio_out_buffers(struct MPContext *mpctx);
  double written_audio_pts(struct MPContext *mpctx);
  void clear_audio_output_buffers(struct MPContext *mpctx);
@@ -310,7 +356,10 @@
  void update_playback_speed(struct MPContext *mpctx);
  void uninit_audio_out(struct MPContext *mpctx);
  void uninit_audio_chain(struct MPContext *mpctx);
---- a/player/piliexo_audio_clock.h
+diff --git a/player/piliexo_audio_clock.h b/player/piliexo_audio_clock.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..88efa1ac233f6e85efec708b4215575bf97195cb
+--- /dev/null
 +++ b/player/piliexo_audio_clock.h
 @@ -0,0 +1,57 @@
 +#ifndef PILIEXO_AUDIO_CLOCK_H
@@ -370,7 +419,10 @@
 +}
 +
 +#endif
---- a/player/piliexo_codec_rate.h
+diff --git a/player/piliexo_codec_rate.h b/player/piliexo_codec_rate.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..b6916163fa6bb4ed9022a2c8ca92bc6eaf689914
+--- /dev/null
 +++ b/player/piliexo_codec_rate.h
 @@ -0,0 +1,16 @@
 +#ifndef MPV_PILIEXO_CODEC_RATE_H
@@ -389,7 +441,10 @@
 +}
 +
 +#endif
---- a/player/piliexo_late_drop.h
+diff --git a/player/piliexo_late_drop.h b/player/piliexo_late_drop.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..4dcdf1c5e2364cbaf07d177573f222212a227d49
+--- /dev/null
 +++ b/player/piliexo_late_drop.h
 @@ -0,0 +1,81 @@
 +#ifndef MPV_PILIEXO_LATE_DROP_H
@@ -473,6 +528,8 @@
 +}
 +
 +#endif
+diff --git a/player/video.c b/player/video.c
+index a4fb7e635857d27c8ba817c66e3e4af15726837a..38caa5c7f27236e96a91668e369c25c665231194 100644
 --- a/player/video.c
 +++ b/player/video.c
 @@ -43,6 +43,10 @@
@@ -486,7 +543,7 @@
  #include "command.h"
  #include "screenshot.h"
  
-@@ -94,6 +98,11 @@
+@@ -94,6 +98,11 @@ static void vo_chain_reset_state(struct vo_chain *vo_c)
      vo_seek_reset(vo_c->vo);
      vo_c->underrun = false;
      vo_c->underrun_signaled = false;
@@ -498,7 +555,7 @@
  }
  
  void reset_video_state(struct MPContext *mpctx)
-@@ -355,6 +364,12 @@
+@@ -355,6 +364,12 @@ static void check_framedrop(struct MPContext *mpctx, struct vo_chain *vo_c)
  {
      struct MPOpts *opts = mpctx->opts;
      // check for frame-drop:
@@ -511,7 +568,7 @@
      if (mpctx->video_status == STATUS_PLAYING && !mpctx->paused &&
          mpctx->audio_status == STATUS_PLAYING && !ao_untimed(mpctx->ao) &&
          vo_c->track && vo_c->track->dec && (opts->frame_dropping & 2))
-@@ -370,6 +385,54 @@
+@@ -370,6 +385,54 @@ static void check_framedrop(struct MPContext *mpctx, struct vo_chain *vo_c)
      }
  }
  
@@ -566,17 +623,16 @@
  /* Modify video timing to match the audio timeline. There are two main
   * reasons this is needed. First, video and audio can start from different
   * positions at beginning of file or after a seek (MPlayer starts both
-@@ -443,7 +506,54 @@
+@@ -443,8 +506,56 @@ static void shift_frames(struct MPContext *mpctx)
      for (int n = 0; n < mpctx->num_next_frames - 1; n++)
          mpctx->next_frames[n] = mpctx->next_frames[n + 1];
      mpctx->num_next_frames -= 1;
--}
 +#if HAVE_ANDROID
 +    if (mpctx->vo_chain)
 +        mpctx->vo_chain->release_dropped_output = false;
 +#endif
-+}
-+
+ }
+ 
 +#if HAVE_ANDROID
 +static void drop_expired_mediacodec_output_after_release(struct MPContext *mpctx,
 +                                                        struct vo_chain *vo_c)
@@ -616,13 +672,15 @@
 +    mpctx->next_frames[0] = next;
 +    vo_c->release_dropped_output = true;
 +    talloc_free(old);
-+    vo_increment_drop_count(vo_c->vo, 1);
++    // 该帧由播放器为追音频时钟主动替换，单独标记供洞察扣除。
++    vo_increment_active_drop_count(vo_c->vo, 1);
 +}
 +#endif
- 
++
  static bool use_video_lookahead(struct MPContext *mpctx)
  {
-@@ -537,6 +647,10 @@
+     return mpctx->video_out &&
+@@ -537,6 +648,10 @@ static int video_output_image(struct MPContext *mpctx, bool *logical_eof)
      // Get a new frame if we need one.
      int r = VD_PROGRESS;
      if (needs_new_frame(mpctx)) {
@@ -633,7 +691,7 @@
          // Filter a new frame.
          struct mp_image *img = NULL;
          struct mp_frame frame = mp_pin_out_read(vo_c->filter->f->pins[1]);
-@@ -656,6 +770,9 @@
+@@ -656,6 +771,9 @@ static void update_avsync_before_frame(struct MPContext *mpctx)
          // don't touch the timing
      } else if (mpctx->audio_status == STATUS_PLAYING && !ao_untimed(mpctx->ao)) {
          double buffered_audio = ao_get_delay(mpctx->ao);
@@ -643,7 +701,7 @@
  
          double predicted = mpctx->delay / mpctx->video_speed +
                             mpctx->time_frame;
-@@ -1092,6 +1209,18 @@
+@@ -1092,6 +1210,18 @@ void write_video(struct MPContext *mpctx)
      struct vo_chain *vo_c = mpctx->vo_chain;
      struct vo *vo = vo_c->vo;
  
@@ -662,17 +720,16 @@
      if (vo_c->filter->reconfig_happened) {
          mp_notify(mpctx, MPV_EVENT_VIDEO_RECONFIG, NULL);
          vo_c->filter->reconfig_happened = false;
-@@ -1101,8 +1230,30 @@
+@@ -1101,8 +1231,30 @@ void write_video(struct MPContext *mpctx)
      if (mpctx->video_status == STATUS_READY)
          return;
  
 -    if (mpctx->paused && mpctx->video_status >= STATUS_READY)
--        return;
 +    if (mpctx->paused && mpctx->video_status >= STATUS_READY) {
 +#if HAVE_ANDROID
 +        vo_c->speed_transition = (struct piliexo_video_speed_transition){0};
 +#endif
-+        return;
+         return;
 +    }
 +
 +#if HAVE_ANDROID
@@ -695,7 +752,7 @@
  
      // Once the chain reached EOF nothing is read from it again.
      bool logical_eof = false;
-@@ -1215,6 +1366,11 @@
+@@ -1215,6 +1367,11 @@ void write_video(struct MPContext *mpctx)
          }
      }
  
@@ -707,7 +764,7 @@
      // Inject vo crop to notify and reconfig if needed
      apply_video_crop(mpctx, vo);
  
-@@ -1267,6 +1423,18 @@
+@@ -1267,6 +1424,18 @@ void write_video(struct MPContext *mpctx)
  
      double time_frame = MPMAX(mpctx->time_frame, -1);
      int64_t pts = mp_time_ns() + (int64_t)(time_frame * 1e9);
@@ -726,7 +783,7 @@
  
      // wait until VO wakes us up to get more frames
      // (NB: in theory, the 1st frame after display sync mode change uses the
-@@ -1292,11 +1460,19 @@
+@@ -1292,11 +1461,19 @@ void write_video(struct MPContext *mpctx)
  
      int req = vo_get_num_req_frames(mpctx->video_out);
      mp_assert(req >= 1 && req <= VO_MAX_REQ_FRAMES);
@@ -747,7 +804,7 @@
          .num_frames = MPMIN(mpctx->num_next_frames, req),
          .num_vsyncs = 1,
      };
-@@ -1319,13 +1495,19 @@
+@@ -1319,13 +1496,19 @@ void write_video(struct MPContext *mpctx)
      shift_frames(mpctx);
  
      schedule_frame(mpctx, frame);
@@ -768,9 +825,11 @@
  
      // The frames were shifted down; "initialize" the new first entry.
      if (mpctx->num_next_frames >= 1)
+diff --git a/video/decode/vd_lavc.c b/video/decode/vd_lavc.c
+index 2eb993336360011cd9790dacc266ad9f994dc5f8..6b0b41e58b9f40e15c7d23f3cb5256edee0ccb4b 100644
 --- a/video/decode/vd_lavc.c
 +++ b/video/decode/vd_lavc.c
-@@ -1425,6 +1425,24 @@
+@@ -1425,6 +1425,24 @@ static int control(struct mp_filter *vd, enum dec_ctrl cmd, void *arg)
  {
      vd_ffmpeg_ctx *ctx = vd->priv;
      switch (cmd) {
@@ -795,9 +854,11 @@
      case VDCTRL_SET_FRAMEDROP:
          ctx->framedrop_flags = *(int *)arg;
          return CONTROL_TRUE;
+diff --git a/video/out/gpu/context.c b/video/out/gpu/context.c
+index 60c0641a70de2ace082dd4cf37f72a2424c8d824..6f851f6437a91cb2b7387f0e635c9c2b1b700466 100644
 --- a/video/out/gpu/context.c
 +++ b/video/out/gpu/context.c
-@@ -214,6 +214,7 @@
+@@ -214,6 +214,7 @@ const struct m_sub_options ra_ctx_conf = {
              OPT_SETTINGSLIST(context_list, &ra_ctx_obj_list)},
          {"gpu-api",
              OPT_SETTINGSLIST(context_type_list, &ra_ctx_type_obj_list)},
@@ -805,9 +866,11 @@
          {"gpu-debug", OPT_BOOL(debug)},
          {"gpu-sw", OPT_BOOL(allow_sw)},
          {0}
+diff --git a/video/out/gpu/context.h b/video/out/gpu/context.h
+index 68a3621c0fc748e0bdc735968f0e1b7289862816..58c11727344a4c5e37ca47a31a81d0a5b4d57512 100644
 --- a/video/out/gpu/context.h
 +++ b/video/out/gpu/context.h
-@@ -12,6 +12,7 @@
+@@ -12,6 +12,7 @@ struct ra_ctx_opts {
      bool want_alpha;      // create an alpha framebuffer if possible
      bool debug;           // enable debugging layers/callbacks etc.
      bool probing;        // the backend was auto-probed
@@ -815,7 +878,10 @@
      bool composition;    // enable swapchain composition
      struct m_obj_settings *context_list; // list of `ra_ctx_fns.name` to probe
      struct m_obj_settings *context_type_list;  // list of `ra_ctx_fns.type` to probe
---- a/video/out/opengl/android_hdr.h
+diff --git a/video/out/opengl/android_hdr.h b/video/out/opengl/android_hdr.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..0895af8742c61b1859d3e578d304950872d05cdd
+--- /dev/null
 +++ b/video/out/opengl/android_hdr.h
 @@ -0,0 +1,40 @@
 +#pragma once
@@ -858,6 +924,8 @@
 +    if (hdr->max_fall > 0 && (!hdr->max_cll || hdr->max_fall <= hdr->max_cll))
 +        values[11] = mpv_android_hdr_scaled(hdr->max_fall, 10000);
 +}
+diff --git a/video/out/opengl/context_android.c b/video/out/opengl/context_android.c
+index 0a12cf8add4b98f475dc109dff46cf34f09f457a..df304f0f45ddc461123a024aec3de245d251eb9b 100644
 --- a/video/out/opengl/context_android.c
 +++ b/video/out/opengl/context_android.c
 @@ -22,17 +22,93 @@
@@ -954,7 +1022,7 @@
      eglSwapBuffers(p->egl_display, p->egl_surface);
  }
  
-@@ -74,19 +150,8 @@
+@@ -74,19 +150,8 @@ static bool android_init(struct ra_ctx *ctx)
      eglGetConfigAttrib(p->egl_display, config, EGL_NATIVE_VISUAL_ID, &format);
      ANativeWindow_setBuffersGeometry(native_window, 0, 0, format);
  
@@ -976,7 +1044,7 @@
  
      mpegl_load_functions(&p->gl, ctx->log);
  
-@@ -105,6 +170,8 @@
+@@ -105,6 +170,8 @@ fail:
  
  static bool android_reconfig(struct ra_ctx *ctx)
  {
@@ -985,9 +1053,68 @@
      int w, h;
      if (!vo_android_surface_size(ctx->vo, &w, &h))
          return false;
+diff --git a/video/out/vo.c b/video/out/vo.c
+index c90a55cc4cac51a25c042f4ba04c51a8194d3266..652050201182b34b4202618647643e8ad9658400 100644
+--- a/video/out/vo.c
++++ b/video/out/vo.c
+@@ -161,6 +161,7 @@ struct vo_internal {
+ 
+     int64_t delayed_count;
+     int64_t drop_count;
++    int64_t active_drop_count;
+     bool dropped_frame;             // the previous frame was dropped
+ 
+     struct vo_frame *current_frame; // last frame queued to the VO
+@@ -1253,6 +1254,30 @@ void vo_increment_drop_count(struct vo *vo, int64_t n)
+     mp_mutex_unlock(&vo->in->lock);
+ }
+ 
++int64_t vo_get_active_drop_count(struct vo *vo)
++{
++    mp_mutex_lock(&vo->in->lock);
++    int64_t r = vo->in->active_drop_count;
++    mp_mutex_unlock(&vo->in->lock);
++    return r;
++}
++
++int64_t vo_get_insight_drop_count(struct vo *vo)
++{
++    mp_mutex_lock(&vo->in->lock);
++    int64_t r = vo->in->drop_count - vo->in->active_drop_count;
++    mp_mutex_unlock(&vo->in->lock);
++    return r >= 0 ? r : 0;
++}
++
++void vo_increment_active_drop_count(struct vo *vo, int64_t n)
++{
++    mp_mutex_lock(&vo->in->lock);
++    vo->in->drop_count += n;
++    vo->in->active_drop_count += n;
++    mp_mutex_unlock(&vo->in->lock);
++}
++
+ // Make the VO redraw the OSD at some point in the future.
+ void vo_redraw(struct vo *vo)
+ {
+diff --git a/video/out/vo.h b/video/out/vo.h
+index f24918d4607e08ff4eeb0f6fdf9823ded0670c3b..23446b515d9d913a3f24b0e62672a145a10b70f7 100644
+--- a/video/out/vo.h
++++ b/video/out/vo.h
+@@ -544,6 +544,9 @@ void vo_destroy(struct vo *vo);
+ void vo_set_paused(struct vo *vo, bool paused);
+ int64_t vo_get_drop_count(struct vo *vo);
+ void vo_increment_drop_count(struct vo *vo, int64_t n);
++int64_t vo_get_active_drop_count(struct vo *vo);
++int64_t vo_get_insight_drop_count(struct vo *vo);
++void vo_increment_active_drop_count(struct vo *vo, int64_t n);
+ int64_t vo_get_delayed_count(struct vo *vo);
+ void vo_query_formats(struct vo *vo, uint8_t *list);
+ void vo_event(struct vo *vo, int event);
+diff --git a/video/out/vo_gpu_next.c b/video/out/vo_gpu_next.c
+index b6d69308da5580050a147793267082f13cc84bf6..b4ba6e6a09531a431a844c1fba06d72adbbcb85d 100644
 --- a/video/out/vo_gpu_next.c
 +++ b/video/out/vo_gpu_next.c
-@@ -1249,6 +1249,12 @@
+@@ -1249,6 +1249,12 @@ static void apply_target_options(struct priv *p, struct pl_frame *target,
          target->color.transfer = opts->target_trc;
      if (opts->target_peak && (!target->color.hdr.max_luma || !hint))
          target->color.hdr.max_luma = opts->target_peak;

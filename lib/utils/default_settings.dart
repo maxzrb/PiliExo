@@ -59,6 +59,7 @@ Map<String, Object?> createDefaultSettingValues() => {
   'hideTabBar': false,
   'horizontalScreen': true,
   'isPureBlackTheme': false,
+  'keepLastFrame': true,
   'liveQuality': 30000,
   'liveQualityCellular': 10000,
   'liveStream': <String>['http_stream', 'flv', 'hevc'],

@@ -18,6 +18,7 @@ abstract final class SettingBoxKey {
       hdrPlaybackRoute = 'hdrPlaybackRoute',
       playbackInsightMode = 'playbackInsightMode',
       playbackInsightTransparency = 'playbackInsightTransparency',
+      keepLastFrame = 'keepLastFrame',
       enableAudioFocus = 'enableAudioFocus',
       audioOutput = 'audioOutput',
       bluetoothLatencyCompensation = 'bluetoothLatencyCompensation',

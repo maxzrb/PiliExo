@@ -57,6 +57,62 @@ class HdrMedia3SourceTest {
     }
 
     @Test
+    fun pausesCompletedPlaybackAtLastFrameWhenEnabled() {
+        assertTrue(
+            shouldCompletePausedAtEnd(
+                keepLastFrame = true,
+                playbackState = androidx.media3.common.Player.STATE_READY,
+                playWhenReady = false,
+                positionMs = 999_970L,
+                durationMs = 1_000_000L,
+            ),
+        )
+        assertFalse(
+            shouldCompletePausedAtEnd(
+                keepLastFrame = false,
+                playbackState = androidx.media3.common.Player.STATE_READY,
+                playWhenReady = false,
+                positionMs = 999_970L,
+                durationMs = 1_000_000L,
+            ),
+        )
+        assertFalse(
+            shouldCompletePausedAtEnd(
+                keepLastFrame = true,
+                playbackState = androidx.media3.common.Player.STATE_READY,
+                playWhenReady = false,
+                positionMs = 999_900L,
+                durationMs = 1_000_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun suppressesStaleCompletionWhenSeekingAwayFromEnd() {
+        assertTrue(
+            shouldSuppressStaleCompletionAfterSeek(
+                wasCompleted = true,
+                targetMs = 30_000L,
+                durationMs = 60_000L,
+            ),
+        )
+        assertFalse(
+            shouldSuppressStaleCompletionAfterSeek(
+                wasCompleted = false,
+                targetMs = 30_000L,
+                durationMs = 60_000L,
+            ),
+        )
+        assertFalse(
+            shouldSuppressStaleCompletionAfterSeek(
+                wasCompleted = true,
+                targetMs = 59_990L,
+                durationMs = 60_000L,
+            ),
+        )
+    }
+
+    @Test
     fun parsesTracksAndHeaders() {
         val source = HdrMedia3Source.from(
             mapOf(

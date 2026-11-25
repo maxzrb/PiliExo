@@ -70,6 +70,7 @@ class HdrMedia3Controller {
   int _height = 0;
   double _speed = 1.0;
   String _resizeMode = 'fit';
+  bool _keepLastFrame = true;
 
   bool get isPlaying => _isPlaying;
   bool get playWhenReady => _playWhenReady;
@@ -110,12 +111,14 @@ class HdrMedia3Controller {
     String? subtitleVtt,
     String? subtitleLanguage,
     String? subtitleLabel,
+    bool keepLastFrame = true,
   }) async {
     await initialize();
     _source = source;
     _subtitleVtt = subtitleVtt;
     _subtitleLanguage = subtitleLanguage;
     _subtitleLabel = subtitleLabel;
+    _keepLastFrame = keepLastFrame;
     _completed = false;
     _firstFrame = false;
     _playWhenReady = playWhenReady;
@@ -136,6 +139,7 @@ class HdrMedia3Controller {
       'startPositionMs': startPosition.inMilliseconds,
       'playWhenReady': playWhenReady,
       'resizeMode': _resizeMode,
+      'keepLastFrame': keepLastFrame,
       if (subtitleVtt != null) 'subtitleVtt': subtitleVtt,
       if (subtitleLanguage != null) 'subtitleLanguage': subtitleLanguage,
       if (subtitleLabel != null) 'subtitleLabel': subtitleLabel,
@@ -155,9 +159,11 @@ class HdrMedia3Controller {
     return _invoke('pause');
   }
 
-  Future<void> seekTo(Duration position) => _invoke('seekTo', {
-    'positionMs': position.inMilliseconds.clamp(0, 1 << 62),
-  });
+  Future<void> seekTo(Duration position) async {
+    _positionMs = position.inMilliseconds.clamp(0, 1 << 62).toInt();
+    _completed = false;
+    await _invoke('seekTo', {'positionMs': _positionMs});
+  }
 
   Future<void> setSpeed(double speed) async {
     final value = speed.clamp(0.1, 4.0).toDouble();
@@ -278,6 +284,7 @@ class HdrMedia3Controller {
       subtitleVtt: _subtitleVtt,
       subtitleLanguage: _subtitleLanguage,
       subtitleLabel: _subtitleLabel,
+      keepLastFrame: _keepLastFrame,
     );
     if (oldSpeed != 1.0) await setSpeed(oldSpeed);
   }

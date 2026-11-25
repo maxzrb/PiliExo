@@ -22,3 +22,14 @@ hevc-nonref eligible
 hevc-reference keep
 hevc-unrecognized-vcl keep
 hevc-invalid-header keep
+h264-length2-nonref eligible
+h264-length4-reference keep
+h264-length4-parameter-set keep
+h264-length4-key-packet keep
+h264-length4-mixed-reference keep
+h264-length4-malformed keep
+hevc-length4-nonref eligible
+hevc-length4-reference keep
+hevc-length4-parameter-set keep
+hevc-length4-mixed-reference keep
+hevc-length4-malformed keep

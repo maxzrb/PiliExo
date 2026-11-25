@@ -27,7 +27,7 @@ class MpvRuntimeObserver {
     if (client == nullptr) return null;
     final observer = MpvRuntimeObserver._(client);
     const properties = <(String, int)>[
-      ('frame-drop-count', mpv.mpv_format.MPV_FORMAT_INT64),
+      ('piliexo-insight-vo-drop-count', mpv.mpv_format.MPV_FORMAT_INT64),
       ('decoder-frame-drop-count', mpv.mpv_format.MPV_FORMAT_INT64),
       ('demuxer-cache-state/fw-bytes', mpv.mpv_format.MPV_FORMAT_INT64),
       ('demuxer-cache-state/cache-duration', mpv.mpv_format.MPV_FORMAT_DOUBLE),

@@ -1,6 +1,9 @@
 /// 保存 mpv 已报告的属性；未报告的计数不能当作零掉帧。
 class MpvRuntimeMetrics {
   int? outputDroppedFrames;
+
+  /// 仅保留 mpv 的估算值供排查，不进入播放器洞察。
+  /// 该值会混入硬件解码队列延迟和主动跳帧，不能证明真实丢帧。
   int? decoderDroppedFrames;
   int? forwardBytes;
   double? cacheDuration;
@@ -11,11 +14,9 @@ class MpvRuntimeMetrics {
   String? audioDecoder;
   int recentDroppedFrames = 0;
   int? _previousOutputDroppedFrames;
-  int? _previousDecoderDroppedFrames;
   int _totalDroppedFrames = 0;
 
-  bool get droppedFramesAvailable =>
-      outputDroppedFrames != null || decoderDroppedFrames != null;
+  bool get droppedFramesAvailable => outputDroppedFrames != null;
 
   int get droppedFrames => _totalDroppedFrames;
 
@@ -33,17 +34,18 @@ class MpvRuntimeMetrics {
     return value.isFinite && value > 0 ? value : null;
   }
 
-  /// 输出和解码计数独立累计，单项清零或暂时未知不能清掉历史或相互抵扣。
+  /// 只累计实际未呈现的 VO 丢帧。
+  ///
+  /// decoder-frame-drop-count 是“可能丢弃”的启发式估算，正常硬件解码排队
+  /// 和播放器主动跳过非参考帧都可能触发，不能计入恶性丢帧。
   void finishSample() {
-    recentDroppedFrames =
-        _delta(outputDroppedFrames, _previousOutputDroppedFrames) +
-        _delta(decoderDroppedFrames, _previousDecoderDroppedFrames);
+    recentDroppedFrames = _delta(
+      outputDroppedFrames,
+      _previousOutputDroppedFrames,
+    );
     _totalDroppedFrames += recentDroppedFrames;
     if (outputDroppedFrames != null && outputDroppedFrames! >= 0) {
       _previousOutputDroppedFrames = outputDroppedFrames;
-    }
-    if (decoderDroppedFrames != null && decoderDroppedFrames! >= 0) {
-      _previousDecoderDroppedFrames = decoderDroppedFrames;
     }
   }
 

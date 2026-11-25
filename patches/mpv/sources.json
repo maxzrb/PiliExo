@@ -8,7 +8,7 @@
     "patches": [
       {
         "file": "mpv-0.42.0-piliexo-adaptation.patch",
-        "sha256": "0520386019f574755cba30c15f79ac8ecaaad0cfb3505fceefb1a82a422a930d"
+        "sha256": "00c371f17e7ef574ba08b16568abc96eb88e1a7e75c3d36d161a4f17941539a4"
       }
     ]
   },
@@ -29,7 +29,7 @@
     "patches": [
       {
         "file": "ffmpeg-android-dynamic-hdr.patch",
-        "sha256": "e5c5e97ce872d737487225eea117a165ce7881cdd04f34bbc76b8b6d4e1e5f1e"
+        "sha256": "cb3474b321c4afee238b63488e2e22c3d640868b194bed865a0d50f7c8c16c22"
       },
       {
         "file": "ffmpeg-android-system-ca.patch",

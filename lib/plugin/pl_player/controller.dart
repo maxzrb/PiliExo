@@ -44,6 +44,7 @@ import 'package:PiliPlus/plugin/pl_player/utils/media_bitrate.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_runtime_observer.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_drop_accounting.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_rate_coordinator.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/playback_seek_policy.dart';
 import 'package:PiliPlus/services/service_locator.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/android/android_helper.dart';
@@ -128,7 +129,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   MpvRuntimeObserver? _mpvRuntimeObserver;
   Timer? _bandwidthRefreshTimer;
   Timer? _longPressDropRecoveryTimer;
+  Timer? _completedSeekGuardTimer;
+  Duration? _completedSeekRecoveryTarget;
   static const _longPressDropRecoveryDuration = Duration(milliseconds: 500);
+  static const _completedSeekGuardDuration = Duration(seconds: 5);
   bool _hdrFallbackInProgress = false;
   bool _hdrFallbackToastShown = false;
   bool _bluetoothLatencyBound = false;
@@ -214,6 +218,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   void _resetPlaybackInsight() {
     _longPressDropRecoveryTimer?.cancel();
     _longPressDropRecoveryTimer = null;
+    _finishCompletedSeekRecovery();
     _stopBandwidthRefresh();
     _dropAccounting.reset();
     _playbackTelemetry = const PlaybackTelemetry();
@@ -1484,8 +1489,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       // 避免切源期间的 mpv 空闲画面重设暂停视频的输出尺寸。
       player.setProperty('force-window', 'no');
     }
-
-    player.setMediaHeader(userAgent: BrowserUa.pc, referer: HttpString.baseUrl);
+    // keep-open 保留结尾画面；pause=no 让用户拖回时间轴后可直接继续解码。
+    player
+      ..setProperty('keep-open', Pref.keepLastFrame ? 'yes' : 'no')
+      ..setProperty('keep-open-pause', 'no')
+      ..setMediaHeader(
+        userAgent: BrowserUa.pc,
+        referer: HttpString.baseUrl,
+      );
 
     _startListeners(player);
 
@@ -1627,6 +1638,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       source,
       startPosition: seekTo ?? Duration.zero,
       playWhenReady: _autoPlay,
+      keepLastFrame: Pref.keepLastFrame,
     );
     videoOutputReady.value = true;
     updateSubtitleStyle();
@@ -1876,6 +1888,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   void _onPlayingChanged(bool playing) {
     if (playing) {
+      _confirmCompletedSeekRecovery(currentPosition);
       _startBandwidthRefresh();
       _stopWakeLockTimer();
       WakelockPlus.enable();
@@ -1890,6 +1903,8 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       audioSessionHandler?.setActive(true);
       _updatePlaybackState();
     } else {
+      _confirmCompletedSeekRecovery(currentPosition);
+      if (_completedSeekRecoveryTarget != null) return;
       unawaited(setLongPressStatus(false));
       _stopBandwidthRefresh();
       _disableAutoEnterPip();
@@ -1915,6 +1930,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void _onCompleted() {
+    // 后端可能把片尾旧 completed 排在新 seek 或 play 之后发送。
+    // 在观察位置越过新目标前，不能再用当前的片尾位置判断事件新旧。
+    if (_completedSeekRecoveryTarget != null) return;
     unawaited(setLongPressStatus(false));
     _playWhenReady = false;
     _stopBandwidthRefresh();
@@ -1935,6 +1953,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (!_positionEventController.isClosed) {
       _positionEventController.add(value);
     }
+    _confirmCompletedSeekRecovery(value);
     final posInSeconds = value.inSeconds;
     if (posInSeconds != position.value) {
       position.value = posInSeconds;
@@ -2412,6 +2431,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   /// 移除事件监听
   void _removeListeners() {
     _stopBandwidthRefresh();
+    _finishCompletedSeekRecovery();
     _mpvRuntimeObserver?.dispose();
     _mpvRuntimeObserver = null;
     _subscriptions?.forEach((e) => e.cancel());
@@ -2425,6 +2445,23 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (position < Duration.zero) {
       position = Duration.zero;
     }
+    final resumeAfterCompletedSeek =
+        PlaybackSeekPolicy.shouldResumeAfterCompletedSeek(
+          isLive: isLive,
+          wasCompleted: playerStatus.value.isCompleted || isCompleted,
+          playWhenReady: _playWhenReady,
+          target: position,
+          duration: currentDuration,
+        );
+    if (resumeAfterCompletedSeek) {
+      // 片尾冻结后的第一次拖动恢复播放意图，并立即广播给系统播放服务。
+      _beginCompletedSeekRecovery(position);
+      _playWhenReady = true;
+      playerStatus.value = .playing;
+      for (final listener in _statusListeners) {
+        listener(.playing);
+      }
+    }
     _heartDuration = position.inSeconds;
     _updatePlaybackState(position: position, force: true);
 
@@ -2433,6 +2470,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       try {
         _beginDropTransition();
         await hdr.seekTo(position);
+        if (resumeAfterCompletedSeek) {
+          await play(hideControls: false);
+        }
       } catch (e) {
         if (kDebugMode) debugPrint('seek failed: $e');
       }
@@ -2445,9 +2485,39 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _beginDropTransition();
       await _videoPlayerController?.seek(position);
       _updateIOSPip(position);
+      if (resumeAfterCompletedSeek) {
+        await play(hideControls: false);
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('seek failed: $e');
     }
+  }
+
+  void _beginCompletedSeekRecovery(Duration target) {
+    _completedSeekGuardTimer?.cancel();
+    _completedSeekRecoveryTarget = target;
+    _completedSeekGuardTimer = Timer(
+      _completedSeekGuardDuration,
+      _finishCompletedSeekRecovery,
+    );
+  }
+
+  void _confirmCompletedSeekRecovery(Duration observed) {
+    final target = _completedSeekRecoveryTarget;
+    if (target == null) return;
+    if (PlaybackSeekPolicy.hasAdvancedFromCompletedSeek(
+      observed: observed,
+      target: target,
+      duration: currentDuration,
+    )) {
+      _finishCompletedSeekRecovery();
+    }
+  }
+
+  void _finishCompletedSeekRecovery() {
+    _completedSeekGuardTimer?.cancel();
+    _completedSeekGuardTimer = null;
+    _completedSeekRecoveryTarget = null;
   }
 
   /// 速度属性异步提交；松手恢复不等待旧命令回复或seek/open操作锁。
@@ -2576,12 +2646,14 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     audioSessionHandler?.setActive(true);
 
     playerStatus.value = PlayerStatus.playing;
+    _updatePlaybackState(force: true);
     // screenManager.setOverlays(false);
   }
 
   /// 暂停播放
   Future<void> pause({bool notify = true, bool isInterrupt = false}) async {
     await setLongPressStatus(false);
+    _finishCompletedSeekRecovery();
     _playWhenReady = false;
     _stopBandwidthRefresh();
     if (isPlaying) _beginDropTransition(reuseAllowance: true);

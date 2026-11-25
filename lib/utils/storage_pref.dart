@@ -1037,6 +1037,9 @@ abstract final class Pref {
     defaultValue: AudioOutput.defaultValue,
   );
 
+  static bool get keepLastFrame =>
+      _setting.get(SettingBoxKey.keepLastFrame, defaultValue: true);
+
   static bool get bluetoothLatencyCompensation => _setting.get(
     SettingBoxKey.bluetoothLatencyCompensation,
     defaultValue: false,

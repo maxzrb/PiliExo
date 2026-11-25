@@ -30,6 +30,13 @@ List<SettingsModel> get videoSettings => [
     setKey: SettingBoxKey.enableHA,
     defaultVal: true,
   ),
+  const SwitchModel(
+    title: '播放结束保留最后一帧',
+    subtitle: '默认冻结在结尾画面，重开视频或下一段播放后生效',
+    leading: Icon(Icons.last_page_outlined),
+    setKey: SettingBoxKey.keepLastFrame,
+    defaultVal: true,
+  ),
   if (Platform.isAndroid)
     NormalModel(
       title: 'HDR 播放路线',

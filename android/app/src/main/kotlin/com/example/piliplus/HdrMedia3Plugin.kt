@@ -154,6 +154,7 @@ class HdrMedia3Plugin(
                         call.argument<Number>("startPositionMs")?.toLong() ?: 0L,
                         call.argument<Boolean>("playWhenReady") ?: false,
                         call.argument<String>("resizeMode") ?: "fit",
+                        call.argument<Boolean>("keepLastFrame") ?: true,
                     )
                     result.success(null)
                 }
@@ -389,6 +390,28 @@ internal fun media3ResizeMode(mode: String): Int = when (mode) {
     "fitHeight" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT
     else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
 }
+
+internal fun shouldCompletePausedAtEnd(
+    keepLastFrame: Boolean,
+    playbackState: Int,
+    playWhenReady: Boolean,
+    positionMs: Long,
+    durationMs: Long,
+): Boolean =
+    keepLastFrame &&
+        playbackState == Player.STATE_READY &&
+        !playWhenReady &&
+        durationMs > 0 &&
+        durationMs - positionMs <= 50
+
+internal fun shouldSuppressStaleCompletionAfterSeek(
+    wasCompleted: Boolean,
+    targetMs: Long,
+    durationMs: Long,
+): Boolean =
+    wasCompleted &&
+        durationMs > 0L &&
+        targetMs < durationMs - 50L
 
 /**
  * Media3 明确报告视频解码/格式错误后使用的候选状态。
@@ -779,6 +802,8 @@ private class HdrMedia3Session(
     private var lastLoadTrackType = C.TRACK_TYPE_UNKNOWN
     private var bandwidthEstimate = -1L
     private var cumulativeDroppedFrames = 0
+    private var keepLastFrame = true
+    private var completedEmitted = false
     private val droppedFrameSamples = ArrayDeque<DroppedFrameSample>()
 
     private data class DroppedFrameSample(
@@ -946,8 +971,12 @@ private class HdrMedia3Session(
         startPositionMs: Long = 0L,
         playWhenReady: Boolean = false,
         requestedResizeMode: String? = null,
+        keepLastFrame: Boolean = true,
     ) {
         check(!released) { "播放器已经释放" }
+        this.keepLastFrame = keepLastFrame
+        completedEmitted = false
+        player.setPauseAtEndOfMediaItems(keepLastFrame)
         requestedResizeMode?.let(::setResizeMode)
         val fingerprint = fingerprintOf(newSource)
         if (fingerprint != sourceFingerprint) {
@@ -994,6 +1023,7 @@ private class HdrMedia3Session(
 
     fun play() {
         if (!released) {
+            completedEmitted = false
             bandwidthSamplingGate.setPlayWhenReady(true)
             player.play()
             startTicker()
@@ -1011,8 +1041,27 @@ private class HdrMedia3Session(
 
     fun seekTo(positionMs: Long) {
         if (!released) {
+            val targetMs = positionMs.coerceAtLeast(0L)
+            val durationMs = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
+            val wasCompleted =
+                completedEmitted ||
+                    player.playbackState == Player.STATE_ENDED ||
+                    shouldCompletePausedAtEnd(
+                        keepLastFrame,
+                        player.playbackState,
+                        player.playWhenReady,
+                        player.currentPosition,
+                        durationMs,
+                    )
             resetMediaConsumptionStats()
-            player.seekTo(positionMs.coerceAtLeast(0L))
+            // 切离片尾时保留去重状态，阻止 seek 过渡期间的旧完成事件再次冻结。
+            completedEmitted =
+                shouldSuppressStaleCompletionAfterSeek(
+                    wasCompleted,
+                    targetMs,
+                    durationMs,
+                )
+            player.seekTo(targetMs)
             emitProgress()
         }
     }
@@ -1526,6 +1575,24 @@ private class HdrMedia3Session(
             ),
         )
         emitEvent("buffered", mapOf("positionMs" to bufferedPositionMs))
+        if (shouldCompletePausedAtEnd(
+                keepLastFrame,
+                player.playbackState,
+                player.playWhenReady,
+                positionMs,
+                durationMs,
+            )
+        ) {
+            emitCompleted()
+        }
+    }
+
+    private fun emitCompleted() {
+        if (completedEmitted) return
+        completedEmitted = true
+        bandwidthSamplingGate.setPlayWhenReady(false)
+        handler.removeCallbacks(progressRunnable)
+        emitEvent("completed")
     }
 
     private fun emitEvent(type: String, data: Map<String, Any?> = emptyMap()) {
@@ -1593,16 +1660,15 @@ private class HdrMedia3Session(
                 emitEvent("buffering", mapOf("value" to false))
             }
             Player.STATE_ENDED -> {
-                bandwidthSamplingGate.setPlayWhenReady(false)
-                handler.removeCallbacks(progressRunnable)
                 emitProgress()
-                emitEvent("completed")
+                emitCompleted()
             }
         }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         emitEvent("playing", mapOf("value" to isPlaying))
+        if (!isPlaying) emitProgress()
         startTicker()
     }
 

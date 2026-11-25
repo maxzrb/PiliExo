@@ -21,6 +21,7 @@ BUILD = ROOT / "build"
 TOOLS = ROOT / "build-tools"
 PREFIX = Path(os.environ.get("MPV_BUILD_PREFIX", REPO / "tmp/mpv-0.42.0-upgrade/prefix")).resolve()
 FFMPEG_SOURCE = Path(os.environ.get("FFMPEG_SOURCE_DIR", REPO / "tmp/mpv-0.42.0-upgrade/ffmpeg")).resolve()
+MPV_SOURCE = Path(os.environ.get("MPV_SOURCE_DIR", SOURCES / "mpv-0.42.0")).resolve()
 MPV_BUILD_DIR = Path(os.environ.get("MPV_BUILD_DIR", BUILD / "mpv-0.42-arm64")).resolve()
 CROSS = ROOT / "android-arm64.ini"
 PYTHON = Path(sys.executable)
@@ -153,7 +154,7 @@ def prepare_libplacebo_pc():
 
 
 def build_mpv():
-    source = SOURCES / "mpv-0.42.0"
+    source = MPV_SOURCE
     build = MPV_BUILD_DIR
     if not (build / "build.ninja").exists():
         run(PYTHON, "-m", "mesonbuild.mesonmain", "setup", build, source,

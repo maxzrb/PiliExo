@@ -42,6 +42,10 @@ void main() {
     );
   });
 
+  test('播放结束默认保留最后一帧', () {
+    expect(createDefaultSettingValues()['keepLastFrame'], isTrue);
+  });
+
   test('预测性返回默认跟手、位移 70%、渐隐 0%', () {
     final defaults = createDefaultSettingValues();
 

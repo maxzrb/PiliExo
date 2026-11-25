@@ -124,11 +124,21 @@ def output_dependencies():
 
 
 def build_mpv():
-    ffmpeg_source = work / "ffmpeg"
+    ffmpeg_source = Path(
+        os.environ.get("FFMPEG_SOURCE_DIR", work / "ffmpeg")
+    ).resolve()
+    mpv_source = Path(
+        os.environ.get("MPV_SOURCE_DIR", sources / "mpv-0.42.0")
+    ).resolve()
     output = work / "mpv"
     if not (prefix / "lib/libavcodec.a").is_file():
         raise RuntimeError("先构建并安装 ARMv7 FFmpeg")
-    os.environ.update(MPV_BUILD_PREFIX=str(prefix), FFMPEG_SOURCE_DIR=str(ffmpeg_source))
+    os.environ.update(
+        MPV_BUILD_PREFIX=str(prefix),
+        FFMPEG_SOURCE_DIR=str(ffmpeg_source),
+        MPV_SOURCE_DIR=str(mpv_source),
+        MPV_BUILD_DIR=str(output),
+    )
     helpers = runpy.run_path(str(root / "build_arm64.py"))
     helpers["generate_ffmpeg_pc"]()
     pc = prefix / "lib/pkgconfig/libplacebo.pc"
@@ -137,7 +147,7 @@ def build_mpv():
 
     if not (output / "build.ninja").exists():
         run("mpv-setup", sys.executable, "-m", "mesonbuild.mesonmain",
-            "setup", output, sources / "mpv-0.42.0", "--cross-file", cross,
+            "setup", output, mpv_source, "--cross-file", cross,
             "--buildtype=release", "-Dprefix=/", "-Dlibmpv=true", "-Dcplayer=false",
             "-Dgpl=false", "-Dlua=disabled", "-Djavascript=disabled", "-Dvulkan=disabled",
             "-Dmanpage-build=disabled", "-Dhtml-build=disabled", "-Dpdf-build=disabled",

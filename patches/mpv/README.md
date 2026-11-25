@@ -18,7 +18,16 @@ Java MediaCodec 接收限在 15–240 的 `operating-rate` 提示，驱动拒绝
 实际跟不上音频时，FFmpeg 每 500ms 根据成功解码的输出数估算吞吐，按
 `1 - 实测吞吐 / 目标吞吐` 累计丢帧额度。仅在额度足够时省去完整的 H.264/HEVC 非参考访问单元。
 关键帧、参数集、带新 extradata 的包、含参考画面或无法确认依赖关系的包均保留。
-1 倍时不使用该预算。目标倍率改变或发生跳转时清空旧预算。
+访问单元解析同时支持 MPEG-TS 等输入的 Annex B 和 DASH/fMP4 的 1～4 字节长度前缀，
+长度字段宽度从 AVC/HEVC 配置记录读取，不按载荷猜测。1 倍时不使用该预算。目标倍率改变
+或发生跳转时清空旧预算。
+
+mpv 输出层把主动替换的过期画面单独累计，并直接暴露
+`piliexo-insight-vo-drop-count` 作为已扣除这部分主动替换的洞察累计值。Dart 不再组合
+`frame-drop-count` 与第二个属性后自行相减，避免属性回调先后造成一次虚假计数。
+`decoder-frame-drop-count` 是 mpv 对“可能丢弃”的启发式估算，会混入硬件解码队列
+延迟和主动跳帧，也不计入播放器洞察。洞察只使用实际未呈现的 VO 丢帧，核心内部仍
+保留该估算供原生调试。
 
 本轮工具链为 Windows NDK 28.2.13676358、API 24、CMake 3.22.1、Meson 1.11.2、Ninja 1.13.2。分别使用 `aarch64-linux-android24-clang` 和 `armv7a-linux-androideabi24-clang`，依赖静态链接；C++ 使用 `c++_static` 与 `c++abi`，禁止把主机 RPATH 或主机 DLL 带进 Android 库。共享库链接要求 `--no-undefined` 和 `-z,max-page-size=16384`。mpv 启用 libmpv、AAudio、OpenSL ES、AudioTrack、Android 硬解，禁用 cplayer、GPL、Lua、Vulkan 与文档生成。32 位 FFmpeg 使用 ARMv7/NEON，两个架构分别安装到独立前缀，禁止共用编译产物。
 
@@ -91,7 +100,7 @@ FFmpeg HEVC MediaCodec 的 `hevc_mp4toannexb` 位流过滤器保证送入解码�
 候选源码基线为 `mpv-v0.42.0.tar.gz`，7,515,468 字节，SHA-256
 `bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd`。
 `mpv-0.42.0-piliexo-adaptation.patch` 是相对该原始包的总适配补丁，SHA-256
-`36a3c55cdf06408af54f1862402bdb9c85cc7574614ecd4c58d8174ef863cffe`；
+`00c371f17e7ef574ba08b16568abc96eb88e1a7e75c3d36d161a4f17941539a4`；
 它包含本项目 HDR、AudioTrack、音频时钟、MediaCodec 倍率和迟送帧策略，以及
 mpv 0.42.0 删除 `display_sync_drift_dir` 后的兼容调整。
 
@@ -106,7 +115,7 @@ mbedTLS 没有默认 CA 链而在 HTTPS 播放时持续缓冲，错误为
 
 总补丁已在另一份干净归档上回放，回放结果与候选源码逐文件一致；候选源码也能反向
 应用该补丁。工作区中的 `tools/mpv-0.42.0-upgrade/build_arm64.py` 使用 NDK
-28.2.13676358、API 24，并允许分别指定 FFmpeg 源码、安装前缀和 Meson 输出目录。
+28.2.13676358、API 24，并允许分别指定 mpv/FFmpeg 源码、安装前缀和 Meson 输出目录。
 链接后移除 Meson 写入的 NDK 宿主 RUNPATH，再用 `llvm-strip --strip-unneeded`
 处理共享库。
 
@@ -116,19 +125,17 @@ FFmpeg 随后独立升级到
 `MediaCodecContext` 类型和初始化顺序重新生成，系统 CA 补丁原样应用。mpv
 0.42.0 源码没有随 FFmpeg 提交变化。
 
-arm64 `libmpv.so` 为 14,449,720 字节，SHA-256
-`8d4c34ef167d9e586c4c3df20eabb2686303b55c52eee7c83a9fc3a69a010482`。
-静态核对为 AArch64、55 个 `mpv_*` 导出、无 `RPATH/RUNPATH`、四个 LOAD 段
-均按 `0x4000` 对齐，并确认核心内包含 Android 系统 CA 路径。字符串表中仍有少量
-只读编译源码路径，但没有运行时宿主库依赖。
+当前包含 DASH 长度前缀主动跳帧和直接洞察计数的 arm64 `libmpv.so` 为 14,459,208
+字节，SHA-256 `be409cfaad0abfa15685f78876938c6c1297c2cadecee89729590e6a1ebc365f`。
+ARMv7 `libmpv.so` 为 12,993,664 字节，SHA-256
+`3d59afd161fcb1ef0d42efc9a99586c61ea74bde34d50a7c18590731097df9e8`。两者均为
+55 个 `mpv_*` 导出、无 `RPATH/RUNPATH`、四个 LOAD 段按 `0x4000` 对齐，并确认核心
+包含 FFmpeg `git-2026-11-25-bf11bea4`、Android 系统 CA 路径、长度前缀丢帧标记和
+新洞察属性。字符串表中仍有少量只读编译源码路径，但没有运行时宿主库依赖。
 
-当前 FFmpeg Git arm64 候选为
-`dist/integration/ffmpeg-git-bf11bea4-20261125/PiliExo_android_v26.11.24_ffmpeg-git-bf11bea4_arm64-v8a.apk`，
-49,894,677 字节，SHA-256
-`71cd70e0b6974398fb04e0a053eb9073048ec3979475dcab73fe5e83e3dd30ee`。
-候选已覆盖安装到 MEP-AN00，设备端回读哈希一致。真机日志已确认起播、
-AudioTrack 和约 71 fps、0 丢弃渲染；seek、倍速、HDR/SDR 和三大页冷启动
-切页仍须由用户操作验收。
+片尾拖回续播试机包已覆盖安装到 MEP-AN00，设备端回读哈希一致，用户实机确认可以
+发布。`v26.11.25.2` 正式双 ABI 包使用同一份 mpv / FFmpeg 基线重新构建，并在
+Release 记录中保存最终长度与 SHA-256。
 
 此前的 FFmpeg 9.0.1 / mpv 0.42 arm64 候选仍保留为已知可用对照，其 APK SHA-256
 为 `0a1735eaa88f40ef52bed7512e48de73a154d83bb8390f0ef71c06feb18dfd43`。
