@@ -18,7 +18,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 - 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
 - mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
 - 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留缩小动画，原生 HDR 路线固定视频层并裁剪。
-- 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析，以及高采样率 FLAC 的输入缓冲修正。
+- 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析、高采样率 FLAC 的输入缓冲修正，以及 Android 在线分轨跳转适配。Media3 杜比软件音频解码扩展与 mpv 使用同一个 FFmpeg 提交。
 - 播放器洞察提供概览、视频、音频、播放和事件详情，显示帧率、编码、解码器、分辨率、码率、音频参数和回退原因。
 - Android 14 及以上支持预测性返回，可调整滑动方向、位移、渐隐和缩小幅度。原生 HDR 返回预览优先使用当前视频帧。
 - Android 支持蓝牙延迟补偿，可自动估算延迟并在弹窗内听看校准，再手动微调。断开蓝牙音频时暂停补偿。
@@ -32,7 +32,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
 - [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/docs/本机发布工具链.md)
+- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/main/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/docs/本机发布工具链.md)
 
 APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
 

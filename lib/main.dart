@@ -12,6 +12,7 @@ import 'package:PiliPlus/http/init.dart';
 import 'package:PiliPlus/models/common/theme/theme_color_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/bluetooth_latency_service.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/hdr_switch_trace.dart';
 import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/router/app_pages.dart';
 import 'package:PiliPlus/router/page_transitions.dart';
@@ -98,6 +99,7 @@ Future<void> _initAppPath() async {
 void main() async {
   ScaledWidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  if (HdrSwitchTrace.enabled) HdrSwitchTrace.record('app.start');
   await _initAppPath();
   try {
     await GStorage.init();

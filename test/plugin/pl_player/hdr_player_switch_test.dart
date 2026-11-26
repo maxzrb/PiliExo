@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:PiliPlus/pages/video/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
+import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_status.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hdr_playback_route.dart';
 import 'package:PiliPlus/utils/storage.dart';
@@ -13,6 +14,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+
+class _Texture extends Fake implements VideoController {
+  final firstFrame = Completer<void>();
+
+  @override
+  Future<void> get waitUntilFirstFrameRendered => firstFrame.future;
+}
 
 class _Player extends Fake implements PlPlayerController {
   _Player(Map<String, dynamic> input)
@@ -27,6 +36,16 @@ class _Player extends Fake implements PlPlayerController {
   final brightness = 0.0.obs;
   @override
   final dataStatus = DataStatus.loaded.obs;
+  @override
+  final onlyPlayAudio = false.obs;
+  @override
+  final dataSource = NetworkSource(videoSource: '', audioSource: null);
+  @override
+  Null get hdrMedia3Controller => null;
+  @override
+  Null get mpvHdrController => null;
+  @override
+  VideoController? videoController;
   @override
   bool isMedia3Hdr;
   @override
@@ -105,6 +124,38 @@ void main() {
   tearDownAll(() async {
     await Hive.close();
     await directory.delete(recursive: true);
+  });
+
+  testWidgets('切到兼容播放器时，首帧到达前保留预览', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: FlutterSmartDialog.init(),
+        home: const SizedBox.shrink(),
+      ),
+    );
+    final input = {
+      'active': true,
+      'position': 42000,
+      'autoplay': true,
+      'outcome': 'success',
+    };
+    final player = _Player(input);
+    final texture = _Texture();
+    player.videoController = texture;
+    final page = _Page(player, input);
+    final switching = page.switchHdrPlayer(.mpvCompatible);
+    await tester.pump();
+    expect(page.hdrSwitchPreview.value, isNotNull);
+    page.releaseLoad.complete();
+    await switching;
+    expect(page.hdrSwitchPreview.value, isNotNull);
+    expect(page.calls.single[1], 42000);
+    texture.firstFrame.complete();
+    await tester.pump();
+    expect(page.hdrSwitchPreview.value, isNull);
+    unawaited(SmartDialog.dismiss(status: SmartStatus.allToast));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
   });
 
   for (var i = 0; i < inputs.length; i++) {

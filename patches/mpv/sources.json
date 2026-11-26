@@ -8,7 +8,15 @@
     "patches": [
       {
         "file": "mpv-0.42.0-piliexo-adaptation.patch",
-        "sha256": "00c371f17e7ef574ba08b16568abc96eb88e1a7e75c3d36d161a4f17941539a4"
+        "sha256": "f1b7304674413576492bcfe49cc52b6998d9759a18c412387a2cf6afaf42d38e"
+      },
+      {
+        "file": "mpv-single-track-mov-seek.patch",
+        "sha256": "11ddb5f0671509a47d1a2fa3f5647d00a00826de023a59050726f5a023b7e2ce"
+      },
+      {
+        "file": "mpv-android-seek-audio-fade.patch",
+        "sha256": "e11e1654e6c2d885fd66ba0bbcda9dc10e202d9dc0a947eb3760448234b1b26c"
       }
     ]
   },

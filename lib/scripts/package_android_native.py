@@ -1,4 +1,4 @@
-"""打包同一ABI的定制mpv库，校验原签名、文件一致性、架构与16KB对齐。"""
+"""更换同一 ABI 的 Android 原生库，校验原签名、文件一致性、架构与16KB对齐。"""
 from pathlib import Path
 import zipfile, subprocess, os, hashlib, json
 
@@ -7,6 +7,7 @@ import argparse
 parser=argparse.ArgumentParser()
 parser.add_argument('--base',type=Path,required=True)
 parser.add_argument('--native',type=Path,required=True)
+parser.add_argument('--library',choices=['libmpv.so','libffmpegJNI.so'],default='libmpv.so')
 parser.add_argument('--out',type=Path,required=True)
 parser.add_argument('--abi',choices=['arm64-v8a','armeabi-v7a'],required=True)
 parser.add_argument('--tools',type=Path,required=True)
@@ -28,10 +29,10 @@ assert header[:4]==b'\x7fELF'
 expected=(2,183) if args.abi=='arm64-v8a' else (1,40)
 assert (header[4],struct.unpack_from('<H',header,18)[0])==expected
 out=args.out
-entry = 'lib/'+args.abi+'/libmpv.so'
+entry = 'lib/'+args.abi+'/'+args.library
 removed=[]
 with zipfile.ZipFile(base) as src, zipfile.ZipFile(unsigned, 'w') as dst:
-    assert entry in src.namelist(), 'Base APK is missing requested mpv ABI'
+    assert entry in src.namelist(), 'Base APK is missing the requested native library'
     assert 'lib/'+args.abi+'/libapp.so' in src.namelist(), 'Base APK is missing requested Dart AOT ABI'
     for item in src.infolist():
         if item.filename.startswith('lib/') and not item.filename.startswith('lib/'+args.abi+'/'):

@@ -228,6 +228,16 @@ CONFIG_LIBWEBP
 同时抽查 H.264、HEVC、AAC、FLV、MOV、HLS、matroska 等正式播放所需解码器和
 解封装器，避免出现“库能链接，但视频协议或编码器没编进去”的假通过。
 
+### 同步构建 Media3 音频扩展
+
+FFmpeg 的上游提交由 `patches/mpv/sources.json` 统一固定。更新提交后，使用本机执行：
+
+```powershell
+python tools/mpv-0.42.0-upgrade/build_media3_ffmpeg.py
+```
+
+Media3 从相同的源码归档构建，只启用 AC-3、E-AC-3 和 TrueHD。索引和容器解析继续由 Media3 提取器处理。将脚本输出的双 ABI AAR 更新到 `android/app/libs/` 后，检查解码重置和 HDR 在线分轨的前后跳转。
+
 ## 四、构建 libass 和 libplacebo
 
 [build_arm64.py](../tools/mpv-0.42.0-upgrade/build_arm64.py) 负责安装

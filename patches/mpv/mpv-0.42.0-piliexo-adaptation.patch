@@ -260,7 +260,7 @@ index de977a99f44c62fba13cfd9a4e42253c7a439036..978be3166e3fb5693a85c1c0cbbdc710
  static const struct m_option type_conv[] = {
      [MPV_FORMAT_STRING]     = { .type = CONF_TYPE_STRING },
 diff --git a/player/command.c b/player/command.c
-index 981fe47a4d3f6dacc824ff598f7568d23dc2ec5e..64241426ed7132aebd02cc3da3f0838a3f4430d7 100644
+index 981fe47a4d3f6dacc824ff598f7568d23dc2ec5e..39fb09bd14f64a0e0bba1409a5c1d981fb904938 100644
 --- a/player/command.c
 +++ b/player/command.c
 @@ -817,6 +817,17 @@ static int mp_property_frame_drop_vo(void *ctx, struct m_property *prop,
@@ -289,6 +289,23 @@ index 981fe47a4d3f6dacc824ff598f7568d23dc2ec5e..64241426ed7132aebd02cc3da3f0838a
      {"vo-delayed-frame-count", mp_property_vo_delayed_frame_count},
      {"percent-pos", mp_property_percent_pos},
      {"time-pos", mp_property_time_pos},
+@@ -4940,6 +4952,7 @@ static const char *const *const mp_event_property_change[] = {
+       "vsync-ratio", "estimated-display-fps", "vsync-jitter", "sub-text",
+       "secondary-sub-text", "audio-bitrate", "video-bitrate", "sub-bitrate",
+       "decoder-frame-drop-count", "frame-drop-count", "video-frame-info",
++      "piliexo-insight-vo-drop-count",
+       "vf-metadata", "af-metadata", "sub-start", "sub-end", "secondary-sub-start",
+       "secondary-sub-end", "sub-lines", "secondary-sub-lines", "video-out-params",
+       "video-dec-params", "video-params", "deinterlace-active", "video-target-params"),
+@@ -4948,7 +4961,7 @@ static const char *const *const mp_event_property_change[] = {
+       "video-format", "video-codec", "video-bitrate", "dwidth", "dheight",
+       "width", "height", "container-fps", "aspect", "aspect-name", "vo-configured", "current-vo",
+       "video-dec-params", "osd-dimensions", "hwdec", "hwdec-current", "hwdec-interop",
+-      "window-id", "track-list", "current-tracks"),
++      "window-id", "track-list", "current-tracks", "piliexo-insight-vo-drop-count"),
+     E(MPV_EVENT_AUDIO_RECONFIG, "audio-format", "audio-codec", "audio-bitrate",
+       "samplerate", "channels", "audio", "volume", "volume-gain", "mute",
+       "current-ao", "audio-codec-name", "audio-params", "track-list", "current-tracks",
 diff --git a/player/core.h b/player/core.h
 index f0124c7fe10d7fdcb115a7c2f46798018866baf7..1243bffbc63ecbd7b1456d7606a47e7780abb3b5 100644
 --- a/player/core.h
@@ -1054,7 +1071,7 @@ index 0a12cf8add4b98f475dc109dff46cf34f09f457a..df304f0f45ddc461123a024aec3de245
      if (!vo_android_surface_size(ctx->vo, &w, &h))
          return false;
 diff --git a/video/out/vo.c b/video/out/vo.c
-index c90a55cc4cac51a25c042f4ba04c51a8194d3266..652050201182b34b4202618647643e8ad9658400 100644
+index c90a55cc4cac51a25c042f4ba04c51a8194d3266..118ba085dd20d58f1a4c7365ba7628ed5d32dbe9 100644
 --- a/video/out/vo.c
 +++ b/video/out/vo.c
 @@ -161,6 +161,7 @@ struct vo_internal {
@@ -1065,7 +1082,15 @@ index c90a55cc4cac51a25c042f4ba04c51a8194d3266..652050201182b34b4202618647643e8a
      bool dropped_frame;             // the previous frame was dropped
  
      struct vo_frame *current_frame; // last frame queued to the VO
-@@ -1253,6 +1254,30 @@ void vo_increment_drop_count(struct vo *vo, int64_t n)
+@@ -702,6 +703,7 @@ static void forget_frames(struct vo *vo)
+     in->hasframe = false;
+     in->hasframe_rendered = false;
+     in->drop_count = 0;
++    in->active_drop_count = 0;
+     in->delayed_count = 0;
+     talloc_free(in->frame_queued);
+     in->frame_queued = NULL;
+@@ -1253,6 +1255,30 @@ void vo_increment_drop_count(struct vo *vo, int64_t n)
      mp_mutex_unlock(&vo->in->lock);
  }
  

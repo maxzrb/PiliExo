@@ -104,6 +104,7 @@ class PLVideoPlayer extends StatefulWidget {
     this.showEpisodes,
     this.showViewPoints,
     this.startupCover,
+    this.hdrSwitchCover,
     this.fill = Colors.black,
     this.alignment = Alignment.center,
     super.key,
@@ -120,6 +121,7 @@ class PLVideoPlayer extends StatefulWidget {
   final ugc.ShowEpisodes? showEpisodes;
   final VoidCallback? showViewPoints;
   final Widget? startupCover;
+  final Widget? hdrSwitchCover;
   final Color fill;
   final Alignment alignment;
 
@@ -2287,8 +2289,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       ),
                       if (plPlayerController.isBuffering.value)
                         Obx(() {
-                          final buffered = plPlayerController.buffered.value;
-                          if (buffered == 0) {
+                          final seconds = plPlayerController.isLive
+                              ? plPlayerController.buffered.value
+                              : plPlayerController.bufferingDisplayPosition;
+                          if (plPlayerController.isLive && seconds == 0) {
                             return const Text(
                               '加载中...',
                               style: TextStyle(
@@ -2298,7 +2302,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                             );
                           }
                           return Text(
-                            DurationUtils.formatDuration(buffered),
+                            DurationUtils.formatDuration(seconds),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -2452,7 +2456,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               });
             }
           }
-          final Widget videoChild;
+          Widget videoChild;
           final startupCover =
               isNativeOutput && !plPlayerController.onlyPlayAudio.value
               ? widget.startupCover
@@ -2530,6 +2534,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             );
           } else {
             videoChild = const SizedBox.shrink();
+          }
+          if (widget.hdrSwitchCover case final cover?
+              when !isNativeOutput ||
+                  !plPlayerController.videoOutputReady.value) {
+            videoChild = Stack(
+              fit: StackFit.expand,
+              children: [videoChild, cover],
+            );
           }
           return MouseInteractiveViewer(
             // 原生播放器自行适配输出，Flutter 不再对其应用手势缩放。

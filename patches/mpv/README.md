@@ -7,10 +7,9 @@
 
 `sources.json` 记录各组件的仓库、标签、Git 提交（仅滚动 Git 源需要）、源码归档
 SHA-256、长度及正式补丁顺序。mpv 当前基线为 v0.42.0，FFmpeg 为
-`master@bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2`。正式清单只应用一份与本项目
-完整的 mpv 适配总补丁，以及 FFmpeg 的动态 HDR 与 Android 系统 CA 补丁；下列旧
-分项补丁说明保留用于历史追溯，不再按旧顺序应用。原生库须导出原有 55 个
-`mpv_*` API。
+`master@bf11bea4dcb4578b53906d1f5290f5b6bcae2dc2`。按 `sources.json` 的顺序应用
+mpv 适配总补丁、分轨跳转补丁和 Android 音频过渡补丁。FFmpeg 使用动态 HDR 和
+Android 系统 CA 补丁。原生库须导出原有 55 个 `mpv_*` API。
 
 FFmpeg 的动态 HDR、运行中吞吐提示和解码前丢帧共用
 `ffmpeg-android-dynamic-hdr.patch`。mpv 在播放倍率变化时把源帧率乘以目标倍率提交给解码线程。
@@ -28,6 +27,9 @@ mpv 输出层把主动替换的过期画面单独累计，并直接暴露
 `decoder-frame-drop-count` 是 mpv 对“可能丢弃”的启发式估算，会混入硬件解码队列
 延迟和主动跳帧，也不计入播放器洞察。洞察只使用实际未呈现的 VO 丢帧，核心内部仍
 保留该估算供原生调试。
+
+`piliexo-insight-vo-drop-count` 随 mpv 播放和视频输出重配置事件更新。重置视频
+输出时同时清零总丢帧和主动替换计数，避免旧计数抵消拖动进度或重配后的新丢帧。
 
 本轮工具链为 Windows NDK 28.2.13676358、API 24、CMake 3.22.1、Meson 1.11.2、Ninja 1.13.2。分别使用 `aarch64-linux-android24-clang` 和 `armv7a-linux-androideabi24-clang`，依赖静态链接；C++ 使用 `c++_static` 与 `c++abi`，禁止把主机 RPATH 或主机 DLL 带进 Android 库。共享库链接要求 `--no-undefined` 和 `-z,max-page-size=16384`。mpv 启用 libmpv、AAudio、OpenSL ES、AudioTrack、Android 硬解，禁用 cplayer、GPL、Lua、Vulkan 与文档生成。32 位 FFmpeg 使用 ARMv7/NEON，两个架构分别安装到独立前缀，禁止共用编译产物。
 
@@ -141,3 +143,18 @@ ARMv7 APK 为 33,747,896 字节，SHA-256
 
 此前的 FFmpeg 9.0.1 / mpv 0.42 arm64 候选仍保留为已知可用对照，其 APK SHA-256
 为 `0a1735eaa88f40ef52bed7512e48de73a154d83bb8390f0ef71c06feb18dfd43`。
+
+## 单轨 fMP4 原地跳转
+
+`mpv-single-track-mov-seek.patch` 在 Android mpv 原生 HDR 和兼容路线的在线分轨回跳时启用。mpv 为已读时间范围内的单轨 MOV 低层跳转刷新解封装索引，复用原 AVIO、音视频轨道及输出。构建时应用 `sources.json` 中的 mpv 补丁。适配只用 FFmpeg 公共 API。
+
+`test/native/mpv_fragment_seek_fate.c` 可链接候选 `libmpv`，传入下述两个样本路径，验证分轨播放从约 48 秒回跳到 7 秒后声画持续同步。可传入任意第四参数作为关闭适配的对照。
+
+```powershell
+ffmpeg -f lavfi -i 'sine=frequency=437:sample_rate=48000' -t 65 -c:a aac -b:a 96k -movflags +empty_moov+default_base_moof+global_sidx -frag_duration 1000000 tmp/audio-fragment-seek.mp4
+ffmpeg -f lavfi -i 'testsrc2=size=960x540:rate=30' -t 65 -c:v libx264 -preset ultrafast -threads 4 -b:v 3M -g 30 -pix_fmt yuv420p -movflags +empty_moov+default_base_moof+frag_keyframe+global_sidx tmp/video-fragment-seek.mp4
+```
+
+## Android 跳转音频过渡
+
+`mpv-android-seek-audio-fade.patch` 处理 OpenSL ES、AudioTrack 和 AAudio 的 PCM 跳转。暂停或清理媒体仍沿用相应设备的重置流程。播放中的跳转清掉播放器软件队列并保留设备已提交的音频。在下一个缓冲中，旧音频的尾样本用 5 毫秒衰减。恢复的目标音频在实际送出时用 5 毫秒淡入。AudioTrack 在尚无目标采样时写入 5 毫秒的过渡块。过渡采样不计入媒体时钟。

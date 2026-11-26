@@ -1406,8 +1406,17 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
           if (controller?.videoOutputHidden.value == true) {
             return const SizedBox.shrink();
           }
+          final preview = videoDetailController.hdrSwitchPreview.value;
+          final switchCover = isPipMode || preview == null
+              ? null
+              : switch (preview.image) {
+                  final image? => _snapshotCover(image),
+                  null => _playbackCover(width, height),
+                };
           if (!shouldBuild || controller == null) {
-            return const SizedBox.shrink();
+            return switchCover == null
+                ? const SizedBox.shrink()
+                : SizedBox(width: width, height: height, child: switchCover);
           }
           return PLVideoPlayer(
             maxWidth: width,
@@ -1438,6 +1447,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
             showEpisodes: showEpisodes,
             showViewPoints: showViewPoints,
             startupCover: isPipMode ? null : _playbackCover(width, height),
+            hdrSwitchCover: switchCover,
           );
         },
       ),
@@ -1673,6 +1683,19 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
     ),
   );
 
+  Widget _snapshotCover(ui.Image image) {
+    final fit = videoDetailController.plPlayerController.videoFit.value;
+    return IgnorePointer(
+      child: ColoredBox(
+        color: Colors.black,
+        child: RawImage(
+          image: image,
+          fit: fit.mpvResizeMode == 'fit' ? BoxFit.contain : fit.boxFit,
+        ),
+      ),
+    );
+  }
+
   Widget videoPlayer({required double width, required double height}) {
     final isFullScreen = this.isFullScreen;
     return Stack(
@@ -1705,19 +1728,7 @@ class _VideoDetailPageVState extends State<VideoDetailPageV>
                 child: child,
                 builder: (context, image, fallback) {
                   if (image == null) return fallback!;
-                  final fit =
-                      videoDetailController.plPlayerController.videoFit.value;
-                  return IgnorePointer(
-                    child: ColoredBox(
-                      color: Colors.black,
-                      child: RawImage(
-                        image: image,
-                        fit: fit.mpvResizeMode == 'fit'
-                            ? BoxFit.contain
-                            : fit.boxFit,
-                      ),
-                    ),
-                  );
+                  return _snapshotCover(image);
                 },
               );
             },

@@ -1,0 +1,115 @@
+diff --git a/demux/demux_lavf.c b/demux/demux_lavf.c
+--- a/demux/demux_lavf.c
++++ b/demux/demux_lavf.c
+@@ -89,6 +89,7 @@
+     int rtsp_transport;
+     int linearize_ts;
+     bool propagate_opts;
++    bool piliexo_refresh_mov_index;
+ };
+ 
+ const struct m_sub_options demux_lavf_conf = {
+@@ -119,6 +120,7 @@
+         {"demuxer-lavf-linearize-timestamps", OPT_CHOICE(linearize_ts,
+             {"no", 0}, {"auto", -1}, {"yes", 1})},
+         {"demuxer-lavf-propagate-opts", OPT_BOOL(propagate_opts)},
++        {"demuxer-lavf-piliexo-refresh-mov-index", OPT_BOOL(piliexo_refresh_mov_index)},
+         {0}
+     },
+     .size = sizeof(struct demux_lavf_opts),
+@@ -270,6 +272,7 @@
+     bool any_ts_fixed;
+ 
+     int retry_counter;
++    int64_t highest_packet_dts;
+ 
+     struct demux_packet *pending_pkt;
+ 
+@@ -1467,6 +1470,7 @@
+ 
+     demuxer->priv = priv;
+     priv->stream = demuxer->stream;
++    priv->highest_packet_dts = AV_NOPTS_VALUE;
+ 
+     priv->opts = mp_get_config_group(priv, demuxer->global, &demux_lavf_conf);
+     struct demux_lavf_opts *lavfdopts = priv->opts;
+@@ -1791,6 +1795,9 @@
+     struct stream_info *info = priv->streams[pkt->stream_index];
+     struct sh_stream *stream = info->sh;
+     AVStream *st = priv->avfc->streams[pkt->stream_index];
++    if (priv->opts->piliexo_refresh_mov_index && pkt->dts != AV_NOPTS_VALUE)
++        priv->highest_packet_dts = MPMAX(priv->highest_packet_dts,
++            av_rescale_q(pkt->dts, st->time_base, AV_TIME_BASE_Q));
+ 
+     // Keep BL packets flowing to feed the Dolby Vision splitter when its
+     // virtual EL is selected, even if the BL itself isn't selected. The
+@@ -1912,6 +1919,60 @@
+     reset_dovi_split_state(demuxer);
+ }
+ 
++static void refresh_mov_index_for_backward_seek(demuxer_t *demuxer, int64_t target)
++{
++    lavf_priv_t *priv = demuxer->priv;
++    AVFormatContext *previous = priv->avfc;
++    if (!priv->opts->piliexo_refresh_mov_index ||
++        priv->highest_packet_dts == AV_NOPTS_VALUE ||
++        target >= priv->highest_packet_dts || !priv->pb ||
++        !(priv->pb->seekable & AVIO_SEEKABLE_NORMAL) ||
++        previous->nb_streams != 1 || priv->pcm_seek_hack || priv->num_nested ||
++        !matches_avinputformat_name(priv, "mov"))
++        return;
++
++    // 单轨分片回跳时丢弃此前的索引，复用当前 AVIO 与 mpv 的轨道和输出。
++    // 只使用 FFmpeg 公共接口，不读取 MOV 解封装器的私有索引。
++    AVFormatContext *next = avformat_alloc_context();
++    if (!next)
++        return;
++    AVDictionary *options = NULL;
++    int64_t previous_offset = avio_tell(priv->pb);
++    if (av_dict_copy(&options, priv->av_opts, 0) < 0 ||
++        avio_seek(priv->pb, 0, SEEK_SET) != 0)
++        goto done;
++
++    next->pb = priv->pb;
++    next->flags = previous->flags | AVFMT_FLAG_CUSTOM_IO;
++    next->interrupt_callback = previous->interrupt_callback;
++    next->opaque = previous->opaque;
++    next->io_open = block_io_open;
++    if (avformat_open_input(&next, priv->filename, priv->avif, &options) < 0 ||
++        next->nb_streams != 1)
++        goto done;
++
++    AVStream *old_stream = previous->streams[0];
++    AVStream *new_stream = next->streams[0];
++    if (new_stream->id != old_stream->id ||
++        new_stream->codecpar->codec_id != old_stream->codecpar->codec_id ||
++        av_cmp_q(new_stream->time_base, old_stream->time_base))
++        goto done;
++
++    new_stream->discard = old_stream->discard;
++    priv->avfc = next;
++    priv->highest_packet_dts = AV_NOPTS_VALUE;
++    avformat_close_input(&previous);
++    av_dict_free(&options);
++    MP_VERBOSE(demuxer, "PiliExo refreshed MOV index for backward seek\n");
++    return;
++
++done:
++    avformat_close_input(&next);
++    av_dict_free(&options);
++    if (previous_offset >= 0)
++        avio_seek(priv->pb, previous_offset, SEEK_SET);
++}
++
+ static void demux_seek_lavf(demuxer_t *demuxer, double seek_pts, int flags)
+ {
+     lavf_priv_t *priv = demuxer->priv;
+@@ -1980,6 +2041,8 @@
+         }
+     }
+ 
++    if (!(flags & SEEK_FACTOR))
++        refresh_mov_index_for_backward_seek(demuxer, seek_pts_av);
+     int r = av_seek_frame(priv->avfc, seek_stream, seek_pts_av, avsflags);
+     if (r < 0 && (avsflags & AVSEEK_FLAG_BACKWARD)) {
+         // When seeking before the beginning of the file, and seeking fails,

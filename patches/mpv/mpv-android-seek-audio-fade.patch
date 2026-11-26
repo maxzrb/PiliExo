@@ -1,0 +1,342 @@
+diff --git a/audio/out/ao.h b/audio/out/ao.h
+--- a/audio/out/ao.h
++++ b/audio/out/ao.h
+@@ -97,6 +97,7 @@
+ void ao_set_gain(struct ao *ao, float gain);
+ double ao_get_delay(struct ao *ao);
+ void ao_reset(struct ao *ao);
++void ao_reset_for_seek(struct ao *ao);
+ void ao_start(struct ao *ao);
+ void ao_set_paused(struct ao *ao, bool paused, bool eof);
+ void ao_drain(struct ao *ao);
+diff --git a/audio/out/internal.h b/audio/out/internal.h
+--- a/audio/out/internal.h
++++ b/audio/out/internal.h
+@@ -230,6 +230,7 @@
+ 
+ void ao_wakeup(struct ao *ao);
+ 
++int ao_read_data_for_audiotrack(struct ao *ao, void **data, int samples, int64_t out_time_ns);
+ int ao_read_data_converted(struct ao *ao, struct ao_convert_fmt *fmt,
+                            void **data, int samples, int64_t out_time_ns);
+ 
+diff --git a/audio/out/ao_audiotrack.c b/audio/out/ao_audiotrack.c
+--- a/audio/out/ao_audiotrack.c
++++ b/audio/out/ao_audiotrack.c
+@@ -583,7 +583,7 @@
+             int64_t ts = mp_time_ns();
+             ts += MP_TIME_S_TO_NS(read_samples / (double)(ao->samplerate));
+             ts += MP_TIME_S_TO_NS(AudioTrack_getLatency(ao));
+-            int samples = ao_read_data(ao, &p->chunk, read_samples, ts, NULL, false, false);
++            int samples = ao_read_data_for_audiotrack(ao, &p->chunk, read_samples, ts);
+             int ret = AudioTrack_write(ao, samples * ao->sstride);
+             if (ret >= 0) {
+                 p->written_frames += ret / ao->sstride;
+diff --git a/audio/out/buffer.c b/audio/out/buffer.c
+--- a/audio/out/buffer.c
++++ b/audio/out/buffer.c
+@@ -16,6 +16,7 @@
+  */
+ 
+ #include <stddef.h>
++#include <float.h>
+ #include <inttypes.h>
+ #include <math.h>
+ #include <errno.h>
+@@ -61,6 +62,12 @@
+     bool paused;                // logically paused
+     bool hw_paused;             // driver->set_pause() was used successfully
+ 
++    bool smooth_android_seek;
++    bool seek_bridge_active;
++    int seek_fade_remaining;
++    int seek_tail_remaining;
++    double last_samples[MP_NUM_CHANNELS];
++    double seek_tail[MP_NUM_CHANNELS];
+     int64_t end_time_ns;        // absolute output time of last played sample
+     int64_t queued_time_ns;     // duration of samples that have been queued to
+                                 // the device but have not been played.
+@@ -175,13 +182,99 @@
+     return pos;
+ }
+ 
++static int seek_fade_frames(struct ao *ao)
++{
++    return MPMAX(1, ao->samplerate / 200);
++}
++
++#define FADE_PLANE(type, center)                                                \
++    for (int frame = 0; frame < frames; frame++) {                              \
++        double gain = (double)(total - remaining + frame) / total;               \
++        for (int channel = 0; channel < channels; channel++) {                 \
++            type *sample = &((type *)data[plane])[frame * channels + channel];  \
++            *sample = (type)(((double)*sample - (center)) * gain + (center));  \
++        }                                                                      \
++    }
++
++static void fade_in_after_seek(struct ao *ao, void **data, int samples)
++{
++    struct buffer_state *p = ao->buffer_state;
++    const int remaining = p->seek_fade_remaining;
++    if (!remaining || !samples)
++        return;
++
++    // 缓冲期间填充的静音不消耗淡入长度。
++    const int total = seek_fade_frames(ao);
++    const int frames = MPMIN(samples, remaining);
++    const int channels = ao->channels.num / ao->num_planes;
++    const int format = af_fmt_from_planar(ao->format);
++    for (int plane = 0; plane < ao->num_planes; plane++) {
++        switch (format) {
++        case AF_FORMAT_U8:     FADE_PLANE(uint8_t, 128); break;
++        case AF_FORMAT_S16:    FADE_PLANE(int16_t, 0); break;
++        case AF_FORMAT_S32:    FADE_PLANE(int32_t, 0); break;
++        case AF_FORMAT_FLOAT:  FADE_PLANE(float, 0); break;
++        case AF_FORMAT_DOUBLE: FADE_PLANE(double, 0); break;
++        }
++    }
++    p->seek_fade_remaining -= frames;
++}
++
++#undef FADE_PLANE
++
++#define BLEND_TAIL(type, center, low, high)                                    \
++    for (int channel = 0; channel < channels; channel++) {                     \
++        type *pcm = data;                                                      \
++        for (int frame = 0; frame < blend_frames; frame++) {                   \
++            double gain = (double)(remaining - frame) / total;                 \
++            int index = frame * channels + channel;                            \
++            double mixed = pcm[index] + p->seek_tail[channel] * gain;          \
++            pcm[index] = (type)MPCLAMP(mixed, low, high);                        \
++        }                                                                      \
++        p->last_samples[channel] = (double)pcm[(samples - 1) * channels + channel] -\
++                                   (center);                                   \
++    }
++
++static void blend_seek_tail(struct ao *ao, void *data, int samples)
++{
++    struct buffer_state *p = ao->buffer_state;
++    const int total = seek_fade_frames(ao);
++    const int remaining = p->seek_tail_remaining;
++    const int blend_frames = MPMIN(samples, remaining);
++
++    // 上一块已入队的尾样本接到当前音频或静音，避免直接截断波形。
++    const int channels = ao->channels.num;
++    switch (ao->format) {
++    case AF_FORMAT_U8:    BLEND_TAIL(uint8_t, 128, 0, UINT8_MAX); break;
++    case AF_FORMAT_S16:   BLEND_TAIL(int16_t, 0, INT16_MIN, INT16_MAX); break;
++    case AF_FORMAT_S32:   BLEND_TAIL(int32_t, 0, INT32_MIN, INT32_MAX); break;
++    case AF_FORMAT_FLOAT: BLEND_TAIL(float, 0, -FLT_MAX, FLT_MAX); break;
++    }
++    p->seek_tail_remaining -= blend_frames;
++}
++
++#undef BLEND_TAIL
++
+ static int ao_read_data_locked(struct ao *ao, void **data, int samples,
+-                               int64_t out_time_ns, bool *eof, bool pad_silence)
++                               int64_t out_time_ns, bool *eof, bool pad_silence, int *device_samples)
+ {
+     struct buffer_state *p = ao->buffer_state;
+     mp_assert(!ao->driver->write);
+ 
+     int pos = read_buffer(ao, data, samples, eof, pad_silence);
++    fade_in_after_seek(ao, data, pos);
++    int output_samples = pad_silence ? samples : pos;
++    if (device_samples && p->seek_bridge_active && !output_samples) {
++        // AudioTrack 在目标数据到来前，以短静音块维持设备运行。
++        output_samples = MPMIN(samples, seek_fade_frames(ao));
++        af_fill_silence(data[0], output_samples * ao->sstride, ao->format);
++    }
++    if (p->smooth_android_seek && output_samples > 0)
++        blend_seek_tail(ao, data[0], output_samples);
++    if (pos > 0 && !p->seek_fade_remaining)
++        p->seek_bridge_active = false;
++    if (device_samples)
++        *device_samples = output_samples;
+ 
+     if (pos > 0)
+         p->end_time_ns = out_time_ns;
+@@ -204,7 +297,8 @@
+ // If this is called in paused mode, it will always return 0.
+ // The caller should set out_time_ns to the expected delay until the last sample
+ // reaches the speakers, in nanoseconds, using mp_time_ns() as reference.
+-int ao_read_data(struct ao *ao, void **data, int samples, int64_t out_time_ns, bool *eof, bool pad_silence, bool blocking)
++static int read_data(struct ao *ao, void **data, int samples, int64_t out_time_ns,
++                     bool *eof, bool pad_silence, bool blocking, int *device_samples)
+ {
+     struct buffer_state *p = ao->buffer_state;
+ 
+@@ -220,11 +314,25 @@
+         eof = &eof_buf;
+     }
+ 
+-    int pos = ao_read_data_locked(ao, data, samples, out_time_ns, eof, pad_silence);
++    int pos = ao_read_data_locked(ao, data, samples, out_time_ns, eof, pad_silence,
++                                  device_samples);
+ 
+     mp_mutex_unlock(&p->lock);
+ 
+     return pos;
++}
++
++int ao_read_data(struct ao *ao, void **data, int samples, int64_t out_time_ns,
++                 bool *eof, bool pad_silence, bool blocking)
++{
++    return read_data(ao, data, samples, out_time_ns, eof, pad_silence, blocking, NULL);
++}
++
++int ao_read_data_for_audiotrack(struct ao *ao, void **data, int samples, int64_t out_time_ns)
++{
++    int device_samples = 0;
++    read_data(ao, data, samples, out_time_ns, NULL, false, false, &device_samples);
++    return device_samples;
+ }
+ 
+ // Same as ao_read_data(), but convert data according to *fmt.
+@@ -318,7 +426,7 @@
+ }
+ 
+ // Fully stop playback; clear buffers, including queue.
+-void ao_reset(struct ao *ao)
++static void reset(struct ao *ao, bool seeking)
+ {
+     struct buffer_state *p = ao->buffer_state;
+     bool wakeup = false;
+@@ -330,8 +438,19 @@
+     mp_async_queue_reset(p->queue);
+     mp_filter_reset(p->filter_root);
+     mp_async_queue_resume_reading(p->queue);
+-
+-    if (!ao->stream_silence && ao->driver->reset) {
++    p->seek_fade_remaining = seeking && HAVE_ANDROID && !ao->driver->write &&
++                             af_fmt_is_pcm(ao->format) ? seek_fade_frames(ao) : 0;
++
++    // 保留设备已入队的缓冲，由下一次输出平滑接上残余波形。
++    bool bridge = seeking && p->smooth_android_seek &&
++                  p->streaming && !p->paused;
++    bool tail_pending = bridge && (p->seek_bridge_active || p->end_time_ns > mp_time_ns());
++    p->seek_bridge_active = bridge;
++    p->seek_tail_remaining = tail_pending ? p->seek_fade_remaining : 0;
++    if (tail_pending)
++        memcpy(p->seek_tail, p->last_samples, ao->channels.num * sizeof(p->seek_tail[0]));
++
++    if (!bridge && !ao->stream_silence && ao->driver->reset) {
+         if (ao->driver->write) {
+             ao->driver->reset(ao);
+         } else {
+@@ -354,6 +473,16 @@
+ 
+     if (wakeup)
+         ao_wakeup(ao);
++}
++
++void ao_reset(struct ao *ao)
++{
++    reset(ao, false);
++}
++
++void ao_reset_for_seek(struct ao *ao)
++{
++    reset(ao, true);
+ }
+ 
+ // Initiate playback. This moves from the stop/underrun state to actually
+@@ -432,6 +561,10 @@
+         wakeup = true;
+     }
+     p->paused = paused;
++    if (paused && do_change_state) {
++        p->seek_bridge_active = false;
++        p->seek_tail_remaining = 0;
++    }
+ 
+     mp_mutex_unlock(&p->lock);
+ 
+@@ -554,6 +687,11 @@
+ bool init_buffer_post(struct ao *ao)
+ {
+     struct buffer_state *p = ao->buffer_state;
++    const char *name = ao->driver->name;
++    p->smooth_android_seek = HAVE_ANDROID && ao->num_planes == 1 &&
++        (ao->format == AF_FORMAT_FLOAT || ao->format == AF_FORMAT_S16 ||
++         ao->format == AF_FORMAT_S32 || ao->format == AF_FORMAT_U8) &&
++        (!strcmp(name, "opensles") || !strcmp(name, "audiotrack") || !strcmp(name, "aaudio"));
+ 
+     mp_assert(ao->driver->start);
+     if (ao->driver->write) {
+diff --git a/player/audio.c b/player/audio.c
+--- a/player/audio.c
++++ b/player/audio.c
+@@ -990,7 +990,7 @@
+             mpctx->audio_status = STATUS_EOF;
+             mp_wakeup_core(mpctx);
+             // stops untimed AOs, stops pull AOs from streaming silence
+-            clear_audio_output_buffers(mpctx);
++            clear_audio_output_buffers(mpctx, false);
+         } else {
+             if (!ao_c->ao_underrun) {
+                 MP_WARN(mpctx, "Audio device underrun detected.\n");
+@@ -1032,12 +1032,16 @@
+ }
+ 
+ // Drop data queued for output, or which the AO is currently outputting.
+-void clear_audio_output_buffers(struct MPContext *mpctx)
++void clear_audio_output_buffers(struct MPContext *mpctx, bool seeking)
+ {
+ #if HAVE_ANDROID
+     if (mpctx->ao_chain)
+         piliexo_audio_clock_reset(&mpctx->ao_chain->audio_clock);
+ #endif
+-    if (mpctx->ao)
++    if (!mpctx->ao)
++        return;
++    if (seeking)
++        ao_reset_for_seek(mpctx->ao);
++    else
+         ao_reset(mpctx->ao);
+ }
+diff --git a/player/core.h b/player/core.h
+--- a/player/core.h
++++ b/player/core.h
+@@ -537,7 +537,7 @@
+ double playing_audio_pts(struct MPContext *mpctx);
+ void fill_audio_out_buffers(struct MPContext *mpctx);
+ double written_audio_pts(struct MPContext *mpctx);
+-void clear_audio_output_buffers(struct MPContext *mpctx);
++void clear_audio_output_buffers(struct MPContext *mpctx, bool seeking);
+ #if HAVE_ANDROID
+ double buffered_audio_media_duration(struct MPContext *mpctx);
+ #endif
+diff --git a/player/loadfile.c b/player/loadfile.c
+--- a/player/loadfile.c
++++ b/player/loadfile.c
+@@ -840,7 +840,7 @@
+             if (!track)
+                 handle_force_window(mpctx, true);
+         } else if (type == STREAM_AUDIO) {
+-            clear_audio_output_buffers(mpctx);
++            clear_audio_output_buffers(mpctx, false);
+             uninit_audio_chain(mpctx);
+             if (!track)
+                 uninit_audio_out(mpctx);
+@@ -2120,7 +2120,7 @@
+         mpctx->stop_play = PT_ERROR;
+ 
+     if (mpctx->stop_play != AT_END_OF_FILE)
+-        clear_audio_output_buffers(mpctx);
++        clear_audio_output_buffers(mpctx, false);
+ 
+     update_core_idle_state(mpctx);
+ 
+diff --git a/player/playloop.c b/player/playloop.c
+--- a/player/playloop.c
++++ b/player/playloop.c
+@@ -403,6 +403,6 @@
+     }
+ 
+     if (!(seek.flags & MPSEEK_FLAG_NOFLUSH))
+-        clear_audio_output_buffers(mpctx);
++        clear_audio_output_buffers(mpctx, true);
+ 
+     reset_playback_state(mpctx);

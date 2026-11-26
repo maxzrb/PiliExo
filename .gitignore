@@ -70,6 +70,7 @@ analysis_benchmark.json
 !/tools/mpv-0.42.0-upgrade/build_armv7.py
 !/tools/mpv-0.42.0-upgrade/build_ffmpeg.sh
 !/tools/mpv-0.42.0-upgrade/build_ffmpeg_with_vs.cmd
+!/tools/mpv-0.42.0-upgrade/build_media3_ffmpeg.py
 !/tools/mpv-0.42.0-upgrade/load_vs_environment.cmd
 !/tools/mpv-0.42.0-upgrade/pkg-config.py
 !/tools/mpv-0.42.0-upgrade/prepare_fribidi_generators.py

@@ -40,6 +40,7 @@ import 'package:PiliPlus/plugin/pl_player/utils/bluetooth_latency_service.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_audio_options.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_frame_drop_policy.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/fullscreen.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/hdr_switch_trace.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/media_bitrate.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/mpv_runtime_observer.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/playback_drop_accounting.dart';
@@ -90,7 +91,7 @@ typedef PlayOwner = ({String tag, Type? type});
 
 class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Player? _videoPlayerController;
-  VideoController? _videoController;
+  final Rxn<VideoController> _videoController = Rxn<VideoController>();
   MpvHdrController? _mpvHdrController;
   StreamSubscription<String>? _mpvHdrErrors;
   final RxBool mpvHdrActive = false.obs;
@@ -127,6 +128,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   num? _media3MediaBitrateBitsPerSecond;
   MpvMediaBitrateSampler? _mpvMediaBitrateSampler;
   MpvRuntimeObserver? _mpvRuntimeObserver;
+  MpvRuntimeObserver? _hdrTraceObserver;
+  Timer? _hdrTraceTimer;
+  int _hdrTraceSource = 0;
+  int _hdrTraceOperation = 0;
   Timer? _bandwidthRefreshTimer;
   Timer? _longPressDropRecoveryTimer;
   Timer? _completedSeekGuardTimer;
@@ -149,6 +154,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   final RxBool isSeeking = false.obs;
 
   final RxInt position = RxInt(0);
+  final Rxn<Duration> _bufferingSeekTarget = Rxn<Duration>();
+  int get bufferingDisplayPosition =>
+      _bufferingSeekTarget.value?.inSeconds ?? position.value;
   final StreamController<Duration> _positionEventController =
       StreamController<Duration>.broadcast();
 
@@ -216,6 +224,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   void _resetPlaybackInsight() {
+    if (HdrSwitchTrace.enabled) _stopHdrTrace();
     _longPressDropRecoveryTimer?.cancel();
     _longPressDropRecoveryTimer = null;
     _finishCompletedSeekRecovery();
@@ -365,7 +374,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       telemetry,
       positionMs: state.position.inMilliseconds,
       durationMs: state.duration.inMilliseconds,
-      forwardBufferMs: state.buffer.inMilliseconds,
+      forwardBufferMs: (state.buffer - state.position).inMilliseconds.clamp(
+        0,
+        1 << 62,
+      ),
       speed: state.rate,
       isPlaying: state.playing,
       playWhenReady: state.playing,
@@ -652,7 +664,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Player? get videoPlayerController => _videoPlayerController;
 
   /// [videoController] instance of Player
-  VideoController? get videoController => _videoController;
+  VideoController? get videoController => _videoController.value;
 
   bool isMuted = false;
 
@@ -1264,7 +1276,29 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _videoType = videoType ?? VideoType.ugc;
       this.width = width;
       this.height = height;
+      if (HdrSwitchTrace.enabled) {
+        _hdrTraceSource = HdrSwitchTrace.nextId();
+        _hdrTraceOperation = _hdrTraceSource;
+        _recordHdrTrace('source.begin', {
+          'fromMedia3': _hdrMedia3Controller != null,
+          'fromMpvHdr': _mpvHdrController != null,
+          'target': switch (dataSource) {
+            HdrNetworkSource(:final useMpvHdr) =>
+              useMpvHdr ? 'mpvHdr' : 'media3Hdr',
+            NetworkSource(:final hdrCompatibility) =>
+              hdrCompatibility ? 'mpvCompatHdr' : 'mpvCompat',
+            FileSource() => 'mpvFile',
+          },
+          'width': width,
+          'height': height,
+          'startMs': seekTo?.inMilliseconds,
+          'durationMs': duration?.inMilliseconds,
+          'autoplay': autoplay,
+          'audioOnly': onlyPlayAudio.value,
+        });
+      }
       this.dataSource = dataSource;
+      _bufferingSeekTarget.value = null;
       if (const bool.fromEnvironment('PILIEXO_MPV_HDR_SOURCE_TRACE')) {
         // 仅本机固定码流对照构建启用；普通构建不记录签名媒体地址。
         debugPrint(
@@ -1317,7 +1351,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         _removeListeners();
         _videoPlayerController?.dispose();
         _videoPlayerController = null;
-        _videoController = null;
+        _videoController.value = null;
         return;
       }
 
@@ -1331,9 +1365,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }
 
       await _initializePlayer();
+      if (HdrSwitchTrace.enabled) _recordHdrTrace('source.initialized');
       if (_autoPlay) _startBandwidthRefresh();
       onInit?.call();
     } catch (err, stackTrace) {
+      if (HdrSwitchTrace.enabled) _recordHdrTrace('source.failed');
       if (dataSource is HdrNetworkSource && dataSource.useMpvHdr) {
         await _fallbackMpvHdrToMedia3(
           dataSource,
@@ -1446,7 +1482,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       PlatformUtils.isMobile ? Pref.playerVolume / 100 : volume.value,
     );
 
-    assert(_videoController == null);
+    assert(videoController == null);
 
     if (nativeHdrSource != null) {
       final output = MpvHdrController(
@@ -1475,7 +1511,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         rethrow;
       }
     } else {
-      _videoController = await VideoController.create(
+      _videoController.value = await VideoController.create(
         player,
         configuration: VideoControllerConfiguration(
           enableHardwareAcceleration: hwdec != null,
@@ -1611,7 +1647,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _removeListeners();
       await _videoPlayerController?.dispose();
       _videoPlayerController = null;
-      _videoController = null;
+      _videoController.value = null;
     }
 
     final controller = _hdrMedia3Controller ??= HdrMedia3Controller();
@@ -1663,8 +1699,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     }
 
     final wasMedia3 = _hdrMedia3Controller != null;
+    final wasMpvHdr = _mpvHdrController != null;
     if (wasMedia3) {
       await _disposeHdrController();
+      if (HdrSwitchTrace.enabled) _recordHdrTrace('media3.disposed');
     }
 
     var player = _videoPlayerController;
@@ -1683,9 +1721,10 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       await _disposeMpvHdrController();
       _removeListeners();
       await player.dispose();
+      if (HdrSwitchTrace.enabled) _recordHdrTrace('mpv.disposed');
       player = null;
       _videoPlayerController = null;
-      _videoController = null;
+      _videoController.value = null;
     }
 
     if (player == null) {
@@ -1695,7 +1734,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         _removeListeners();
         player.dispose();
         player = null;
-        _videoController = null;
+        _videoController.value = null;
         return;
       }
       _videoPlayerController = player;
@@ -1743,6 +1782,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       } else if (Platform.isAndroid && !isLive && dataSource is NetworkSource) {
         // 独立读取在线分轨音频，避免视频积压触顶时音频被判读完。
         extras['audio-files-append'] = '%${utf8.encode(audio).length}%$audio';
+        extras['demuxer-lavf-piliexo-refresh-mov-index'] = 'yes';
       } else {
         // dely_open need provide length
         video =
@@ -1757,6 +1797,18 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       audioFilterExtras(volume, map: extras);
     }
 
+    if (HdrSwitchTrace.enabled &&
+        Platform.isAndroid &&
+        !isLive &&
+        !onlyPlayAudio.value) {
+      _bindHdrTrace(player, dataSource);
+      _recordHdrTrace('mpv.open.request', {
+        'positionMs': seekTo?.inMilliseconds,
+        'externalAudio': extras.containsKey('audio-files-append'),
+        'refreshMovIndex':
+            extras['demuxer-lavf-piliexo-refresh-mov-index'] == 'yes',
+      });
+    }
     await player.open(
       Media(
         video,
@@ -1767,7 +1819,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       ),
       play: false,
     );
-    if (wasMedia3 && !_autoPlay) {
+    if (HdrSwitchTrace.enabled) _recordHdrTrace('mpv.open.reply');
+    if ((wasMedia3 || wasMpvHdr) && !_autoPlay && !onlyPlayAudio.value) {
+      if (HdrSwitchTrace.enabled) _recordHdrTrace('texture.paused_redraw');
       await _restorePausedMpvFrame(player, dataSource, seekTo ?? Duration.zero);
     }
     if (Platform.isAndroid) {
@@ -1784,7 +1838,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     DataSource source,
     Duration target,
   ) async {
-    final output = _videoController;
+    final output = videoController;
     if (output == null) return;
     final ready = Completer<void>();
     void checkSize() {
@@ -1959,6 +2013,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       position.value = posInSeconds;
       _updatePlaybackState(position: value);
       makeHeartBeat(posInSeconds);
+    }
+    if (_bufferingSeekTarget.value case final target?
+        when !isBuffering.value &&
+            (value - target).abs() < const Duration(seconds: 1)) {
+      _bufferingSeekTarget.value = null;
     }
     for (final element in _positionListeners) {
       element(value);
@@ -2430,6 +2489,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
   /// 移除事件监听
   void _removeListeners() {
+    if (HdrSwitchTrace.enabled) _stopHdrTrace();
     _stopBandwidthRefresh();
     _finishCompletedSeekRecovery();
     _mpvRuntimeObserver?.dispose();
@@ -2439,11 +2499,96 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _subscriptions = null;
   }
 
+  void _recordHdrTrace(String event, [Map<String, Object?> data = const {}]) {
+    HdrSwitchTrace.record(event, {
+      'source': _hdrTraceSource,
+      'operation': _hdrTraceOperation,
+      ...data,
+    });
+  }
+
+  void _bindHdrTrace(NativePlayer player, DataSource source) {
+    _hdrTraceObserver = MpvRuntimeObserver.create(
+      player,
+      onTraceEvent: _recordHdrTrace,
+    );
+    final output = videoController;
+    _recordHdrTrace('mpv.output', {
+      'texture': output != null,
+      'observing': _hdrTraceObserver != null,
+    });
+    if (output != null) {
+      final traceSource = _hdrTraceSource;
+      unawaited(
+        output.waitUntilFirstFrameRendered.then<void>(
+          (_) {
+            if (identical(output, videoController) &&
+                identical(source, dataSource) &&
+                traceSource == _hdrTraceSource) {
+              _recordHdrTrace('texture.first_frame');
+            }
+          },
+          onError: (Object _, StackTrace _) {
+            if (traceSource == _hdrTraceSource) {
+              _recordHdrTrace('texture.first_frame_failed');
+            }
+          },
+        ),
+      );
+    }
+    _sampleHdrTrace();
+  }
+
+  void _sampleHdrTrace() {
+    _hdrTraceTimer?.cancel();
+    final observer = _hdrTraceObserver;
+    if (observer == null) return;
+    _hdrTraceTimer = HdrSwitchTrace.sample(
+      observer,
+      source: _hdrTraceSource,
+      operation: _hdrTraceOperation,
+      appState: () {
+        final rect = videoController?.rect.value;
+        return {
+          'positionMs': currentPosition.inMilliseconds,
+          'buffering': isBuffering.value,
+          'status': playerStatus.value.name,
+          'playWhenReady': _playWhenReady,
+          'outputReady': videoOutputReady.value,
+          'outputHidden': videoOutputHidden.value,
+          'textureWidth': rect?.width,
+          'textureHeight': rect?.height,
+        };
+      },
+    );
+  }
+
+  void _stopHdrTrace() {
+    _hdrTraceTimer?.cancel();
+    _hdrTraceTimer = null;
+    _hdrTraceObserver?.dispose();
+    _hdrTraceObserver = null;
+  }
+
   /// 跳转至指定位置
   Future<void> seekTo(Duration position) async {
     if (_playerCount == 0) return;
     if (position < Duration.zero) {
       position = Duration.zero;
+    }
+    if (!isLive) _bufferingSeekTarget.value = position;
+    final traceOperation = HdrSwitchTrace.enabled && _hdrTraceObserver != null
+        ? HdrSwitchTrace.nextId()
+        : null;
+    if (traceOperation != null) {
+      _hdrTraceObserver?.poll();
+      _hdrTraceOperation = traceOperation;
+      _recordHdrTrace('seek.request', {
+        'targetMs': position.inMilliseconds,
+        'positionMs': currentPosition.inMilliseconds,
+        'playWhenReady': _playWhenReady,
+      });
+      _sampleHdrTrace();
     }
     final resumeAfterCompletedSeek =
         PlaybackSeekPolicy.shouldResumeAfterCompletedSeek(
@@ -2474,6 +2619,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
           await play(hideControls: false);
         }
       } catch (e) {
+        if (_bufferingSeekTarget.value == position) {
+          _bufferingSeekTarget.value = null;
+        }
         if (kDebugMode) debugPrint('seek failed: $e');
       }
       return;
@@ -2484,11 +2632,20 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     try {
       _beginDropTransition();
       await _videoPlayerController?.seek(position);
+      if (traceOperation != null && traceOperation == _hdrTraceOperation) {
+        _recordHdrTrace('seek.reply');
+      }
       _updateIOSPip(position);
       if (resumeAfterCompletedSeek) {
         await play(hideControls: false);
       }
     } catch (e) {
+      if (traceOperation != null && traceOperation == _hdrTraceOperation) {
+        _recordHdrTrace('seek.failed');
+      }
+      if (_bufferingSeekTarget.value == position) {
+        _bufferingSeekTarget.value = null;
+      }
       if (kDebugMode) debugPrint('seek failed: $e');
     }
   }
@@ -2639,7 +2796,13 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (_hdrMedia3Controller case final hdr?) {
       await hdr.play();
     } else {
+      if (HdrSwitchTrace.enabled && _hdrTraceObserver != null) {
+        _recordHdrTrace('mpv.play.request');
+      }
       await _videoPlayerController?.play();
+      if (HdrSwitchTrace.enabled && _hdrTraceObserver != null) {
+        _recordHdrTrace('mpv.play.reply');
+      }
     }
     _startBandwidthRefresh();
 
@@ -3209,7 +3372,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       }),
     );
     _videoPlayerController = null;
-    _videoController = null;
+    _videoController.value = null;
     _instance = null;
     videoPlayerServiceHandler?.clear();
   }

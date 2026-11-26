@@ -3,6 +3,7 @@ import 'dart:convert' show utf8, jsonDecode;
 import 'dart:io' show Platform, File;
 import 'dart:math' show min;
 import 'dart:ui';
+import 'dart:ui' as ui show Image;
 
 import 'package:PiliPlus/common/style.dart';
 import 'package:PiliPlus/common/widgets/pair.dart';
@@ -55,6 +56,7 @@ import 'package:PiliPlus/plugin/pl_player/models/heart_beat_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/mpv_hdr_policy.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hdr_playback_route.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_status.dart';
+import 'package:PiliPlus/plugin/pl_player/utils/hdr_switch_trace.dart';
 import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
@@ -132,6 +134,7 @@ class VideoDetailController extends GetxController
   /// 播放器配置 画质 音质 解码格式
   final Rxn<VideoQuality> currentVideoQa = Rxn<VideoQuality>();
   final RxBool switchingPlayer = false.obs;
+  final hdrSwitchPreview = Rxn<({Object token, ui.Image? image})>();
   HdrPlaybackRoute? _hdrRouteOverride;
   HdrPlaybackRoute get hdrPlaybackRoute =>
       _hdrRouteOverride ?? Pref.hdrPlaybackRoute;
@@ -161,14 +164,42 @@ class VideoDetailController extends GetxController
       return;
     }
     if (actualHdrRoute == route) return;
+    final showPreview =
+        route == .mpvCompatible &&
+        actualHdrRoute.isNative &&
+        !plPlayerController.onlyPlayAudio.value;
     final previousOverride = _hdrRouteOverride;
     final position = plPlayerController.currentPosition;
     // 片尾拖回后后端可能已续播，实际播放中不能沿用片尾清除的旧意图。
     final autoplay =
         plPlayerController.playWhenReady || plPlayerController.isPlaying;
+    if (HdrSwitchTrace.enabled) {
+      HdrSwitchTrace.record('route.request', {
+        'from': actualHdrRoute.name,
+        'to': route.name,
+        'quality': currentVideoQa.value?.code,
+        'positionMs': position.inMilliseconds,
+        'autoplay': autoplay,
+      });
+    }
     switchingPlayer.value = true;
-    _hdrRouteOverride = route;
+    _clearHdrSwitchPreview();
+    Object? previewToken;
     try {
+      if (showPreview) {
+        final source = plPlayerController.dataSource;
+        final image = await _captureHdrSwitchFrame();
+        if (isClosed || !identical(source, plPlayerController.dataSource)) {
+          image?.dispose();
+          return;
+        }
+        previewToken = Object();
+        hdrSwitchPreview.value = (token: previewToken, image: image);
+        if (HdrSwitchTrace.enabled) {
+          HdrSwitchTrace.record('preview.show', {'snapshot': image != null});
+        }
+      }
+      _hdrRouteOverride = route;
       await playerInit(autoplay: autoplay, resumePosition: position);
       if (isClosed) return;
       if (plPlayerController.dataStatus.value == DataStatus.error) {
@@ -177,6 +208,18 @@ class VideoDetailController extends GetxController
       } else {
         // 原生 HDR 初始化失败可能自动回退，后续切画质仍沿用实际后端。
         _hdrRouteOverride = actualHdrRoute;
+        if (previewToken case final token?) {
+          final output = plPlayerController.videoController;
+          if (actualHdrRoute == .mpvCompatible && output != null) {
+            unawaited(
+              output.waitUntilFirstFrameRendered.then<void>(
+                (_) => _clearHdrSwitchPreview(token),
+                onError: (Object _) => _clearHdrSwitchPreview(token),
+              ),
+            );
+            previewToken = null;
+          }
+        }
         if (actualHdrRoute == route) {
           SmartDialog.showToast('已切换为 ${route.title}');
         }
@@ -186,8 +229,33 @@ class VideoDetailController extends GetxController
       if (!isClosed) SmartDialog.showToast('播放器切换失败，请重试');
       if (kDebugMode) debugPrint('切换播放器失败：$error');
     } finally {
+      if (previewToken != null) _clearHdrSwitchPreview(previewToken);
       switchingPlayer.value = false;
     }
+  }
+
+  Future<ui.Image?> _captureHdrSwitchFrame() async {
+    try {
+      final player = plPlayerController;
+      final capture =
+          player.hdrMedia3Controller?.captureAmbientPixels(snapshot: true) ??
+          player.mpvHdrController?.captureAmbientPixels(snapshot: true);
+      final pixels = await capture?.timeout(
+        const Duration(milliseconds: 60),
+        onTimeout: () => null,
+      );
+      return await pixels?.toImage();
+    } on Exception {
+      return null;
+    }
+  }
+
+  void _clearHdrSwitchPreview([Object? token]) {
+    final preview = hdrSwitchPreview.value;
+    if (preview == null || (token != null && preview.token != token)) return;
+    if (HdrSwitchTrace.enabled) HdrSwitchTrace.record('preview.clear');
+    hdrSwitchPreview.value = null;
+    preview.image?.dispose();
   }
 
   AudioQuality? currentAudioQa;
@@ -866,6 +934,14 @@ class VideoDetailController extends GetxController
     playedTime = Duration(
       milliseconds: plPlayerController.positionInMilliseconds,
     );
+    if (HdrSwitchTrace.enabled) {
+      HdrSwitchTrace.record('quality.request', {
+        'quality': currentVideoQa.code,
+        'route': actualHdrRoute.name,
+        'positionMs': playedTime!.inMilliseconds,
+        'autoplay': _autoPlay.value,
+      });
+    }
     plPlayerController
       ..isBuffering.value = false
       ..buffered.value = 0;
@@ -928,6 +1004,7 @@ class VideoDetailController extends GetxController
     bool autoFullScreenFlag = false,
     Duration? resumePosition,
   }) async {
+    if (resumePosition == null) _clearHdrSwitchPreview();
     Duration? seek = resumePosition ?? defaultST ?? playedTime;
     // 热切换时零进度也必须原样恢复，不能重新应用片头跳过或路由起点。
     if (resumePosition == null) {
@@ -1032,6 +1109,14 @@ class VideoDetailController extends GetxController
               frameRate: '24',
             ),
           );
+    if (HdrSwitchTrace.enabled) {
+      HdrSwitchTrace.record('page.source', {
+        'quality': currentVideoQa.value?.code,
+        'routeOverride': hdrPlaybackRoute.name,
+        'resumeMs': resumePosition?.inMilliseconds,
+        'startMs': seek?.inMilliseconds,
+      });
+    }
     await plPlayerController.setDataSource(
       playbackSource,
       seekTo: MpvHdrPolicy.fateInput.isEmpty ? seek : Duration.zero,
@@ -1573,6 +1658,7 @@ class VideoDetailController extends GetxController
 
   @override
   void onClose() {
+    _clearHdrSwitchPreview();
     cid.close();
     if (isFileSource) {
       cacheLocalProgress();
