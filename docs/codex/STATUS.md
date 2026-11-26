@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-26 16:19 `v26.11.26.2` 已设为 GitHub Latest，ModelScope 镜像同步完成。双 ABI APK 和校验清单的远端长度及哈希一致。沿用用户已完成的 arm64 试机验收。
+
 - 2026-11-26 16:00 用户确认 Media3 配音试机包真机验收完成，并要求直接发布。已选定新标签 `v26.11.26.2` 和 Android versionCode 50，正式 APK 不重复真机安装。
 
 - 2026-11-26 15:56 Media3 HDR 已支持同画面配音原地切轨。342 项 Flutter 测试及 MEP-AN00 PCM、视频出帧和回跳探针通过。arm64 试机包已覆盖安装并核对哈希，登录后的 B 站配音与听感待验。
@@ -2841,3 +2843,11 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 
 - 用户确认已完成当前 Media3 配音试机包的真机验收并授权发布。沿用已安装的 MEP-AN00 arm64 试机包 `5f24c322…` 验收结果。正式 APK 和 ARMv7 均不重新装机，另做构建后静态检查。
 - GitHub Latest 和远端标签确认上一正式版为 `v26.11.26.1`，当前 `origin/main` 基线为 `ec41cf1ca`，仓库 Actions 状态为关闭。发布功能与通过验收的工作区一致，正式版更新版本、发布说明和记录。
+
+## 2026-11-26 16:19 v26.11.26.2 正式发布
+
+- 正式发布多语言配音、统一「翻译与字幕」面板、三条播放路线的配音原地切换，以及底栏分集控件更新。版本 `26.11.26+2`，Android versionCode 50。源码提交 `c546674872a2232e06b2ba00cdfb9a5688a85f6c`，annotated tag object `a2e2dec3abd052af05c3b39380d4597b9ba5991c`，已推送 main 与标签。
+- 用户确认 MEP-AN00 arm64 试机包 `5f24c322…` 已验收。正式构建沿用同一应用代码及原生播放库，正式 APK 按用户要求未再次装机，ARMv7 仅静态校验。
+- 本机 Flutter 3.47.9 与 Gradle 离线构建，开启图标裁剪。Flutter 测试 342/342，静态分析无 error/warning，72 条 info。双 ABI 通过原证书 V2、16 KB 对齐、29 个原生插件、正式 AOT 提交、Dart/Android 切轨通道及 mpv / Media3 FFmpeg 校验。Actions 保持关闭。
+- PiliExo_android_v26.11.26.2_arm64-v8a.apk 为 32,956,219 字节，SHA-256 `da9b463940e158b0c3ddd175e13243528ab7ec44cf88c9493e05cf41eb04a2cb`。PiliExo_android_v26.11.26.2_armeabi-v7a.apk 为 33,008,623 字节，SHA-256 `45ad97fc5b63e555261a132876ca45c8e81337291ae6d1d208b78a297ea734e8`。SHA256SUMS.txt 为 218 字节，SHA-256 `ef5f8da29ed6788402ffe6acb7aafd48eda1cab05a0c410a88ad3d2239fffa4e`。本机资产位于 `dist/release/v26.11.26.2/`，编译和远端校验记录位于 `tmp/release-v26.11.26.2/`。
+- [GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.26.2) 已公开并设为 Latest，资产服务器摘要和长度一致。ModelScope `releases/v26.11.26.2/` 的三份资产均完整下载回读，长度与 SHA-256 与本机及 GitHub 一致。[ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
