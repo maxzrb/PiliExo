@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-26 12:34 `v26.11.26.1` 已发布。双 ABI APK 与 SHA-256 清单已上传 GitHub 和 ModelScope 并核对远端内容。沿用用户刚验过的 arm64 试机结果。
+
 - 2026-11-26 10:36 Media3 杜比音频扩展已和 mpv 使用同一份 FFmpeg 9.1.git 源码。双 ABI 解码重置与 Media3 HDR 分轨三次跳转通过，arm64 试机包已安装到 MEP-AN00 并核对启动。
 
 - 2026-11-26 10:07 mpv 原生 HDR 已共用在线分轨回跳适配，原生和兼容路线使用相同的文件级选项。arm64 试机包已覆盖安装 MEP-AN00。Media3 1.11.0 在同一 HDR10 分轨样本的三次跳转中均恢复播放。
@@ -2769,3 +2771,11 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - ARM64 和 ARMv7 的 ELF 对齐和 JNI 校验通过。两种进程架构均在同一真机执行 3 种格式的 16 位与浮点 PCM 解码，以及 flush 后重新解码。
 - 隔离 Media3 1.11.0 测试应用强制 FFmpeg E-AC-3 软件解码。旧版和新版分别用 HTTP HDR10 与 E-AC-3 分轨跳到 7、20、4 秒，每次均送出视频首帧，音频输出重新推进并输出目标段对应音调。两版各记录 4 次音频推进，0 个 AudioSink 错误。新版未见异常 PCM 峰值，扬声器听感未采集。临时测试应用已卸载。
 - arm64 试机包为 32,875,426 字节，较上版增加 28,672 字节，原证书签名、16 KB 对齐、插件注册及仅更换 Media3 原生库校验通过。设备 SHA-256 为 1d15f1fd4ab5fc9caecdf641bd8e347351cb782a47c2bd91fba4194fb73e216f，Flutter 启动记录和 MainActivity 回读通过。改动留在工作区用于试机。
+
+## 2026-11-26 12:34 v26.11.26.1 正式发布
+
+- 发布 mpv 在线分轨跳转、三条 Android 音频输出的跳转杂音、HDR 转兼容的画面衔接与拖动缓冲时刻，以及 mpv 实际输出丢帧计数修复。Media3 1.11.0 杜比扩展与 mpv 使用 FFmpeg 9.1.git `bf11bea4`。
+- 正式构建由本机 Flutter 3.47.9 和 Gradle 完成。Flutter Maven 镜像 DNS 失败后，从本机已有的同版本 ARMv7 Flutter 引擎仓库离线构建。应用版本为 `26.11.26+1`，Android versionCode 49。发布源码为 `6ac0fcc67f0bf54798a20a9381c513a417a178c3`，annotated tag object `60abd760178ad335fe264fbf38e84048a883146f`，已推送 main 和标签。GitHub Actions 保持关闭。
+- Flutter 332 项测试通过，Analyze 0 error、0 warning（72 项 info）。双 ABI 均通过旧版同证书 V2 签名、16 KB 对齐、29 项插件注册、正式 AOT 提交、定制 mpv 和 Media3 FFmpeg 库检查。R8 映射包含 FFmpeg 音频渲染器。arm64 正式包两颗播放器原生库与此前用户验收的 `1d15f1fd4ab5fc9caecdf641bd8e347351cb782a47c2bd91fba4194fb73e216f` APK 逐字节一致。正式构建关闭试机诊断。按用户要求沿用刚才的 arm64 试机结果，未在手机上重新安装正式 APK。ARMv7 正式包仅静态验收。
+- arm64 APK 为 32,934,793 字节，SHA-256 `2d223c413819664789a4850a33646e62e0c21f98b2c5fad25617341787f841a8`。ARMv7 APK 为 32,986,733 字节，SHA-256 `9ab07aa6495ee798dd021045bc2ce7f7210febe9fb6d8e4fc1cd3e7029ab49ae`。校验清单 SHA-256 `0ba65f6252063b3eb89d2e70ac1ea057d13c98cc5954c4f8a21b2ecf09a9a5dd`。本机正式产物保存于 `dist/release/v26.11.26.1/`。
+- [GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.26.1) 已公开并设为 Latest。GitHub 服务器资产摘要和 ModelScope 完整下载回读与本机三份资产的长度、SHA-256 一致。[ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
