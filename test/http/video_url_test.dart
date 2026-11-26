@@ -10,15 +10,24 @@ import 'package:PiliPlus/utils/login_utils.dart';
 import 'package:PiliPlus/http/loading_state.dart';
 import 'package:PiliPlus/http/video.dart';
 import 'package:PiliPlus/models/common/account_type.dart';
+import 'package:PiliPlus/models/common/video/base_quality.dart';
+import 'package:PiliPlus/models/common/video/video_decode_type.dart';
 import 'package:PiliPlus/models/common/video/video_type.dart';
+import 'package:PiliPlus/models/video/play/url.dart';
+import 'package:PiliPlus/pages/video/controller.dart';
+import 'package:PiliPlus/plugin/pl_player/controller.dart';
+import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/accounts/account.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:material_ui/material_ui.dart';
 
 class _PlayUrlAdapter implements HttpClientAdapter {
   final responses = <Map<String, dynamic>>[];
@@ -44,6 +53,118 @@ class _PlayUrlAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 }
+
+class _DubPlayer extends Fake implements PlPlayerController {
+  @override
+  final brightness = 0.0.obs;
+  @override
+  final int cacheAudioQa = AudioQuality.k192.code;
+  @override
+  int? cacheVideoQa = 80;
+  @override
+  final enableSponsorBlock = false;
+  @override
+  final enableBlock = false;
+  @override
+  final showViewPoints = false;
+  @override
+  final showDmChart = false;
+  @override
+  final tryLook = false;
+  @override
+  final enableAudioNormalization = false;
+  @override
+  final processing = false;
+  @override
+  final playWhenReady = false;
+  @override
+  final isPlaying = false;
+  @override
+  Duration currentPosition = const Duration(seconds: 42);
+
+  AudioTrackSwitchResult audioSwitchResult = AudioTrackSwitchResult.unavailable;
+  final audioSwitchUrls = <String>[];
+
+  @override
+  Future<AudioTrackSwitchResult> switchPlaybackAudioTrack(
+    HdrTrackSource track, {
+    required bool Function() canApply,
+  }) async {
+    expect(canApply(), isTrue);
+    audioSwitchUrls.add(track.urls.first);
+    return audioSwitchResult;
+  }
+}
+
+class _DubPage extends VideoDetailController {
+  _DubPage(_DubPlayer player, PlayUrlModel original)
+    : super(playerController: player) {
+    bvid = 'BV12gYjzxEix';
+    args = {};
+    cid = 32230671121.obs;
+    videoType = VideoType.ugc;
+    isFileSource = false;
+    videoState.value = true;
+    data = original;
+    firstVideo = original.dash!.video!.single;
+    languages.value = original.language!.items;
+    currLang.value = original.curLanguage;
+    currentVideoQa.value = VideoQuality.fromCode(80);
+    currentDecodeFormats = VideoDecodeFormatType.AVC;
+    currentAudioQa = AudioQuality.k192;
+  }
+
+  final loads = <(String?, Duration?, bool?)>[];
+
+  @override
+  Future<void>? initPlayerIfNeeded(bool autoFullScreenFlag) => null;
+
+  @override
+  Future<void> playerInit({
+    bool? autoplay,
+    bool autoFullScreenFlag = false,
+    Duration? resumePosition,
+  }) async {
+    loads.add((firstAudio?.baseUrl, resumePosition, autoplay));
+  }
+}
+
+// 两个语言均用常见音质 ID。切换语言时应根据本次响应选择音频地址。
+Map<String, dynamic> _dubResponse(
+  String language,
+  List<int> audioIds, {
+  String? videoUrl,
+  bool changesMouth = false,
+}) => {
+  'cur_language': language,
+  'language': {
+    'support': true,
+    'items': [
+      {
+        'lang': 'en',
+        'title': 'English',
+        'production_type': 2,
+        'video_mouth_shape_change': changesMouth,
+      },
+    ],
+  },
+  'dash': {
+    'video': [
+      {
+        'id': 80,
+        'codecs': 'avc1.640034',
+        'base_url': videoUrl ?? 'https://example.com/video/$language.m4s',
+      },
+    ],
+    'audio': [
+      for (final id in audioIds)
+        {
+          'id': id,
+          'base_url': 'https://example.com/audio/$language-$id.m4s',
+        },
+    ],
+  },
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -164,6 +285,186 @@ void main() {
       expect(adapter.responses, isEmpty);
     });
   }
+
+  group('配音语言', () {
+    setUp(() {
+      Accounts.accountMode[AccountType.video.index] = LoginAccount(
+        BiliCookieJar.fromJson({'DedeUserID': '123', 'bili_jct': 'csrf'}),
+        'access-key',
+        'refresh-token',
+      );
+    });
+
+    test('首次进入和切换分 P 都请求原声', () async {
+      final original = _dubResponse('', [30280])..remove('cur_language');
+      final dubbed = _dubResponse('en', [30232]);
+      final page = _DubPage(_DubPlayer(), PlayUrlModel.fromJson(original));
+      adapter.responses.addAll([
+        {'code': 0, 'data': original},
+        {'code': 0, 'data': dubbed},
+        {'code': 0, 'data': original},
+      ]);
+
+      await page.queryVideoUrl();
+      await page.setLanguage('en');
+      expect(page.currLang.value, 'en');
+      page.onReset();
+      page.cid.value += 1;
+      await page.queryVideoUrl();
+
+      expect(page.currLang.value ?? '', '');
+      expect(page.firstAudio?.baseUrl, 'https://example.com/audio/-30280.m4s');
+      expect(
+        adapter.requests.map(
+          (request) => request.queryParameters['cur_language'],
+        ),
+        ['', 'en', ''],
+      );
+    });
+
+    test('切换配音保留暂停、进度和首选音质，恢复原声时重新应用首选档', () async {
+      final player = _DubPlayer();
+      final original = _dubResponse('', [30232, 30280]);
+      final page = _DubPage(player, PlayUrlModel.fromJson(original));
+      adapter.responses.addAll([
+        {
+          'code': 0,
+          'data': _dubResponse('en', [30232]),
+        },
+        {'code': 0, 'data': original},
+      ]);
+      expect(page.audioLanguageOptions.map((item) => item.title), [
+        '原声',
+        'English（AI）',
+      ]);
+
+      await page.setLanguage('en');
+      expect(page.currLang.value, 'en');
+      expect(page.currentAudioQa, AudioQuality.k132);
+      expect(player.cacheAudioQa, AudioQuality.k192.code);
+      expect(page.loads.single, (
+        'https://example.com/audio/en-30232.m4s',
+        const Duration(seconds: 42),
+        false,
+      ));
+
+      player.currentPosition = const Duration(seconds: 57);
+      await page.setLanguage('');
+      expect(page.currLang.value, '');
+      expect(page.currentAudioQa, AudioQuality.k192);
+      expect(page.loads.last, (
+        'https://example.com/audio/-30280.m4s',
+        const Duration(seconds: 57),
+        false,
+      ));
+      expect(
+        adapter.requests.map(
+          (request) => request.queryParameters['cur_language'],
+        ),
+        ['en', ''],
+      );
+      expect(player.audioSwitchUrls, isEmpty);
+    });
+
+    const videoPath = '/upgcxcode/21/11/32230671121/32230671121-1-30080.m4s';
+    final sameVideoOriginal = _dubResponse(
+      '',
+      [30280],
+      videoUrl: 'https://a.bilivideo.com$videoPath?deadline=1',
+    );
+    final sameVideoDubbed = _dubResponse(
+      'en',
+      [30232],
+      videoUrl: 'https://b.bilivideo.com$videoPath?deadline=2',
+    );
+
+    test('相同视频分轨换 CDN 时原地切换配音和原声', () async {
+      final player = _DubPlayer()
+        ..audioSwitchResult = AudioTrackSwitchResult.switched;
+      final page = _DubPage(player, PlayUrlModel.fromJson(sameVideoOriginal));
+      adapter.responses.addAll([
+        {'code': 0, 'data': sameVideoDubbed},
+        {'code': 0, 'data': sameVideoOriginal},
+      ]);
+
+      await page.setLanguage('en');
+      expect(page.currLang.value, 'en');
+      await page.setLanguage('');
+      expect(page.currLang.value, '');
+      expect(player.audioSwitchUrls, [
+        'https://example.com/audio/en-30232.m4s',
+        'https://example.com/audio/-30280.m4s',
+      ]);
+      expect(page.loads, isEmpty);
+    });
+
+    test('配音包含口型改动时重新加载声画并恢复进度', () async {
+      final player = _DubPlayer()
+        ..audioSwitchResult = AudioTrackSwitchResult.switched;
+      final page = _DubPage(player, PlayUrlModel.fromJson(sameVideoOriginal));
+      adapter.responses.add({
+        'code': 0,
+        'data': _dubResponse(
+          'en',
+          [30232],
+          videoUrl: 'https://b.bilivideo.com$videoPath?deadline=2',
+          changesMouth: true,
+        ),
+      });
+
+      await page.setLanguage('en');
+      expect(player.audioSwitchUrls, isEmpty);
+      expect(page.loads.single.$2, const Duration(seconds: 42));
+    });
+
+    testWidgets('原地切轨失败时保留原声且不重载', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: FlutterSmartDialog.init(),
+          home: const SizedBox.shrink(),
+        ),
+      );
+      final player = _DubPlayer()
+        ..audioSwitchResult = AudioTrackSwitchResult.failed;
+      final original = PlayUrlModel.fromJson(sameVideoOriginal);
+      final page = _DubPage(player, original);
+      adapter.responses.add({'code': 0, 'data': sameVideoDubbed});
+
+      await tester.runAsync(() => page.setLanguage('en'));
+
+      expect(page.data, same(original));
+      expect(page.currLang.value, '');
+      expect(page.loads, isEmpty);
+      expect(page.switchingAudioLanguage.value, isFalse);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('接口返回原声时不切换或重载当前播放', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: FlutterSmartDialog.init(),
+          home: const SizedBox.shrink(),
+        ),
+      );
+      final original = _dubResponse('', [30232, 30280]);
+      final page = _DubPage(_DubPlayer(), PlayUrlModel.fromJson(original));
+      adapter.responses.add({'code': 0, 'data': original});
+
+      await tester.runAsync(() => page.setLanguage('en'));
+
+      expect(adapter.requests.single.queryParameters['cur_language'], 'en');
+      expect(page.currLang.value, '');
+      expect(page.currentAudioQa, AudioQuality.k192);
+      expect(page.loads, isEmpty);
+      expect(page.videoState.value, isTrue);
+      expect(page.switchingAudioLanguage.value, isFalse);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+    });
+  });
 
   test('匿名网页 Cookie 获取成功或失败均保留 APP/gRPC 独立标识', () async {
     final anonymous = AnonymousAccount();

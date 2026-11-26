@@ -174,7 +174,10 @@ class Language {
   Language.fromJson(Map<String, dynamic> json) {
     support = json['support'];
     items =
-        (json['items'] as List?)?.map((e) => LanguageItem.fromJson(e)).toList()
+        (json['items'] as List?)
+            ?.map((e) => LanguageItem.fromJson(e))
+            .where((item) => item.lang?.isNotEmpty == true)
+            .toList()
           ?..sort(_sort);
   }
 }
@@ -192,17 +195,22 @@ class LanguageItem {
     this.lang,
     this.title,
     this.subtitleLang,
+    this.changesVideo = false,
   });
 
   String? lang;
   String? title;
   String? subtitleLang;
   bool isAi = false;
+  bool changesVideo;
 
-  LanguageItem.fromJson(Map<String, dynamic> json) {
+  LanguageItem.fromJson(Map<String, dynamic> json)
+    : changesVideo =
+          json['video_detext'] == true ||
+          json['video_mouth_shape_change'] == true {
     lang = json['lang'];
     isAi = json['production_type'] == 2;
-    title = '${json['title']}${isAi ? '（AI）' : ''}';
+    title = '${json['title'] ?? lang}${isAi ? '（AI）' : ''}';
     subtitleLang = json['subtitle_lang'];
   }
 }
@@ -352,6 +360,33 @@ class VideoItem extends BaseItem {
   VideoItem.fromJson(Map<String, dynamic> json, List<FormatItem>? formats)
     : super.fromJson(json) {
     quality = VideoQuality.fromFormat(json['id'], formats);
+  }
+
+  /// 只有能确认相同 DASH 视频资源时，才复用当前画面。
+  bool hasSameVideoResource(VideoItem other) {
+    if (id != other.id ||
+        codecid != other.codecid ||
+        codecs != other.codecs ||
+        width != other.width ||
+        height != other.height ||
+        frameRate != other.frameRate) {
+      return false;
+    }
+    Iterable<String> resourceKeys(VideoItem item) sync* {
+      for (final url in item.playUrls) {
+        yield url;
+        final uri = Uri.tryParse(url);
+        if (uri != null &&
+            uri.path.startsWith('/upgcxcode/') &&
+            uri.path.endsWith('.m4s')) {
+          // 针对明确带资源路径的 B 站分轨，忽略 CDN 和刷新后的签名。
+          yield uri.path;
+        }
+      }
+    }
+
+    final originalKeys = resourceKeys(this).toSet();
+    return resourceKeys(other).any(originalKeys.contains);
   }
 }
 

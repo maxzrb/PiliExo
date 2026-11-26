@@ -38,6 +38,7 @@ import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/data_source.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/playback_insight.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/translation_subtitle_picker.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService, ShutdownPanel;
 import 'package:PiliPlus/utils/accounts.dart';
@@ -706,6 +707,27 @@ class HeaderControlState extends State<HeaderControl>
                     ),
                   ),
                 ],
+                Obx(() {
+                  if (videoDetailCtr.audioLanguageOptions.isEmpty &&
+                      videoDetailCtr.subtitles.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(
+                      Icons.closed_caption_outlined,
+                      size: 20,
+                    ),
+                    title: const Text('翻译与字幕', style: titleStyle),
+                    onTap: () {
+                      Get.back();
+                      TranslationSubtitlePanel.show(
+                        this.context,
+                        videoDetailCtr,
+                      );
+                    },
+                  );
+                }),
                 PopupListTile(
                   dense: true,
                   leading: const Icon(Icons.repeat, size: 20),

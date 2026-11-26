@@ -153,6 +153,28 @@ class HdrMedia3Controller {
     return _invoke('play');
   }
 
+  Future<AudioTrackSwitchResult> switchAudioTrack(HdrTrackSource track) async {
+    final source = _source;
+    if (!_created || source == null) return AudioTrackSwitchResult.unavailable;
+    final result = await _methodChannel.invokeMethod<String>(
+      'switchAudioTrack',
+      {
+        'sessionId': sessionId,
+        'audio': track.toJson(),
+      },
+    );
+    if (!identical(_source, source)) return AudioTrackSwitchResult.failed;
+    switch (result) {
+      case 'switched':
+        _source = source.withAudioTrack(track);
+        return AudioTrackSwitchResult.switched;
+      case 'failed':
+        return AudioTrackSwitchResult.failed;
+      default:
+        return AudioTrackSwitchResult.unavailable;
+    }
+  }
+
   Future<void> pause() {
     _playWhenReady = false;
     _isPlaying = false;

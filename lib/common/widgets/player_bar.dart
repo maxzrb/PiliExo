@@ -19,10 +19,17 @@ import 'dart:math' as math;
 
 import 'package:PiliPlus/common/widgets/slotted_layout_helper.dart';
 import 'package:flutter/rendering.dart'
-    show BoxHitTestResult, TransformLayer, BoxParentData;
+    show BoxHitTestResult, TransformLayer, RenderObjectVisitor;
 import 'package:flutter/widgets.dart';
 
-enum PlayerBarType { left, right, title }
+enum PlayerBarType {
+  left,
+  rightLeading,
+  optionalRight,
+  compactRight,
+  right,
+  title,
+}
 
 class PlayerBar
     extends SlottedMultiChildRenderObjectWidget<PlayerBarType, RenderBox> {
@@ -31,11 +38,24 @@ class PlayerBar
     required this.left,
     required this.right,
     this.title,
-  });
+    this.rightLeading,
+    this.optionalRight,
+    this.compactRight,
+  }) : assert(
+         title == null ||
+             (rightLeading == null &&
+                 optionalRight == null &&
+                 compactRight == null),
+       );
 
   final Widget left;
   final Widget right;
   final Widget? title;
+  final Widget? rightLeading;
+
+  /// 在右侧两组之间优先显示，空间不足时显示紧凑入口。
+  final Widget? optionalRight;
+  final Widget? compactRight;
 
   @override
   RenderPlayerBar createRenderObject(BuildContext context) {
@@ -47,6 +67,9 @@ class PlayerBar
     .left => left,
     .right => right,
     .title => title,
+    .rightLeading => rightLeading,
+    .optionalRight => optionalRight,
+    .compactRight => compactRight,
   };
 
   @override
@@ -62,9 +85,12 @@ class RenderPlayerBar extends RenderBox
   RenderBox? get title => childForSlot(.title);
 
   @override
-  Iterable<PlayerBarType> get slots => PlayerBarType.values;
+  Iterable<PlayerBarType> get slots => _showOptionalRight
+      ? const [.left, .rightLeading, .optionalRight, .right, .title]
+      : const [.left, .rightLeading, .compactRight, .right, .title];
 
   Matrix4? _transform;
+  bool _showOptionalRight = false;
 
   @override
   void performLayout() {
@@ -103,43 +129,64 @@ class RenderPlayerBar extends RenderBox
       return;
     }
 
-    final c = constraints.copyWith(maxWidth: .infinity);
+    final c = constraints.loosen().copyWith(maxWidth: .infinity);
     final left = this.left..layout(c, parentUsesSize: true);
     final right = this.right..layout(c, parentUsesSize: true);
-
-    final leftSize = left.size;
-    final rightSize = right.size;
-
-    final leftParentData = left.parentData as BoxParentData;
-    final rightParentData = right.parentData as BoxParentData;
-
-    final leftWidth = leftSize.width;
-    final rightWidth = rightSize.width;
-    final totalWidth = leftWidth + rightWidth;
-    final height = math.max(leftSize.height, rightSize.height);
+    final leading = childForSlot(.rightLeading)
+      ?..layout(c, parentUsesSize: true);
+    final optional = childForSlot(.optionalRight)
+      ?..layout(c, parentUsesSize: true);
+    final compact = childForSlot(.compactRight)
+      ?..layout(c, parentUsesSize: true);
+    final leadingWidth = leading?.size.width ?? 0;
+    final available =
+        maxWidth - left.size.width - leadingWidth - right.size.width;
+    final show =
+        optional != null &&
+        optional.size.width > 0 &&
+        optional.size.width <= available;
+    if (show != _showOptionalRight) {
+      _showOptionalRight = show;
+      markNeedsSemanticsUpdate();
+    }
+    final picker = show ? optional : compact;
+    final rightGroup = [?leading, ?picker, right];
+    final rightWidth =
+        leadingWidth + (picker?.size.width ?? 0) + right.size.width;
+    final totalWidth = left.size.width + rightWidth;
+    final height = rightGroup.fold(
+      left.size.height,
+      (height, child) => math.max(height, child.size.height),
+    );
     size = constraints.constrainDimensions(maxWidth, height);
 
-    leftParentData.offset = Offset(0.0, (height - leftSize.height) / 2);
-    if (totalWidth <= maxWidth) {
-      rightParentData.offset = Offset(
-        maxWidth - rightWidth,
-        (height - rightSize.height) / 2,
-      );
-    } else {
+    setOffset(left, Offset(0, (height - left.size.height) / 2));
+    var rightOffset = maxWidth - rightWidth;
+    if (totalWidth > maxWidth) {
       final scale = maxWidth / totalWidth;
       _transform = Matrix4.identity()
         ..translateByDouble(0.0, height * (1 - scale) / 2, 0.0, 1.0)
         ..scaleByDouble(scale, scale, scale, 1.0);
-      rightParentData.offset = Offset(
-        leftWidth,
-        (height - rightSize.height) / 2,
-      );
+      rightOffset = left.size.width;
+    }
+    for (final child in rightGroup) {
+      setOffset(child, Offset(rightOffset, (height - child.size.height) / 2));
+      rightOffset += child.size.width;
     }
   }
 
   void defaultPaint(PaintingContext context, Offset offset) {
-    for (final child in children) {
-      context.paintChild(child, getOffset(child) + offset);
+    for (final slot in slots) {
+      if (childForSlot(slot) case final child?) {
+        context.paintChild(child, getOffset(child) + offset);
+      }
+    }
+  }
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    for (final slot in slots) {
+      if (childForSlot(slot) case final child?) visitor(child);
     }
   }
 

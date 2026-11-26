@@ -16,6 +16,7 @@ PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Andr
 
 - Android 在线 UGC/PGC 提供原生 HDR 播放：Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线，支持 HDR10、Dolby Vision、HDR Vivid 和失败回退。
 - 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
+- 支持 B 站视频提供的多语言配音。在「翻译与字幕」中分别选择配音和字幕，音质独立设置。三条播放路线均可在兼容音轨间原地切换并保留当前画面。
 - mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
 - 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留缩小动画，原生 HDR 路线固定视频层并裁剪。
 - 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析、高采样率 FLAC 的输入缓冲修正，以及 Android 在线分轨跳转适配。Media3 杜比软件音频解码扩展与 mpv 使用同一个 FFmpeg 提交。

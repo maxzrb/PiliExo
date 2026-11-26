@@ -116,7 +116,8 @@ class BottomControl extends StatelessWidget {
               ),
             ),
           ),
-          buildBottomControl(),
+          // 视频详情可能晚于播放器就绪，分集控件随详情更新。
+          Obx(buildBottomControl),
         ],
       ),
     );

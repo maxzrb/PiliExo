@@ -1832,6 +1832,92 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     _notifyPlaybackInsight();
   }
 
+  /// 保留当前视频链，在选中目标音轨前先打开独立的音频 DASH 资源。
+  Future<AudioTrackSwitchResult> switchPlaybackAudioTrack(
+    HdrTrackSource track, {
+    required bool Function() canApply,
+  }) async {
+    if (!Platform.isAndroid ||
+        processing ||
+        isLive ||
+        onlyPlayAudio.value ||
+        dataSource is! NetworkSource) {
+      return AudioTrackSwitchResult.unavailable;
+    }
+    final source = dataSource as NetworkSource;
+    if (_hdrMedia3Controller case final hdr?) {
+      final result = await hdr.switchAudioTrack(track);
+      if (result == AudioTrackSwitchResult.switched) {
+        if (!identical(_hdrMedia3Controller, hdr) ||
+            !identical(dataSource, source)) {
+          return AudioTrackSwitchResult.failed;
+        }
+        dataSource = source.withAudioTrack(track);
+        _notifyPlaybackInsight();
+      }
+      return result;
+    }
+    if (enableAudioNormalization || _videoPlayerController is! NativePlayer) {
+      return AudioTrackSwitchResult.unavailable;
+    }
+    final player = _videoPlayerController!;
+    final previousId = player.getProperty('current-tracks/audio/id');
+    if (source.audioSource == null ||
+        int.tryParse(previousId) == null ||
+        player.getProperty('current-tracks/audio/external') != 'yes' ||
+        player.getProperty('eof-reached') == 'yes') {
+      return AudioTrackSwitchResult.unavailable;
+    }
+
+    bool samePlayback() =>
+        !processing &&
+        identical(_videoPlayerController, player) &&
+        identical(dataSource, source) &&
+        _playerCount != 0;
+
+    const title = 'PiliExo 配音';
+    await player.command(['audio-add', track.urls.first, 'auto', title]);
+    if (!samePlayback()) return AudioTrackSwitchResult.failed;
+
+    // media-kit 的命令错误走事件流，需确认轨道实际已挂入。
+    final count = int.tryParse(player.getProperty('track-list/count')) ?? 0;
+    String? targetId;
+    for (var index = count - 1; index >= 0; index--) {
+      final prefix = 'track-list/$index';
+      final id = player.getProperty('$prefix/id');
+      if (id != previousId &&
+          player.getProperty('$prefix/type') == 'audio' &&
+          player.getProperty('$prefix/title') == title) {
+        targetId = id;
+        break;
+      }
+    }
+    if (targetId == null) return AudioTrackSwitchResult.failed;
+    if (canApply()) {
+      await player.command(['set', 'aid', targetId]);
+      final wait = Stopwatch()..start();
+      while (samePlayback() && canApply()) {
+        if (player.getProperty('current-tracks/audio/id') == targetId &&
+            double.tryParse(player.getProperty('audio-pts'))?.isFinite ==
+                true) {
+          dataSource = source.withAudioTrack(track);
+          _notifyPlaybackInsight();
+          await player.command(['audio-remove', previousId]);
+          return AudioTrackSwitchResult.switched;
+        }
+        if (wait.elapsed >= const Duration(seconds: 3)) break;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+    }
+    if (samePlayback()) {
+      if (player.getProperty('current-tracks/audio/id') != previousId) {
+        await player.command(['set', 'aid', previousId]);
+      }
+      if (samePlayback()) await player.command(['audio-remove', targetId]);
+    }
+    return AudioTrackSwitchResult.failed;
+  }
+
   /// 暂停热切换时，纹理调整尺寸后的新输出需要重新绘制当前位置。
   Future<void> _restorePausedMpvFrame(
     Player player,

@@ -176,6 +176,13 @@ class HdrMedia3Plugin(
                     result.success(null)
                 }
 
+                "switchAudioTrack" -> {
+                    val track = call.argument<Map<*, *>>("audio") ?: error("缺少音频轨道")
+                    manager.getSession(call).switchAudioTrack(HdrMedia3Source.parseTrack(track)) {
+                        result.success(it.value)
+                    }
+                }
+
                 "setSpeed" -> {
                     val speed = call.argument<Number>("speed")?.toFloat()
                         ?: error("缺少 speed")
@@ -722,7 +729,7 @@ internal data class HdrMedia3Source(
             )
         }
 
-        private fun parseTrack(map: Map<*, *>): HdrMedia3Track {
+        fun parseTrack(map: Map<*, *>): HdrMedia3Track {
             val urls = ((map["urls"] as? List<*>) ?: emptyList<Any?>())
                 .filterIsInstance<String>()
                 .filter(String::isNotBlank)
@@ -782,6 +789,7 @@ private class HdrMedia3Session(
     }
     private var playerView: PlayerView? = null
     private var source: HdrMedia3Source? = null
+    private var audioMediaSource: SwitchableAudioMediaSource? = null
     private var sourceFingerprint = ""
     private var fallbackState = RepresentationFallbackState(emptyList())
     private val fallbackHistory = mutableListOf<Map<String, Any?>>()
@@ -1030,6 +1038,31 @@ private class HdrMedia3Session(
         }
     }
 
+    fun switchAudioTrack(audio: HdrMedia3Track, complete: (Media3AudioSwitch) -> Unit) {
+        val active = source
+        val current = audioMediaSource
+        if (released || player.playbackState != Player.STATE_READY || current == null || active == null) {
+            complete(Media3AudioSwitch.UNAVAILABLE)
+            return
+        }
+        val replacement = buildAudioMediaSource(audio, active.headers)
+        val positionUs = player.currentPosition * 1000
+        player.createMessage { _, _ ->
+            current.switchTo(replacement, positionUs) { result ->
+                handler.post {
+                    if (released || audioMediaSource !== current || source !== active) {
+                        complete(Media3AudioSwitch.FAILED)
+                    } else {
+                        if (result == Media3AudioSwitch.SWITCHED) {
+                            source = active.copy(audio = audio)
+                        }
+                        complete(result)
+                    }
+                }
+            }
+        }.send()
+    }
+
     fun pause() {
         if (!released) {
             // 先关闭采样，再让播放器停止，避免暂停边界仍把网络数据计入带宽。
@@ -1140,20 +1173,7 @@ private class HdrMedia3Session(
         source: HdrMedia3Source,
         representation: HdrMedia3Representation,
     ): MediaSource {
-        val candidateMap = linkedMapOf<String, List<Uri>>()
-        candidateMap[representation.track.urls.first().toString()] = representation.track.urls
-        source.audio?.let { candidateMap[it.urls.first().toString()] = it.urls }
-
-        val httpFactory = OkHttpDataSource.Factory(httpClient)
-            .setDefaultRequestProperties(source.headers)
-        val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
-        val fallbackFactory = DataSource.Factory {
-            MultiUriDataSource(defaultFactory, candidateMap) { bytes ->
-                // 媒体窗口统计包含暂停期间已经缓存的内容；它与只统计播放时段的
-                // 网络吞吐 meter 是两套独立指标。
-                mediaBytesRead.addAndGet(bytes)
-            }
-        }
+        val fallbackFactory = trackDataSource(representation.track, source.headers)
         val videoItemBuilder = MediaItem.Builder()
             .setMediaId("$sessionId-video-${representation.id}")
             .setUri(representation.track.urls.first())
@@ -1178,9 +1198,26 @@ private class HdrMedia3Session(
         // 避免凭 URL 后缀误判媒体类型。
         val progressiveFactory = ProgressiveMediaSource.Factory(fallbackFactory)
         val videoSource = progressiveFactory.createMediaSource(videoItemBuilder.build())
-        val audio = source.audio
-        if (audio == null) return videoSource
+        val audio = source.audio?.let {
+            SwitchableAudioMediaSource(buildAudioMediaSource(it, source.headers))
+        }
+        audioMediaSource = audio
+        return if (audio == null) videoSource else MergingMediaSource(true, true, videoSource, audio)
+    }
 
+    private fun trackDataSource(track: HdrMedia3Track, headers: Map<String, String>): DataSource.Factory {
+        val httpFactory = OkHttpDataSource.Factory(httpClient).setDefaultRequestProperties(headers)
+        val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
+        val candidates = mapOf(track.urls.first().toString() to track.urls)
+        return DataSource.Factory {
+            MultiUriDataSource(defaultFactory, candidates) { bytes ->
+                // 媒体窗口统计包含暂停期间已经缓存的内容。
+                mediaBytesRead.addAndGet(bytes)
+            }
+        }
+    }
+
+    private fun buildAudioMediaSource(audio: HdrMedia3Track, headers: Map<String, String>): MediaSource {
         val audioItem = MediaItem.Builder()
             .setMediaId("$sessionId-audio")
             .setUri(audio.urls.first())
@@ -1188,12 +1225,11 @@ private class HdrMedia3Session(
                 audio.mimeType?.takeIf(String::isNotBlank)?.let(::setMimeType)
             }
             .build()
-        val audioSource = ProgressiveMediaSource.Factory(
-            fallbackFactory,
+        return ProgressiveMediaSource.Factory(
+            trackDataSource(audio, headers),
             FlacFormatExtractorsFactory(),
         )
             .createMediaSource(audioItem)
-        return MergingMediaSource(true, true, videoSource, audioSource)
     }
 
     private fun fingerprintOf(source: HdrMedia3Source): String = buildString {

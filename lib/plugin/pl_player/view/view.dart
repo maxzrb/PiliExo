@@ -56,6 +56,7 @@ import 'package:PiliPlus/plugin/pl_player/widgets/forward_seek.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/mpv_convert_webp.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/play_pause_btn.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/playback_insight.dart';
+import 'package:PiliPlus/plugin/pl_player/widgets/translation_subtitle_picker.dart';
 import 'package:PiliPlus/utils/android/bindings.g.dart';
 import 'package:PiliPlus/utils/cache_manager.dart';
 import 'package:PiliPlus/utils/duration_utils.dart';
@@ -885,120 +886,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         },
       ),
 
-      BottomControlType.aiTranslate => Obx(
-        () {
-          final list = videoDetailController.languages.value;
-          if (list != null && list.isNotEmpty) {
-            return PopupMenuButton<String>(
-              tooltip: '翻译',
-              requestFocus: false,
-              initialValue: videoDetailController.currLang.value,
-              color: Colors.black.withValues(alpha: 0.8),
-              itemBuilder: (context) {
-                return [
-                  PopupMenuItem<String>(
-                    height: 35,
-                    value: '',
-                    onTap: () => videoDetailController.setLanguage(''),
-                    child: const Text(
-                      "关闭翻译",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  ...list.map((e) {
-                    return PopupMenuItem<String>(
-                      height: 35,
-                      value: e.lang,
-                      onTap: () => videoDetailController.setLanguage(e.lang!),
-                      child: Text(
-                        e.title!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                        ),
-                      ),
-                    );
-                  }),
-                ];
-              },
-              child: SizedBox(
-                width: widgetWidth,
-                height: 30,
-                child: const Icon(
-                  Icons.translate,
-                  size: 18,
-                  color: Colors.white,
-                ),
-              ),
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ),
-
-      /// 字幕
-      BottomControlType.subtitle => Obx(
-        () {
-          if (videoDetailController.subtitles.isNotEmpty) {
-            final val = videoDetailController.vttSubtitlesIndex.value;
-            return PopupMenuButton<int>(
-              tooltip: '字幕',
-              requestFocus: false,
-              initialValue: val,
-              color: Colors.black.withValues(alpha: 0.8),
-              itemBuilder: (context) {
-                return [
-                  PopupMenuItem<int>(
-                    value: 0,
-                    height: 35,
-                    onTap: () => videoDetailController.setSubtitle(0),
-                    child: const Text(
-                      "关闭字幕",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  ...videoDetailController.subtitles.mapIndexed((i, e) {
-                    return PopupMenuItem<int>(
-                      value: i + 1,
-                      height: 35,
-                      onTap: () => videoDetailController.setSubtitle(i + 1),
-                      child: Text(
-                        e.lanDoc ?? e.lan,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const .new(color: Colors.white, fontSize: 13),
-                      ),
-                    );
-                  }),
-                ];
-              },
-              child: SizedBox(
-                width: widgetWidth,
-                height: 30,
-                child: val == 0
-                    ? const Icon(
-                        Icons.closed_caption_off_outlined,
-                        size: 22,
-                        color: Colors.white,
-                      )
-                    : const Icon(
-                        Icons.closed_caption_off_rounded,
-                        size: 22,
-                        color: Colors.white,
-                      ),
-              ),
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      ),
-
       /// 播放速度
       BottomControlType.speed => Obx(
         () => PopupMenuButton<double>(
@@ -1129,14 +1016,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
     final flag =
         isFullScreen || plPlayerController.isDesktopPip || maxWidth >= 500;
+    final leadingRight = [
+      if (isNotFileSource && plPlayerController.showDmChart)
+        BottomControlType.dmChart,
+      if (plPlayerController.isAnim) BottomControlType.superResolution,
+      if (plPlayerController.showViewPoints) BottomControlType.viewPoints,
+      if (isNotFileSource && anySeason) BottomControlType.episode,
+    ];
     final List<BottomControlType> userSpecifyItemRight = [
-      if (isNotFileSource && plPlayerController.showDmChart) .dmChart,
-      if (plPlayerController.isAnim) .superResolution,
-      if (plPlayerController.showViewPoints) .viewPoints,
-      if (isNotFileSource && anySeason) .episode,
       if (flag) .fit,
-      if (isNotFileSource) .aiTranslate,
-      .subtitle,
       .speed,
       if (isNotFileSource && flag) .qa,
       if (!plPlayerController.isDesktopPip) .fullscreen,
@@ -1149,6 +1037,21 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       right: Row(
         mainAxisSize: .min,
         children: userSpecifyItemRight.map(progressWidget).toList(),
+      ),
+      rightLeading: Row(
+        mainAxisSize: .min,
+        children: leadingRight.map(progressWidget).toList(),
+      ),
+      optionalRight: isNotFileSource
+          ? TranslationSubtitleButton(
+              controller: videoDetailController,
+              width: widgetWidth,
+            )
+          : null,
+      compactRight: TranslationSubtitleButton(
+        controller: videoDetailController,
+        width: widgetWidth,
+        includeDubbing: false,
       ),
     );
   }

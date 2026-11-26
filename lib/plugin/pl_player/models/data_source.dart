@@ -1,6 +1,8 @@
 import 'package:PiliPlus/utils/path_utils.dart';
 import 'package:path/path.dart' as path;
 
+enum AudioTrackSwitchResult { unavailable, failed, switched }
+
 sealed class DataSource {
   final String videoSource;
   final String? audioSource;
@@ -36,6 +38,19 @@ class NetworkSource extends DataSource {
     super.audioBitrate,
     super.videoFrameRate,
   });
+
+  NetworkSource withAudioTrack(HdrTrackSource track) => NetworkSource(
+    hdrCompatibility: hdrCompatibility,
+    videoSource: videoSource,
+    videoBitrate: videoBitrate,
+    videoFrameRate: videoFrameRate,
+    videoCodecString: videoCodecString,
+    videoMimeType: videoMimeType,
+    audioSource: track.urls.first,
+    audioBitrate: track.bitrate,
+    audioCodecString: track.codecs,
+    audioMimeType: track.mimeType,
+  );
 }
 
 /// Media3 使用的单条 DASH fMP4 轨道。
@@ -139,6 +154,16 @@ class HdrNetworkSource extends NetworkSource {
          videoMimeType: video.mimeType,
          audioMimeType: audio?.mimeType,
        );
+
+  @override
+  HdrNetworkSource withAudioTrack(HdrTrackSource track) => HdrNetworkSource(
+    useMpvHdr: useMpvHdr,
+    qualityCode: qualityCode,
+    video: video,
+    videoRepresentations: videoRepresentations,
+    audio: track,
+    headers: headers,
+  );
 }
 
 /// HDR 后端选择规则，保持平台和播放类型判断集中在一个无副作用接口中。

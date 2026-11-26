@@ -5,12 +5,10 @@ enum BottomControlType {
   time,
   episode,
   fit,
-  subtitle,
   speed,
   fullscreen,
   viewPoints,
   superResolution,
   dmChart,
   qa,
-  aiTranslate,
 }

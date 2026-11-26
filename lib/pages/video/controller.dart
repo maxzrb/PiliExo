@@ -1165,21 +1165,166 @@ class VideoDetailController extends GetxController
 
   final languages = Rxn<List<LanguageItem>>();
   final currLang = Rxn<String>();
-  void setLanguage(String language) {
-    if (currLang.value == language) return;
-    if (!isLoginVideo) {
+  final switchingAudioLanguage = false.obs;
+  Object? _audioLanguageRequest;
+
+  List<({String code, String title})> get audioLanguageOptions {
+    final items = languages.value;
+    if (items == null || items.isEmpty) return const [];
+    return [
+      (code: '', title: '原声'),
+      for (final item in items)
+        (code: item.lang!, title: item.title ?? item.lang!),
+    ];
+  }
+
+  Future<void> setLanguage(String language) async {
+    if (isClosed ||
+        isFileSource ||
+        !videoState.value ||
+        (currLang.value ?? '') == language ||
+        !audioLanguageOptions.any((item) => item.code == language)) {
+      return;
+    }
+    if (!Accounts.get(AccountType.video).isLogin) {
       SmartDialog.showToast('账号未登录');
       return;
     }
-    currLang.value = language;
-    queryVideoUrl(fromReset: true);
+    final player = plPlayerController;
+    if (isQuerying ||
+        switchingAudioLanguage.value ||
+        switchingPlayer.value ||
+        player.processing) {
+      SmartDialog.showToast('视频加载中，请稍后切换');
+      return;
+    }
+    final original = data;
+    final request = Object();
+    _audioLanguageRequest = request;
+    switchingAudioLanguage.value = true;
+    bool isCurrent() =>
+        !isClosed &&
+        identical(_audioLanguageRequest, request) &&
+        identical(data, original);
+
+    try {
+      final result = await _getVideoUrl(
+        VideoQuality.hdrVivid.code,
+        audioLanguage: language,
+      );
+      if (!isCurrent()) return;
+      final response = result.dataOrNull;
+      if (response == null || (response.curLanguage ?? '') != language) {
+        SmartDialog.showToast('当前配音无法切换');
+        return;
+      }
+      await _supplementVideoQualities(response);
+      if (!isCurrent()) return;
+      if (isQuerying || switchingPlayer.value || player.processing) {
+        SmartDialog.showToast('视频加载中，请稍后切换');
+        return;
+      }
+      final video = response.dash?.video;
+      final audio = response.dash?.audio;
+      final quality = currentVideoQa.value;
+      if (video == null ||
+          video.isEmpty ||
+          audio == null ||
+          audio.isEmpty ||
+          quality == null) {
+        SmartDialog.showToast('当前配音无法切换');
+        return;
+      }
+      final (
+        targetQuality,
+        _,
+        targetDecode,
+        targetVideo,
+      ) = VideoUtils.findTargetVideo(
+        video,
+        quality.code,
+        response.acceptQuality,
+        response.supportFormats,
+        [currentDecodeFormats, ...preferCodecs],
+      );
+      final targetAudio = VideoUtils.findTargetAudio(
+        audio,
+        player.cacheAudioQa,
+      );
+      if (targetVideo.playUrls.isEmpty || targetAudio.playUrls.isEmpty) {
+        SmartDialog.showToast('当前配音无法切换');
+        return;
+      }
+      final targetAudioUrls = VideoUtils.getCdnUrls(
+        targetAudio.playUrls,
+        isAudio: true,
+      );
+      final previousLanguage = currLang.value;
+      final changesPicture =
+          [
+            ...?languages.value,
+            ...?response.language?.items,
+          ].any(
+            (item) =>
+                (item.lang == previousLanguage || item.lang == language) &&
+                item.changesVideo,
+          );
+      var audioSwitch = AudioTrackSwitchResult.unavailable;
+      if (!changesPicture &&
+          original.dash?.duration == response.dash?.duration &&
+          firstVideo.hasSameVideoResource(targetVideo)) {
+        audioSwitch = await player.switchPlaybackAudioTrack(
+          HdrTrackSource(
+            urls: targetAudioUrls,
+            mimeType: targetAudio.mimeType,
+            codecs: targetAudio.codecs,
+            frameRate: targetAudio.frameRate,
+            bitrate: targetAudio.bandWidth,
+          ),
+          canApply: () => isCurrent() && !isQuerying && !switchingPlayer.value,
+        );
+        if (!isCurrent()) return;
+        if (audioSwitch == AudioTrackSwitchResult.failed) {
+          SmartDialog.showToast('当前配音无法切换');
+          return;
+        }
+      }
+      final position = player.currentPosition;
+      final autoplay = player.playWhenReady || player.isPlaying;
+      data = response;
+      volume = response.volume;
+      if (response.language?.items case final items? when items.isNotEmpty) {
+        languages.value = items;
+      }
+      currLang.value = response.curLanguage;
+      firstVideo = targetVideo;
+      firstAudio = targetAudio;
+      currentDecodeFormats = targetDecode;
+      currentVideoQa.value = VideoQuality.fromCode(targetQuality);
+      final audioId = targetAudio.id;
+      currentAudioQa = audioId == null ? null : AudioQuality.fromCode(audioId);
+      _setVideoHeight();
+      videoUrl = VideoUtils.getCdnUrl(targetVideo.playUrls);
+      audioUrl = targetAudioUrls.first;
+      if (audioSwitch != AudioTrackSwitchResult.switched) {
+        await playerInit(autoplay: autoplay, resumePosition: position);
+      }
+    } finally {
+      if (identical(_audioLanguageRequest, request)) {
+        _audioLanguageRequest = null;
+        switchingAudioLanguage.value = false;
+      }
+    }
   }
 
   Volume? volume;
 
   // 视频链接
   /// TODO: merge [DownloadHttp.getVideoUrl].
-  Future<LoadingState<PlayUrlModel>> _getVideoUrl(int quality) {
+  Future<LoadingState<PlayUrlModel>> _getVideoUrl(
+    int quality, {
+    String? audioLanguage,
+  }) {
     return VideoHttp.videoUrl(
       cid: cid.value,
       bvid: bvid,
@@ -1188,17 +1333,19 @@ class VideoDetailController extends GetxController
       seasonId: seasonId,
       tryLook: plPlayerController.tryLook,
       videoType: _actualVideoType ?? videoType,
-      language: currLang.value,
+      language: audioLanguage ?? currLang.value ?? '',
       voiceBalance: plPlayerController.enableAudioNormalization,
     );
   }
 
-  Future<void> _supplementVideoQualities() async {
-    final quality = data.missingVideoQualityBelowHighest;
+  Future<void> _supplementVideoQualities(PlayUrlModel playUrl) async {
+    final quality = playUrl.missingVideoQualityBelowHighest;
     if (quality == -1) return;
-    final result = await _getVideoUrl(quality);
-    if (result case Success(:final response)) {
-      data.dash?.video?.merge(response.dash?.video);
+    final language = playUrl.curLanguage ?? '';
+    final result = await _getVideoUrl(quality, audioLanguage: language);
+    if (result case Success(:final response)
+        when (response.curLanguage ?? '') == language) {
+      playUrl.dash?.video?.merge(response.dash?.video);
     }
   }
 
@@ -1235,7 +1382,7 @@ class VideoDetailController extends GetxController
 
     if (result case Success(:final response)) {
       data = response;
-      await _supplementVideoQualities();
+      await _supplementVideoQualities(response);
 
       languages.value = data.language?.items;
       currLang.value = data.curLanguage;
@@ -1288,6 +1435,7 @@ class VideoDetailController extends GetxController
             data.supportFormats,
           );
           firstAudio = null;
+          currentAudioQa = null;
           firstVideo = VideoItem(
             id: data.quality!,
             baseUrl: videoUrl,
@@ -1354,6 +1502,7 @@ class VideoDetailController extends GetxController
         }
       } else {
         firstAudio = null;
+        currentAudioQa = null;
         audioUrl = '';
       }
       await initPlayerIfNeeded(autoFullScreenFlag);
@@ -1708,7 +1857,9 @@ class VideoDetailController extends GetxController
     volume = null;
 
     if (!isFileSource) {
-      // language
+      // 每个分 P 单独读取配音列表，忽略上一分 P 尚未返回的切换请求。
+      _audioLanguageRequest = null;
+      switchingAudioLanguage.value = false;
       languages.value = null;
       currLang.value = null;
 
