@@ -1,51 +1,45 @@
 # PiliExo
 
-PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Android fork，面向 Android 在线 UGC/PGC 视频提供原生 HDR 播放能力。包名为 `com.maxzrb.piliexo`，可与原版 PiliPlus 共存；SDR、直播和离线播放使用 mpv。
-
-## 项目状态
-
 [![GitHub release](https://img.shields.io/github/v/release/maxzrb/PiliExo?label=release)](https://github.com/maxzrb/PiliExo/releases/latest)
 [![GitHub all releases](https://img.shields.io/github/downloads/maxzrb/PiliExo/total)](https://github.com/maxzrb/PiliExo/releases)
 
-- Flutter 工具链：`3.47.9`，版本以 `.fvmrc` 和 `pubspec.yaml` 为准。
-- 发布源码：[`main`](https://github.com/maxzrb/PiliExo/tree/main)；编译固定版本请使用对应 Release 标签。
-- 仅构建和发布 Android；正式 APK 提供 `arm64-v8a` 和 `armeabi-v7a`。其他平台代码随上游保留。
-- PiliPlus 上游 Android 相关变更已处理至 `217fb54f5`（`2.2.1`），包括粉丝勋章和部分页面重建优化。
+PiliExo 是基于 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) 的 Android 分支，提供在线视频与番剧的原生 HDR 播放，并补充了音视频解码、播放洞察和交互设置。采用独立包名 `com.maxzrb.piliexo`，可与原版 PiliPlus 共存安装。
 
-## PiliExo 的实际修改
+## 特色功能
 
-- Android 在线 UGC/PGC 提供原生 HDR 播放：Media3 原生 `SurfaceView` 与 mpv 原生 Surface 两条路线，支持 HDR10、Dolby Vision、HDR Vivid 和失败回退。
-- 播放页更多菜单可在 mpv 兼容、mpv 原生 HDR 与 Media3 原生 HDR 之间切换，保留进度、播放或暂停状态及基础倍速，仅对当前播放页生效。
-- 支持 B 站视频提供的多语言配音。在「翻译与字幕」中分别选择配音和字幕，音质独立设置。三条播放路线均可在兼容音轨间原地切换并保留当前画面。
-- mpv 原生 HDR 在普通 HDR 硬解时由 MediaCodec 直出；P5 或关闭硬解时使用 10 位 GPU 输出；直出模式不支持 mpv 视频着色器。
-- 三种 HDR 路线均支持顶部状态栏环境虚化；下拉评论区时 mpv 兼容路线保留缩小动画，原生 HDR 路线固定视频层并裁剪。
-- 定制 mpv/FFmpeg 核心：HDR EGL/PQ、动态元数据回调、P5 RPU 软件解析、高采样率 FLAC 的输入缓冲修正，以及 Android 在线分轨跳转适配。Media3 杜比软件音频解码扩展与 mpv 使用同一个 FFmpeg 提交。
-- 播放器洞察提供概览、视频、音频、播放和事件详情，显示帧率、编码、解码器、分辨率、码率、音频参数和回退原因。
-- Android 14 及以上支持预测性返回，可调整滑动方向、位移、渐隐和缩小幅度。原生 HDR 返回预览优先使用当前视频帧。
-- Android 支持蓝牙延迟补偿，可自动估算延迟并在弹窗内听看校准，再手动微调。断开蓝牙音频时暂停补偿。
-- 界面字体默认跟随系统。可按需下载或删除 HarmonyOS Sans SC 2.400 和 MiSans，也可选择系统字体或导入自定义字体。[鸿蒙字体许可](assets/fonts/harmonyos_sans/LICENSE.txt) · [MiSans 字体许可](https://hyperos.mi.com/font/download)
-- mpv 原生 HDR 支持独立的 4:3 和 16:9 固定画面比例。截图及画面翻转由兼容路线提供。
-- Android 更新优先使用 ModelScope 镜像，失败时回退 GitHub；ARM64 更新支持 Aria2-next 分片下载、断点续传、SHA-256 校验、取消和系统安装器。
-- 独立 `applicationId` `com.maxzrb.piliexo`，Release 按 ABI 拆分并使用独立签名，可与原版 PiliPlus 共存。
-- 发布流程在本机完成构建、原证书签名、16KB 对齐，并对 AOT 来源、插件注册和定制 `libmpv` 做静态门禁。
+### HDR 与播放内核
 
-## 下载与更新
+- **原生 HDR 播放**：支持 **HDR10**、**HDR Vivid** 等主流 HDR 格式的原生高动态范围显示。
+- **三条播放路线切换**：提供 **Media3 原生 HDR**、**mpv 原生 HDR** 与 **mpv 兼容播放** 三种路线，可在播放页「更多」菜单直接切换，保留当前进度、播放状态与倍速。
+- **mpv / FFmpeg 播放改进**：补齐 HDR 动态元数据传递、高采样率 FLAC 缓冲与 Android 在线分轨拖动跳转处理。
 
-- [最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [全部 GitHub Releases](https://github.com/maxzrb/PiliExo/releases)
-- [ModelScope 镜像数据集](https://modelscope.cn/datasets/AerithDream/PiliExo)
-- [版本迭代记录](https://github.com/maxzrb/PiliExo/blob/main/version/版本迭代记录.md) · [Android 发布流程](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/docs/发布流程.md) · [本机工具链说明](https://github.com/maxzrb/PiliExo/blob/v26.11.24.1/docs/本机发布工具链.md)
+### 音视频与播放辅助
 
-APK 文件名包含架构；按设备支持的 ABI 选择 `arm64-v8a` 或 `armeabi-v7a`。需要的画质和内容权限仍取决于账号、视频和设备支持。
+- **多语言配音**：支持选择视频提供的多语言配音，可在「翻译与字幕」面板分别选择配音与字幕，音质独立设置，切换音轨时保留当前画面。
+- **多声道与无损音频软解**：Media3 与 mpv 同步集成 FFmpeg 软件音频解码支持，补充多声道环绕声与高规格无损音轨的播放能力。
+- **播放器洞察**：查看帧率、视音频编码、解码器、分辨率、码率、网络带宽与实际输出丢帧，支持常驻显示、起播或掉帧时自动弹出及背景透明度调节。
+- **蓝牙延迟补偿**：支持自动估算蓝牙音频延迟，可在弹窗内视听校准并手动微调，断开蓝牙音频时自动暂停补偿。
 
-## 构建与发布维护
+### 界面与交互
 
-当前发布使用 Flutter `3.47.9` 和项目补丁集。请按 Android 发布流程完成依赖获取、插件注册检查、测试、签名与 APK 校验；Windows Android 构建不能忽略 `flutter pub get` 的符号链接错误。
+- **状态栏环境光与磨砂栏**：播放页顶部状态栏可跟随视频画面显示环境色与模糊背景；顶栏、底栏与浮动底栏提供轻薄、标准、浓厚三档磨砂半透明效果。
+- **Android 14+ 预测性返回**：支持跟手滑动返回预览，可调整滑动方向、位移、圆角与缩放幅度，原生 HDR 返回时使用当前视频帧过渡。
+- **震动反馈调节**：底栏与侧栏导航、全屏手势，以及播放页滑动调节音量与亮度均支持按刻度触发震动反馈，可调节强度与触发间隔。
+- **字体按需管理**：界面字体默认跟随系统，支持在设置内按需下载、离线使用或删除 HarmonyOS Sans SC 与 MiSans，也可选择系统字体或导入本地字体（[鸿蒙字体许可](assets/fonts/harmonyos_sans/LICENSE.txt) · [MiSans 字体许可](https://hyperos.mi.com/font/download)）。
+- **应用内镜像更新**：检查更新优先使用 ModelScope 国内镜像（失败时回退 GitHub），支持多线程分片下载、断点续传与 SHA-256 校验。
 
-每次正式发布必须核对本 README 的自动 Release 标签、功能说明和下载入口，并执行 `lib/scripts/verify_readme.ps1`。本项目仅在本机构建、打包和签名，不使用 GitHub Actions。本地预构建脚本会校验自动 Release 标签与 Flutter 工具链；发布后同步默认分支的 README。
+## 下载与安装
 
-本项目是个人为了兴趣而开发的第三方自用修改版，仅用于学习和测试，请于下载后 24 小时内删除。所用 API 皆从官方网站收集，不提供任何破解内容。
+- **GitHub Releases**：[下载最新正式版](https://github.com/maxzrb/PiliExo/releases/latest) · [查看全部版本](https://github.com/maxzrb/PiliExo/releases)
+- **ModelScope 国内镜像**：[AerithDream/PiliExo](https://modelscope.cn/datasets/AerithDream/PiliExo)
 
-下方为 PiliPlus 上游 README 快照，取自提交 [`4ed5968f3`](https://github.com/bggRGjQaUbCoE/PiliPlus/tree/4ed5968f37af8b4aa7e0f13178cb8d8c2f86defc)。其中的平台支持和项目计划属于原项目，PiliExo 的发布范围见上方说明。
+安装包提供 `arm64-v8a`（64 位设备）与 `armeabi-v7a` 两种架构，按设备架构下载安装即可；也可在应用「关于」页面检查更新和查看当前版本说明。
+
+## 项目信息
+
+- 适用平台：Android（`arm64-v8a` / `armeabi-v7a`）
+- 上游同步：跟进 [PiliPlus](https://github.com/bggRGjQaUbCoE/PiliPlus) Android 端更新（当前至 `2.2.1`）
+- Flutter 工具链：`3.47.9`
 
 ---
 
