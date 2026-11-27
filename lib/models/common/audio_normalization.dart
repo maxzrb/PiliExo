@@ -82,6 +82,7 @@ mixin AudioNormalizationMixin {
   }
 
   String? _alimiter;
+  Player? _volumePlayer;
 
   /// mpv 的 volume 属性是三次方曲线（`gain = (volume / 100) ^ 3`），且这层
   /// 增益直接乘在 PCM 样值上：200% 就是 8 倍（+18dB），300% 是 27 倍
@@ -103,6 +104,10 @@ mixin AudioNormalizationMixin {
   Future<void>? setVolumeCapped(Player? player, double volume) {
     assert(volume >= 0);
     if (player == null) return null;
+    if (!identical(_volumePlayer, player)) {
+      _volumePlayer = player;
+      _alimiter = null;
+    }
     final boost = _boostAf(volume);
     if (boost == null) {
       if (_alimiter != null) {

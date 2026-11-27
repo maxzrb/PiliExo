@@ -7,11 +7,14 @@ import 'package:PiliPlus/models/video/play/url.dart'
     show AudioItem, VideoItem, FormatItem;
 import 'package:PiliPlus/models_new/live/live_room_play_info/codec.dart';
 import 'package:PiliPlus/utils/extension/iterable_ext.dart';
+import 'package:PiliPlus/utils/storage.dart';
+import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 
 abstract final class VideoUtils {
   static CDNService cdnService = Pref.defaultCDNService;
+  static String? customCdnHost = normalizeCdnHost(Pref.customVideoCdnHost);
   static String? liveCdnUrl = Pref.liveCdnUrl;
   static bool disableAudioCDN = Pref.disableAudioCDN;
 
@@ -25,11 +28,74 @@ abstract final class VideoUtils {
     r'^https?://(?:(?:(?:\d{1,3}\.){3}\d{1,3}|[^/]+\.mcdn\.bilivideo\.(?:com|cn|net))(?:\:\d{1,5})?/v\d/resource)',
   );
 
+  static String get cdnDescription =>
+      customCdnHost == null ? cdnService.desc : customCdnHost!;
+
+  static Future<void> setCdnSelection(VideoCdnSelection selection) async {
+    await GStorage.setting.putAll({
+      SettingBoxKey.CDNService: selection.service.name,
+      SettingBoxKey.customVideoCdnHost: selection.host,
+    });
+    cdnService = selection.service;
+    customCdnHost = selection.host;
+  }
+
+  static final _dnsLabel = RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$');
+
+  static String? normalizeCdnHost(String? value) {
+    final input = value?.trim();
+    if (input == null || input.isEmpty) return null;
+    final isUrl = input.contains('://');
+    final uri = Uri.tryParse(isUrl ? input : 'https://$input');
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasPort ||
+        (!isUrl && (uri.path.isNotEmpty || uri.hasQuery || uri.hasFragment))) {
+      return null;
+    }
+    final host = uri.host.toLowerCase();
+    final labels = host.split('.');
+    return labels.length > 1 && labels.every(_dnsLabel.hasMatch) ? host : null;
+  }
+
+  static String? _pickCustomCdn(Iterable<String> urls, String host) {
+    Uri? preferred;
+    Uri? backup;
+    for (final url in urls) {
+      final uri = Uri.tryParse(url);
+      if (uri == null ||
+          (uri.scheme != 'http' && uri.scheme != 'https') ||
+          !uri.path.startsWith('/upgcxcode/')) {
+        continue;
+      }
+      if (uri.host == host) return url;
+      if (uri.host == CDNService.akamai.host ||
+          !(uri.host.endsWith('.bilivideo.com') ||
+              uri.host.endsWith('.bilivideo.cn'))) {
+        continue;
+      }
+      if (_mirrorRegex.hasMatch(url) && uri.queryParameters['os'] != 'mcdn') {
+        preferred ??= uri;
+      }
+      backup ??= uri;
+    }
+    return (preferred ?? backup)
+        ?.replace(scheme: 'https', host: host, port: 443)
+        .toString();
+  }
+
   static String getCdnUrl(
     Iterable<String> urls, {
     CDNService? defaultCDNService,
+    String? customHost,
     bool isAudio = false,
   }) {
+    customHost ??= defaultCDNService == null ? customCdnHost : null;
+    if (customHost != null && !(isAudio && disableAudioCDN)) {
+      final chosenUrl = _pickCustomCdn(urls, customHost);
+      if (chosenUrl != null) return chosenUrl;
+    }
     defaultCDNService ??= cdnService;
 
     if (defaultCDNService == CDNService.baseUrl) {

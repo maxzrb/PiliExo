@@ -596,7 +596,11 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   }
 
   final RxDouble volume = RxDouble(
-    PlatformUtils.isDesktop ? Pref.desktopVolume : 1.0,
+    PlatformUtils.isDesktop
+        ? Pref.desktopVolume
+        : Pref.enableAppVolume
+        ? Pref.appVolume
+        : 1.0,
   );
   final setSystemBrightness = Pref.setSystemBrightness;
 
@@ -607,6 +611,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   final RxBool showBrightnessStatus = false.obs;
 
   final RxBool longPressStatus = false.obs;
+  final RxBool longPressSpeedLocked = false.obs;
 
   final RxBool controlsLock = false.obs;
 
@@ -1128,6 +1133,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     return _instance?.volume.value;
   }
 
+  static Future<void>? refreshVolumeModeIfExists() =>
+      _instance?._refreshVolumeMode();
+
   static Future<void>? setVolumeIfExists(
     double volumeNew, {
     bool showIndicator = true,
@@ -1237,6 +1245,9 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   // offline
   bool get isFileSource => dataSource is FileSource;
 
+  bool ownsVideo(String videoBvid, int videoCid) =>
+      !isLive && _bvid == videoBvid && cid == videoCid;
+
   // 初始化资源
   Future<void> setDataSource(
     DataSource dataSource, {
@@ -1270,6 +1281,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
       _processing = true;
       _pendingMpvHdrError = null;
       _rateCoordinator.resetForSource();
+      longPressSpeedLocked.value = false;
       longPressStatus.value = false;
       _playbackSpeed.value = _rateCoordinator.baseRate;
       this.isLive = isLive;
@@ -1479,7 +1491,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     // >100% 的音量走 af 增益+限幅，避免直接放大 mpv volume 导致削波
     await setVolumeCapped(
       player,
-      PlatformUtils.isMobile ? Pref.playerVolume / 100 : volume.value,
+      _effectivePlayerVolume,
     );
 
     assert(videoController == null);
@@ -1670,6 +1682,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (controller.resizeMode != resizeMode) {
       await controller.setResizeMode(resizeMode);
     }
+    if (usesAppVolume) await controller.setVolume(_effectivePlayerVolume);
     await controller.load(
       source,
       startPosition: seekTo ?? Duration.zero,
@@ -2857,6 +2870,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   /// 用户选择的基础倍速不会被长按请求改写。
   Future<void> setPlaybackSpeed(double speed) {
     _finishLongPressDropRecovery();
+    longPressSpeedLocked.value = false;
     longPressStatus.value = false;
     return _rateCoordinator.setBaseRate(
       isMedia3Hdr ? speed.clamp(0.1, 4.0).toDouble() : speed,
@@ -2950,13 +2964,59 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Timer? volumeTimer;
   bool volumeInterceptEventStream = false;
 
-  final double maxVolume = PlatformUtils.isDesktop ? Pref.maxVolume : 1.0;
+  bool get usesAppVolume => PlatformUtils.isMobile && Pref.enableAppVolume;
+  double get maxVolume => PlatformUtils.isDesktop
+      ? Pref.maxVolume
+      : usesAppVolume && Pref.enableVolumeBoost
+      ? 2.0
+      : 1.0;
+  bool _appVolumeDucked = false;
+
+  double get _effectivePlayerVolume => PlatformUtils.isDesktop
+      ? volume.value
+      : usesAppVolume
+      ? volume.value * (_appVolumeDucked ? 0.5 : 1.0)
+      : Pref.playerVolume / 100;
+
+  Future<void> applyPlayerVolume() async {
+    if (_hdrMedia3Controller case final hdr?) {
+      await hdr.setVolume(usesAppVolume ? _effectivePlayerVolume : 1.0);
+    } else {
+      await setVolumeCapped(_videoPlayerController, _effectivePlayerVolume);
+    }
+  }
+
+  Future<void> _refreshVolumeMode() async {
+    if (!PlatformUtils.isMobile) return;
+    _appVolumeDucked = false;
+    if (usesAppVolume) {
+      volume.value = Pref.appVolume;
+    } else {
+      volume.value = await FlutterVolumeController.getVolume() ?? 1.0;
+      await FlutterVolumeController.updateShowSystemUI(true);
+    }
+    await applyPlayerVolume();
+  }
+
+  void updateDuckedAppVolume(bool ducked) {
+    if (_appVolumeDucked == ducked) return;
+    _appVolumeDucked = ducked;
+    unawaited(applyPlayerVolume());
+  }
+
   Future<void> setVolume(double volume, {bool showIndicator = true}) async {
+    volume = volume.clamp(0.0, maxVolume);
+    volumeInterceptEventStream = !usesAppVolume;
     if (this.volume.value != volume) {
       this.volume.value = volume;
       try {
-        if (PlatformUtils.isDesktop) {
-          await setVolumeCapped(_videoPlayerController, volume);
+        if (PlatformUtils.isDesktop || usesAppVolume) {
+          if (usesAppVolume) {
+            unawaited(
+              setting.put(SettingBoxKey.appVolume, volume.toPrecision(3)),
+            );
+          }
+          await applyPlayerVolume();
         } else {
           FlutterVolumeController.updateShowSystemUI(false);
           await FlutterVolumeController.setVolume(volume);
@@ -2968,7 +3028,6 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
     if (showIndicator) {
       volumeIndicator.value = true;
     }
-    volumeInterceptEventStream = true;
     volumeTimer?.cancel();
     volumeTimer = Timer(const Duration(milliseconds: 200), () {
       volumeIndicator.value = false;
@@ -3025,6 +3084,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
   Future<void> setLongPressStatus(bool val) async {
     // 释放与取消不受锁定、直播和暂停守卫影响，避免临时速度残留。
     if (!val) {
+      longPressSpeedLocked.value = false;
       if (!_rateCoordinator.isTemporary && !longPressStatus.value) return;
       _beginLongPressDropRecovery();
       longPressStatus.value = false;
@@ -3046,6 +3106,12 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
         await applied;
       }
     }
+  }
+
+  void lockLongPressSpeed() {
+    if (!longPressStatus.value || longPressSpeedLocked.value) return;
+    longPressSpeedLocked.value = true;
+    HapticFeedback.lightImpact();
   }
 
   bool get isCompleted =>
@@ -3396,6 +3462,7 @@ class PlPlayerController with BlockConfigMixin, AudioNormalizationMixin {
 
     _playerCount = 0;
     _unbindBluetoothLatency();
+    longPressSpeedLocked.value = false;
     longPressStatus.value = false;
     _rateCoordinator.dispose();
     _longPressDropRecoveryTimer?.cancel();

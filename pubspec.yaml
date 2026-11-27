@@ -18,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 # update when release
-version: 26.11.26+2
+version: 26.11.27+1
 
 environment:
   sdk: ">=3.13.0"
@@ -277,6 +277,7 @@ flutter:
     - path: assets/images/paycoins/
     - path: assets/shaders/
     - path: assets/fonts/harmonyos_sans/LICENSE.txt
+    - path: assets/cdn_nodes.json
 
   fonts:
     - family: digital_id_num

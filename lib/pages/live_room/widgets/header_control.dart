@@ -6,18 +6,18 @@ import 'package:PiliPlus/common/widgets/draggable_sheet/dyn.dart';
 import 'package:PiliPlus/common/widgets/marquee.dart';
 import 'package:PiliPlus/pages/live_room/controller.dart';
 import 'package:PiliPlus/pages/setting/models/play_settings.dart'
-    show showPlayerVolumeDialog;
+    show showVideoPlayerVolumeDialog;
 import 'package:PiliPlus/pages/video/widgets/header_control.dart';
 import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/widgets/common_btn.dart';
 import 'package:PiliPlus/services/shutdown_timer_service.dart'
     show shutdownTimerService;
 import 'package:PiliPlus/utils/android/android_helper.dart';
-import 'package:PiliPlus/utils/extension/string_ext.dart';
 import 'package:PiliPlus/utils/ios/pip_helper.dart';
 import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
+import 'package:PiliPlus/utils/storage_pref.dart';
 import 'package:collection/collection.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
@@ -283,15 +283,17 @@ class _LiveHeaderControlState extends State<LiveHeaderControl>
                         children: [
                           const Icon(Icons.volume_up, size: 17),
                           Text(
-                            '播放器音量: ${player.getProperty('volume').subLength(3)}%',
+                            plPlayerController.usesAppVolume
+                                ? '应用内音量: ${(plPlayerController.volume.value * 100).round()}%'
+                                : '播放器音量: ${Pref.playerVolume.round()}%',
                             style: const TextStyle(fontSize: 14),
                           ),
                         ],
                       ),
-                      onTap: () => showPlayerVolumeDialog(
+                      onTap: () => showVideoPlayerVolumeDialog(
                         context,
+                        plPlayerController,
                         () {},
-                        onChanged: player.setVolume,
                       ),
                     ),
                 ],

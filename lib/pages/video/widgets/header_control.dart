@@ -23,7 +23,7 @@ import 'package:PiliPlus/models_new/video/video_play_info/subtitle.dart';
 import 'package:PiliPlus/pages/common/common_intro_controller.dart';
 import 'package:PiliPlus/pages/danmaku/danmaku_model.dart';
 import 'package:PiliPlus/pages/setting/models/play_settings.dart'
-    show showPlayerVolumeDialog;
+    show showVideoPlayerVolumeDialog;
 import 'package:PiliPlus/pages/setting/widgets/popup_item.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/video/controller.dart';
@@ -534,45 +534,53 @@ class HeaderControlState extends State<HeaderControl>
                     descPosType: .subtitle,
                     descStyle: subTitleStyle,
                   ),
-                if (PlatformUtils.isMobile)
-                  if (plPlayerController.videoPlayerController
-                      case final player?)
-                    Builder(
-                      builder: (context) => ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.volume_up, size: 20),
-                        title: const Text('播放器音量'),
-                        subtitle: Text(
-                          '当前: ${Pref.playerVolume.toStringAsFixed(0)}%',
-                        ),
-                        onTap: () => showPlayerVolumeDialog(
-                          context,
-                          () => (context as Element).markNeedsBuild(),
-                          onChanged: player.setVolume,
-                        ),
+                if (PlatformUtils.isMobile &&
+                    (plPlayerController.usesAppVolume ||
+                        plPlayerController.videoPlayerController != null))
+                  Builder(
+                    builder: (context) => ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.volume_up, size: 20),
+                      title: Text(
+                        plPlayerController.usesAppVolume ? '应用内音量' : '播放器音量',
+                      ),
+                      subtitle: Text(
+                        '当前: ${(plPlayerController.usesAppVolume ? plPlayerController.volume.value * 100 : Pref.playerVolume).toStringAsFixed(0)}%',
+                      ),
+                      onTap: () => showVideoPlayerVolumeDialog(
+                        context,
+                        plPlayerController,
+                        () {
+                          if (context.mounted) {
+                            (context as Element).markNeedsBuild();
+                          }
+                        },
                       ),
                     ),
+                  ),
                 if (!isFileSource)
                   ListTile(
                     dense: true,
                     title: const Text('CDN 设置', style: titleStyle),
                     leading: const Icon(MdiIcons.cloudPlusOutline, size: 20),
                     subtitle: Text(
-                      '当前：${VideoUtils.cdnService.desc}，无法播放请切换',
+                      '当前：${VideoUtils.cdnDescription}',
                       style: subTitleStyle,
                     ),
                     onTap: () async {
                       Get.back();
-                      final result = await showDialog<CDNService>(
+                      final result = await showDialog<VideoCdnSelection>(
                         context: context,
                         builder: (context) => CdnSelectDialog(
                           sample: videoInfo.dash?.video?.firstOrNull,
                         ),
                       );
                       if (result != null) {
-                        VideoUtils.cdnService = result;
-                        setting.put(SettingBoxKey.CDNService, result.name);
-                        SmartDialog.showToast('已设置为 ${result.desc}，正在重载视频');
+                        await VideoUtils.setCdnSelection(result);
+                        if (videoDetailCtr.isClosed) return;
+                        SmartDialog.showToast(
+                          '已设置为 ${VideoUtils.cdnDescription}，正在重载视频',
+                        );
                         videoDetailCtr.queryVideoUrl(fromReset: true);
                       }
                     },

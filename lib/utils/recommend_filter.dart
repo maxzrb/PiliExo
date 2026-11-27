@@ -12,15 +12,21 @@ abstract final class RecommendFilter {
     caseSensitive: false,
   );
   static bool enableFilter = rcmdRegExp.pattern.isNotEmpty;
+  static RegExp upNameRegExp = RegExp(
+    Pref.banWordForRecommendUpName,
+    caseSensitive: false,
+  );
+  static Set<int> blockedMids = Pref.recommendBlockedMids.toSet();
+  static Set<int> allowedMids = Pref.recommendAllowedMids.toSet();
 
-  // (web/app)rcmd
-  static bool filterWithExempt(BaseVideoItemModel videoItem) {
-    //由于相关视频中没有已关注标签，只能视为非关注视频
-    if (videoItem.isFollowed && exemptFilterForFollowed) {
-      return false;
-    }
-    return filterAll(videoItem);
-  }
+  static bool filterWithExempt(
+    BaseVideoItemModel videoItem, {
+    bool zoneMatches = false,
+  }) => _filterVideo(
+    videoItem,
+    followedExempt: videoItem.isFollowed && exemptFilterForFollowed,
+    zoneMatches: zoneMatches,
+  );
 
   /// hot/rank/[filterAll]
   static bool filterLikeRatio(int? like, int? view) {
@@ -44,9 +50,24 @@ abstract final class RecommendFilter {
   }
 
   /// related/[filterWithExempt]
-  static bool filterAll(BaseVideoItemModel videoItem) {
-    return filterDuration(videoItem.duration) ||
+  static bool filterAll(
+    BaseVideoItemModel videoItem, {
+    bool zoneMatches = false,
+  }) => _filterVideo(videoItem, zoneMatches: zoneMatches);
+
+  static bool _filterVideo(
+    BaseVideoItemModel videoItem, {
+    bool followedExempt = false,
+    required bool zoneMatches,
+  }) {
+    final owner = videoItem.owner;
+    if (blockedMids.contains(owner.mid)) return true;
+    if (followedExempt || allowedMids.contains(owner.mid)) return false;
+    return zoneMatches ||
+        filterDuration(videoItem.duration) ||
         filterLikeRatio(videoItem.stat.like, videoItem.stat.view) ||
-        filterTitle(videoItem.title);
+        filterTitle(videoItem.title) ||
+        (upNameRegExp.pattern.isNotEmpty &&
+            upNameRegExp.hasMatch(owner.name ?? ''));
   }
 }

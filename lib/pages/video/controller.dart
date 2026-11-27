@@ -61,6 +61,7 @@ import 'package:PiliPlus/services/download/download_service.dart';
 import 'package:PiliPlus/utils/accounts.dart';
 import 'package:PiliPlus/utils/audio_track_selector.dart';
 import 'package:PiliPlus/utils/connectivity_utils.dart';
+import 'package:PiliPlus/utils/danmaku_density_trend.dart';
 import 'package:PiliPlus/utils/extension/nested_scroll_ext.dart';
 import 'package:PiliPlus/utils/extension/num_ext.dart';
 import 'package:PiliPlus/utils/page_utils.dart';
@@ -133,6 +134,54 @@ class VideoDetailController extends GetxController
 
   /// 播放器配置 画质 音质 解码格式
   final Rxn<VideoQuality> currentVideoQa = Rxn<VideoQuality>();
+  StreamSubscription<bool>? _fullscreenQualityListener;
+  bool _updatingFullscreenQuality = false;
+  bool _videoNetworkIsWifi = true;
+
+  int _defaultQualityForScreen(bool fullScreen) =>
+      (!fullScreen ? Pref.defaultVideoQaHalfScreen : null) ??
+      (_videoNetworkIsWifi ? Pref.defaultVideoQa : Pref.defaultVideoQaCellular);
+
+  Future<void> _applyFullscreenQuality() async {
+    if (_updatingFullscreenQuality || Pref.defaultVideoQaHalfScreen == null) {
+      return;
+    }
+    _updatingFullscreenQuality = true;
+    try {
+      await _pendingPlayerInit;
+      bool fullScreen;
+      do {
+        if (isClosed ||
+            isFileSource ||
+            isQuerying ||
+            videoUrl == null ||
+            switchingPlayer.value ||
+            switchingAudioLanguage.value ||
+            !plPlayerController.ownsVideo(bvid, cid.value)) {
+          return;
+        }
+        final videos = data.dash?.video;
+        if (videos == null || videos.isEmpty) return;
+        fullScreen = plPlayerController.isFullScreen.value;
+        final requestedQuality = _defaultQualityForScreen(fullScreen);
+        final (quality, _, _, _) = VideoUtils.findTargetVideo(
+          videos,
+          requestedQuality,
+          data.acceptQuality,
+          data.supportFormats,
+          preferCodecs,
+        );
+        plPlayerController.cacheVideoQa = requestedQuality;
+        if (currentVideoQa.value?.code != quality) {
+          currentVideoQa.value = VideoQuality.fromCode(quality);
+          await updatePlayer();
+        }
+      } while (fullScreen != plPlayerController.isFullScreen.value);
+    } finally {
+      _updatingFullscreenQuality = false;
+    }
+  }
+
   final RxBool switchingPlayer = false.obs;
   final hdrSwitchPreview = Rxn<({Object token, ui.Image? image})>();
   HdrPlaybackRoute? _hdrRouteOverride;
@@ -527,6 +576,11 @@ class VideoDetailController extends GetxController
   @override
   void onInit() {
     super.onInit();
+    if (PlatformUtils.isMobile) {
+      _fullscreenQualityListener = plPlayerController.isFullScreen.listen(
+        (_) => unawaited(_applyFullscreenQuality()),
+      );
+    }
     args = Get.arguments;
     videoType = args['videoType'];
     if (videoType == VideoType.pgc) {
@@ -926,7 +980,7 @@ class VideoDetailController extends GetxController
   }
 
   /// 更新画质、音质
-  void updatePlayer() {
+  Future<void> updatePlayer() async {
     final currentVideoQa = this.currentVideoQa.value;
     if (currentVideoQa == null) return;
     // 清晰度切换不改变用户当前的暂停/播放选择。
@@ -960,7 +1014,7 @@ class VideoDetailController extends GetxController
       firstAudio = null;
     }
 
-    playerInit();
+    await playerInit();
   }
 
   Future<void>? _pendingPlayerInit;
@@ -1365,6 +1419,18 @@ class VideoDetailController extends GetxController
     }
     if (PlatformUtils.isMobile) {
       final isWiFi = await ConnectivityUtils.isWiFi;
+      _videoNetworkIsWifi = isWiFi;
+      if (Pref.defaultVideoQaHalfScreen != null && !fromReset) {
+        plPlayerController.cacheVideoQa = _defaultQualityForScreen(
+          plPlayerController.isFullScreen.value ||
+              (autoFullScreenFlag &&
+                  _autoPlay.value &&
+                  plPlayerController.autoEnterFullScreen),
+        );
+        plPlayerController.cacheAudioQa = isWiFi
+            ? Pref.defaultAudioQa
+            : Pref.defaultAudioQaCellular;
+      }
       if (plPlayerController.cacheVideoQa == null) {
         plPlayerController
           ..cacheVideoQa = isWiFi
@@ -1807,6 +1873,7 @@ class VideoDetailController extends GetxController
 
   @override
   void onClose() {
+    _fullscreenQualityListener?.cancel();
     _clearHdrSwitchPreview();
     cid.close();
     if (isFileSource) {
@@ -1880,16 +1947,39 @@ class VideoDetailController extends GetxController
   late final Rx<LoadingState<List<double>>?> dmTrend =
       Rx<LoadingState<List<double>>?>(null);
   late final RxBool showDmTrendChart = true.obs;
+  Object? _dmTrendRequest;
 
   Future<void> _getDmTrend() async {
+    final request = _dmTrendRequest = Object();
     dmTrend.value = LoadingState<List<double>>.loading();
+    final chartCid = cid.value;
+    bool isCurrent() =>
+        !isClosed &&
+        chartCid == cid.value &&
+        identical(request, _dmTrendRequest) &&
+        dmTrend.value is Loading;
+    try {
+      final chart = await DanmakuDensityTrend.load(
+        cid: chartCid,
+        durationMs: plPlayerController.durationInMilliseconds,
+        isCurrent: isCurrent,
+      );
+      if (!isCurrent()) return;
+      if (chart != null) {
+        dmTrend.value = Success(chart);
+        return;
+      }
+    } catch (error) {
+      if (kDebugMode) debugPrint('_getDmTrend: $error');
+    }
+    if (!isCurrent()) return;
     try {
       final res = await Request().get(
         'https://bvc.bilivideo.com/pbp/data',
         queryParameters: {
           'aid': aid,
           'bvid': bvid,
-          'cid': cid.value,
+          'cid': chartCid,
           'r': 'loader',
         },
         options: Options(
@@ -1900,6 +1990,7 @@ class VideoDetailController extends GetxController
           },
         ),
       );
+      if (!isCurrent()) return;
       dynamic json;
       try {
         json = (res.data['modules'] as List).first['params']['data'];
@@ -1912,9 +2003,9 @@ class VideoDetailController extends GetxController
         dmTrend.value = Success(data.events!.eDefault!);
         return;
       }
-      dmTrend.value = const Error(null);
+      if (isCurrent()) dmTrend.value = const Error(null);
     } catch (e) {
-      dmTrend.value = const Error(null);
+      if (isCurrent()) dmTrend.value = const Error(null);
       if (kDebugMode) debugPrint('_getDmTrend: $e');
     }
   }

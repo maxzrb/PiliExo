@@ -767,9 +767,10 @@ private class HdrMedia3Session(
         delegate = bandwidthMeter,
         isSamplingEnabled = { bandwidthSamplingGate.enabled },
     )
+    private val volumeBoost = AppVolumeAudioProcessor()
     private val player: ExoPlayer = ExoPlayer.Builder(
         context,
-        BluetoothLatencyRenderersFactory(context)
+        BluetoothLatencyRenderersFactory(context, volumeBoost)
             // 先使用设备硬解；设备没有可用 AC-3/E-AC-3 解码器时再使用 FFmpeg 软件解码。
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true),
@@ -1104,7 +1105,10 @@ private class HdrMedia3Session(
     }
 
     fun setVolume(volume: Float) {
-        if (!released) player.volume = volume.coerceIn(0.0f, 1.0f)
+        if (released) return
+        val level = volume.coerceIn(0f, 2f)
+        volumeBoost.gain = if (level <= 1f) 1f else level * level * level
+        player.volume = level.coerceAtMost(1f)
     }
 
     fun setResizeMode(mode: String) {

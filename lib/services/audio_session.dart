@@ -76,10 +76,11 @@ class AudioSessionHandler {
       switch (event.type) {
         case .duck:
           if (playerPlaying) {
-            player!.setVolume(
-              player.volume.value * 0.5,
-              showIndicator: false,
-            );
+            if (player!.usesAppVolume) {
+              player.updateDuckedAppVolume(true);
+            } else {
+              player.setVolume(player.volume.value * 0.5, showIndicator: false);
+            }
           }
         case .pause:
         case .unknown:
@@ -96,7 +97,9 @@ class AudioSessionHandler {
     } else {
       switch (event.type) {
         case .duck:
-          if (playerPlaying) {
+          if (player?.usesAppVolume ?? false) {
+            player!.updateDuckedAppVolume(false);
+          } else if (playerPlaying) {
             player!.setVolume(
               player.volume.value * 2,
               showIndicator: false,

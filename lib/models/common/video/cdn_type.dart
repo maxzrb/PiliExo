@@ -33,6 +33,8 @@ enum CDNService {
   const CDNService(this.desc, [this.host]);
 }
 
+typedef VideoCdnSelection = ({CDNService service, String? host});
+
 // from https://rec.danmuji.org/dev/cdn-info/
 // {
 //     'cn-ahwh-ct-': {'01': 16},

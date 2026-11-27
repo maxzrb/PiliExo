@@ -158,10 +158,13 @@ class _FontSettingPageState extends State<FontSettingPage> {
       tileColor: _tileColor(font.family),
       onTap: installed ? () => _selectDownloadedFont(font) : null,
       title: Text(font.family),
-      subtitle: GestureDetector(
-        onTap: () => launchUrl(Uri.parse(font.license)),
-        child: Text('${font.source} · 字体许可'),
-      ),
+      subtitle: switch (font.license) {
+        final license? => GestureDetector(
+          onTap: () => launchUrl(Uri.parse(license)),
+          child: Text('${font.source} · 字体许可'),
+        ),
+        null => Text(font.source),
+      },
       trailing: TextButton(
         onPressed: installed
             ? () => _deleteDownloadedFont(font)

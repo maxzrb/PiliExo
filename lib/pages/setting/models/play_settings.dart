@@ -14,6 +14,7 @@ import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/pages/fullscreen_sc.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/slider_dialog.dart';
+import 'package:PiliPlus/plugin/pl_player/controller.dart';
 import 'package:PiliPlus/plugin/pl_player/models/bottom_progress_behavior.dart';
 import 'package:PiliPlus/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:PiliPlus/plugin/pl_player/models/play_repeat.dart';
@@ -84,6 +85,12 @@ List<SettingsModel> get playSettings => [
     leading: Icon(Icons.lock_outline),
     setKey: SettingBoxKey.showFsLockBtn,
     defaultVal: true,
+  ),
+  const SwitchModel(
+    title: '全屏锁定按钮显示在右侧',
+    leading: Icon(Icons.lock_outline),
+    setKey: SettingBoxKey.fsLockButtonRight,
+    defaultVal: false,
   ),
   const SwitchModel(
     title: '全屏显示截图按钮',
@@ -249,6 +256,24 @@ List<SettingsModel> get playSettings => [
     setKey: SettingBoxKey.reverseFromFirst,
     defaultVal: true,
   ),
+  if (PlatformUtils.isMobile)
+    SwitchModel(
+      title: '应用内音量',
+      subtitle: '滑动调节播放器音量，手机音量键仍控制系统音量',
+      leading: const Icon(Icons.volume_up),
+      setKey: SettingBoxKey.enableAppVolume,
+      defaultVal: false,
+      onChanged: (_) => PlPlayerController.refreshVolumeModeIfExists(),
+    ),
+  if (PlatformUtils.isMobile)
+    SwitchModel(
+      title: '音量增强至 200%',
+      subtitle: '仅作用于应用内音量，滑到 100% 后松手再上滑',
+      leading: const Icon(Icons.volume_up),
+      setKey: SettingBoxKey.enableVolumeBoost,
+      defaultVal: false,
+      onChanged: (_) => PlPlayerController.refreshVolumeModeIfExists(),
+    ),
   if (PlatformUtils.isMobile)
     NormalModel(
       title: '播放器音量',
@@ -558,6 +583,37 @@ Future<void> showPlayerVolumeDialog(
           onChanged?.call(value);
         }),
   );
+}
+
+Future<void> showVideoPlayerVolumeDialog(
+  BuildContext context,
+  PlPlayerController controller,
+  VoidCallback refresh,
+) async {
+  if (!controller.usesAppVolume) {
+    return showPlayerVolumeDialog(
+      context,
+      refresh,
+      onChanged: (_) => controller.applyPlayerVolume(),
+    );
+  }
+  final maximum = controller.maxVolume * 100;
+  final result = await showDialog<double>(
+    context: context,
+    builder: (context) => SliderDialog(
+      title: const Text('应用内音量'),
+      min: 0,
+      max: maximum,
+      divisions: maximum.toInt(),
+      precise: 0,
+      value: controller.volume.value * 100,
+      suffix: '%',
+    ),
+  );
+  if (result != null) {
+    await controller.setVolume(result / 100, showIndicator: false);
+    refresh();
+  }
 }
 
 Future<void> _showMaxVolumeDialog(

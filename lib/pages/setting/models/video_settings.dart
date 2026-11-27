@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:PiliPlus/models/common/setting_type.dart';
 import 'package:PiliPlus/models/common/video/base_quality.dart';
 import 'package:PiliPlus/models/common/video/cdn_type.dart';
 import 'package:PiliPlus/models/common/video/video_decode_type.dart';
+import 'package:PiliPlus/pages/setting/common_setting.dart';
 import 'package:PiliPlus/pages/setting/models/model.dart';
 import 'package:PiliPlus/pages/setting/widgets/ordered_multi_select_dialog.dart';
 import 'package:PiliPlus/pages/setting/widgets/select_dialog.dart';
@@ -10,10 +12,12 @@ import 'package:PiliPlus/pages/setting/widgets/hdr_route_dialog.dart';
 import 'package:PiliPlus/plugin/pl_player/models/audio_output_type.dart';
 import 'package:PiliPlus/plugin/pl_player/models/hwdec_type.dart';
 import 'package:PiliPlus/plugin/pl_player/utils/bluetooth_latency_service.dart';
+import 'package:PiliPlus/router/app_page_route.dart';
 import 'package:PiliPlus/utils/filtering_text.dart';
 import 'package:PiliPlus/utils/storage.dart';
 import 'package:PiliPlus/utils/storage_key.dart';
 import 'package:PiliPlus/utils/storage_pref.dart';
+import 'package:PiliPlus/utils/platform_utils.dart';
 import 'package:PiliPlus/utils/video_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
@@ -84,8 +88,7 @@ List<SettingsModel> get videoSettings => [
   NormalModel(
     title: 'CDN 设置',
     leading: const Icon(MdiIcons.cloudPlusOutline),
-    getSubtitle: () =>
-        '当前使用：${VideoUtils.cdnService.desc}，部分 CDN 可能失效，如无法播放请尝试切换',
+    getSubtitle: () => '当前使用：${VideoUtils.cdnDescription}',
     onTap: _showCDNDialog,
   ),
   NormalModel(
@@ -97,7 +100,7 @@ List<SettingsModel> get videoSettings => [
   const SwitchModel(
     title: 'CDN 测速',
     leading: Icon(Icons.speed),
-    subtitle: '测速通过模拟加载视频实现，注意流量消耗，结果仅供参考',
+    subtitle: '打开节点面板时测试预设线路，每条最多请求约 2 MB',
     setKey: SettingBoxKey.cdnSpeedTest,
     defaultVal: true,
   ),
@@ -110,45 +113,12 @@ List<SettingsModel> get videoSettings => [
     onChanged: (value) => VideoUtils.disableAudioCDN = value,
   ),
   NormalModel(
-    title: '默认画质',
+    title: '画质与音质',
+    subtitle: '点播、直播、半屏和移动数据的默认设置',
     leading: const Icon(Icons.video_settings_outlined),
-    getSubtitle: () =>
-        '当前画质：${VideoQuality.fromCode(Pref.defaultVideoQa).desc}',
-    onTap: _showVideoQaDialog,
-  ),
-  NormalModel(
-    title: '移动数据画质',
-    leading: const Icon(Icons.video_settings_outlined),
-    getSubtitle: () =>
-        '当前画质：${VideoQuality.fromCode(Pref.defaultVideoQaCellular).desc}',
-    onTap: _showVideoCellularQaDialog,
-  ),
-  NormalModel(
-    title: '默认音质',
-    leading: const Icon(Icons.music_video_outlined),
-    getSubtitle: () =>
-        '当前音质：${AudioQuality.fromCode(Pref.defaultAudioQa).desc}',
-    onTap: _showAudioQaDialog,
-  ),
-  NormalModel(
-    title: '移动数据音质',
-    leading: const Icon(Icons.music_video_outlined),
-    getSubtitle: () =>
-        '当前音质：${AudioQuality.fromCode(Pref.defaultAudioQaCellular).desc}',
-    onTap: _showAudioCellularQaDialog,
-  ),
-  NormalModel(
-    title: '直播默认画质',
-    leading: const Icon(Icons.video_settings_outlined),
-    getSubtitle: () => '当前画质：${LiveQuality.fromCode(Pref.liveQuality).desc}',
-    onTap: _showLiveQaDialog,
-  ),
-  NormalModel(
-    title: '移动数据直播默认画质',
-    leading: const Icon(Icons.video_settings_outlined),
-    getSubtitle: () =>
-        '当前画质：${LiveQuality.fromCode(Pref.liveQualityCellular).desc}',
-    onTap: _showLiveCellularQaDialog,
+    onTap: (_, _) => AppPageRoute.push(
+      const CommonSetting(settingType: SettingType.qualitySetting),
+    ),
   ),
   NormalModel(
     title: '首选解码格式',
@@ -231,14 +201,62 @@ List<SettingsModel> get videoSettings => [
   ),
 ];
 
+List<SettingsModel> get qualitySettings => [
+  NormalModel(
+    title: PlatformUtils.isMobile ? '全屏默认画质' : '默认画质',
+    leading: const Icon(Icons.video_settings_outlined),
+    getSubtitle: () => VideoQuality.fromCode(Pref.defaultVideoQa).desc,
+    onTap: _showVideoQaDialog,
+  ),
+  if (PlatformUtils.isMobile)
+    NormalModel(
+      title: '半屏默认画质',
+      leading: const Icon(Icons.video_settings_outlined),
+      getSubtitle: () => switch (Pref.defaultVideoQaHalfScreen) {
+        final quality? => VideoQuality.fromCode(quality).desc,
+        null => '跟随当前网络的全屏默认画质',
+      },
+      onTap: _showVideoHalfScreenQaDialog,
+    ),
+  NormalModel(
+    title: PlatformUtils.isMobile ? '移动数据全屏画质' : '移动数据画质',
+    leading: const Icon(Icons.video_settings_outlined),
+    getSubtitle: () => VideoQuality.fromCode(Pref.defaultVideoQaCellular).desc,
+    onTap: _showVideoCellularQaDialog,
+  ),
+  NormalModel(
+    title: '默认音质',
+    leading: const Icon(Icons.music_video_outlined),
+    getSubtitle: () => AudioQuality.fromCode(Pref.defaultAudioQa).desc,
+    onTap: _showAudioQaDialog,
+  ),
+  NormalModel(
+    title: '移动数据音质',
+    leading: const Icon(Icons.music_video_outlined),
+    getSubtitle: () => AudioQuality.fromCode(Pref.defaultAudioQaCellular).desc,
+    onTap: _showAudioCellularQaDialog,
+  ),
+  NormalModel(
+    title: '直播默认画质',
+    leading: const Icon(Icons.video_settings_outlined),
+    getSubtitle: () => LiveQuality.fromCode(Pref.liveQuality).desc,
+    onTap: _showLiveQaDialog,
+  ),
+  NormalModel(
+    title: '移动数据直播默认画质',
+    leading: const Icon(Icons.video_settings_outlined),
+    getSubtitle: () => LiveQuality.fromCode(Pref.liveQualityCellular).desc,
+    onTap: _showLiveCellularQaDialog,
+  ),
+];
+
 Future<void> _showCDNDialog(BuildContext context, VoidCallback setState) async {
-  final res = await showDialog<CDNService>(
+  final res = await showDialog<VideoCdnSelection>(
     context: context,
     builder: (context) => const CdnSelectDialog(),
   );
   if (res != null) {
-    VideoUtils.cdnService = res;
-    await GStorage.setting.put(SettingBoxKey.CDNService, res.name);
+    await VideoUtils.setCdnSelection(res);
     setState();
   }
 }
@@ -294,7 +312,7 @@ Future<void> _showVideoQaDialog(
   final res = await showDialog<int>(
     context: context,
     builder: (context) => SelectDialog<int>(
-      title: '默认画质',
+      title: PlatformUtils.isMobile ? '全屏默认画质' : '默认画质',
       value: Pref.defaultVideoQa,
       values: VideoQuality.values.map((e) => (e.code, e.desc)).toList(),
     ),
@@ -312,7 +330,7 @@ Future<void> _showVideoCellularQaDialog(
   final res = await showDialog<int>(
     context: context,
     builder: (context) => SelectDialog<int>(
-      title: '移动数据画质',
+      title: PlatformUtils.isMobile ? '移动数据全屏画质' : '移动数据画质',
       value: Pref.defaultVideoQaCellular,
       values: VideoQuality.values.map((e) => (e.code, e.desc)).toList(),
     ),
@@ -324,6 +342,30 @@ Future<void> _showVideoCellularQaDialog(
     );
     setState();
   }
+}
+
+Future<void> _showVideoHalfScreenQaDialog(
+  BuildContext context,
+  VoidCallback setState,
+) async {
+  final result = await showDialog<int>(
+    context: context,
+    builder: (context) => SelectDialog<int>(
+      title: '半屏默认画质',
+      value: Pref.defaultVideoQaHalfScreen ?? -1,
+      values: [
+        (-1, '跟随当前网络的全屏默认画质'),
+        ...VideoQuality.values.map((quality) => (quality.code, quality.desc)),
+      ],
+    ),
+  );
+  if (result == null) return;
+  if (result == -1) {
+    await GStorage.setting.delete(SettingBoxKey.defaultVideoQaHalfScreen);
+  } else {
+    await GStorage.setting.put(SettingBoxKey.defaultVideoQaHalfScreen, result);
+  }
+  setState();
 }
 
 Future<void> _showAudioQaDialog(

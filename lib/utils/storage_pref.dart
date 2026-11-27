@@ -277,6 +277,9 @@ abstract final class Pref {
     defaultValue: VideoQuality.super8k.code,
   );
 
+  static int? get defaultVideoQaHalfScreen =>
+      _setting.get(SettingBoxKey.defaultVideoQaHalfScreen);
+
   static int get defaultVideoQaCellular => _setting.get(
     SettingBoxKey.defaultVideoQaCellular,
     defaultValue: VideoQuality.high1080.code,
@@ -330,8 +333,27 @@ abstract final class Pref {
     return CDNService.backupUrl;
   }
 
+  static String? get customVideoCdnHost =>
+      _setting.get(SettingBoxKey.customVideoCdnHost);
+
   static String get banWordForRecommend =>
       _setting.get(SettingBoxKey.banWordForRecommend, defaultValue: '');
+  static String get banWordForRecommendUpName =>
+      _setting.get(SettingBoxKey.banWordForRecommendUpName, defaultValue: '');
+  static List<int> get recommendBlockedMids => List<int>.from(
+    _setting.get(SettingBoxKey.recommendBlockedMids, defaultValue: const []),
+  );
+  static List<int> get recommendAllowedMids => List<int>.from(
+    _setting.get(SettingBoxKey.recommendAllowedMids, defaultValue: const []),
+  );
+  static bool get filterUnplayableAppRecommend => _setting.get(
+    SettingBoxKey.filterUnplayableAppRecommend,
+    defaultValue: true,
+  );
+  static bool get applyFilterToHotVideos =>
+      _setting.get(SettingBoxKey.applyFilterToHotVideos, defaultValue: false);
+  static bool get applyFilterToRankVideos =>
+      _setting.get(SettingBoxKey.applyFilterToRankVideos, defaultValue: false);
 
   static String get banWordForReply =>
       _setting.get(SettingBoxKey.banWordForReply, defaultValue: '');
@@ -1123,6 +1145,9 @@ abstract final class Pref {
   static bool get showFsLockBtn =>
       _setting.get(SettingBoxKey.showFsLockBtn, defaultValue: true);
 
+  static bool get fsLockButtonRight =>
+      _setting.get(SettingBoxKey.fsLockButtonRight, defaultValue: false);
+
   static bool get silentDownImg =>
       _setting.get(SettingBoxKey.silentDownImg, defaultValue: false);
 
@@ -1253,6 +1278,17 @@ abstract final class Pref {
 
   static double get playerVolume => // mobile
       _setting.get(SettingBoxKey.playerVolume, defaultValue: 100.0);
+
+  static bool get enableAppVolume =>
+      _setting.get(SettingBoxKey.enableAppVolume, defaultValue: false);
+
+  static bool get enableVolumeBoost =>
+      _setting.get(SettingBoxKey.enableVolumeBoost, defaultValue: false);
+
+  static double get appVolume => (_setting.get(
+    SettingBoxKey.appVolume,
+    defaultValue: playerVolume / 100,
+  ) as num).toDouble().clamp(0.0, enableVolumeBoost ? 2.0 : 1.0);
 
   static double get maxVolume => // desktop
       _setting.get(SettingBoxKey.maxVolume, defaultValue: 2.0);

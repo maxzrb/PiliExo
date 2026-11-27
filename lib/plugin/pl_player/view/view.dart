@@ -192,7 +192,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _onVolumeChanged(double value) {
-    if (mounted && !plPlayerController.volumeInterceptEventStream) {
+    if (mounted &&
+        !plPlayerController.usesAppVolume &&
+        !plPlayerController.volumeInterceptEventStream) {
       plPlayerController.volume.value = value;
       if (Platform.isIOS && !FlutterVolumeController.showSystemUI) {
         plPlayerController
@@ -212,8 +214,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   void _getCurrVolume() {
     FlutterVolumeController.getVolume().then((res) {
-      if (mounted) {
-        plPlayerController.volume.value = res!;
+      if (mounted && !plPlayerController.usesAppVolume && res != null) {
+        plPlayerController.volume.value = res;
       }
     });
   }
@@ -1125,6 +1127,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   void _beginVolumeHapticGesture() {
     EasyThrottle.cancel('setVolume');
     _pendingVolumeDelta = 0;
+    _gestureVolumeMax =
+        plPlayerController.usesAppVolume &&
+            plPlayerController.volume.value < 1.0
+        ? 1.0
+        : plPlayerController.maxVolume;
     _volumeHapticTracker.begin(
       plPlayerController.volume.value * 100.0,
       stepPercent: Pref.volumeSlideFeedbackStep,
@@ -1162,6 +1169,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     );
   }
 
+  double _gestureVolumeMax = 1.0;
+
   void _applyPendingGestureVolumeDelta() {
     final delta = _pendingVolumeDelta;
     _pendingVolumeDelta = 0;
@@ -1171,7 +1180,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     final volume = clampDouble(
       plPlayerController.volume.value + delta,
       0.0,
-      plPlayerController.maxVolume,
+      math.min(_gestureVolumeMax, plPlayerController.maxVolume),
     );
     _setGestureVolume(volume);
   }
@@ -1397,6 +1406,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _onTapUp(TapUpDetails details) {
+    if (plPlayerController.longPressSpeedLocked.value) {
+      unawaited(plPlayerController.setLongPressStatus(false));
+      return;
+    }
     switch (details.kind) {
       case ui.PointerDeviceKind.mouse when PlatformUtils.isDesktop:
         plPlayerController.onDoubleTapCenter();
@@ -1457,13 +1470,23 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             unawaited(plPlayerController.setLongPressStatus(true));
           }
         }
+        ..onLongPressMoveUpdate = (details) {
+          if (!PlatformUtils.isMobile) return;
+          final threshold = (maxHeight * 0.15).clamp(32.0, 80.0);
+          if (details.offsetFromOrigin.dy <= -threshold) {
+            plPlayerController.lockLongPressSpeed();
+          }
+        }
         ..onLongPressEnd = (_) {
           _endLongPress();
         }
-        ..onLongPressCancel = _endLongPress;
+        ..onLongPressCancel = () => _endLongPress(keepLock: false);
 
   void _trackLongPress(PointerDownEvent event) {
-    if (event.buttons != kPrimaryButton) return;
+    if (event.buttons != kPrimaryButton ||
+        plPlayerController.longPressSpeedLocked.value) {
+      return;
+    }
     if (_longPressPointer != null) {
       _endLongPress();
       return;
@@ -1473,12 +1496,16 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _onLongPressPointerExit(PointerEvent event) {
-    if (event.pointer == _longPressPointer) _endLongPress();
+    if (event.pointer == _longPressPointer) {
+      _endLongPress(keepLock: event is! PointerCancelEvent);
+    }
   }
 
-  void _endLongPress() {
+  void _endLongPress({bool keepLock = true}) {
     _longPressPointer = null;
-    unawaited(plPlayerController.setLongPressStatus(false));
+    if (!keepLock || !plPlayerController.longPressSpeedLocked.value) {
+      unawaited(plPlayerController.setLongPressStatus(false));
+    }
   }
 
   late final ImmediateTapGestureRecognizer _tapGestureRecognizer;
@@ -1695,7 +1722,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       ),
                       child: Obx(
                         () => Text(
-                          '${plPlayerController.longPressTargetSpeed}倍速中',
+                          plPlayerController.longPressSpeedLocked.value
+                              ? '${plPlayerController.longPressTargetSpeed}倍速已锁定 · 点按解除'
+                              : '${plPlayerController.longPressTargetSpeed}倍速中${PlatformUtils.isMobile ? ' · 上滑锁定' : ''}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -1985,7 +2014,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               () {
                 final showControls = plPlayerController.showControls.value;
                 // 长按倍速期间隐藏底部进度条，避免分段条灰色底块露出。
-                if (plPlayerController.longPressStatus.value) {
+                if (plPlayerController.longPressStatus.value &&
+                    !plPlayerController.longPressSpeedLocked.value) {
                   return const SizedBox.shrink();
                 }
                 final bool offstage;
@@ -2078,12 +2108,16 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           // 锁
           if (plPlayerController.showFsLockBtn)
             ViewSafeArea(
-              right: false,
-              left: !plPlayerController.removeSafeArea,
+              right:
+                  Pref.fsLockButtonRight && !plPlayerController.removeSafeArea,
+              left:
+                  !Pref.fsLockButtonRight && !plPlayerController.removeSafeArea,
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: Pref.fsLockButtonRight
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: FractionalTranslation(
-                  translation: const Offset(1, -0.4),
+                  translation: Offset(Pref.fsLockButtonRight ? -1 : 1, -0.4),
                   child: Obx(
                     () => Offstage(
                       offstage: !plPlayerController.showControls.value,
@@ -2134,7 +2168,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   () => Align(
                     alignment: Alignment.centerRight,
                     child: FractionalTranslation(
-                      translation: const Offset(-1, -0.4),
+                      translation: Offset(
+                        -1,
+                        plPlayerController.showFsLockBtn &&
+                                Pref.fsLockButtonRight
+                            ? 0.9
+                            : -0.4,
+                      ),
                       child: Offstage(
                         offstage: !plPlayerController.showControls.value,
                         child: DecoratedBox(

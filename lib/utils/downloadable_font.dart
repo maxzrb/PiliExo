@@ -52,6 +52,21 @@ enum DownloadableFont {
         compressedBytes: 14410630,
       ),
     ],
+  ),
+  huayang(
+    family: '萝莉体 第二版',
+    source: 'ModelScope · 简繁字库',
+    directory: 'huayang-58102',
+    url: 'https://modelscope.cn/datasets/AerithDream/PiliExo-Fonts/resolve/master/fonts/huayang/58102_20170622131956.zip',
+    files: [
+      _FontFile(
+        'huayang.ttf',
+        11878644,
+        '8bb9f125d63d4e978c59dbc63f8544b07f292bef55e50a4b3a12721f3e993064',
+        start: 69,
+        compressedBytes: 7129565,
+      ),
+    ],
   );
 
   const DownloadableFont({
@@ -59,13 +74,13 @@ enum DownloadableFont {
     required this.source,
     required String directory,
     required this._url,
-    required this.license,
+    this.license,
     required this._files,
   }) : _cacheName = directory;
 
   final String family;
   final String source;
-  final String license;
+  final String? license;
   final String _cacheName;
   final String _url;
   final List<_FontFile> _files;

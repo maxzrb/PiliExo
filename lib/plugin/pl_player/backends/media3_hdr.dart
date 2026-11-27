@@ -194,7 +194,7 @@ class HdrMedia3Controller {
   }
 
   Future<void> setVolume(double volume) =>
-      _invoke('setVolume', {'volume': volume.clamp(0.0, 1.0)});
+      _invoke('setVolume', {'volume': volume.clamp(0.0, 2.0)});
 
   Future<void> setResizeMode(String mode) {
     _resizeMode = switch (mode) {

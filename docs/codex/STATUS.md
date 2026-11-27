@@ -1,5 +1,11 @@
 # PiliExo AI 工作状态
 
+- 2026-11-27 12:24 画质与音质已移入二级页，视频 CDN 加入 PiliNara 地区节点、自定义域名及测速。6.8 MB 萝莉体第二版 ZIP 已上传 ModelScope 并通过应用下载加载测试。arm64 候选包已覆盖安装 MEP-AN00，确认冷启动后 Flutter 前台渲染。353 项 Flutter 测试通过，真机字体点选及在线 CDN 试播待验。
+
+- 2026-11-27 12:02 PiliNara 功能 arm64 候选包已覆盖安装 MEP-AN00，通过哈希回读与冷启动窗口检查。ModelScope 回退了原字体上传，应用保留本地字体导入。用户补充的新字体文件通过 Flutter 加载并完整覆盖 GB2312 的 6,763 个汉字。
+
+- 2026-11-27 11:11 已完成一轮 PiliNara 播放与推荐功能适配，工作区尚未提交。Flutter 348 项、双 ARM Release Kotlin 编译和 Media3 音量处理的 2 项 JUnit 测试通过，待真机验收。公开字体数据集 `AerithDream/PiliExo-Fonts` 已创建，萝莉体第二版待取得可公开分发的来源。
+
 - 2026-11-26 16:19 `v26.11.26.2` 已设为 GitHub Latest，ModelScope 镜像同步完成。双 ABI APK 和校验清单的远端长度及哈希一致。沿用用户已完成的 arm64 试机验收。
 
 - 2026-11-26 16:00 用户确认 Media3 配音试机包真机验收完成，并要求直接发布。已选定新标签 `v26.11.26.2` 和 Android versionCode 50，正式 APK 不重复真机安装。
@@ -2851,3 +2857,28 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 本机 Flutter 3.47.9 与 Gradle 离线构建，开启图标裁剪。Flutter 测试 342/342，静态分析无 error/warning，72 条 info。双 ABI 通过原证书 V2、16 KB 对齐、29 个原生插件、正式 AOT 提交、Dart/Android 切轨通道及 mpv / Media3 FFmpeg 校验。Actions 保持关闭。
 - PiliExo_android_v26.11.26.2_arm64-v8a.apk 为 32,956,219 字节，SHA-256 `da9b463940e158b0c3ddd175e13243528ab7ec44cf88c9493e05cf41eb04a2cb`。PiliExo_android_v26.11.26.2_armeabi-v7a.apk 为 33,008,623 字节，SHA-256 `45ad97fc5b63e555261a132876ca45c8e81337291ae6d1d208b78a297ea734e8`。SHA256SUMS.txt 为 218 字节，SHA-256 `ef5f8da29ed6788402ffe6acb7aafd48eda1cab05a0c410a88ad3d2239fffa4e`。本机资产位于 `dist/release/v26.11.26.2/`，编译和远端校验记录位于 `tmp/release-v26.11.26.2/`。
 - [GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.26.2) 已公开并设为 Latest，资产服务器摘要和长度一致。ModelScope `releases/v26.11.26.2/` 的三份资产均完整下载回读，长度与 SHA-256 与本机及 GitHub 一致。[ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
+
+## 2026-11-27 11:11 PiliNara 功能适配
+
+- 参考 PiliNara `eca9c04eb5` 中的应用内音量、画质和手势设置。移动端可分开控制系统音量与视频音量，增强开关允许分两次滑动至 200%。mpv 使用现有限幅方案，Media3 使用 PCM 峰值限制，音频焦点临时降音不覆盖用户音量。
+- 半屏可单独设置默认画质，也可跟随当前网络的全屏默认画质。播放器内手动改画质不写默认值。全屏锁定按钮可移至右侧。长按倍速上滑可锁定，点按画面、暂停或换源可解除。
+- 高能进度条优先按分段弹幕计算高斯核曲线，计算或数据请求失败时保留原曲线来源。推荐流新增昵称规则、UID 屏蔽和白名单，可控制隐藏无权播放的 App 推荐，并将完整规则扩展至热门和排行。
+- Flutter 全量 348/348，改动文件定向分析无错误、无警告，有 8 条既有提示。Gradle 指定两个 ARM 目标后 Release Kotlin 编译通过。使用缓存的 Media3 1.11.0 运行音量处理 JUnit 2/2。证据见 `tmp/pilinara-flutter-full.log` 和 `tmp/pilinara-arm-kotlin.log`。未安装 APK，运行时音量听感、半全屏切换和锁定手势仍待真机验收。
+- 已创建并回查 [PiliExo 可选字体数据集](https://modelscope.cn/datasets/AerithDream/PiliExo-Fonts)，可见性为公开。字体作者或公开再分发许可待核实，尚无萝莉体第二版文件或可用的应用内下载链接。本地文件可通过现有自定义字体功能导入。
+
+## 2026-11-27 12:02 PiliNara 候选包真机安装与字体对照
+
+- 用户授权将本地 `Lolita.ttf` 上传到 ModelScope，CLI 提交返回成功。随后公开下载返回 HTTP 404，数据集树不含字体且记录了平台回退，未在客户端加入失效入口。原 2.01 版已复制到 MEP-AN00 的 `Download/PiliExo-Lolita-2.01.ttf`，设备 SHA-256 与已测原文件一致。
+- 新压缩包 `58102_20170622131956 (1).zip` 内为 `huayang.ttf`，11,878,644 字节，SHA-256 `9bee31eff8145e2e395c17a0d37c422c07ed7b8191616f1bb449ce3a87861c2a`。Unicode 映射 29,955 个，GB2312 汉字 6763/6763，旧版 4402/6763。测试用简体界面字均覆盖，固定 Flutter 引擎加载通过。其内部名称同时含 Heiti SC 和萝莉体第二版，保留原厂版权声明。本次仅做本地验证。
+- 候选包 `dist/integration/pilinara-20261127/PiliExo_26.11.26.2_pilinara_candidate_arm64.apk` 为 32,958,520 字节，SHA-256 `e8924d8a590527398bb2a1276e2ac87513fd9c8b4c4a66c4cbdc36ed63c4c8c3`。基于 `434a16264-dirty`，保留应用版本 26.11.26、Android versionCode 50。同正式版证书、16 KB 对齐、29 项 Android 插件和原生库检查通过。
+- MEP-AN00 覆盖安装成功，设备 APK 哈希同本机。ADB 冷启动返回 `COLD` 和 `Status: ok`，MainActivity 获焦并确认处于可见前台，Flutter Surface 已建立。六项功能仍待手动操作验收。未提交或发布。
+
+## 2026-11-27 12:24 画质二级页、视频 CDN 与在线字体候选包
+
+- 音视频设置新增「画质与音质」二级页，集中半屏、全屏、移动数据、直播默认画质及默认音质，沿用原设置键。
+- 参考 PiliNara `eca9c04eb5`，应用设置及播放器共用「视频 CDN」面板，内置 25 组 362 个节点，支持自定义域名、首字节延迟与限量测速。匹配到原始签名地址时优先使用该地址，Media3 保留接口候选地址。
+- 用户授权上传 6.8 MB 原 ZIP。新版 `58102_20170622131956.zip` 可公开下载，HTTP 200 返回 7,131,512 字节，SHA-256 `5fb79bb73d2295d9a1a4f4017769ac792358c04eed71ca097724f49602c86cb7`，与本机一致，Range 请求返回 206。Flutter 测试实下并完成解压、加载和删除。「App字体设置 → 萝莉体 第二版」提供下载入口。[ModelScope 字体包](https://modelscope.cn/datasets/AerithDream/PiliExo-Fonts/resolve/master/fonts/huayang/58102_20170622131956.zip)
+- Flutter 全量 353/353，CDN 和真实网络字体定向 15/15，画质二级页及地区节点选择界面测试 2/2。定向分析无错误、无警告，8 条既有提示。日志见 `tmp/pilinara-cdn-full.log`、`tmp/pilinara-cdn-targeted.log`、`tmp/pilinara-cdn-smoke.log`。
+- 本机签名 arm64 候选包 `dist/integration/pilinara-cdn-20261127/PiliExo_26.11.26.2_cdn_candidate_arm64.apk`，32,970,276 字节，SHA-256 `d8d0f4d84389ccd630fab7eaf7a1179f4b7f360e36a78931172a32a0df9e6016`。应用版本 26.11.26，Android versionCode 50，AOT `434a16264a43abb5e38c708a4411f680e7fde2b8-dirty`。原证书、16 KB 对齐、29 个插件、AOT 与必需原生库校验通过。
+- MEP-AN00 覆盖安装成功，设备 APK 哈希一致。屏幕唤醒后重新冷启动，`LaunchState: COLD`、`Status: ok`，Android 报告 `TotalTime: 268 ms`。MainActivity 获焦并可见，系统启动窗口移除，Flutter SurfaceView 回读到提交帧。证据见 `tmp/pilinara-cdn-cold-start.txt` 和 `tmp/pilinara-cdn-device-render.txt`。手机端字体点选及在线 CDN 试播未执行。
+- 分支 `codex/fix-vertical-fullscreen-white-edge`，HEAD `434a16264`。工作区包含上一轮及本轮改动，尚未提交或发布 APK。

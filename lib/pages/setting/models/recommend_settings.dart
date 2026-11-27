@@ -115,6 +115,31 @@ List<SettingsModel> get recommendSettings {
         VideoHttp.enableFilter = value.pattern.isNotEmpty;
       },
     ),
+    getBanWordModel(
+      title: 'UP 主昵称关键词过滤',
+      key: SettingBoxKey.banWordForRecommendUpName,
+      banScope: '推荐及启用完整过滤的列表',
+      onChanged: (value) => RecommendFilter.upNameRegExp = value,
+    ),
+    _recommendAuthorList(
+      title: '推荐屏蔽 UP 主',
+      key: SettingBoxKey.recommendBlockedMids,
+      values: () => Pref.recommendBlockedMids,
+      onChanged: (ids) => RecommendFilter.blockedMids = ids,
+    ),
+    _recommendAuthorList(
+      title: '推荐白名单',
+      key: SettingBoxKey.recommendAllowedMids,
+      values: () => Pref.recommendAllowedMids,
+      onChanged: (ids) => RecommendFilter.allowedMids = ids,
+    ),
+    const SwitchModel(
+      title: '隐藏无权播放的视频',
+      subtitle: '适用于 App 推荐中的视频',
+      leading: Icon(Icons.block_outlined),
+      setKey: SettingBoxKey.filterUnplayableAppRecommend,
+      defaultVal: true,
+    ),
     getVideoFilterSelectModel(
       title: '视频时长',
       suffix: 's',
@@ -132,7 +157,7 @@ List<SettingsModel> get recommendSettings {
     ),
     SwitchModel(
       title: '已关注UP豁免推荐过滤',
-      subtitle: '推荐中已关注用户发布的内容不会被过滤',
+      subtitle: '已关注 UP 主可跳过常规条件，屏蔽名单优先生效',
       leading: const Icon(Icons.favorite_border_outlined),
       setKey: SettingBoxKey.exemptFilterForFollowed,
       defaultVal: true,
@@ -140,11 +165,78 @@ List<SettingsModel> get recommendSettings {
     ),
     SwitchModel(
       title: '过滤器也应用于详情页相关视频',
-      subtitle: '其它（如热门视频、搜索等）均不受过滤器影响，无法豁免相关视频中的已关注UP',
+      subtitle: '支持标题、昵称、时长、播放量和用户名单过滤',
       leading: const Icon(Icons.explore_outlined),
       setKey: SettingBoxKey.applyFilterToRelatedVideos,
       defaultVal: true,
       onChanged: (value) => RecommendFilter.applyFilterToRelatedVideos = value,
     ),
+    const SwitchModel(
+      title: '完整过滤也应用于热门视频',
+      leading: Icon(Icons.local_fire_department_outlined),
+      setKey: SettingBoxKey.applyFilterToHotVideos,
+      defaultVal: false,
+    ),
+    const SwitchModel(
+      title: '完整过滤也应用于视频排行',
+      leading: Icon(Icons.leaderboard_outlined),
+      setKey: SettingBoxKey.applyFilterToRankVideos,
+      defaultVal: false,
+    ),
   ];
 }
+
+SettingsModel _recommendAuthorList({
+  required String title,
+  required String key,
+  required List<int> Function() values,
+  required void Function(Set<int>) onChanged,
+}) => NormalModel(
+  title: title,
+  leading: const Icon(Icons.person_outline),
+  getSubtitle: () => '已添加 ${values().length} 位 UP 主',
+  onTap: (context, refresh) async {
+    var input = values().join('\n');
+    final result = await showDialog<Set<int>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextFormField(
+          autofocus: true,
+          initialValue: input,
+          minLines: 3,
+          maxLines: 6,
+          decoration: const InputDecoration(hintText: '输入 UID，用空格、逗号或换行分隔'),
+          onChanged: (value) => input = value,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final ids = <int>{};
+              for (final value in input.split(RegExp(r'[\s,，]+'))) {
+                if (value.isEmpty) continue;
+                final id = int.tryParse(value);
+                if (id == null || id <= 0) {
+                  SmartDialog.showToast('UID 应为正整数');
+                  return;
+                }
+                ids.add(id);
+              }
+              Navigator.pop(context, ids);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      await GStorage.setting.put(key, result.toList());
+      onChanged(result);
+      refresh();
+    }
+  },
+);

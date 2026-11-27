@@ -21,6 +21,7 @@ enum SettingType {
   extraSetting('其它设置'),
   webdavSetting('WebDAV 设置'),
   about('关于'),
+  qualitySetting('画质与音质'),
   ;
 
   final String title;
@@ -30,6 +31,7 @@ enum SettingType {
     .privacySetting => privacySettings,
     .recommendSetting => recommendSettings,
     .videoSetting => videoSettings,
+    .qualitySetting => qualitySettings,
     .playSetting => playSettings,
     .dmSetting => dmSettings,
     .dynSetting => dynSettings,
