@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-27 12:49 `v26.11.27.1` 已发布并设为 GitHub Latest。正式版包含画质与音质二级菜单、应用内音量、视频 CDN、高能进度条、推荐过滤、播放手势和在线字体；README 已在「特色功能」逐项列出，并新增一次 PiliNara 鸣谢。353 项测试通过，双 ABI 和两处远端资产已核验。沿用用户已确认的候选包真机验收，正式包按用户要求未再次装机。
+
 - 2026-11-27 12:24 画质与音质已移入二级页，视频 CDN 加入 PiliNara 地区节点、自定义域名及测速。6.8 MB 萝莉体第二版 ZIP 已上传 ModelScope 并通过应用下载加载测试。arm64 候选包已覆盖安装 MEP-AN00，确认冷启动后 Flutter 前台渲染。353 项 Flutter 测试通过，真机字体点选及在线 CDN 试播待验。
 
 - 2026-11-27 12:02 PiliNara 功能 arm64 候选包已覆盖安装 MEP-AN00，通过哈希回读与冷启动窗口检查。ModelScope 回退了原字体上传，应用保留本地字体导入。用户补充的新字体文件通过 Flutter 加载并完整覆盖 GB2312 的 6,763 个汉字。
@@ -2882,3 +2884,13 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - 本机签名 arm64 候选包 `dist/integration/pilinara-cdn-20261127/PiliExo_26.11.26.2_cdn_candidate_arm64.apk`，32,970,276 字节，SHA-256 `d8d0f4d84389ccd630fab7eaf7a1179f4b7f360e36a78931172a32a0df9e6016`。应用版本 26.11.26，Android versionCode 50，AOT `434a16264a43abb5e38c708a4411f680e7fde2b8-dirty`。原证书、16 KB 对齐、29 个插件、AOT 与必需原生库校验通过。
 - MEP-AN00 覆盖安装成功，设备 APK 哈希一致。屏幕唤醒后重新冷启动，`LaunchState: COLD`、`Status: ok`，Android 报告 `TotalTime: 268 ms`。MainActivity 获焦并可见，系统启动窗口移除，Flutter SurfaceView 回读到提交帧。证据见 `tmp/pilinara-cdn-cold-start.txt` 和 `tmp/pilinara-cdn-device-render.txt`。手机端字体点选及在线 CDN 试播未执行。
 - 分支 `codex/fix-vertical-fullscreen-white-edge`，HEAD `434a16264`。工作区包含上一轮及本轮改动，尚未提交或发布 APK。
+
+## 2026-11-27 12:49 v26.11.27.1 正式发布
+
+- 用户确认上一候选包真机核验通过，并明确要求正式发布、无需再次真机核验。正式包未重复安装，验收沿用该候选包；ARMv7 只做静态校验。
+- 发布版本 `26.11.27+1`，Android `versionCode` 51。源码提交 `7bc6b8c187d5cf2f2b591ae29f84ea124a395d62`，annotated tag object `a0b749f9853fc972a72c4a3dcbf816e186a62c3d`，标签 `v26.11.27.1`，分支和默认分支均已推送。
+- README「特色功能」已记录画质与音质二级菜单、应用内音量、视频 CDN、高能进度条、推荐过滤、倍速上滑锁定、全屏锁定按钮位置及萝莉体第二版下载。独立「鸣谢」段注明相关功能参考 [PiliNara](https://github.com/Starfallan/PiliNara)。发布说明和 `version/版本迭代记录.md` 已更新，版本号规则通过 `verify_readme.ps1`。
+- Flutter 全量 353/353 通过；静态分析无 error/warning，72 条既有 info。使用 Flutter 3.47.9 和原正式证书在本机构建，开启图标裁剪，不触发 GitHub Actions。证据见 `tmp/release-v26.11.27.1/`。
+- arm64 `PiliExo_android_v26.11.27.1_arm64-v8a.apk` 为 32,969,949 字节，SHA-256 `fd8e539ec3f02e95ddbb7f9429291c8f9ca83162b18798df1e9d46ba65f0af4f`。ARMv7 `PiliExo_android_v26.11.27.1_armeabi-v7a.apk` 为 33,031,145 字节，SHA-256 `7bd3ed492f57b89e137f7aef223c82349290058f14346db3f290bd5dc553caad`。本机资产位于 `dist/release/v26.11.27.1/`。
+- 双 ABI 均通过原证书 V2、16 KB 对齐、`versionCode` 51、AOT 源码提交、`GeneratedPluginRegistrant`、29 个 Android 插件及 mpv/Media3 原生库检查。`SHA256SUMS.txt` 为 218 字节，SHA-256 `9caa7f157ab59eb937ea867d5f63dc48342a73a423ec17b97cb6c82a4312cca4`。
+- [GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.27.1) 已公开并设为 Latest，Actions 保持关闭。GitHub 三个资产的状态、长度和摘要一致；ModelScope `releases/v26.11.27.1/` 三个文件完整下载回读，长度与 SHA-256 同本机一致。[ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
