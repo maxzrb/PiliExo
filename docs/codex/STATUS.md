@@ -1,5 +1,7 @@
 # PiliExo AI 工作状态
 
+- 2026-11-28 13:49 `v26.11.28.1` 已发布并设为 GitHub Latest，ModelScope 镜像同步完成。双 ABI 和校验清单在两处均已核验，355 项测试通过。按用户要求本次未操作手机。
+
 - 2026-11-28 13:36 预测性返回增加系统浮层中断后的恢复。应用失焦或重新收到触摸时取消残留预览，恢复当前页交互。两个回归均有修复前失败对照，355 项 Flutter 测试通过。本轮按用户要求未操作手机。
 
 - 2026-11-28 13:29 Android mpv 的 AAudio 暂停续播冻结已定位并修复。MEP-AN00 原视频上，诊断候选两次挡住超过 16 秒的错误延迟估计，最终 arm64 试机包已覆盖安装、冷启动并通过两次续播。ARMv7 已重链并完成静态校验。353 项 Flutter 测试通过。改动未提交、未发布。
@@ -2914,3 +2916,11 @@ be84b8113b0eb8504b204f481bab021ad45a75ef8d0c764f86486469a21982a7  PiliExo_androi
 - `lib/router/predictive_back_transition.dart` 在预览期间收到窗口失焦对应的生命周期变更时，调用原有路由取消流程。未收到失焦通知时，下一次到达应用的触摸先取消残留预览。正常提交、取消和组件释放都会移除临时指针监听。取消后忽略同一手势迟到的结束回调，后续手势可正常返回。
 - `test/router/predictive_back_test.dart` 的两个回归用例先复现改动前的状态未清理，再验证改动后页面恢复不透明、可点击且能再次返回。15 项路由测试与 355 项 Flutter 全量测试通过，改动文件静态分析通过。证据见 `tmp/predictive-back-interruption/`。
 - 按用户要求，本轮仅在本地模拟，未操作手机、构建 APK 或发布。分支 `codex/fix-vertical-fullscreen-white-edge` 基线 `d8ae12014` 与远端同步，工作区同时含此前 AAudio 修复。
+
+## 2026-11-28 13:49 v26.11.28.1 正式发布
+
+- 正式发布 AAudio 暂停后画面冻结修复及预测性返回被系统浮层打断后的恢复。Flutter 版本 `26.11.28+1`，Android versionCode 52。源码提交 `0d6f5cf4fa1f64bf3a7d2e736e8c7b1ed877268d`，annotated tag object `59c875ff0f4228fa36334990b07bd31270da6581`，发布提交及标签已推送至 GitHub。
+- 发布提交上 355 项 Flutter 测试通过，改动的路由文件和用例静态分析通过。mpv 补丁 SHA-256 清单校验通过，应用补丁后与上轮验证的 C 源码内容一致。Flutter 3.47.9 在本机用原正式证书构建双 ABI，GitHub Actions 保持禁用。
+- 两包均通过 V2 证书、16 KB APK 对齐、`versionCode` 52、AOT 提交、`GeneratedPluginRegistrant`、29 个 Android 插件、定制 mpv 及 Media3 FFmpeg 检查。arm64 正式包的 mpv 与前次 MEP-AN00 AAudio 试机包的 mpv 逐字节相同。按用户此前要求，本次未对手机覆盖安装或冷启动验收。预测性返回验证来自本地模拟，MagicOS 10 实际行为待确认。
+- `PiliExo_android_v26.11.28.1_arm64-v8a.apk` 为 32,972,357 字节，SHA-256 `2a1487ddaac9baa0ef09f5d229aca7b37de8bb75a44d4a32d985c18ddc16f4ee`。`PiliExo_android_v26.11.28.1_armeabi-v7a.apk` 为 33,033,616 字节，SHA-256 `fda70f9a6ad566061884015e5435287526ec14da5c500f559393267c244456b2`。`SHA256SUMS.txt` 为 218 字节，SHA-256 `fe4e672911f9c6f7c268df9c3e6c3c8102d60de52c1aad7a98857e263759e50a`。本机产物见 `dist/release/v26.11.28.1/`，证据见 `tmp/release-v26.11.28.1/`。
+- GitHub Release 已设为 Latest，服务器回报的三个资产长度与 SHA-256 均一致。ModelScope `releases/v26.11.28.1/` 的三个资产通过公开链接完整下载，长度与 SHA-256 一致。[GitHub Release](https://github.com/maxzrb/PiliExo/releases/tag/v26.11.28.1) · [ModelScope 镜像](https://modelscope.cn/datasets/AerithDream/PiliExo/files)
