@@ -17,6 +17,10 @@
       {
         "file": "mpv-android-seek-audio-fade.patch",
         "sha256": "e11e1654e6c2d885fd66ba0bbcda9dc10e202d9dc0a947eb3760448234b1b26c"
+      },
+      {
+        "file": "mpv-android-aaudio-resume-clock.patch",
+        "sha256": "db83264119f1526ac52126ab20fd28c6e10c46d6d276f137886bc29d85c2f66b"
       }
     ]
   },

@@ -1,6 +1,8 @@
 import 'dart:ui' show clampDouble;
 
 import 'package:PiliPlus/utils/theme_utils.dart';
+import 'package:flutter/gestures.dart'
+    show GestureBinding, PointerDownEvent, PointerEvent;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -175,6 +177,7 @@ class _PredictiveBackGestureDetectorState
       _exitSide = _ExitSide.fromGesture(widget.style, backEvent.swipeEdge);
     });
     _gestureStarted = true;
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_onAppPointer);
     // 手势回调可能紧接在同一显示周期的 Flutter 帧之前到达。拖动期间
     // 保持下一帧已排队，让每次显示同步都能使用最新的手势进度。
     (_previewFrames ??= createTicker((_) {})).start();
@@ -199,8 +202,7 @@ class _PredictiveBackGestureDetectorState
   @override
   void handleCancelBackGesture() {
     if (!_gestureStarted) return;
-    _gestureStarted = false;
-    _previewFrames?.stop();
+    _stopPreview();
     setState(() => _phase = _PredictiveBackPhase.cancel);
     widget.route.handleCancelBackGesture();
   }
@@ -208,8 +210,7 @@ class _PredictiveBackGestureDetectorState
   @override
   void handleCommitBackGesture() {
     if (!_gestureStarted) return;
-    _gestureStarted = false;
-    _previewFrames?.stop();
+    _stopPreview();
     setState(() {
       _phase = _PredictiveBackPhase.commit;
       _commitStartProgress = clampDouble(
@@ -221,6 +222,23 @@ class _PredictiveBackGestureDetectorState
     widget.route.handleCommitBackGesture();
   }
 
+  void _stopPreview() {
+    _gestureStarted = false;
+    _previewFrames?.stop();
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onAppPointer);
+  }
+
+  void _onAppPointer(PointerEvent event) {
+    // 页面在返回预览中会忽略点击。新触摸仍可通过全局路由结束残留预览。
+    if (event is PointerDownEvent) handleCancelBackGesture();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 系统侧边栏等浮层可能先抢走窗口焦点，且未送达取消回调。
+    if (state != AppLifecycleState.resumed) handleCancelBackGesture();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -230,6 +248,7 @@ class _PredictiveBackGestureDetectorState
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    if (_gestureStarted) _stopPreview();
     _previewFrames?.dispose();
     super.dispose();
   }

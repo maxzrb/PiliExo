@@ -1,0 +1,39 @@
+--- a/audio/out/ao_aaudio.c
++++ b/audio/out/ao_aaudio.c
+@@ -44,6 +44,8 @@
+ 
+     int64_t presented;
+     int64_t discarded;
++    int64_t queued_frames;
++    bool timestamp_valid;
+ 
+     int device_api;
+     void *lib_handle;
+@@ -239,12 +241,24 @@
+         MP_TRACE(ao, "AAudioStream_getTimestamp() returned %s\n",
+                  p->AAudio_convertResultToText(result));
+         presented = p->presented;
+-    } else {
++    }
++
++    int64_t queued = written - (presented + p->discarded);
++    // 恢复播放后，部分设备会暂时从较早的位置报告时间戳，写入计数仍连续。
++    // 队列不可能因此突然增加超过一整个缓冲区，沿用最后一次有效延迟。
++    if (p->timestamp_valid && presented <= p->presented &&
++        queued > p->queued_frames + ao->device_buffer)
++    {
++        queued = p->queued_frames;
++        presented = written - p->discarded - queued;
+         p->presented = presented;
++    } else if (result >= 0) {
++        p->presented = presented;
++        p->queued_frames = queued;
++        p->timestamp_valid = true;
+     }
+ 
+     int64_t end_time = mp_time_ns();
+-    end_time += MP_TIME_S_TO_NS(nframes) / ao->samplerate;
+-    end_time += MP_TIME_S_TO_NS(written - (presented + p->discarded)) / ao->samplerate;
++    end_time += MP_TIME_S_TO_NS(nframes + queued) / ao->samplerate;
+ 
+     ao_read_data(ao, &data, nframes, end_time, NULL, true, true);

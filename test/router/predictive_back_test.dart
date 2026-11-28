@@ -152,6 +152,66 @@ void main() {
     expect(find.text(_detail), findsOneWidget);
   });
 
+  for (final losesFocus in [true, false]) {
+    final interruption = losesFocus ? '系统浮层使窗口失焦' : '没有失焦通知时收到新的触摸';
+    testWidgets('页面渐隐返回被打断后恢复点击：$interruption', (tester) async {
+      await _launch(tester, style: PredictiveBackStyle.fade);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      var taps = 0;
+      unawaited(
+        AppPageRoute.push<void>(
+          Scaffold(
+            body: TextButton(
+              onPressed: () => taps++,
+              child: const Text(_detail),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final detail = find.text(_detail);
+      final opacity = _transitionPart(detail, 'predictive-back-opacity');
+      final navigator = Get.key.currentState!;
+
+      await _startGesture(tester);
+      await _moveGesture(tester);
+      expect(navigator.userGestureInProgress, isTrue);
+      expect(find.text(_home), findsOneWidget);
+      expect(tester.widget<Opacity>(opacity).opacity, lessThan(1));
+
+      if (losesFocus) {
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+      } else {
+        // 系统已放弃手势但没发取消回调，第一下触摸会结束残留预览。
+        await tester.tapAt(tester.getCenter(detail));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+      expect(navigator.userGestureInProgress, isFalse);
+      if (losesFocus) {
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+      }
+      expect(find.text(_home), findsNothing);
+      expect(tester.widget<Opacity>(opacity).opacity, 1);
+
+      // 迟到的提交属于被打断的手势，不能在恢复操作后退出当前页。
+      await _finishGesture(tester, 'commitBackGesture');
+      await tester.tap(detail);
+      expect(taps, 1);
+      await _startGesture(tester);
+      await _moveGesture(tester);
+      await _finishGesture(tester, 'commitBackGesture');
+      expect(detail, findsNothing);
+      expect(find.text(_home), findsOneWidget);
+      expect(navigator.userGestureInProgress, isFalse);
+    });
+  }
+
   testWidgets('返回预览圆角随手势出现，取消复原且松手时连续', (tester) async {
     await _launch(tester, style: PredictiveBackStyle.zoomFade);
     unawaited(Get.toNamed<void>('/details?id=7'));
